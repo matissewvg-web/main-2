@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
-import { AlertTriangle, CalendarClock, CheckSquare, FolderKanban, Plus, Activity, Users } from 'lucide-react';
+import { AlertTriangle, CalendarClock, CheckSquare, FolderKanban, Plus, Activity, Users, Package, Wallet } from 'lucide-react';
+import { txOverdue } from './Finance';
 import { api } from '../api';
 import { useData, useToast } from '../store';
-import { PRIORITY_RANK, daysUntil, fmtDate, timeAgo } from '../util';
-import { Avatar, DeadlineBadge, PriorityBadge } from '../components/ui';
+import { PRIORITY_RANK, daysUntil, fmtDate, fmtMoney, fmtNum, timeAgo, todayStr, isAssigned, isUnassigned } from '../util';
+import { Avatar, AvatarStack, DeadlineBadge, PriorityBadge } from '../components/ui';
 import TaskRow from '../components/TaskRow';
 
 function greeting() {
@@ -25,7 +26,12 @@ function Stat({ icon: Icon, label, value, tone, onClick }) {
 }
 
 export default function Dashboard({ go, openTask }) {
-  const { tasks, projects, users, me, maps } = useData();
+  const { tasks, projects, users, me, maps, products, transactions, finance } = useData();
+  const lowStock = products.filter((p) => !p.archived && p.stock < p.min_stock);
+  const overduePay = transactions.filter(txOverdue);
+  const monthKey = todayStr().slice(0, 7);
+  const monthTx = transactions.filter((t) => t.date.startsWith(monthKey));
+  const monthResult = monthTx.reduce((s, t) => s + (t.kind === 'inkomst' ? t.amount_cents : -t.amount_cents), 0);
   const toast = useToast();
   const [quick, setQuick] = useState('');
   const [activity, setActivity] = useState([]);
@@ -35,7 +41,7 @@ export default function Dashboard({ go, openTask }) {
   }, [tasks, projects]);
 
   const open = tasks.filter((t) => t.status !== 'klaar');
-  const mine = open.filter((t) => t.assignee_id === me.id);
+  const mine = open.filter((t) => isAssigned(t, me.id));
   const overdue = open.filter((t) => t.deadline && daysUntil(t.deadline) < 0);
   const thisWeek = open.filter((t) => t.deadline && daysUntil(t.deadline) >= 0 && daysUntil(t.deadline) <= 7);
   const activeProjects = projects.filter((p) => p.status === 'actief');
@@ -56,7 +62,7 @@ export default function Dashboard({ go, openTask }) {
     e.preventDefault();
     if (!quick.trim()) return;
     try {
-      await api.post('/tasks', { title: quick.trim(), assignee_id: me.id });
+      await api.post('/tasks', { title: quick.trim(), assignees: [me.id] });
       setQuick('');
       toast('Taak toegevoegd aan jouw lijst', 'ok');
     } catch (err) {
@@ -84,7 +90,7 @@ export default function Dashboard({ go, openTask }) {
 
       <div className="dash-grid">
         <section className="card">
-          <div className="row card-title"><strong>Mijn focus</strong><span className="grow" /><button className="btn btn-sm" onClick={() => openTask({ assignee_id: me.id })}><Plus size={14} /> Taak</button></div>
+          <div className="row card-title"><strong>Mijn focus</strong><span className="grow" /><button className="btn btn-sm" onClick={() => openTask({ assignees: [me.id] })}><Plus size={14} /> Taak</button></div>
           <form onSubmit={addQuick} className="quick-add">
             <Plus size={16} className="muted" />
             <input placeholder="Snel een taak toevoegen… (Enter)" value={quick} onChange={(e) => setQuick(e.target.value)} />
@@ -99,7 +105,7 @@ export default function Dashboard({ go, openTask }) {
             <button key={kind + item.id} className="list-link" onClick={() => (kind === 'task' ? openTask(item) : go('projects', { id: item.id }))}>
               {kind === 'project' ? <FolderKanban size={14} /> : <PriorityBadge value={item.priority} compact />}
               <span className="grow ellipsis">{kind === 'project' ? <strong>{item.name}</strong> : item.title}</span>
-              {kind === 'task' && <Avatar user={maps.users[item.assignee_id]} size={20} />}
+              {kind === 'task' && <AvatarStack ids={item.assignees} size={20} />}
               <DeadlineBadge date={date} />
             </button>
           )) : <p className="muted small">Geen deadlines in de komende 2 weken.</p>}
@@ -108,7 +114,7 @@ export default function Dashboard({ go, openTask }) {
         <section className="card">
           <div className="row card-title"><Users size={16} /><strong>Wie doet wat</strong></div>
           {users.filter((u) => u.active).map((u) => {
-            const theirs = open.filter((t) => t.assignee_id === u.id);
+            const theirs = open.filter((t) => isAssigned(t, u.id));
             const late = theirs.filter((t) => t.deadline && daysUntil(t.deadline) < 0).length;
             const busy = theirs.filter((t) => t.status === 'bezig');
             return (
@@ -123,10 +129,35 @@ export default function Dashboard({ go, openTask }) {
               </div>
             );
           })}
-          {open.some((t) => !t.assignee_id) && (
-            <p className="muted small pad">{open.filter((t) => !t.assignee_id).length} open taken zijn nog niet toegewezen.</p>
+          {open.some(isUnassigned) && (
+            <p className="muted small pad">{open.filter(isUnassigned).length} open taken zijn nog niet toegewezen.</p>
           )}
         </section>
+
+        {(lowStock.length > 0 || (finance && (overduePay.length > 0 || monthTx.length > 0))) && (
+          <section className="card">
+            <div className="row card-title"><AlertTriangle size={16} /><strong>Aandacht nodig</strong></div>
+            {lowStock.slice(0, 5).map((p) => (
+              <button key={'p' + p.id} className="list-link" onClick={() => go('inventory', { id: p.id })}>
+                <Package size={14} /><span className="grow ellipsis">{p.name}</span>
+                <span className="pill pill-red">{fmtNum(p.stock)} / min {fmtNum(p.min_stock)} {p.unit}</span>
+              </button>
+            ))}
+            {lowStock.length > 5 && <button className="link small pad" onClick={() => go('inventory')}>Nog {lowStock.length - 5} producten onder minimum →</button>}
+            {finance && overduePay.slice(0, 5).map((t) => (
+              <button key={'t' + t.id} className="list-link" onClick={() => go('finance', { id: t.id })}>
+                <Wallet size={14} /><span className="grow ellipsis">{t.kind === 'inkomst' ? 'Nog ontvangen: ' : 'Nog betalen: '}{t.description}</span>
+                <span className="pill pill-red">{fmtMoney(t.amount_cents)} · {fmtDate(t.due_date)}</span>
+              </button>
+            ))}
+            {finance && monthTx.length > 0 && (
+              <button className="list-link" onClick={() => go('finance')}>
+                <Wallet size={14} /><span className="grow">Resultaat deze maand</span>
+                <strong className={monthResult < 0 ? 'neg' : 'pos'}>{fmtMoney(monthResult)}</strong>
+              </button>
+            )}
+          </section>
+        )}
 
         <section className="card">
           <div className="row card-title"><Activity size={16} /><strong>Recente activiteit</strong></div>

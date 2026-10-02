@@ -1,9 +1,9 @@
 import { useMemo, useState } from 'react';
-import { Plus, LayoutGrid, List, Search, CheckSquare, FolderKanban } from 'lucide-react';
+import { Plus, LayoutGrid, List, Search, CheckSquare, FolderKanban, Flag, Users } from 'lucide-react';
 import { api } from '../api';
 import { useData, useToast } from '../store';
-import { PRIORITIES, PRIORITY_RANK, TASK_STATUSES, cx } from '../util';
-import { Avatar, DeadlineBadge, Empty, PageHeader, PriorityBadge, TagChips } from '../components/ui';
+import { PRIORITIES, PRIORITY_RANK, TASK_STATUS, TASK_STATUSES, cx, isAssigned, isUnassigned } from '../util';
+import { Avatar, AvatarStack, DeadlineBadge, Empty, PageHeader, PriorityBadge, StatusBadge, TagChips } from '../components/ui';
 import TaskRow from '../components/TaskRow';
 
 function loadPref(key, fallback) {
@@ -21,9 +21,9 @@ export function useTaskFilters(tasks, me) {
   const [tag, setTag] = useState('');
   const filtered = useMemo(() => tasks.filter((t) => {
     if (q && !`${t.title} ${t.description || ''}`.toLowerCase().includes(q.toLowerCase())) return false;
-    if (who === 'me' && t.assignee_id !== me.id) return false;
-    if (who === 'none' && t.assignee_id) return false;
-    if (/^\d+$/.test(who) && t.assignee_id !== Number(who)) return false;
+    if (who === 'me' && !isAssigned(t, me.id)) return false;
+    if (who === 'none' && !isUnassigned(t)) return false;
+    if (/^\d+$/.test(who) && !isAssigned(t, Number(who))) return false;
     if (prio && t.priority !== prio) return false;
     if (project && String(t.project_id || '') !== project) return false;
     if (tag && !t.tags.includes(Number(tag))) return false;
@@ -65,7 +65,7 @@ export function TaskFilters({ f, hideProject }) {
   );
 }
 
-function KanbanCard({ task, onOpen, onDragStart }) {
+function KanbanCard({ task, onOpen, onDragStart, groupBy = 'status' }) {
   const { maps } = useData();
   const project = maps.projects[task.project_id];
   return (
@@ -76,28 +76,34 @@ function KanbanCard({ task, onOpen, onDragStart }) {
       onClick={() => onOpen(task)}
     >
       <div className="kcard-top">
-        <PriorityBadge value={task.priority} />
+        {groupBy === 'priority' ? <StatusBadge status={TASK_STATUS[task.status]} /> : <PriorityBadge value={task.priority} />}
         <DeadlineBadge date={task.deadline} done={task.status === 'klaar'} />
       </div>
       <div className={cx('kcard-title', task.status === 'klaar' && 'strike')}>{task.title}</div>
       <TagChips ids={task.tags} />
       <div className="kcard-foot">
         {project ? <span className="muted small row gap-xs"><FolderKanban size={12} />{project.name}</span> : <span />}
-        <Avatar user={maps.users[task.assignee_id]} size={22} />
+        <AvatarStack ids={task.assignees} size={22} />
       </div>
     </div>
   );
 }
 
-export function Kanban({ tasks, onOpen, onNew }) {
+export function Kanban({ tasks, onOpen, onNew, groupBy = 'status' }) {
   const { patchLocal } = useData();
   const toast = useToast();
   const [dragId, setDragId] = useState(null);
   const [over, setOver] = useState(null); // { status, beforeId }
 
-  const columns = TASK_STATUSES.map((s) => ({
+  // The same board groups by status (Bord) or by priority (Prioriteit);
+  // dropping a card in a column sets that field.
+  const field = groupBy === 'priority' ? 'priority' : 'status';
+  const columns = (groupBy === 'priority' ? PRIORITIES : TASK_STATUSES).map((s) => ({
     ...s,
-    items: tasks.filter((t) => t.status === s.id).sort((a, b) => a.sort - b.sort),
+    items: tasks.filter((t) => t[field] === s.id).sort((a, b) =>
+      groupBy === 'priority'
+        ? (a.status === 'klaar') - (b.status === 'klaar') || (a.deadline || '9').localeCompare(b.deadline || '9')
+        : a.sort - b.sort),
   }));
 
   const onDragStart = (e, task) => {
@@ -106,11 +112,18 @@ export function Kanban({ tasks, onOpen, onNew }) {
     e.dataTransfer.setData('text/plain', String(task.id));
   };
 
-  const drop = (status, beforeId) => {
+  const drop = (colId, beforeId) => {
     const task = tasks.find((t) => t.id === dragId);
     setDragId(null);
     setOver(null);
     if (!task) return;
+    if (field === 'priority') {
+      if (task.priority === colId) return;
+      patchLocal('tasks', task.id, { priority: colId });
+      api.patch(`/tasks/${task.id}`, { priority: colId }).catch((err) => toast(err.message, 'error'));
+      return;
+    }
+    const status = colId;
     const col = columns.find((c) => c.id === status).items.filter((t) => t.id !== task.id);
     const idx = beforeId ? col.findIndex((t) => t.id === beforeId) : col.length;
     const prev = col[idx - 1]?.sort;
@@ -122,7 +135,7 @@ export function Kanban({ tasks, onOpen, onNew }) {
   };
 
   return (
-    <div className="kanban">
+    <div className="kanban" style={{ '--cols': columns.length }}>
       {columns.map((col) => (
         <div
           key={col.id}
@@ -135,7 +148,7 @@ export function Kanban({ tasks, onOpen, onNew }) {
             <strong>{col.label}</strong>
             <span className="count">{col.items.length}</span>
             <span className="grow" />
-            <button className="icon-btn" title="Taak toevoegen" onClick={() => onNew({ status: col.id })}><Plus size={16} /></button>
+            <button className="icon-btn" title="Taak toevoegen" onClick={() => onNew({ [field]: col.id })}><Plus size={16} /></button>
           </div>
           <div className="kcol-body">
             {col.items.map((t) => (
@@ -145,7 +158,7 @@ export function Kanban({ tasks, onOpen, onNew }) {
                 onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); if (over?.beforeId !== t.id) setOver({ status: col.id, beforeId: t.id }); }}
                 onDrop={(e) => { e.preventDefault(); e.stopPropagation(); drop(col.id, t.id); }}
               >
-                <KanbanCard task={t} onOpen={onOpen} onDragStart={onDragStart} />
+                <KanbanCard task={t} onOpen={onOpen} onDragStart={onDragStart} groupBy={groupBy} />
               </div>
             ))}
             {!col.items.length && <div className="kcol-empty">Sleep taken hierheen</div>}
@@ -182,33 +195,76 @@ export function TaskList({ tasks, onOpen, showProject = true }) {
   );
 }
 
+// One column per team member (a task with two people shows in both columns),
+// so you can see at a glance who has too much on their plate.
+function PeopleBoard({ tasks, onOpen, onNew }) {
+  const { users } = useData();
+  const columns = [
+    ...users.filter((u) => u.active).map((u) => ({ id: u.id, user: u, items: tasks.filter((t) => isAssigned(t, u.id)) })),
+    { id: 'none', user: null, items: tasks.filter(isUnassigned) },
+  ];
+  const byUrgency = (a, b) => (a.status === 'klaar') - (b.status === 'klaar') || PRIORITY_RANK[a.priority] - PRIORITY_RANK[b.priority] || (a.deadline || '9').localeCompare(b.deadline || '9');
+  return (
+    <div className="kanban people-board" style={{ gridTemplateColumns: `repeat(${columns.length}, minmax(240px, 1fr))` }}>
+      {columns.map((col) => (
+        <div key={col.id} className="kcol">
+          <div className="kcol-head">
+            {col.user ? <Avatar user={col.user} size={22} /> : <Users size={18} className="muted" />}
+            <strong className="ellipsis">{col.user ? col.user.name : 'Niet toegewezen'}</strong>
+            <span className="count">{col.items.filter((t) => t.status !== 'klaar').length}</span>
+            <span className="grow" />
+            <button className="icon-btn" title="Taak toevoegen" onClick={() => onNew(col.user ? { assignees: [col.user.id] } : {})}><Plus size={16} /></button>
+          </div>
+          <div className="kcol-body">
+            {[...col.items].sort(byUrgency).map((t) => <KanbanCard key={t.id} task={t} onOpen={onOpen} onDragStart={(e) => e.preventDefault()} />)}
+            {!col.items.length && <div className="kcol-empty">Geen taken</div>}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+const VIEWS = [
+  { id: 'kanban', label: 'Bord', icon: LayoutGrid, hint: 'Per status, sleep om status te wijzigen' },
+  { id: 'priority', label: 'Prioriteit', icon: Flag, hint: 'Per prioriteit, sleep om prioriteit te wijzigen' },
+  { id: 'people', label: 'Per persoon', icon: Users, hint: 'Wie doet wat' },
+  { id: 'list', label: 'Lijst', icon: List, hint: 'Sorteerbare lijst' },
+];
+
 export default function Tasks({ openTask }) {
   const { tasks, me } = useData();
   const [view, setView] = useState(() => loadPref('tb5-task-view', 'kanban'));
-  const [showDone, setShowDone] = useState(true);
+  const [showDone, setShowDone] = useState(() => loadPref('tb5-task-done', '0') === '1');
   const f = useTaskFilters(tasks, me);
-  const visible = view === 'list' && !showDone ? f.filtered.filter((t) => t.status !== 'klaar') : f.filtered;
+  const visible = view !== 'kanban' && !showDone ? f.filtered.filter((t) => t.status !== 'klaar') : f.filtered;
+  const toggleDone = (v) => { setShowDone(v); savePref('tb5-task-done', v ? '1' : '0'); };
   const switchView = (v) => { setView(v); savePref('tb5-task-view', v); };
 
   return (
     <div className="page">
       <PageHeader title="Taken" subtitle={`${tasks.filter((t) => t.status !== 'klaar').length} open · ${tasks.filter((t) => t.status === 'klaar').length} klaar`}>
         <div className="seg">
-          <button className={cx('seg-btn', view === 'kanban' && 'on')} onClick={() => switchView('kanban')}><LayoutGrid size={15} /> Bord</button>
-          <button className={cx('seg-btn', view === 'list' && 'on')} onClick={() => switchView('list')}><List size={15} /> Lijst</button>
+          {VIEWS.map((v) => (
+            <button key={v.id} className={cx('seg-btn', view === v.id && 'on')} title={v.hint} onClick={() => switchView(v.id)}><v.icon size={15} /> {v.label}</button>
+          ))}
         </div>
         <button className="btn btn-primary" onClick={() => openTask({})}><Plus size={16} /> Nieuwe taak</button>
       </PageHeader>
       <div className="row gap-m wrap">
         <TaskFilters f={f} />
-        {view === 'list' && (
-          <label className="row gap-xs small"><input type="checkbox" checked={showDone} onChange={(e) => setShowDone(e.target.checked)} /> Toon afgeronde</label>
+        {view !== 'kanban' && (
+          <label className="row gap-xs small"><input type="checkbox" checked={showDone} onChange={(e) => toggleDone(e.target.checked)} /> Toon afgeronde</label>
         )}
       </div>
       {!tasks.length ? (
         <Empty icon={CheckSquare} title="Nog geen taken" text="Maak je eerste taak aan en wijs hem toe aan iemand uit het team." action={<button className="btn btn-primary" onClick={() => openTask({})}><Plus size={16} /> Nieuwe taak</button>} />
       ) : view === 'kanban' ? (
         <Kanban tasks={visible} onOpen={openTask} onNew={openTask} />
+      ) : view === 'priority' ? (
+        <Kanban tasks={visible} onOpen={openTask} onNew={openTask} groupBy="priority" />
+      ) : view === 'people' ? (
+        <PeopleBoard tasks={visible} onOpen={openTask} onNew={openTask} />
       ) : (
         <TaskList tasks={visible} onOpen={openTask} />
       )}

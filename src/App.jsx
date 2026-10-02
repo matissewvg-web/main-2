@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import {
   LayoutDashboard, CheckSquare, FolderKanban, Users, NotebookPen, FolderOpen, Settings as SettingsIcon,
-  Search, LogOut, Package, Wallet, TrendingUp, Loader2,
+  Search, LogOut, Package, Wallet, TrendingUp, Loader2, CalendarDays,
 } from 'lucide-react';
 import { api, desktop, setBase, setToken, getToken, setUnauthorizedHandler } from './api';
 import { DataProvider, ToastHost, useData } from './store';
@@ -16,6 +16,10 @@ import Contacts from './pages/Contacts';
 import Meetings from './pages/Meetings';
 import Files from './pages/Files';
 import Settings from './pages/Settings';
+import Inventory from './pages/Inventory';
+import Finance from './pages/Finance';
+import Investments from './pages/Investments';
+import Calendar from './pages/Calendar';
 import { ConnectionSetup, HostError, Login } from './pages/Setup';
 
 const NAV = [
@@ -24,14 +28,12 @@ const NAV = [
   { id: 'projects', label: 'Projecten', icon: FolderKanban },
   { id: 'contacts', label: 'Contacten', icon: Users },
   { id: 'meetings', label: 'Vergaderingen', icon: NotebookPen },
+  { id: 'calendar', label: 'Kalender', icon: CalendarDays },
   { id: 'files', label: 'Bestanden', icon: FolderOpen },
-];
-
-// Planned for later phases; shown so the team knows what is coming.
-const LATER = [
-  { label: 'Voorraad', icon: Package },
-  { label: 'Financiën', icon: Wallet },
-  { label: 'Investeringen', icon: TrendingUp },
+  { section: 'Bedrijf' },
+  { id: 'inventory', label: 'Voorraad', icon: Package },
+  { id: 'finance', label: 'Financiën', icon: Wallet, finance: true },
+  { id: 'investments', label: 'Investeringen', icon: TrendingUp, finance: true },
 ];
 
 function useTheme() {
@@ -45,8 +47,9 @@ function useTheme() {
 }
 
 function Sidebar({ page, go, onSearch, onLogout }) {
-  const { me, tasks, online } = useData();
-  const myOpen = tasks.filter((t) => t.assignee_id === me.id && t.status !== 'klaar').length;
+  const { me, tasks, products, online, finance } = useData();
+  const myOpen = tasks.filter((t) => (t.assignees || []).includes(me.id) && t.status !== 'klaar').length;
+  const lowStock = products.filter((p) => !p.archived && p.stock < p.min_stock).length;
   return (
     <aside className="sidebar">
       <div className="brand"><img src="./icon.png" alt="" /><span>The Break 5</span></div>
@@ -54,19 +57,16 @@ function Sidebar({ page, go, onSearch, onLogout }) {
         <Search size={15} /> <span className="grow">Zoeken</span> <kbd>Ctrl K</kbd>
       </button>
       <nav>
-        {NAV.map((n) => (
+        {NAV.filter((n) => !n.finance || finance).map((n) => (n.section ? (
+          <div key={n.section} className="nav-label">{n.section}</div>
+        ) : (
           <button key={n.id} className={cx('nav-item', page === n.id && 'active')} onClick={() => go(n.id)}>
             <n.icon size={18} />
             <span className="grow">{n.label}</span>
             {n.id === 'tasks' && myOpen > 0 && <span className="nav-count">{myOpen}</span>}
+            {n.id === 'inventory' && lowStock > 0 && <span className="nav-count nav-count-warn" title="Producten onder minimum">{lowStock}</span>}
           </button>
-        ))}
-        <div className="nav-label">Binnenkort</div>
-        {LATER.map((n) => (
-          <div key={n.label} className="nav-item disabled" title="Komt in een volgende versie">
-            <n.icon size={18} /><span className="grow">{n.label}</span>
-          </div>
-        ))}
+        )))}
       </nav>
       <div className="side-foot">
         <button className={cx('nav-item', page === 'settings' && 'active')} onClick={() => go('settings')}>
@@ -90,7 +90,7 @@ function Workspace({ onLogout }) {
   const [task, setTask] = useState(null);
   const [palette, setPalette] = useState(false);
   const [theme, setTheme] = useTheme();
-  const { loaded, online } = useData();
+  const { loaded, online, finance } = useData();
 
   const go = useCallback((page, params = null) => setRoute({ page, params }), []);
   const openTask = useCallback((t) => setTask(t || {}), []);
@@ -114,6 +114,10 @@ function Workspace({ onLogout }) {
   else if (route.page === 'contacts') content = <Contacts {...props} />;
   else if (route.page === 'meetings') content = <Meetings {...props} />;
   else if (route.page === 'files') content = <Files {...props} />;
+  else if (route.page === 'calendar') content = <Calendar {...props} />;
+  else if (route.page === 'inventory') content = <Inventory {...props} />;
+  else if (route.page === 'finance' && finance) content = <Finance {...props} />;
+  else if (route.page === 'investments' && finance) content = <Investments {...props} />;
   else if (route.page === 'settings') content = <Settings theme={theme} setTheme={setTheme} />;
   else content = <Dashboard {...props} />;
 

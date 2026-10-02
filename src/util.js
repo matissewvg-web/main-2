@@ -125,4 +125,100 @@ export function stripHtml(html = '') {
   return html.replace(/<[^>]+>/g, ' ').replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ').trim();
 }
 
+export const isAssigned = (task, userId) => (task.assignees || []).includes(userId);
+export const isUnassigned = (task) => !(task.assignees || []).length;
+
 export const byId = (list) => Object.fromEntries((list || []).map((x) => [x.id, x]));
+
+// ---- money -------------------------------------------------------------------
+const EUR = new Intl.NumberFormat('nl-NL', { style: 'currency', currency: 'EUR' });
+const EUR0 = new Intl.NumberFormat('nl-NL', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 });
+export const fmtMoney = (cents, round = false) => (round ? EUR0 : EUR).format((cents || 0) / 100);
+
+// Compact for chart axes: € 1,2k / € 3,4 mln
+export function fmtMoneyShort(cents) {
+  const v = (cents || 0) / 100;
+  const a = Math.abs(v);
+  if (a >= 1e6) return `€ ${(v / 1e6).toLocaleString('nl-NL', { maximumFractionDigits: 1 })} mln`;
+  if (a >= 1e3) return `€ ${(v / 1e3).toLocaleString('nl-NL', { maximumFractionDigits: 1 })}k`;
+  return `€ ${v.toLocaleString('nl-NL', { maximumFractionDigits: 0 })}`;
+}
+
+// Accepts "1.234,56", "1234,56", "1234.56", "€ 12" -> cents, or null when invalid.
+export function parseMoney(input) {
+  let s = String(input ?? '').replace(/[€\s]/g, '');
+  if (!s) return null;
+  if (s.includes(',')) s = s.replace(/\./g, '').replace(',', '.');
+  else if (/^\d{1,3}(\.\d{3})+$/.test(s)) s = s.replace(/\./g, '');
+  const n = Number(s);
+  return Number.isFinite(n) ? Math.round(n * 100) : null;
+}
+
+export const centsToInput = (cents) => (cents == null ? '' : (cents / 100).toFixed(2).replace('.', ','));
+
+export const fmtNum = (n, digits = 2) => (n ?? 0).toLocaleString('nl-NL', { maximumFractionDigits: digits });
+
+export const fmtPct = (n) => `${n >= 0 ? '+' : ''}${(n * 100).toLocaleString('nl-NL', { maximumFractionDigits: 1 })}%`;
+
+// ---- phase 2 vocabularies ---------------------------------------------------
+export const TX_CATEGORIES = {
+  inkomst: ['Omzet', 'Subsidie', 'Rente', 'Inbreng eigenaar', 'Overig'],
+  uitgave: ['Inkoop', 'Huur', 'Salarissen', 'Marketing', 'Software', 'Vervoer', 'Verzekeringen', 'Belastingen', 'Kantoor', 'Overig'],
+};
+
+export const INVESTMENT_KINDS = [
+  { id: 'aandelen', label: 'Aandelen / ETF' },
+  { id: 'obligaties', label: 'Obligaties' },
+  { id: 'crypto', label: 'Crypto' },
+  { id: 'vastgoed', label: 'Vastgoed' },
+  { id: 'deelneming', label: 'Deelneming' },
+  { id: 'spaargeld', label: 'Spaargeld / deposito' },
+  { id: 'overig', label: 'Overig' },
+];
+export const INVESTMENT_KIND = Object.fromEntries(INVESTMENT_KINDS.map((k) => [k.id, k]));
+
+export const ENTRY_KINDS = [
+  { id: 'aankoop', label: 'Aankoop / inleg' },
+  { id: 'verkoop', label: 'Verkoop / opname' },
+  { id: 'dividend', label: 'Dividend / rente' },
+  { id: 'waarde', label: 'Waardering (huidige waarde)' },
+];
+export const ENTRY_KIND = Object.fromEntries(ENTRY_KINDS.map((k) => [k.id, k]));
+
+// Totals for one investment from its entries. A "waarde" entry is a manual
+// valuation of the whole position; purchases and sales after it move the
+// estimate up/down until the next valuation.
+export function investmentSummary(entries) {
+  const sorted = [...entries].sort((a, b) => a.date.localeCompare(b.date) || a.id - b.id);
+  let invested = 0, received = 0, units = 0, running = 0, valueDate = null;
+  const history = [];
+  for (const e of sorted) {
+    if (e.kind === 'aankoop') { invested += e.amount_cents; units += e.quantity || 0; running += e.amount_cents; }
+    if (e.kind === 'verkoop') { received += e.amount_cents; units -= e.quantity || 0; running = Math.max(0, running - e.amount_cents); }
+    if (e.kind === 'dividend') received += e.amount_cents;
+    if (e.kind === 'waarde') { running = e.amount_cents; valueDate = e.date; }
+    const last = history[history.length - 1];
+    if (last && last.date === e.date) last.value = running;
+    else history.push({ date: e.date, value: running });
+  }
+  const current = running;
+  const result = current + received - invested;
+  return { invested, received, units, current, valueDate, result, pct: invested ? result / invested : 0, history };
+}
+
+// ---- CSV export (opens correctly in Dutch Excel) ------------------------------
+export function downloadCsv(filename, rows) {
+  const esc = (v) => {
+    const s = v == null ? '' : String(v);
+    return /[;"\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+  };
+  const text = '﻿' + rows.map((r) => r.map(esc).join(';')).join('\r\n');
+  const url = URL.createObjectURL(new Blob([text], { type: 'text/csv;charset=utf-8' }));
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+export const centsCsv = (c) => ((c || 0) / 100).toFixed(2).replace('.', ',');

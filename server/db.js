@@ -106,6 +106,92 @@ const MIGRATIONS = [
   INSERT INTO tags (name, color) VALUES
     ('Klant', '#0ea5e9'), ('Leverancier', '#f59e0b'), ('Intern', '#64748b'), ('Financieel', '#10b981');
   `,
+  // Phase 2: several people per task, finance access per user, inventory,
+  // finance and investments. Money is stored in cents to avoid rounding errors.
+  `
+  ALTER TABLE users ADD COLUMN can_finance INTEGER NOT NULL DEFAULT 0;
+  UPDATE users SET can_finance = 1 WHERE role = 'admin';
+
+  ALTER TABLE tasks ADD COLUMN assignees TEXT NOT NULL DEFAULT '[]';
+  UPDATE tasks SET assignees = json_array(assignee_id) WHERE assignee_id IS NOT NULL;
+
+  CREATE TABLE products (
+    id INTEGER PRIMARY KEY,
+    name TEXT NOT NULL,
+    sku TEXT,
+    category TEXT,
+    location TEXT,
+    unit TEXT NOT NULL DEFAULT 'stuks',
+    stock REAL NOT NULL DEFAULT 0,
+    min_stock REAL NOT NULL DEFAULT 0,
+    cost_cents INTEGER NOT NULL DEFAULT 0,
+    price_cents INTEGER NOT NULL DEFAULT 0,
+    supplier_id INTEGER REFERENCES contacts(id) ON DELETE SET NULL,
+    notes TEXT,
+    tags TEXT NOT NULL DEFAULT '[]',
+    archived INTEGER NOT NULL DEFAULT 0,
+    created_by INTEGER,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+  );
+  CREATE TABLE stock_moves (
+    id INTEGER PRIMARY KEY,
+    product_id INTEGER NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+    kind TEXT NOT NULL,
+    qty REAL NOT NULL,
+    note TEXT,
+    date TEXT NOT NULL,
+    created_by INTEGER,
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+  );
+  CREATE INDEX idx_moves_product ON stock_moves(product_id);
+
+  CREATE TABLE transactions (
+    id INTEGER PRIMARY KEY,
+    kind TEXT NOT NULL DEFAULT 'uitgave',
+    amount_cents INTEGER NOT NULL,
+    date TEXT NOT NULL,
+    category TEXT,
+    description TEXT NOT NULL,
+    contact_id INTEGER REFERENCES contacts(id) ON DELETE SET NULL,
+    project_id INTEGER REFERENCES projects(id) ON DELETE SET NULL,
+    status TEXT NOT NULL DEFAULT 'betaald',
+    due_date TEXT,
+    vat_rate REAL,
+    file_path TEXT,
+    tags TEXT NOT NULL DEFAULT '[]',
+    created_by INTEGER,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+  );
+  CREATE INDEX idx_tx_date ON transactions(date);
+
+  CREATE TABLE investments (
+    id INTEGER PRIMARY KEY,
+    name TEXT NOT NULL,
+    kind TEXT NOT NULL DEFAULT 'aandelen',
+    ticker TEXT,
+    notes TEXT,
+    tags TEXT NOT NULL DEFAULT '[]',
+    archived INTEGER NOT NULL DEFAULT 0,
+    created_by INTEGER,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+  );
+  CREATE TABLE investment_entries (
+    id INTEGER PRIMARY KEY,
+    investment_id INTEGER NOT NULL REFERENCES investments(id) ON DELETE CASCADE,
+    kind TEXT NOT NULL,
+    date TEXT NOT NULL,
+    amount_cents INTEGER NOT NULL,
+    quantity REAL,
+    note TEXT,
+    created_by INTEGER,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+  );
+  CREATE INDEX idx_inv_entries ON investment_entries(investment_id);
+  `,
 ];
 
 // Uses the SQLite that ships inside Node/Electron, so the app has no native

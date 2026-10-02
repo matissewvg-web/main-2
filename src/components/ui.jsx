@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
-import { X, Check, ChevronDown } from 'lucide-react';
-import { useData } from '../store';
-import { PRIORITY, PRIORITIES, cx, deadlineInfo, initials } from '../util';
+import { X, Check, ChevronDown, Plus } from 'lucide-react';
+import { api } from '../api';
+import { useData, useToast } from '../store';
+import { COLORS, PRIORITY, PRIORITIES, cx, deadlineInfo, initials } from '../util';
 
 export function Modal({ title, onClose, children, footer, wide }) {
   useEffect(() => {
@@ -93,7 +94,7 @@ function useOutside(ref, onOut) {
   }, [ref, onOut]);
 }
 
-export function MultiPicker({ options, value = [], onChange, placeholder = 'Kies…', renderChip }) {
+export function MultiPicker({ options, value = [], onChange, placeholder = 'Kies…', renderChip, onCreate, createLabel = 'Nieuw' }) {
   const [open, setOpen] = useState(false);
   const [q, setQ] = useState('');
   const ref = useRef(null);
@@ -101,6 +102,14 @@ export function MultiPicker({ options, value = [], onChange, placeholder = 'Kies
   const selected = options.filter((o) => value.includes(o.id));
   const filtered = options.filter((o) => o.label.toLowerCase().includes(q.toLowerCase()));
   const toggle = (id) => onChange(value.includes(id) ? value.filter((v) => v !== id) : [...value, id]);
+  const exact = options.some((o) => o.label.toLowerCase() === q.trim().toLowerCase());
+  const create = async () => {
+    const id = await onCreate(q.trim());
+    if (id != null) {
+      onChange([...value, id]);
+      setQ('');
+    }
+  };
   return (
     <div className="picker" ref={ref}>
       <button type="button" className="picker-btn" onClick={() => setOpen(!open)}>
@@ -115,7 +124,21 @@ export function MultiPicker({ options, value = [], onChange, placeholder = 'Kies
       </button>
       {open && (
         <div className="picker-pop">
-          {options.length > 6 && <input autoFocus className="picker-search" placeholder="Zoeken…" value={q} onChange={(e) => setQ(e.target.value)} />}
+          {(options.length > 6 || onCreate) && (
+            <input
+              autoFocus
+              className="picker-search"
+              placeholder={onCreate ? 'Zoek of maak nieuw…' : 'Zoeken…'}
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key !== 'Enter') return;
+                e.preventDefault();
+                if (filtered.length === 1 && !value.includes(filtered[0].id)) toggle(filtered[0].id);
+                else if (onCreate && q.trim() && !exact) create();
+              }}
+            />
+          )}
           <div className="picker-list">
             {filtered.map((o) => (
               <button type="button" key={o.id} className="picker-item" onClick={() => toggle(o.id)}>
@@ -124,7 +147,12 @@ export function MultiPicker({ options, value = [], onChange, placeholder = 'Kies
                 {o.label}
               </button>
             ))}
-            {!filtered.length && <div className="picker-empty">Niets gevonden</div>}
+            {!filtered.length && !onCreate && <div className="picker-empty">Niets gevonden</div>}
+            {onCreate && q.trim() && !exact && (
+              <button type="button" className="picker-item picker-create" onClick={create}>
+                <span className="check"><Plus size={14} /></span>{createLabel} “{q.trim()}”
+              </button>
+            )}
           </div>
         </div>
       )}
@@ -132,14 +160,56 @@ export function MultiPicker({ options, value = [], onChange, placeholder = 'Kies
   );
 }
 
+// Anyone can create a tag right here; admins rename/recolor/delete them in Settings.
 export function TagPicker({ value, onChange }) {
-  const { tags } = useData();
+  const { tags, reload } = useData();
+  const toast = useToast();
+  const onCreate = async (name) => {
+    try {
+      const color = COLORS[tags.length % COLORS.length];
+      const tag = await api.post('/tags', { name, color });
+      await reload('tags');
+      return tag.id;
+    } catch (e) {
+      toast(e.message, 'error');
+      return null;
+    }
+  };
   return (
     <MultiPicker
       options={tags.map((t) => ({ id: t.id, label: t.name, color: t.color }))}
       value={value}
       onChange={onChange}
       placeholder="Geen tags"
+      onCreate={onCreate}
+      createLabel="Nieuwe tag"
+    />
+  );
+}
+
+export function AvatarStack({ ids = [], size = 22, max = 4 }) {
+  const { maps } = useData();
+  const users = ids.map((id) => maps.users[id]).filter(Boolean);
+  if (!users.length) return null;
+  return (
+    <span className="avatar-stack" title={users.map((u) => u.name).join(', ')}>
+      {users.slice(0, max).map((u) => <Avatar key={u.id} user={u} size={size} title={users.map((x) => x.name).join(', ')} />)}
+      {users.length > max && <span className="avatar avatar-more" style={{ width: size, height: size, fontSize: size * 0.4 }}>+{users.length - max}</span>}
+    </span>
+  );
+}
+
+export function PeoplePicker({ value = [], onChange, placeholder = 'Niemand toegewezen' }) {
+  const { users, maps } = useData();
+  return (
+    <MultiPicker
+      options={users.filter((u) => u.active || value.includes(u.id)).map((u) => ({ id: u.id, label: u.name, color: u.color }))}
+      value={value}
+      onChange={onChange}
+      placeholder={placeholder}
+      renderChip={(o) => (
+        <span key={o.id} className="person-chip"><Avatar user={maps.users[o.id]} size={18} />{o.label.split(' ')[0]}</span>
+      )}
     />
   );
 }

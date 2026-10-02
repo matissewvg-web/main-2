@@ -20,8 +20,8 @@ const ENTITIES = {
     label: (r) => r.name,
   },
   tasks: {
-    fields: ['title', 'description', 'status', 'priority', 'assignee_id', 'project_id', 'contact_id', 'meeting_id', 'deadline', 'tags', 'sort'],
-    json: ['tags'],
+    fields: ['title', 'description', 'status', 'priority', 'assignees', 'project_id', 'contact_id', 'meeting_id', 'deadline', 'tags', 'sort'],
+    json: ['tags', 'assignees'],
     required: ['title'],
     order: 'sort, id',
     label: (r) => r.title,
@@ -40,9 +40,46 @@ const ENTITIES = {
     order: 'name COLLATE NOCASE',
     label: (r) => r.name,
   },
+  products: {
+    // stock is only changed through stock movements, see inventory.js
+    fields: ['name', 'sku', 'category', 'location', 'unit', 'min_stock', 'cost_cents', 'price_cents', 'supplier_id', 'notes', 'tags', 'archived'],
+    json: ['tags'],
+    required: ['name'],
+    order: 'name COLLATE NOCASE',
+    label: (r) => r.name,
+  },
+  transactions: {
+    fields: ['kind', 'amount_cents', 'date', 'category', 'description', 'contact_id', 'project_id', 'status', 'due_date', 'vat_rate', 'file_path', 'tags'],
+    json: ['tags'],
+    required: ['description', 'date', 'amount_cents'],
+    order: 'date DESC, id DESC',
+    label: (r) => r.description,
+    finance: true,
+  },
+  investments: {
+    fields: ['name', 'kind', 'ticker', 'notes', 'tags', 'archived'],
+    json: ['tags'],
+    required: ['name'],
+    order: 'archived, name COLLATE NOCASE',
+    label: (r) => r.name,
+    finance: true,
+  },
+  investment_entries: {
+    fields: ['investment_id', 'kind', 'date', 'amount_cents', 'quantity', 'note'],
+    json: [],
+    required: ['investment_id', 'date', 'kind'],
+    order: 'date, id',
+    label: (r) => `${r.kind} ${(r.amount_cents / 100).toFixed(2)}`,
+    finance: true,
+  },
 };
 
-const ACTIVITY_NAMES = { contacts: 'contact', projects: 'project', tasks: 'taak', meetings: 'vergadering', tags: 'tag' };
+const hasFinance = (user) => user.role === 'admin' || !!user.can_finance;
+
+const ACTIVITY_NAMES = {
+  contacts: 'contact', projects: 'project', tasks: 'taak', meetings: 'vergadering', tags: 'tag',
+  products: 'product', transactions: 'transactie', investments: 'investering', investment_entries: 'investeringsregel',
+};
 
 function decode(cfg, row) {
   if (!row) return row;
@@ -61,13 +98,22 @@ function pick(cfg, body) {
     if (cfg.json.includes(f)) v = JSON.stringify(Array.isArray(v) ? v : []);
     else if (v === '') v = null;
     if (f === 'priority' && v != null && !PRIORITIES.includes(v)) v = 'normaal';
+    if (f.endsWith('_cents') && v != null) v = Math.round(Number(v)) || 0;
+    if (typeof v === 'boolean') v = v ? 1 : 0;
     data[f] = v;
+  }
+  // The first person on a task stays in assignee_id for sorting and older views.
+  if (body.assignees !== undefined && cfg.json.includes('assignees')) {
+    const list = Array.isArray(body.assignees) ? body.assignees.filter((x) => Number.isInteger(x)) : [];
+    data.assignees = JSON.stringify(list);
+    data.assignee_id = list[0] ?? null;
   }
   return data;
 }
 
 function crudRoutes(app, db, broadcast) {
   const log = (user, action, entity, id, label) => {
+    if (ENTITIES[entity]?.finance) return;
     db.prepare('INSERT INTO activity (user_id, action, entity, entity_id, label) VALUES (?,?,?,?,?)')
       .run(user.id, action, ACTIVITY_NAMES[entity] || entity, id, label);
     db.prepare("DELETE FROM activity WHERE id <= (SELECT id FROM activity ORDER BY id DESC LIMIT 1 OFFSET 500)").run();
@@ -75,6 +121,9 @@ function crudRoutes(app, db, broadcast) {
 
   for (const [entity, cfg] of Object.entries(ENTITIES)) {
     const base = `/api/${entity}`;
+    if (cfg.finance) {
+      app.use(base, (req, res, next) => (hasFinance(req.user) ? next() : res.status(403).json({ error: 'Je hebt geen toegang tot financiën.' })));
+    }
 
     app.get(base, (req, res) => {
       const rows = db.prepare(`SELECT * FROM ${entity} ORDER BY ${cfg.order}`).all();
@@ -88,7 +137,6 @@ function crudRoutes(app, db, broadcast) {
     });
 
     app.post(base, (req, res) => {
-      if (entity === 'tags' && req.user.role !== 'admin') return res.status(403).json({ error: 'Alleen beheerders kunnen tags aanmaken.' });
       const data = pick(cfg, req.body || {});
       for (const r of cfg.required) {
         if (!data[r] || !String(data[r]).trim()) return res.status(400).json({ error: `Veld "${r}" is verplicht.` });
@@ -161,13 +209,14 @@ function crudRoutes(app, db, broadcast) {
   });
 
   app.post('/api/users', requireAdmin, (req, res) => {
-    const { name, username, password, role, color } = req.body || {};
+    const { name, username, password, role, color, can_finance } = req.body || {};
     if (!name || !username || !password || password.length < 4) {
       return res.status(400).json({ error: 'Vul naam, gebruikersnaam en een wachtwoord (min. 4 tekens) in.' });
     }
     try {
-      const info = db.prepare('INSERT INTO users (name, username, pass_hash, role, color) VALUES (?,?,?,?,?)')
-        .run(name, username, hashPassword(password), role === 'admin' ? 'admin' : 'member', color || '#6366f1');
+      const isAdmin = role === 'admin';
+      const info = db.prepare('INSERT INTO users (name, username, pass_hash, role, color, can_finance) VALUES (?,?,?,?,?,?)')
+        .run(name, username, hashPassword(password), isAdmin ? 'admin' : 'member', color || '#6366f1', isAdmin || can_finance ? 1 : 0);
       broadcast('users');
       res.json(publicUser(db.prepare('SELECT * FROM users WHERE id = ?').get(info.lastInsertRowid)));
     } catch (e) {
@@ -178,7 +227,7 @@ function crudRoutes(app, db, broadcast) {
   app.patch('/api/users/:id', requireAdmin, (req, res) => {
     const target = db.prepare('SELECT * FROM users WHERE id = ?').get(req.params.id);
     if (!target) return res.status(404).json({ error: 'Niet gevonden.' });
-    const { name, role, color, active, password } = req.body || {};
+    const { name, role, color, active, password, can_finance } = req.body || {};
     const admins = db.prepare("SELECT COUNT(*) n FROM users WHERE role = 'admin' AND active = 1").get().n;
     const losesAdmin = target.role === 'admin' && target.active && (role === 'member' || active === 0 || active === false);
     if (losesAdmin && admins <= 1) return res.status(400).json({ error: 'Er moet minimaal één actieve beheerder blijven.' });
@@ -187,6 +236,7 @@ function crudRoutes(app, db, broadcast) {
     if (role) data.role = role === 'admin' ? 'admin' : 'member';
     if (color) data.color = color;
     if (active !== undefined) data.active = active ? 1 : 0;
+    if (can_finance !== undefined) data.can_finance = can_finance ? 1 : 0;
     if (password) {
       if (password.length < 4) return res.status(400).json({ error: 'Wachtwoord moet minimaal 4 tekens zijn.' });
       data.pass_hash = hashPassword(password);
@@ -213,4 +263,4 @@ function friendlyError(e) {
   return msg;
 }
 
-module.exports = { crudRoutes, ENTITIES };
+module.exports = { crudRoutes, ENTITIES, hasFinance };

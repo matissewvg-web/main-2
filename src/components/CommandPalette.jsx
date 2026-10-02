@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Search, CheckSquare, FolderKanban, User, NotebookPen, Folder, Plus, LayoutDashboard, Settings, File as FileIcon } from 'lucide-react';
+import { Search, CheckSquare, FolderKanban, User, NotebookPen, Folder, Plus, LayoutDashboard, Settings, File as FileIcon, Package, Wallet, TrendingUp, CalendarDays } from 'lucide-react';
 import { api } from '../api';
 import { useData } from '../store';
-import { cx, fileKind, fmtDate, PROJECT_STATUS, TASK_STATUS } from '../util';
+import { cx, fileKind, fmtDate, fmtMoney, INVESTMENT_KIND, PROJECT_STATUS, TASK_STATUS } from '../util';
 
 const KIND = {
   task: { icon: CheckSquare, label: 'Taak' },
@@ -11,10 +11,13 @@ const KIND = {
   meeting: { icon: NotebookPen, label: 'Vergadering' },
   folder: { icon: Folder, label: 'Map' },
   file: { icon: FileIcon, label: 'Bestand' },
+  product: { icon: Package, label: 'Product' },
+  transaction: { icon: Wallet, label: 'Transactie' },
+  investment: { icon: TrendingUp, label: 'Investering' },
 };
 
 export default function CommandPalette({ onClose, go, openTask }) {
-  const { maps } = useData();
+  const { maps, finance } = useData();
   const [q, setQ] = useState('');
   const [results, setResults] = useState([]);
   const [sel, setSel] = useState(0);
@@ -31,8 +34,17 @@ export default function CommandPalette({ onClose, go, openTask }) {
     { label: 'Ga naar Contacten', icon: User, run: () => go('contacts') },
     { label: 'Ga naar Vergaderingen', icon: NotebookPen, run: () => go('meetings') },
     { label: 'Ga naar Bestanden', icon: Folder, run: () => go('files') },
+    { label: 'Ga naar Kalender', icon: CalendarDays, run: () => go('calendar') },
+    { label: 'Ga naar Voorraad', icon: Package, run: () => go('inventory') },
+    { label: 'Nieuw product', icon: Plus, run: () => go('inventory', { new: true }) },
+    ...(finance ? [
+      { label: 'Ga naar Financiën', icon: Wallet, run: () => go('finance') },
+      { label: 'Nieuwe uitgave', icon: Plus, run: () => go('finance', { new: 'uitgave' }) },
+      { label: 'Nieuwe inkomst', icon: Plus, run: () => go('finance', { new: 'inkomst' }) },
+      { label: 'Ga naar Investeringen', icon: TrendingUp, run: () => go('investments') },
+    ] : []),
     { label: 'Instellingen', icon: Settings, run: () => go('settings') },
-  ], [go, openTask]);
+  ], [go, openTask, finance]);
 
   useEffect(() => {
     if (!q.trim()) { setResults([]); return; }
@@ -47,6 +59,8 @@ export default function CommandPalette({ onClose, go, openTask }) {
       if (r.kind === 'task') return [TASK_STATUS[r.status]?.label, r.deadline && `deadline ${fmtDate(r.deadline)}`].filter(Boolean).join(' · ');
       if (r.kind === 'project') return PROJECT_STATUS[r.status]?.label;
       if (r.kind === 'meeting') return [r.date && fmtDate(r.date), r.snippet].filter(Boolean).join(' · ');
+      if (r.kind === 'transaction') return `${fmtDate(r.date)} · ${r.txKind === 'uitgave' ? '−' : '+'}${fmtMoney(r.amount_cents)}`;
+      if (r.kind === 'investment') return INVESTMENT_KIND[r.sub]?.label;
       return r.sub;
     };
     return [...results.map((r) => ({ ...r, sub: describe(r) })), ...acts];
@@ -66,6 +80,9 @@ export default function CommandPalette({ onClose, go, openTask }) {
     if (item.kind === 'meeting') return go('meetings', { id: item.id });
     if (item.kind === 'folder') return go('files', { path: item.path });
     if (item.kind === 'file') return go('files', { path: item.parent, highlight: item.title });
+    if (item.kind === 'product') return go('inventory', { id: item.id });
+    if (item.kind === 'transaction') return go('finance', { id: item.id });
+    if (item.kind === 'investment') return go('investments', { id: item.id });
   };
 
   const onKey = (e) => {

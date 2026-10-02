@@ -2,7 +2,7 @@ import { Circle, CheckCircle2, FolderKanban } from 'lucide-react';
 import { api } from '../api';
 import { useData, useToast } from '../store';
 import { cx } from '../util';
-import { Avatar, DeadlineBadge, PriorityBadge, TagChips } from './ui';
+import { AvatarStack, DeadlineBadge, PriorityBadge, TagChips } from './ui';
 
 export function toggleDone(task, patchLocal, toast) {
   const status = task.status === 'klaar' ? 'todo' : 'klaar';
@@ -34,7 +34,7 @@ export default function TaskRow({ task, onOpen, showProject = true }) {
         <span className="muted small row gap-xs"><FolderKanban size={13} />{project.name}</span>
       )}
       <DeadlineBadge date={task.deadline} done={done} />
-      <Avatar user={maps.users[task.assignee_id]} size={22} />
+      <AvatarStack ids={task.assignees} size={22} />
     </div>
   );
 }

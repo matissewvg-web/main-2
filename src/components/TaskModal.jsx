@@ -3,14 +3,14 @@ import { Trash2 } from 'lucide-react';
 import { api } from '../api';
 import { useData, useToast } from '../store';
 import { TASK_STATUSES, timeAgo, localDateStr } from '../util';
-import { Modal, Field, PrioritySelect, UserSelect, ProjectSelect, ContactSelect, TagPicker, confirmDialog } from './ui';
+import { Modal, Field, PrioritySelect, PeoplePicker, ProjectSelect, ContactSelect, TagPicker, confirmDialog } from './ui';
 
 export const emptyTask = (defaults = {}) => ({
   title: '',
   description: '',
   status: 'todo',
   priority: 'normaal',
-  assignee_id: null,
+  assignees: [],
   project_id: null,
   contact_id: null,
   meeting_id: null,
@@ -33,7 +33,7 @@ export default function TaskModal({ task, onClose }) {
     try {
       const body = {
         title: t.title, description: t.description, status: t.status, priority: t.priority,
-        assignee_id: t.assignee_id, project_id: t.project_id, contact_id: t.contact_id,
+        assignees: t.assignees || [], project_id: t.project_id, contact_id: t.contact_id,
         meeting_id: t.meeting_id, deadline: t.deadline || null, tags: t.tags,
       };
       if (isNew) await api.post('/tasks', body);
@@ -96,12 +96,12 @@ export default function TaskModal({ task, onClose }) {
         <Field label="Prioriteit">
           <PrioritySelect value={t.priority} onChange={set('priority')} />
         </Field>
-        <Field label="Wie doet het?">
-          <UserSelect value={t.assignee_id} onChange={set('assignee_id')} />
+        <Field label="Wie doen het?">
+          <PeoplePicker value={t.assignees || []} onChange={set('assignees')} />
         </Field>
         <Field label="Deadline">
-          <div className="row gap-s">
-            <input type="date" value={t.deadline || ''} onChange={set('deadline')} />
+          <div className="row gap-s wrap">
+            <input type="date" className="date-input" value={t.deadline || ''} onChange={set('deadline')} />
             {quickDates.map(([label, n]) => {
               const d = new Date();
               d.setDate(d.getDate() + n);

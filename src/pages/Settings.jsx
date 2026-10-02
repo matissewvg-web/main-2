@@ -17,13 +17,13 @@ function ColorPick({ value, onChange }) {
 
 function UserModal({ user, onClose }) {
   const toast = useToast();
-  const [u, setU] = useState(() => ({ name: '', username: '', password: '', role: 'member', color: COLORS[Math.floor(Math.random() * COLORS.length)], ...user, password: '' }));
+  const [u, setU] = useState(() => ({ name: '', username: '', password: '', role: 'member', can_finance: 0, color: COLORS[Math.floor(Math.random() * COLORS.length)], ...user, password: '' }));
   const isNew = !u.id;
   const set = (k) => (v) => setU((x) => ({ ...x, [k]: v?.target ? v.target.value : v }));
   const save = async () => {
     try {
       if (isNew) await api.post('/users', u);
-      else await api.patch(`/users/${u.id}`, { name: u.name, role: u.role, color: u.color, ...(u.password ? { password: u.password } : {}) });
+      else await api.patch(`/users/${u.id}`, { name: u.name, role: u.role, color: u.color, can_finance: !!u.can_finance, ...(u.password ? { password: u.password } : {}) });
       toast(isNew ? `Account voor ${u.name} aangemaakt` : 'Opgeslagen', 'ok');
       onClose();
     } catch (e) {
@@ -41,6 +41,9 @@ function UserModal({ user, onClose }) {
             <option value="member">Lid: taken, projecten, bestanden</option>
             <option value="admin">Beheerder: ook team, tags en back-ups</option>
           </select>
+        </Field>
+        <Field label="Financiën & investeringen" span hint="Beheerders zien dit altijd. Leden alleen als je dit aanzet.">
+          <label className="row gap-s"><input type="checkbox" disabled={u.role === 'admin'} checked={u.role === 'admin' || !!u.can_finance} onChange={(e) => set('can_finance')(e.target.checked ? 1 : 0)} /> Mag financiën en investeringen zien en bewerken</label>
         </Field>
         <Field label="Kleur" span><ColorPick value={u.color} onChange={set('color')} /></Field>
       </div>
@@ -64,7 +67,7 @@ function TeamSection() {
           <Avatar user={u} size={30} />
           <div className="grow">
             <strong>{u.name}</strong> {u.id === me.id && <span className="muted small">(jij)</span>}
-            <span className="muted small block">@{u.username} · {u.role === 'admin' ? 'Beheerder' : 'Lid'}{!u.active && ' · gedeactiveerd'}</span>
+            <span className="muted small block">@{u.username} · {u.role === 'admin' ? 'Beheerder' : 'Lid'}{u.role !== 'admin' && u.can_finance ? ' · financiën' : ''}{!u.active && ' · gedeactiveerd'}</span>
           </div>
           <button className="btn btn-sm" onClick={() => setModal(u)}>Bewerken</button>
           {u.id !== me.id && <button className="btn btn-sm" onClick={() => toggleActive(u)}>{u.active ? 'Deactiveren' : 'Activeren'}</button>}
@@ -97,7 +100,7 @@ function TagsSection() {
   return (
     <section className="card settings-section">
       <div className="row card-title"><Tag size={16} /><strong>Tags</strong></div>
-      <p className="muted small">Tags werken overal: taken, projecten, contacten en vergaderingen. Prioriteit en "wie doet het" zijn aparte velden, daar heb je geen tags voor nodig.</p>
+      <p className="muted small">Tags werken overal: taken, projecten, contacten, vergaderingen, producten en financiën. Iedereen kan een nieuwe tag maken in het tag-veld zelf (typ een naam en druk op Enter). Alleen beheerders kunnen tags hier hernoemen, kleuren of verwijderen.</p>
       <div className="tag-admin">
         {tags.map((t) => (
           <div key={`${t.id}-${t.name}`} className="tag-admin-row">

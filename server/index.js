@@ -3,7 +3,8 @@ const fs = require('fs');
 const path = require('path');
 const { openDb } = require('./db');
 const { authRoutes, requireAdmin } = require('./auth');
-const { crudRoutes } = require('./crud');
+const { crudRoutes, hasFinance } = require('./crud');
+const { inventoryRoutes } = require('./inventory');
 const { filesRoutes, searchFiles } = require('./files');
 const { createBackups } = require('./backup');
 
@@ -57,6 +58,7 @@ function startServer({ dataDir, port = DEFAULT_PORT, staticDir } = {}) {
   });
 
   crudRoutes(app, db, broadcast);
+  inventoryRoutes(app, db, broadcast);
   filesRoutes(app, { filesRoot, trashRoot, broadcast });
 
   app.get('/api/search', (req, res) => {
@@ -78,6 +80,17 @@ function startServer({ dataDir, port = DEFAULT_PORT, staticDir } = {}) {
       const i = text.toLowerCase().indexOf(q.toLowerCase());
       const snippet = i >= 0 ? '…' + text.slice(Math.max(0, i - 30), i + 50) + '…' : '';
       out.push({ kind: 'meeting', id: r.id, title: r.title, date: r.date, snippet });
+    }
+    for (const r of db.prepare('SELECT id, name, sku, stock, unit FROM products WHERE archived = 0 AND (name LIKE ? OR sku LIKE ? OR category LIKE ?) LIMIT 20').all(like, like, like)) {
+      out.push({ kind: 'product', id: r.id, title: r.name, sub: [r.sku, `${r.stock} ${r.unit} op voorraad`].filter(Boolean).join(' · ') });
+    }
+    if (hasFinance(req.user)) {
+      for (const r of db.prepare('SELECT id, description, date, kind, amount_cents FROM transactions WHERE description LIKE ? OR category LIKE ? LIMIT 20').all(like, like)) {
+        out.push({ kind: 'transaction', id: r.id, title: r.description, date: r.date, txKind: r.kind, amount_cents: r.amount_cents });
+      }
+      for (const r of db.prepare('SELECT id, name, kind FROM investments WHERE name LIKE ? OR ticker LIKE ? LIMIT 20').all(like, like)) {
+        out.push({ kind: 'investment', id: r.id, title: r.name, sub: r.kind });
+      }
     }
     for (const f of searchFiles(filesRoot, q, 30)) {
       out.push({ kind: f.type, path: f.path, parent: f.parent, title: f.name, sub: '/' + f.parent, ext: f.ext });

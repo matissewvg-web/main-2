@@ -46,18 +46,25 @@ Pushing a tag like `v0.1.0` also attaches both files to a GitHub Release.
 
 The office network must be set to *Private* in Windows on the host. On a *Public* network, Windows blocks incoming connections.
 
-## Features (phase 1)
+## Features
 
 | Module | What it does |
 |---|---|
-| **Vandaag** | Your focus list, overdue and upcoming deadlines, who's doing what, recent activity, quick-add |
-| **Taken** | Kanban board (drag between columns) and list. Priority (Urgent/Hoog/Normaal/Laag), assignee, deadline, project, contact, tags |
+| **Vandaag** | Your focus list, overdue and upcoming deadlines, who's doing what, an **"Aandacht nodig"** card (low stock, overdue payments, this month's result), recent activity, quick-add |
+| **Taken** | Four views: **Bord** (drag between statuses), **Prioriteit** (drag between Urgent/Hoog/Normaal/Laag), **Per persoon** (one column per team member) and **Lijst**. A task can have **several people**, plus a priority, deadline, project, contact and tags |
+| **Tags** | **Anyone** can create a tag right in any tag field: type a name and press Enter. Admins rename, recolor and delete tags under Instellingen |
 | **Projecten** | Status, owner, client, deadline, progress bar, linked folder, meetings, own task board |
 | **Contacten** | People and companies, linked projects, tasks and meetings |
-| **Vergaderingen** | Rich-text notes (headings, lists, checklists, links), attendees, autosave, **select a line → "Maak taak"**, print/PDF |
-| **Bestanden** | Folders are colored **bubbles** and files are **cards** with a type icon. Drag files or whole folders in from Explorer, drag items onto a bubble or breadcrumb to move them, search across all folders, and switch to list view. Deleting moves items to a trash folder on the host |
-| **Zoeken** | `Ctrl+K` searches tasks, projects, contacts, meeting notes and file names |
+| **Vergaderingen** | Rich-text notes, attendees, autosave, **select a line → "Maak taak"**, print/PDF |
+| **Kalender** | Month view of task deadlines (colored by priority, with who), project deadlines, meetings and payment due dates. Filter to "only mine" |
+| **Bestanden** | Folders as **bubbles**, files as **cards** with a type icon, drag & drop (whole folders too), move by dragging onto a bubble, search, list view, trash |
+| **Voorraad** | Products with SKU, category, location, unit, purchase and sale price (margin), supplier and minimum stock. Stock changes only through **movements** (in / out / stock count), each logged with who and why, and each can be undone. Low-stock warnings, stock value, CSV export |
+| **Financiën** | Income and expenses with category, VAT rate, client/supplier, project, **open/paid with due date**, and the **invoice or receipt attached** (stored in Bestanden/Financiën/year). Period filter, totals, what's still to receive or pay, overdue warnings, monthly chart (with a table view), per-category breakdown, CSV export for your accountant |
+| **Investeringen** | Positions (stocks/ETF, crypto, property, stakes, savings…) with purchases, sales, dividends and **manual valuations**. Shows invested, current value, result and return %, portfolio value over time, split by type, and a warning when a valuation is older than 90 days |
+| **Zoeken** | `Ctrl+K` searches tasks, projects, contacts, notes, files, products and, if you have access, transactions and investments |
 | **Back-ups** | Database and all files, automatically once a day, keeping the last 14 |
+
+**Who sees money:** Financiën and Investeringen are visible to admins only, plus members an admin explicitly allows (*Instellingen → Team → Bewerken → Financiën & investeringen*). The server enforces this, not just the menu. Inventory is visible to everyone.
 
 **Opening files from a colleague's PC:** the file is downloaded to a temp folder and opened in Word, Excel or whatever program handles it. When you **save**, the change is uploaded back to the host automatically and you get a notification.
 
@@ -70,10 +77,11 @@ The office network must be set to *Private* in Windows on the host. On a *Public
 - **Unsigned .exe**, so Windows shows a warning (see above).
 - Not tested on a real Windows network yet. Expect firewall or network settings to need a tweak on day one.
 
-## Roadmap
+## Not included (on purpose)
 
-- **Phase 2:** inventory (stock, SKUs, low-stock alerts, suppliers), funds and expenditures, calendar view.
-- **Phase 3:** investment tracker (manual prices).
+- **Bookkeeping.** No ledger, no VAT returns, no bank import. Export CSV and hand it to your accountant.
+- **Live prices** for investments. You enter valuations yourself.
+- **Inventory linked to sales.** Selling something doesn't automatically book stock out or create income. You do both.
 
 ## Development
 
