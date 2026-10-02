@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { AlertTriangle, CalendarClock, CheckSquare, FolderKanban, Plus, Activity, Users, Package, Wallet } from 'lucide-react';
+import { AlertTriangle, CalendarClock, CheckSquare, FolderKanban, Plus, Activity, Users, Package, Wallet, Rocket } from 'lucide-react';
 import { txOverdue } from './Finance';
 import { api } from '../api';
 import { useData, useToast } from '../store';
@@ -26,7 +26,8 @@ function Stat({ icon: Icon, label, value, tone, onClick }) {
 }
 
 export default function Dashboard({ go, openTask }) {
-  const { tasks, projects, users, me, maps, products, transactions, finance } = useData();
+  const { tasks, projects, users, me, maps, products, transactions, funding_leads: leads, finance } = useData();
+  const fundDue = leads.filter((l) => l.next_date && daysUntil(l.next_date) <= 0 && !['binnen', 'afgewezen'].includes(l.stage));
   const lowStock = products.filter((p) => !p.archived && p.stock < p.min_stock);
   const overduePay = transactions.filter(txOverdue);
   const monthKey = todayStr().slice(0, 7);
@@ -134,7 +135,7 @@ export default function Dashboard({ go, openTask }) {
           )}
         </section>
 
-        {(lowStock.length > 0 || (finance && (overduePay.length > 0 || monthTx.length > 0))) && (
+        {(lowStock.length > 0 || (finance && (overduePay.length > 0 || monthTx.length > 0 || fundDue.length > 0))) && (
           <section className="card">
             <div className="row card-title"><AlertTriangle size={16} /><strong>Aandacht nodig</strong></div>
             {lowStock.slice(0, 5).map((p) => (
@@ -148,6 +149,12 @@ export default function Dashboard({ go, openTask }) {
               <button key={'t' + t.id} className="list-link" onClick={() => go('finance', { id: t.id })}>
                 <Wallet size={14} /><span className="grow ellipsis">{t.kind === 'inkomst' ? 'Nog ontvangen: ' : 'Nog betalen: '}{t.description}</span>
                 <span className="pill pill-red">{fmtMoney(t.amount_cents)} · {fmtDate(t.due_date)}</span>
+              </button>
+            ))}
+            {finance && fundDue.slice(0, 4).map((l) => (
+              <button key={'f' + l.id} className="list-link" onClick={() => go('fundraising', { id: l.id })}>
+                <Rocket size={14} /><span className="grow ellipsis">Fundraising: {l.name}, {l.next_step || 'volgende stap'}</span>
+                <DeadlineBadge date={l.next_date} />
               </button>
             ))}
             {finance && monthTx.length > 0 && (

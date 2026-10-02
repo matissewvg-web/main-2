@@ -1,10 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Plus, Search, Users, User, Building2, Mail, Phone, MapPin, Globe, Pencil, Trash2, Copy, FolderKanban, CalendarDays } from 'lucide-react';
+import { Upload, Plus, Search, Users, User, Building2, Mail, Phone, MapPin, Globe, Pencil, Trash2, Copy, FolderKanban, CalendarDays } from 'lucide-react';
 import { api } from '../api';
 import { useData, useToast } from '../store';
 import { cx, fmtDate, PROJECT_STATUS } from '../util';
 import { Empty, Field, Modal, PageHeader, StatusBadge, TagChips, TagPicker, confirmDialog } from '../components/ui';
 import TaskRow from '../components/TaskRow';
+import CsvImport from '../components/CsvImport';
+import Comments from '../components/Comments';
 
 function ContactModal({ contact, onClose, onSaved }) {
   const toast = useToast();
@@ -112,6 +114,7 @@ function ContactDetail({ contact, onEdit, go, openTask }) {
         {!contact.email && !contact.phone && !contact.address && !contact.website && <p className="muted small">Geen contactgegevens ingevuld.</p>}
       </div>
       {contact.notes && <div className="card pre-wrap">{contact.notes}</div>}
+      <div className="card"><Comments entity="contacts" id={contact.id} /></div>
       {employees.length > 0 && (
         <div className="card">
           <strong className="card-title">Mensen bij {contact.name}</strong>
@@ -146,6 +149,7 @@ export default function Contacts({ params, go, openTask }) {
   const [kind, setKind] = useState('');
   const [tag, setTag] = useState('');
   const [modal, setModal] = useState(null);
+  const [importing, setImporting] = useState(false);
   const selectedId = params?.id;
 
   useEffect(() => { if (params?.new) setModal({}); }, [params]);
@@ -165,6 +169,7 @@ export default function Contacts({ params, go, openTask }) {
   return (
     <div className="page page-split">
       <PageHeader title="Contacten" subtitle={`${contacts.length} contacten`}>
+        <button className="btn" onClick={() => setImporting(true)}><Upload size={15} /> Importeren (CSV)</button>
         <button className="btn btn-primary" onClick={() => setModal({})}><Plus size={16} /> Nieuw contact</button>
       </PageHeader>
       {!contacts.length ? (
@@ -203,6 +208,26 @@ export default function Contacts({ params, go, openTask }) {
               : <Empty icon={Users} title="Kies een contact" text="Selecteer links een contact om de details te zien." />}
           </div>
         </div>
+      )}
+      {importing && (
+        <CsvImport
+          title="Contacten importeren"
+          example="Naam, Bedrijf, Functie, E-mail, Telefoon, Adres, Website, Notities, Soort (persoon/bedrijf)"
+          fields={[
+            { key: 'name', label: 'Naam', aliases: ['naam', 'name', 'contact', 'volledige naam', 'full name'], required: true },
+            { key: 'company', label: 'Bedrijf', aliases: ['bedrijfsnaam', 'organisatie', 'company', 'organization'] },
+            { key: 'job_title', label: 'Functie', aliases: ['rol', 'title', 'job title'] },
+            { key: 'email', label: 'E-mail', aliases: ['email', 'mail', 'e-mailadres', 'emailadres'] },
+            { key: 'phone', label: 'Telefoon', aliases: ['tel', 'telefoonnummer', 'phone', 'mobiel', 'mobile'] },
+            { key: 'address', label: 'Adres', aliases: ['address', 'straat', 'plaats'] },
+            { key: 'website', label: 'Website', aliases: ['web', 'url', 'site'] },
+            { key: 'notes', label: 'Notities', aliases: ['opmerkingen', 'notes', 'notitie'] },
+            { key: 'kind', label: 'Soort', aliases: ['type', 'soort contact'] },
+          ]}
+          toRecord={(v) => (v.name ? { ...v, kind: /bedrijf|company|organi/i.test(v.kind) ? 'bedrijf' : 'persoon' } : null)}
+          save={(body) => api.post('/contacts', body)}
+          onClose={() => setImporting(false)}
+        />
       )}
       {modal && <ContactModal contact={modal} onClose={() => setModal(null)} onSaved={(c) => go('contacts', { id: c.id })} />}
     </div>

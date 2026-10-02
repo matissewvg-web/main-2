@@ -20,16 +20,16 @@ Desktop app for running the company: tasks, projects, contacts, meeting notes an
 - Everyone has their own login. The first account (created on the host) is the admin, who adds colleagues under *Instellingen → Team*.
 - Changes show up live on every PC.
 
-## Getting the .exe
+## ⬇️ Download
 
-The Windows build runs on GitHub Actions (`.github/workflows/build-windows.yml`) on every push:
+### **[Download The Break 5 for Windows (newest version)](https://github.com/matissewvg-web/main-2/releases/latest/download/The-Break-5-Setup.exe)**
 
-1. Open the repo on GitHub, go to **Actions** and click **Build Windows app**, then open the latest green run.
-2. Download the artifact **The-Break-5-Windows** (a zip) and extract it. It contains:
-   - `The-Break-5-Setup-x.y.z.exe`, the installer (recommended).
-   - `The-Break-5-Portable-x.y.z.exe`, which runs without installing.
+- Direct link to the installer, always the newest version: `https://github.com/matissewvg-web/main-2/releases/latest/download/The-Break-5-Setup.exe`
+- Portable version (no install): `https://github.com/matissewvg-web/main-2/releases/latest/download/The-Break-5-Portable.exe`
+- All versions: [Releases](https://github.com/matissewvg-web/main-2/releases)
+- Inside the app: *Instellingen → Over The Break 5 → Download .exe*
 
-Pushing a tag like `v0.1.0` also attaches both files to a GitHub Release.
+Every push is built on a Windows machine by GitHub Actions (`.github/workflows/build-windows.yml`) and published as a new release automatically. **To update:** run the new Setup over the old one. Your data stays where it is.
 
 **Windows will warn "Windows protected your PC"** because the app isn't code-signed (a certificate costs roughly €200–400/year). Click *More info → Run anyway*.
 
@@ -50,19 +50,24 @@ The office network must be set to *Private* in Windows on the host. On a *Public
 
 | Module | What it does |
 |---|---|
-| **Vandaag** | Your focus list, overdue and upcoming deadlines, who's doing what, an **"Aandacht nodig"** card (low stock, overdue payments, this month's result), recent activity, quick-add |
-| **Taken** | Four views: **Bord** (drag between statuses), **Prioriteit** (drag between Urgent/Hoog/Normaal/Laag), **Per persoon** (one column per team member) and **Lijst**. A task can have **several people**, plus a priority, deadline, project, contact and tags |
-| **Tags** | **Anyone** can create a tag right in any tag field: type a name and press Enter. Admins rename, recolor and delete tags under Instellingen |
-| **Projecten** | Status, owner, client, deadline, progress bar, linked folder, meetings, own task board |
-| **Contacten** | People and companies, linked projects, tasks and meetings |
-| **Vergaderingen** | Rich-text notes, attendees, autosave, **select a line → "Maak taak"**, print/PDF |
-| **Kalender** | Month view of task deadlines (colored by priority, with who), project deadlines, meetings and payment due dates. Filter to "only mine" |
-| **Bestanden** | Folders as **bubbles**, files as **cards** with a type icon, drag & drop (whole folders too), move by dragging onto a bubble, search, list view, trash |
-| **Voorraad** | Products with SKU, category, location, unit, purchase and sale price (margin), supplier and minimum stock. Stock changes only through **movements** (in / out / stock count), each logged with who and why, and each can be undone. Low-stock warnings, stock value, CSV export |
-| **Financiën** | Income and expenses with category, VAT rate, client/supplier, project, **open/paid with due date**, and the **invoice or receipt attached** (stored in Bestanden/Financiën/year). Period filter, totals, what's still to receive or pay, overdue warnings, monthly chart (with a table view), per-category breakdown, CSV export for your accountant |
-| **Investeringen** | Positions (stocks/ETF, crypto, property, stakes, savings…) with purchases, sales, dividends and **manual valuations**. Shows invested, current value, result and return %, portfolio value over time, split by type, and a warning when a valuation is older than 90 days |
-| **Zoeken** | `Ctrl+K` searches tasks, projects, contacts, notes, files, products and, if you have access, transactions and investments |
-| **Back-ups** | Database and all files, automatically once a day, keeping the last 14 |
+| **Vandaag** | Your focus list, overdue and upcoming deadlines, who's doing what, "Aandacht nodig" (low stock, overdue payments, fundraising steps), activity |
+| **Overzicht** | **Everything in one table**: tasks, projects, documents, meetings, brainstorms and fundraising, with **creation date and creator, deadline, who's working on it**, status, priority and last change. Filter by type, person, open/done and deadline window. Sort, group by type, person or deadline. Export to CSV |
+| **Kalender** | Month view of deadlines, meetings, brainstorms, payments and fundraising steps |
+| **Vergaderingen** | Rich-text notes, attendees, autosave, "Maak taak" from a line, comments, print/PDF |
+| **Document Hub** | **Documenten:** write procedures, proposals, plans and handbooks in the app, from templates, with status (concept / review / final), deadline, owners, categories, pinning, comments and print/PDF. **Bestanden:** shared files as folder bubbles and file cards |
+| **Taken** | Board, priority board, per-person board and list. Several people per task, **checklist / subtasks**, **recurring tasks** (daily up to yearly; the next one appears when you tick it off), comments, tags |
+| **Voorraad** | Products, prices, suppliers, minimum stock, logged stock movements with undo, CSV import and export |
+| **Brainstorm** | Live sticky-note board: everyone adds ideas, votes, drag between Ideas / Interesting / Chosen / Parked, timer, idea → task or project in one click |
+| **Projecten** | Owner + **team members**, client, deadline, progress, linked folder, meetings, task board, comments |
+| **Contacten** | People and companies with linked work, comments, **CSV import** |
+| **Fundraising** | Rounds with target and deadline, investor pipeline (Lead → Contact → Pitch → Due diligence → Committed → Received), asked/committed/received amounts, next steps with dates, progress bar, CSV |
+| **Financiën** | Income and expenses, VAT, open/paid, receipt upload, monthly chart, categories, CSV |
+| **Investeringen** | Purchases, sales, dividends, manual valuations, return %, value over time |
+| **Meldingen** 🔔 | You get notified when someone assigns you, **@mentions** you, or comments on your work. Plus your own overdue and today deadlines. Windows notifications while the app is in the background |
+| **+ Nieuw** | Create a task, document, meeting, project, brainstorm, contact, product or (with access) a transaction or investor from anywhere |
+| **Zoeken** | `Ctrl+K` across everything |
+| **Tags** | Anyone creates tags inline; admins manage them |
+| **Back-ups** | Database and files, daily, last 14 kept |
 
 **Who sees money:** Financiën and Investeringen are visible to admins only, plus members an admin explicitly allows (*Instellingen → Team → Bewerken → Financiën & investeringen*). The server enforces this, not just the menu. Inventory is visible to everyone.
 

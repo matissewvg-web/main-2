@@ -3,6 +3,7 @@ import { api } from '../api';
 import { useData, useToast } from '../store';
 import { cx } from '../util';
 import { AvatarStack, DeadlineBadge, PriorityBadge, TagChips } from './ui';
+import TaskMeta from './TaskMeta';
 
 export function toggleDone(task, patchLocal, toast) {
   const status = task.status === 'klaar' ? 'todo' : 'klaar';
@@ -29,6 +30,7 @@ export default function TaskRow({ task, onOpen, showProject = true }) {
       <span className="task-title">{task.title}</span>
       {task.status === 'bezig' && <span className="pill pill-blue">Bezig</span>}
       <TagChips ids={task.tags} />
+      <TaskMeta task={task} />
       <span className="grow" />
       {showProject && project && (
         <span className="muted small row gap-xs"><FolderKanban size={13} />{project.name}</span>

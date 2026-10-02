@@ -5,6 +5,8 @@ const { openDb } = require('./db');
 const { authRoutes, requireAdmin } = require('./auth');
 const { crudRoutes, hasFinance } = require('./crud');
 const { inventoryRoutes } = require('./inventory');
+const { extraRoutes } = require('./extras');
+const { notifyRoutes } = require('./notify');
 const { filesRoutes, searchFiles } = require('./files');
 const { createBackups } = require('./backup');
 
@@ -57,8 +59,10 @@ function startServer({ dataDir, port = DEFAULT_PORT, staticDir } = {}) {
     req.on('close', () => { clearInterval(keepAlive); clients.delete(res); });
   });
 
-  crudRoutes(app, db, broadcast);
+  const hooks = notifyRoutes(app, db, broadcast);
+  crudRoutes(app, db, broadcast, hooks);
   inventoryRoutes(app, db, broadcast);
+  extraRoutes(app, db, broadcast);
   filesRoutes(app, { filesRoot, trashRoot, broadcast });
 
   app.get('/api/search', (req, res) => {
@@ -81,12 +85,26 @@ function startServer({ dataDir, port = DEFAULT_PORT, staticDir } = {}) {
       const snippet = i >= 0 ? '…' + text.slice(Math.max(0, i - 30), i + 50) + '…' : '';
       out.push({ kind: 'meeting', id: r.id, title: r.title, date: r.date, snippet });
     }
+    for (const r of db.prepare('SELECT id, title, category, content FROM documents WHERE title LIKE ? OR content LIKE ? OR category LIKE ? LIMIT 20').all(like, like, like)) {
+      const text = stripHtml(r.content);
+      const i = text.toLowerCase().indexOf(q.toLowerCase());
+      out.push({ kind: 'document', id: r.id, title: r.title, sub: [r.category, i >= 0 ? '…' + text.slice(Math.max(0, i - 30), i + 50) + '…' : ''].filter(Boolean).join(' · ') });
+    }
+    for (const r of db.prepare('SELECT b.id, b.title, i.text FROM ideas i JOIN brainstorms b ON b.id = i.brainstorm_id WHERE i.text LIKE ? OR i.details LIKE ? LIMIT 15').all(like, like)) {
+      out.push({ kind: 'idea', id: r.id, title: r.text, sub: `Brainstorm: ${r.title}` });
+    }
+    for (const r of db.prepare('SELECT id, title, question FROM brainstorms WHERE title LIKE ? OR question LIKE ? LIMIT 10').all(like, like)) {
+      out.push({ kind: 'brainstorm', id: r.id, title: r.title, sub: r.question || '' });
+    }
     for (const r of db.prepare('SELECT id, name, sku, stock, unit FROM products WHERE archived = 0 AND (name LIKE ? OR sku LIKE ? OR category LIKE ?) LIMIT 20').all(like, like, like)) {
       out.push({ kind: 'product', id: r.id, title: r.name, sub: [r.sku, `${r.stock} ${r.unit} op voorraad`].filter(Boolean).join(' · ') });
     }
     if (hasFinance(req.user)) {
       for (const r of db.prepare('SELECT id, description, date, kind, amount_cents FROM transactions WHERE description LIKE ? OR category LIKE ? LIMIT 20').all(like, like)) {
         out.push({ kind: 'transaction', id: r.id, title: r.description, date: r.date, txKind: r.kind, amount_cents: r.amount_cents });
+      }
+      for (const r of db.prepare('SELECT id, name, stage FROM funding_leads WHERE name LIKE ? OR notes LIKE ? OR next_step LIKE ? LIMIT 15').all(like, like, like)) {
+        out.push({ kind: 'lead', id: r.id, title: r.name, stage: r.stage });
       }
       for (const r of db.prepare('SELECT id, name, kind FROM investments WHERE name LIKE ? OR ticker LIKE ? LIMIT 20').all(like, like)) {
         out.push({ kind: 'investment', id: r.id, title: r.name, sub: r.kind });

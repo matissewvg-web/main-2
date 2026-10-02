@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Plus, Minus, Package, Search, Download, AlertTriangle, Pencil, Trash2, Undo2, Archive, ArrowDownToLine, ArrowUpFromLine, ClipboardCheck } from 'lucide-react';
+import { Upload, Plus, Minus, Package, Search, Download, AlertTriangle, Pencil, Trash2, Undo2, Archive, ArrowDownToLine, ArrowUpFromLine, ClipboardCheck } from 'lucide-react';
 import { api } from '../api';
 import { useData, useToast } from '../store';
 import { centsCsv, centsToInput, cx, downloadCsv, fmtDate, fmtMoney, fmtNum, parseMoney, timeAgo, todayStr } from '../util';
 import { ContactSelect, Empty, Field, Modal, PageHeader, TagChips, TagPicker, confirmDialog } from '../components/ui';
+import CsvImport from '../components/CsvImport';
 
 const MOVE_KINDS = [
   { id: 'in', label: 'Inkomend', icon: ArrowDownToLine, hint: 'Levering, retour van klant' },
@@ -204,6 +205,7 @@ export default function Inventory({ params }) {
   const [edit, setEdit] = useState(null);
   const [detailId, setDetailId] = useState(params?.id || null);
   const [move, setMove] = useState(null);
+  const [importing, setImporting] = useState(false);
 
   useEffect(() => { if (params?.id) setDetailId(params.id); if (params?.new) setEdit({}); }, [params]);
 
@@ -232,6 +234,7 @@ export default function Inventory({ params }) {
     <div className="page">
       <PageHeader title="Voorraad" subtitle={`${active.length} producten`}>
         <button className="btn" onClick={exportCsv} disabled={!list.length}><Download size={15} /> Excel (CSV)</button>
+        <button className="btn" onClick={() => setImporting(true)}><Upload size={15} /> Importeren (CSV)</button>
         <button className="btn btn-primary" onClick={() => setEdit({})}><Plus size={16} /> Nieuw product</button>
       </PageHeader>
 
@@ -301,6 +304,30 @@ export default function Inventory({ params }) {
         <ProductDetail product={detail} onClose={() => setDetailId(null)} onEdit={() => setEdit(detail)} onMove={(kind) => setMove({ product: detail, kind })} />
       )}
       {edit && <ProductModal product={edit} onClose={() => setEdit(null)} />}
+      {importing && (
+        <CsvImport
+          title="Producten importeren"
+          example="Naam, SKU, Categorie, Locatie, Eenheid, Voorraad, Minimum, Inkoopprijs, Verkoopprijs"
+          fields={[
+            { key: 'name', label: 'Naam', aliases: ['product', 'productnaam', 'omschrijving', 'name', 'artikel'], required: true },
+            { key: 'sku', label: 'SKU', aliases: ['artikelnummer', 'artikelnr', 'code', 'ean'] },
+            { key: 'category', label: 'Categorie', aliases: ['groep', 'category', 'type'] },
+            { key: 'location', label: 'Locatie', aliases: ['plek', 'magazijn', 'location'] },
+            { key: 'unit', label: 'Eenheid', aliases: ['unit'] },
+            { key: 'stock', label: 'Voorraad', aliases: ['aantal', 'stock', 'qty', 'hoeveelheid'] },
+            { key: 'min_stock', label: 'Minimum', aliases: ['min', 'minimale voorraad', 'min voorraad'] },
+            { key: 'cost', label: 'Inkoopprijs', aliases: ['inkoop', 'kostprijs', 'cost'] },
+            { key: 'price', label: 'Verkoopprijs', aliases: ['verkoop', 'prijs', 'price'] },
+          ]}
+          toRecord={(v) => (v.name ? v : null)}
+          save={async (v) => {
+            const num = (s) => Number(String(s || '').replace(/\./g, '').replace(',', '.')) || 0;
+            const p = await api.post('/products', { name: v.name, sku: v.sku, category: v.category, location: v.location, unit: v.unit || 'stuks', min_stock: num(v.min_stock), cost_cents: parseMoney(v.cost) ?? 0, price_cents: parseMoney(v.price) ?? 0 });
+            if (num(v.stock) > 0) await api.post('/stock_moves', { product_id: p.id, kind: 'in', qty: num(v.stock), note: 'Import' });
+          }}
+          onClose={() => setImporting(false)}
+        />
+      )}
       {move && <MoveModal product={products.find((p) => p.id === move.product.id) || move.product} kind={move.kind} onClose={() => setMove(null)} />}
     </div>
   );

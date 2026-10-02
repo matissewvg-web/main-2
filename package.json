@@ -1,7 +1,7 @@
 {
   "name": "the-break-5",
   "productName": "The Break 5",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "The Break 5 - bedrijfsapp voor taken, projecten, contacten, vergaderingen en bestanden",
   "main": "electron/main.js",
   "author": "The Break 5",
@@ -48,10 +48,10 @@
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
       "shortcutName": "The Break 5",
-      "artifactName": "The-Break-5-Setup-${version}.${ext}"
+      "artifactName": "The-Break-5-Setup.${ext}"
     },
     "portable": {
-      "artifactName": "The-Break-5-Portable-${version}.${ext}"
+      "artifactName": "The-Break-5-Portable.${ext}"
     }
   },
   "dependencies": {

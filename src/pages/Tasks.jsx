@@ -5,6 +5,7 @@ import { useData, useToast } from '../store';
 import { PRIORITIES, PRIORITY_RANK, TASK_STATUS, TASK_STATUSES, cx, isAssigned, isUnassigned } from '../util';
 import { Avatar, AvatarStack, DeadlineBadge, Empty, PageHeader, PriorityBadge, StatusBadge, TagChips } from '../components/ui';
 import TaskRow from '../components/TaskRow';
+import TaskMeta from '../components/TaskMeta';
 
 function loadPref(key, fallback) {
   try { return localStorage.getItem(key) || fallback; } catch { return fallback; }
@@ -81,6 +82,7 @@ function KanbanCard({ task, onOpen, onDragStart, groupBy = 'status' }) {
       </div>
       <div className={cx('kcard-title', task.status === 'klaar' && 'strike')}>{task.title}</div>
       <TagChips ids={task.tags} />
+      <TaskMeta task={task} />
       <div className="kcard-foot">
         {project ? <span className="muted small row gap-xs"><FolderKanban size={12} />{project.name}</span> : <span />}
         <AvatarStack ids={task.assignees} size={22} />

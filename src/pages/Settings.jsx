@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Plus, Save, HardDrive, Users, Tag, KeyRound, Monitor, Trash2, RefreshCw, AlertTriangle, Palette } from 'lucide-react';
+import { Plus, Save, HardDrive, Users, Tag, KeyRound, Monitor, Trash2, RefreshCw, AlertTriangle, Palette, Info, Download } from 'lucide-react';
 import { api, desktop } from '../api';
 import { useData, useToast } from '../store';
 import { COLORS, cx, parseUtc, timeAgo } from '../util';
@@ -263,6 +263,38 @@ function ThemeSection({ theme, setTheme }) {
   );
 }
 
+const DOWNLOAD_URL = 'https://github.com/matissewvg-web/main-2/releases/latest';
+
+function AboutSection() {
+  const [version, setVersion] = useState('');
+  useEffect(() => { api.get('/ping').then((r) => setVersion(r.version)).catch(() => {}); }, []);
+  const shortcuts = [
+    ['Ctrl + K', 'Zoeken en snelle acties'],
+    ['Ctrl + Enter', 'Taak opslaan / reactie versturen'],
+    ['Esc', 'Venster sluiten'],
+    ['@naam', 'Iemand noemen in een reactie (krijgt een melding)'],
+    ['Enter in tag-veld', 'Nieuwe tag maken'],
+  ];
+  return (
+    <section className="card settings-section">
+      <div className="row card-title"><Info size={16} /><strong>Over The Break 5</strong></div>
+      <p>Versie <strong>{version || '…'}</strong></p>
+      <div className="download-box">
+        <Download size={22} />
+        <div className="grow">
+          <strong>Nieuwste versie downloaden</strong>
+          <span className="muted small block">Voor nieuwe collega's of om bij te werken: installeer de Setup over de oude heen. Gegevens blijven bewaard.</span>
+        </div>
+        <a className="btn btn-primary" href={DOWNLOAD_URL} target="_blank" rel="noreferrer">Download .exe</a>
+      </div>
+      <strong className="small">Sneltoetsen</strong>
+      <div className="shortcuts">
+        {shortcuts.map(([k, v]) => <div key={k} className="row gap-s"><kbd>{k}</kbd><span className="small">{v}</span></div>)}
+      </div>
+    </section>
+  );
+}
+
 export default function Settings({ theme, setTheme }) {
   const { me } = useData();
   const [cfg, setCfg] = useState(null);
@@ -278,6 +310,7 @@ export default function Settings({ theme, setTheme }) {
         {isAdmin && <TagsSection />}
         {isAdmin && <BackupSection isHost={cfg?.mode === 'host'} />}
         <ConnectionSection cfg={cfg} />
+        <AboutSection />
       </div>
     </div>
   );

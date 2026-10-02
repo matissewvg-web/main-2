@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { ChevronLeft, ChevronRight, Plus, FolderKanban, NotebookPen, Wallet } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Plus, FolderKanban, NotebookPen, Wallet, Lightbulb, Rocket } from 'lucide-react';
 import { useData } from '../store';
 import { PRIORITY, cx, isAssigned, localDateStr, todayStr } from '../util';
 import { AvatarStack, PageHeader } from '../components/ui';
@@ -11,11 +11,11 @@ const TYPES = [
   { id: 'task', label: 'Taken' },
   { id: 'project', label: 'Projectdeadlines' },
   { id: 'meeting', label: 'Vergaderingen' },
-  { id: 'money', label: 'Betalingen' },
+  { id: 'money', label: 'Betalingen & fundraising' },
 ];
 
 export default function Calendar({ go, openTask }) {
-  const { tasks, projects, meetings, transactions, me, finance } = useData();
+  const { tasks, projects, meetings, transactions, brainstorms, funding_leads: leads, me, finance } = useData();
   const [cursor, setCursor] = useState(() => { const d = new Date(); return new Date(d.getFullYear(), d.getMonth(), 1); });
   const [mine, setMine] = useState(false);
   const [showDone, setShowDone] = useState(false);
@@ -47,6 +47,16 @@ export default function Calendar({ go, openTask }) {
         if (mine && !(mt.attendee_users || []).includes(me.id)) continue;
         add(mt.date, { kind: 'meeting', id: mt.id, title: mt.title });
       }
+      for (const b of brainstorms) {
+        if (mine && !(b.participants || []).includes(me.id)) continue;
+        add(b.date, { kind: 'brainstorm', id: b.id, title: `Brainstorm: ${b.title}` });
+      }
+    }
+    if (finance && types.includes('money')) {
+      for (const l of leads) {
+        if (!l.next_date || ['binnen', 'afgewezen'].includes(l.stage) || (mine && l.owner_id !== me.id)) continue;
+        add(l.next_date, { kind: 'lead', id: l.id, title: `${l.name}: ${l.next_step || 'volgende stap'}` });
+      }
     }
     if (finance && types.includes('money')) {
       for (const tx of transactions) {
@@ -55,12 +65,14 @@ export default function Calendar({ go, openTask }) {
       }
     }
     return m;
-  }, [tasks, projects, meetings, transactions, types, mine, showDone, me.id, finance]);
+  }, [tasks, projects, meetings, transactions, brainstorms, leads, types, mine, showDone, me.id, finance]);
 
   const open = (it) => {
     if (it.kind === 'task') openTask(it.task);
     else if (it.kind === 'project') go('projects', { id: it.id });
     else if (it.kind === 'meeting') go('meetings', { id: it.id });
+    else if (it.kind === 'brainstorm') go('brainstorm', { id: it.id });
+    else if (it.kind === 'lead') go('fundraising', { id: it.id });
     else go('finance', { id: it.id });
   };
 
@@ -103,6 +115,8 @@ export default function Calendar({ go, openTask }) {
                   {it.kind === 'project' && <FolderKanban size={12} />}
                   {it.kind === 'meeting' && <NotebookPen size={12} />}
                   {it.kind === 'money' && <Wallet size={12} />}
+                  {it.kind === 'brainstorm' && <Lightbulb size={12} />}
+                  {it.kind === 'lead' && <Rocket size={12} />}
                   <span className="ellipsis">{it.title}</span>
                   {it.kind === 'task' && <AvatarStack ids={it.task.assignees} size={14} max={2} />}
                 </button>

@@ -3,7 +3,6 @@ name: Build Windows app
 on:
   push:
     branches: ['**']
-    tags: ['v*']
   workflow_dispatch:
 
 jobs:
@@ -38,16 +37,37 @@ jobs:
       - name: Package .exe
         run: npx electron-builder --win --x64 --publish never
 
-      - name: Upload installer
+      - name: Upload build artifact
         uses: actions/upload-artifact@v4
         with:
           name: The-Break-5-Windows
-          path: |
-            release/*.exe
+          path: release/*.exe
           if-no-files-found: error
 
-      - name: Attach to GitHub release (tags only)
-        if: startsWith(github.ref, 'refs/tags/v')
+      - name: Read version
+        id: ver
+        shell: bash
+        run: echo "version=$(node -p "require('./package.json').version")" >> "$GITHUB_OUTPUT"
+
+      # Every successful build becomes the newest GitHub Release, so this link
+      # always downloads the latest installer:
+      # https://github.com/<owner>/<repo>/releases/latest/download/The-Break-5-Setup.exe
+      - name: Publish release
         uses: softprops/action-gh-release@v2
         with:
-          files: release/*.exe
+          tag_name: v${{ steps.ver.outputs.version }}-build${{ github.run_number }}
+          target_commitish: ${{ github.sha }}
+          name: The Break 5 ${{ steps.ver.outputs.version }} (build ${{ github.run_number }})
+          make_latest: true
+          files: |
+            release/The-Break-5-Setup.exe
+            release/The-Break-5-Portable.exe
+          body: |
+            ## Downloaden
+            - **The-Break-5-Setup.exe**: installatieprogramma (aanbevolen)
+            - **The-Break-5-Portable.exe**: werkt zonder installeren
+
+            Installeer eerst op de host-pc (kantoor-pc die altijd aan staat), daarna op de andere pc's.
+            Windows waarschuwt omdat de app niet ondertekend is: klik *Meer informatie* → *Toch uitvoeren*.
+
+            Updaten: installeer de nieuwe Setup over de oude heen. Je gegevens blijven bewaard.

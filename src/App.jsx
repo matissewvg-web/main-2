@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import {
   LayoutDashboard, CheckSquare, FolderKanban, Users, NotebookPen, FolderOpen, Settings as SettingsIcon,
-  Search, LogOut, Package, Wallet, TrendingUp, Loader2, CalendarDays,
+  Search, LogOut, Package, Wallet, TrendingUp, Loader2, CalendarDays, Lightbulb, Rocket, Plus, FileText, LayoutList,
 } from 'lucide-react';
 import { api, desktop, setBase, setToken, getToken, setUnauthorizedHandler } from './api';
 import { DataProvider, ToastHost, useData } from './store';
@@ -9,29 +9,37 @@ import { cx } from './util';
 import { Avatar, ConfirmHost } from './components/ui';
 import TaskModal from './components/TaskModal';
 import CommandPalette from './components/CommandPalette';
+import NotificationBell from './components/Notifications';
 import Dashboard from './pages/Dashboard';
 import Tasks from './pages/Tasks';
 import Projects from './pages/Projects';
 import Contacts from './pages/Contacts';
 import Meetings from './pages/Meetings';
-import Files from './pages/Files';
 import Settings from './pages/Settings';
 import Inventory from './pages/Inventory';
 import Finance from './pages/Finance';
 import Investments from './pages/Investments';
 import Calendar from './pages/Calendar';
+import DocumentHub from './pages/DocumentHub';
+import Hub from './pages/Hub';
+import Brainstorm from './pages/Brainstorm';
+import Fundraising from './pages/Fundraising';
 import { ConnectionSetup, HostError, Login } from './pages/Setup';
 
 const NAV = [
   { id: 'dashboard', label: 'Vandaag', icon: LayoutDashboard },
+  { id: 'hub', label: 'Overzicht', icon: LayoutList },
+  { id: 'calendar', label: 'Kalender', icon: CalendarDays },
+  { section: 'Werk' },
+  { id: 'meetings', label: 'Vergaderingen', icon: NotebookPen },
+  { id: 'files', label: 'Document Hub', icon: FolderOpen },
   { id: 'tasks', label: 'Taken', icon: CheckSquare },
+  { id: 'inventory', label: 'Voorraad', icon: Package },
+  { id: 'brainstorm', label: 'Brainstorm', icon: Lightbulb },
   { id: 'projects', label: 'Projecten', icon: FolderKanban },
   { id: 'contacts', label: 'Contacten', icon: Users },
-  { id: 'meetings', label: 'Vergaderingen', icon: NotebookPen },
-  { id: 'calendar', label: 'Kalender', icon: CalendarDays },
-  { id: 'files', label: 'Bestanden', icon: FolderOpen },
-  { section: 'Bedrijf' },
-  { id: 'inventory', label: 'Voorraad', icon: Package },
+  { section: 'Geld', finance: true },
+  { id: 'fundraising', label: 'Fundraising', icon: Rocket, finance: true },
   { id: 'finance', label: 'Financiën', icon: Wallet, finance: true },
   { id: 'investments', label: 'Investeringen', icon: TrendingUp, finance: true },
 ];
@@ -46,16 +54,49 @@ function useTheme() {
   return [theme, setTheme];
 }
 
-function Sidebar({ page, go, onSearch, onLogout }) {
+function QuickCreate({ go, openTask, onClose, top }) {
+  const { finance, me } = useData();
+  const items = [
+    { label: 'Taak', icon: CheckSquare, run: () => openTask({ assignees: [me.id] }) },
+    { label: 'Document', icon: FileText, run: () => go('files', { tab: 'docs', newDoc: true }) },
+    { label: 'Vergadering', icon: NotebookPen, run: () => go('meetings', { new: true }) },
+    { label: 'Project', icon: FolderKanban, run: () => go('projects', { new: true }) },
+    { label: 'Brainstorm', icon: Lightbulb, run: () => go('brainstorm', { new: true }) },
+    { label: 'Contact', icon: Users, run: () => go('contacts', { new: true }) },
+    { label: 'Product', icon: Package, run: () => go('inventory', { new: true }) },
+    ...(finance ? [
+      { label: 'Uitgave / inkomst', icon: Wallet, run: () => go('finance', { new: 'uitgave' }) },
+      { label: 'Investeerder (fundraising)', icon: Rocket, run: () => go('fundraising', { newLead: true }) },
+    ] : []),
+  ];
+  return (
+    <>
+      <div className="modal-backdrop" style={{ background: 'transparent' }} onMouseDown={onClose} />
+      <div className="quick-menu" style={{ top }}>
+        {items.map((it) => (
+          <button key={it.label} onClick={() => { onClose(); it.run(); }}><it.icon size={15} /> {it.label}</button>
+        ))}
+      </div>
+    </>
+  );
+}
+
+function Sidebar({ page, go, onSearch, onLogout, openTask }) {
   const { me, tasks, products, online, finance } = useData();
+  const [quick, setQuick] = useState(null);
   const myOpen = tasks.filter((t) => (t.assignees || []).includes(me.id) && t.status !== 'klaar').length;
   const lowStock = products.filter((p) => !p.archived && p.stock < p.min_stock).length;
   return (
     <aside className="sidebar">
       <div className="brand"><img src="./icon.png" alt="" /><span>The Break 5</span></div>
-      <button className="side-search" onClick={onSearch}>
-        <Search size={15} /> <span className="grow">Zoeken</span> <kbd>Ctrl K</kbd>
-      </button>
+      <div className="side-top">
+        <button className="side-search" onClick={onSearch}>
+          <Search size={15} /> <span className="grow">Zoeken</span> <kbd>Ctrl K</kbd>
+        </button>
+        <NotificationBell go={go} openTask={openTask} />
+      </div>
+      <button className="btn btn-primary side-new" onClick={(e) => setQuick(e.currentTarget.getBoundingClientRect().bottom + 6)}><Plus size={16} /> Nieuw</button>
+      {quick && <QuickCreate go={go} openTask={openTask} top={quick} onClose={() => setQuick(null)} />}
       <nav>
         {NAV.filter((n) => !n.finance || finance).map((n) => (n.section ? (
           <div key={n.section} className="nav-label">{n.section}</div>
@@ -113,7 +154,10 @@ function Workspace({ onLogout }) {
   else if (route.page === 'projects') content = <Projects {...props} />;
   else if (route.page === 'contacts') content = <Contacts {...props} />;
   else if (route.page === 'meetings') content = <Meetings {...props} />;
-  else if (route.page === 'files') content = <Files {...props} />;
+  else if (route.page === 'files') content = <DocumentHub {...props} />;
+  else if (route.page === 'hub') content = <Hub {...props} />;
+  else if (route.page === 'brainstorm') content = <Brainstorm {...props} />;
+  else if (route.page === 'fundraising' && finance) content = <Fundraising {...props} />;
   else if (route.page === 'calendar') content = <Calendar {...props} />;
   else if (route.page === 'inventory') content = <Inventory {...props} />;
   else if (route.page === 'finance' && finance) content = <Finance {...props} />;
@@ -123,7 +167,7 @@ function Workspace({ onLogout }) {
 
   return (
     <div className="layout">
-      <Sidebar page={route.page} go={go} onSearch={() => setPalette(true)} onLogout={onLogout} />
+      <Sidebar page={route.page} go={go} openTask={openTask} onSearch={() => setPalette(true)} onLogout={onLogout} />
       <main className="main">
         {!online && <div className="offline-bar">Verbinding met de host verbroken. Opnieuw verbinden…</div>}
         {content}

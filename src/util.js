@@ -222,3 +222,56 @@ export function downloadCsv(filename, rows) {
 }
 
 export const centsCsv = (c) => ((c || 0) / 100).toFixed(2).replace('.', ',');
+
+// ---- brainstorm ----------------------------------------------------------------
+export const IDEA_COLUMNS = [
+  { id: 'idee', label: 'Ideeën', hint: 'Alles mag, nog niet oordelen' },
+  { id: 'interessant', label: 'Interessant', hint: 'Waard om verder uit te zoeken' },
+  { id: 'gekozen', label: 'Gekozen', hint: 'Hier gaan we mee aan de slag' },
+  { id: 'geparkeerd', label: 'Geparkeerd', hint: 'Niet nu' },
+];
+export const IDEA_COLORS = {
+  geel: { bg: '#fef3c7', bgDark: '#3a3214', label: 'Geel' },
+  roze: { bg: '#fce7f3', bgDark: '#3b1d2e', label: 'Roze' },
+  blauw: { bg: '#dbeafe', bgDark: '#172a45', label: 'Blauw' },
+  groen: { bg: '#dcfce7', bgDark: '#16321f', label: 'Groen' },
+  paars: { bg: '#ede9fe', bgDark: '#2a2342', label: 'Paars' },
+};
+
+// ---- fundraising ---------------------------------------------------------------
+export const FUNDING_STAGES = [
+  { id: 'lead', label: 'Lead', color: '#94a3b8' },
+  { id: 'contact', label: 'Eerste contact', color: '#0ea5e9' },
+  { id: 'pitch', label: 'Pitch / gesprek', color: '#6366f1' },
+  { id: 'dd', label: 'Due diligence', color: '#a855f7' },
+  { id: 'toezegging', label: 'Toezegging', color: '#f59e0b' },
+  { id: 'binnen', label: 'Binnen', color: '#10b981' },
+  { id: 'afgewezen', label: 'Afgewezen', color: '#ef4444' },
+];
+export const FUNDING_STAGE = Object.fromEntries(FUNDING_STAGES.map((s) => [s.id, s]));
+export const FUNDING_KINDS = [
+  { id: 'angel', label: 'Angel investor' },
+  { id: 'vc', label: 'VC / fonds' },
+  { id: 'bank', label: 'Bank / lening' },
+  { id: 'subsidie', label: 'Subsidie' },
+  { id: 'crowdfunding', label: 'Crowdfunding' },
+  { id: 'ff', label: 'Familie & vrienden' },
+  { id: 'overig', label: 'Overig' },
+];
+export const FUNDING_KIND = Object.fromEntries(FUNDING_KINDS.map((k) => [k.id, k]));
+
+export const RECURRENCES = [
+  { id: 'dagelijks', label: 'Elke dag' },
+  { id: 'wekelijks', label: 'Elke week' },
+  { id: 'tweewekelijks', label: 'Elke 2 weken' },
+  { id: 'maandelijks', label: 'Elke maand' },
+  { id: 'kwartaal', label: 'Elk kwartaal' },
+  { id: 'jaarlijks', label: 'Elk jaar' },
+];
+
+export const DOC_STATUSES = [
+  { id: 'concept', label: 'Concept', color: '#94a3b8' },
+  { id: 'review', label: 'Ter review', color: '#f59e0b' },
+  { id: 'definitief', label: 'Definitief', color: '#10b981' },
+];
+export const DOC_STATUS = Object.fromEntries(DOC_STATUSES.map((s) => [s.id, s]));

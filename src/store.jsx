@@ -2,8 +2,8 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { api, subscribe } from './api';
 import { byId } from './util';
 
-const BASE_COLLECTIONS = ['users', 'tags', 'contacts', 'projects', 'tasks', 'meetings', 'products'];
-const FINANCE_COLLECTIONS = ['transactions', 'investments', 'investment_entries'];
+const BASE_COLLECTIONS = ['users', 'tags', 'contacts', 'projects', 'tasks', 'meetings', 'products', 'documents', 'brainstorms', 'ideas'];
+const FINANCE_COLLECTIONS = ['transactions', 'investments', 'investment_entries', 'funding_rounds', 'funding_leads'];
 const ALL_COLLECTIONS = [...BASE_COLLECTIONS, ...FINANCE_COLLECTIONS];
 
 export const hasFinance = (user) => user?.role === 'admin' || !!user?.can_finance;
@@ -45,6 +45,13 @@ export function DataProvider({ me, children }) {
   const [online, setOnline] = useState(true);
   const [filesVersion, setFilesVersion] = useState(0);
   const [stockVersion, setStockVersion] = useState(0);
+  const [commentsVersion, setCommentsVersion] = useState(0);
+  const [notifications, setNotifications] = useState([]);
+  const [commentCounts, setCommentCounts] = useState({});
+  const loadPersonal = useCallback(() => {
+    api.get('/notifications').then(setNotifications).catch(() => {});
+    api.get('/comments/counts').then(setCommentCounts).catch(() => {});
+  }, []);
   const wasOffline = useRef(false);
 
   const reload = useCallback(async (name) => {
@@ -59,9 +66,12 @@ export function DataProvider({ me, children }) {
 
   useEffect(() => {
     reload().then(() => setLoaded(true));
+    loadPersonal();
     return subscribe(
       (topic) => {
-        if (topic === 'files') setFilesVersion((v) => v + 1);
+        if (topic === 'notifications') api.get('/notifications').then(setNotifications).catch(() => {});
+        else if (topic === 'comments') { setCommentsVersion((v) => v + 1); api.get('/comments/counts').then(setCommentCounts).catch(() => {}); }
+        else if (topic === 'files') setFilesVersion((v) => v + 1);
         else if (topic === 'stock_moves') setStockVersion((v) => v + 1);
         else if (COLLECTIONS.includes(topic)) reload(topic);
       },
@@ -69,12 +79,13 @@ export function DataProvider({ me, children }) {
         setOnline(ok);
         if (ok && wasOffline.current) {
           reload();
+          loadPersonal();
           setFilesVersion((v) => v + 1);
         }
         wasOffline.current = !ok;
       }
     );
-  }, [reload, COLLECTIONS]);
+  }, [reload, COLLECTIONS, loadPersonal]);
 
   const value = useMemo(() => {
     const maps = Object.fromEntries(ALL_COLLECTIONS.map((c) => [c, byId(data[c])]));
@@ -82,8 +93,11 @@ export function DataProvider({ me, children }) {
     // brings the authoritative version a moment later.
     const patchLocal = (coll, id, patch) =>
       setData((d) => ({ ...d, [coll]: d[coll].map((x) => (x.id === id ? { ...x, ...patch } : x)) }));
-    return { ...data, maps, me: meLive, finance, loaded, online, filesVersion, stockVersion, reload, patchLocal };
-  }, [data, meLive, finance, loaded, online, filesVersion, stockVersion, reload]);
+    return {
+      ...data, maps, me: meLive, finance, loaded, online, filesVersion, stockVersion, commentsVersion,
+      notifications, setNotifications, commentCounts, reload, patchLocal,
+    };
+  }, [data, meLive, finance, loaded, online, filesVersion, stockVersion, commentsVersion, notifications, commentCounts, reload]);
 
   return <DataContext.Provider value={value}>{children}</DataContext.Provider>;
 }

@@ -6,6 +6,7 @@ import { cx, fmtDate, stripHtml, todayStr } from '../util';
 import { Empty, MultiPicker, PageHeader, ProjectSelect, TagPicker, Avatar, confirmDialog } from '../components/ui';
 import RichEditor from '../components/RichEditor';
 import TaskRow from '../components/TaskRow';
+import Comments from '../components/Comments';
 
 const FIELDS = ['title', 'date', 'location', 'content', 'attendee_users', 'attendee_contacts', 'project_id', 'tags'];
 
@@ -109,6 +110,7 @@ function MeetingEditor({ meeting, openTask, go }) {
         <div className="row card-title"><strong>Actiepunten uit deze vergadering</strong><span className="grow" /><button className="btn btn-sm" onClick={() => openTask({ meeting_id: meeting.id, project_id: m.project_id })}><Plus size={14} /> Taak</button></div>
         {meetingTasks.length ? meetingTasks.map((t) => <TaskRow key={t.id} task={t} onOpen={openTask} />) : <p className="muted small">Nog geen actiepunten.</p>}
       </div>
+      <div className="card"><Comments entity="meetings" id={meeting.id} /></div>
     </div>
   );
 }

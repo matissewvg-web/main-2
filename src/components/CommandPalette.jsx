@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Search, CheckSquare, FolderKanban, User, NotebookPen, Folder, Plus, LayoutDashboard, Settings, File as FileIcon, Package, Wallet, TrendingUp, CalendarDays } from 'lucide-react';
+import { Search, CheckSquare, FolderKanban, User, NotebookPen, Folder, Plus, LayoutDashboard, Settings, File as FileIcon, Package, Wallet, TrendingUp, CalendarDays, FileText, Lightbulb, Rocket } from 'lucide-react';
 import { api } from '../api';
 import { useData } from '../store';
-import { cx, fileKind, fmtDate, fmtMoney, INVESTMENT_KIND, PROJECT_STATUS, TASK_STATUS } from '../util';
+import { cx, fileKind, fmtDate, fmtMoney, FUNDING_STAGE, INVESTMENT_KIND, PROJECT_STATUS, TASK_STATUS } from '../util';
 
 const KIND = {
   task: { icon: CheckSquare, label: 'Taak' },
@@ -14,6 +14,10 @@ const KIND = {
   product: { icon: Package, label: 'Product' },
   transaction: { icon: Wallet, label: 'Transactie' },
   investment: { icon: TrendingUp, label: 'Investering' },
+  document: { icon: FileText, label: 'Document' },
+  brainstorm: { icon: Lightbulb, label: 'Brainstorm' },
+  idea: { icon: Lightbulb, label: 'Idee' },
+  lead: { icon: Rocket, label: 'Fundraising' },
 };
 
 export default function CommandPalette({ onClose, go, openTask }) {
@@ -29,11 +33,15 @@ export default function CommandPalette({ onClose, go, openTask }) {
     { label: 'Nieuw contact', icon: Plus, run: () => go('contacts', { new: true }) },
     { label: 'Nieuwe vergadering', icon: Plus, run: () => go('meetings', { new: true }) },
     { label: 'Ga naar Vandaag', icon: LayoutDashboard, run: () => go('dashboard') },
+    { label: 'Ga naar Overzicht (alles)', icon: LayoutDashboard, run: () => go('hub') },
     { label: 'Ga naar Taken', icon: CheckSquare, run: () => go('tasks') },
     { label: 'Ga naar Projecten', icon: FolderKanban, run: () => go('projects') },
     { label: 'Ga naar Contacten', icon: User, run: () => go('contacts') },
     { label: 'Ga naar Vergaderingen', icon: NotebookPen, run: () => go('meetings') },
-    { label: 'Ga naar Bestanden', icon: Folder, run: () => go('files') },
+    { label: 'Ga naar Document Hub', icon: Folder, run: () => go('files') },
+    { label: 'Nieuw document', icon: Plus, run: () => go('files', { tab: 'docs', newDoc: true }) },
+    { label: 'Ga naar Brainstorm', icon: Lightbulb, run: () => go('brainstorm') },
+    { label: 'Nieuwe brainstorm', icon: Plus, run: () => go('brainstorm', { new: true }) },
     { label: 'Ga naar Kalender', icon: CalendarDays, run: () => go('calendar') },
     { label: 'Ga naar Voorraad', icon: Package, run: () => go('inventory') },
     { label: 'Nieuw product', icon: Plus, run: () => go('inventory', { new: true }) },
@@ -42,6 +50,7 @@ export default function CommandPalette({ onClose, go, openTask }) {
       { label: 'Nieuwe uitgave', icon: Plus, run: () => go('finance', { new: 'uitgave' }) },
       { label: 'Nieuwe inkomst', icon: Plus, run: () => go('finance', { new: 'inkomst' }) },
       { label: 'Ga naar Investeringen', icon: TrendingUp, run: () => go('investments') },
+      { label: 'Ga naar Fundraising', icon: Rocket, run: () => go('fundraising') },
     ] : []),
     { label: 'Instellingen', icon: Settings, run: () => go('settings') },
   ], [go, openTask, finance]);
@@ -61,6 +70,7 @@ export default function CommandPalette({ onClose, go, openTask }) {
       if (r.kind === 'meeting') return [r.date && fmtDate(r.date), r.snippet].filter(Boolean).join(' · ');
       if (r.kind === 'transaction') return `${fmtDate(r.date)} · ${r.txKind === 'uitgave' ? '−' : '+'}${fmtMoney(r.amount_cents)}`;
       if (r.kind === 'investment') return INVESTMENT_KIND[r.sub]?.label;
+      if (r.kind === 'lead') return FUNDING_STAGE[r.stage]?.label;
       return r.sub;
     };
     return [...results.map((r) => ({ ...r, sub: describe(r) })), ...acts];
@@ -83,6 +93,9 @@ export default function CommandPalette({ onClose, go, openTask }) {
     if (item.kind === 'product') return go('inventory', { id: item.id });
     if (item.kind === 'transaction') return go('finance', { id: item.id });
     if (item.kind === 'investment') return go('investments', { id: item.id });
+    if (item.kind === 'document') return go('files', { tab: 'docs', doc: item.id });
+    if (item.kind === 'brainstorm' || item.kind === 'idea') return go('brainstorm', { id: item.id });
+    if (item.kind === 'lead') return go('fundraising', { id: item.id });
   };
 
   const onKey = (e) => {

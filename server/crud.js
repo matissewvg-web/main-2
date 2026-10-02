@@ -13,15 +13,16 @@ const ENTITIES = {
     label: (r) => r.name,
   },
   projects: {
-    fields: ['name', 'description', 'status', 'priority', 'owner_id', 'contact_id', 'start_date', 'deadline', 'folder', 'tags'],
-    json: ['tags'],
+    fields: ['name', 'description', 'status', 'priority', 'owner_id', 'members', 'contact_id', 'start_date', 'deadline', 'folder', 'tags'],
+    json: ['tags', 'members'],
     required: ['name'],
     order: 'deadline IS NULL, deadline, name COLLATE NOCASE',
     label: (r) => r.name,
   },
   tasks: {
-    fields: ['title', 'description', 'status', 'priority', 'assignees', 'project_id', 'contact_id', 'meeting_id', 'deadline', 'tags', 'sort'],
-    json: ['tags', 'assignees'],
+    fields: ['title', 'description', 'status', 'priority', 'assignees', 'project_id', 'contact_id', 'meeting_id', 'deadline', 'tags', 'sort', 'checklist', 'recurrence'],
+    json: ['tags', 'assignees', 'checklist'],
+    primaryAssignee: true,
     required: ['title'],
     order: 'sort, id',
     label: (r) => r.title,
@@ -72,6 +73,45 @@ const ENTITIES = {
     label: (r) => `${r.kind} ${(r.amount_cents / 100).toFixed(2)}`,
     finance: true,
   },
+  documents: {
+    fields: ['title', 'content', 'category', 'project_id', 'tags', 'pinned', 'status', 'deadline', 'assignees'],
+    json: ['tags', 'assignees'],
+    required: ['title'],
+    order: 'pinned DESC, updated_at DESC',
+    label: (r) => r.title,
+  },
+  brainstorms: {
+    fields: ['title', 'question', 'date', 'status', 'project_id', 'participants', 'tags'],
+    json: ['participants', 'tags'],
+    required: ['title'],
+    order: "status = 'afgerond', date DESC, id DESC",
+    label: (r) => r.title,
+  },
+  ideas: {
+    // votes are changed through POST /api/ideas/:id/vote so two people voting at once never overwrite each other
+    fields: ['brainstorm_id', 'text', 'details', 'column_id', 'color', 'sort'],
+    json: ['votes'],
+    required: ['text', 'brainstorm_id'],
+    order: 'sort, id',
+    label: (r) => r.text,
+    quiet: true,
+  },
+  funding_rounds: {
+    fields: ['name', 'target_cents', 'deadline', 'status', 'notes'],
+    json: [],
+    required: ['name'],
+    order: "status = 'afgerond', deadline IS NULL, deadline, id",
+    label: (r) => r.name,
+    finance: true,
+  },
+  funding_leads: {
+    fields: ['round_id', 'name', 'kind', 'contact_id', 'stage', 'ask_cents', 'committed_cents', 'received_cents', 'owner_id', 'next_step', 'next_date', 'notes', 'tags', 'sort'],
+    json: ['tags'],
+    required: ['name'],
+    order: 'sort, id',
+    label: (r) => r.name,
+    finance: true,
+  },
 };
 
 const hasFinance = (user) => user.role === 'admin' || !!user.can_finance;
@@ -79,6 +119,7 @@ const hasFinance = (user) => user.role === 'admin' || !!user.can_finance;
 const ACTIVITY_NAMES = {
   contacts: 'contact', projects: 'project', tasks: 'taak', meetings: 'vergadering', tags: 'tag',
   products: 'product', transactions: 'transactie', investments: 'investering', investment_entries: 'investeringsregel',
+  documents: 'document', brainstorms: 'brainstorm', ideas: 'idee', funding_rounds: 'financieringsronde', funding_leads: 'investeerder',
 };
 
 function decode(cfg, row) {
@@ -106,14 +147,14 @@ function pick(cfg, body) {
   if (body.assignees !== undefined && cfg.json.includes('assignees')) {
     const list = Array.isArray(body.assignees) ? body.assignees.filter((x) => Number.isInteger(x)) : [];
     data.assignees = JSON.stringify(list);
-    data.assignee_id = list[0] ?? null;
+    if (cfg.primaryAssignee) data.assignee_id = list[0] ?? null;
   }
   return data;
 }
 
-function crudRoutes(app, db, broadcast) {
+function crudRoutes(app, db, broadcast, hooks = {}) {
   const log = (user, action, entity, id, label) => {
-    if (ENTITIES[entity]?.finance) return;
+    if (ENTITIES[entity]?.finance || ENTITIES[entity]?.quiet) return;
     db.prepare('INSERT INTO activity (user_id, action, entity, entity_id, label) VALUES (?,?,?,?,?)')
       .run(user.id, action, ACTIVITY_NAMES[entity] || entity, id, label);
     db.prepare("DELETE FROM activity WHERE id <= (SELECT id FROM activity ORDER BY id DESC LIMIT 1 OFFSET 500)").run();
@@ -146,6 +187,7 @@ function crudRoutes(app, db, broadcast) {
       }
       if (entity === 'tasks' && data.status === 'klaar') data.done_at = new Date().toISOString();
       if (entity !== 'tags') data.created_by = req.user.id;
+      if (entity === 'documents') data.updated_by = req.user.id;
       const cols = Object.keys(data);
       try {
         const info = db.prepare(
@@ -153,6 +195,7 @@ function crudRoutes(app, db, broadcast) {
         ).run(...cols.map((c) => data[c]));
         const row = decode(cfg, db.prepare(`SELECT * FROM ${entity} WHERE id = ?`).get(info.lastInsertRowid));
         log(req.user, 'aangemaakt', entity, row.id, cfg.label(row));
+        hooks.afterWrite?.(entity, null, row, req.user);
         broadcast(entity);
         res.json(row);
       } catch (e) {
@@ -172,6 +215,7 @@ function crudRoutes(app, db, broadcast) {
         data.done_at = data.status === 'klaar' ? new Date().toISOString() : null;
       }
       if (entity !== 'tags') data.updated_at = new Date().toISOString().replace('T', ' ').slice(0, 19);
+      if (entity === 'documents' && cols0(data)) data.updated_by = req.user.id;
       const cols = Object.keys(data);
       if (cols.length) {
         try {
@@ -188,6 +232,7 @@ function crudRoutes(app, db, broadcast) {
         const action = entity === 'tasks' && data.status === 'klaar' && existing.status !== 'klaar' ? 'afgerond' : 'bewerkt';
         log(req.user, action, entity, row.id, cfg.label(row));
       }
+      hooks.afterWrite?.(entity, decode(cfg, existing), row, req.user);
       broadcast(entity);
       res.json(row);
     });
@@ -197,6 +242,7 @@ function crudRoutes(app, db, broadcast) {
       const existing = db.prepare(`SELECT * FROM ${entity} WHERE id = ?`).get(req.params.id);
       if (!existing) return res.status(404).json({ error: 'Niet gevonden.' });
       db.prepare(`DELETE FROM ${entity} WHERE id = ?`).run(req.params.id);
+      hooks.afterDelete?.(entity, existing.id);
       log(req.user, 'verwijderd', entity, existing.id, cfg.label(existing));
       broadcast(entity);
       res.json({ ok: true });
@@ -255,6 +301,9 @@ function crudRoutes(app, db, broadcast) {
     res.json(db.prepare('SELECT * FROM activity ORDER BY id DESC LIMIT ?').all(limit));
   });
 }
+
+// True when the patch changes more than just the sort/pin position.
+const cols0 = (data) => Object.keys(data).some((c) => !['sort', 'pinned', 'updated_at'].includes(c));
 
 function friendlyError(e) {
   const msg = String(e.message || e);

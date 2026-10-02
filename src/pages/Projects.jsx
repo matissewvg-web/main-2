@@ -2,11 +2,12 @@ import { useEffect, useMemo, useState } from 'react';
 import { Plus, FolderKanban, ArrowLeft, Pencil, Trash2, Folder, User, Building2, CalendarDays, NotebookPen } from 'lucide-react';
 import { api } from '../api';
 import { useData, useToast } from '../store';
-import { PROJECT_STATUS, PROJECT_STATUSES, PRIORITY_RANK, cx, fmtDate } from '../util';
+import { PROJECT_STATUS, PROJECT_STATUSES, PRIORITY_RANK, cx, fmtDate, localDateStr, parseUtc } from '../util';
 import {
   Avatar, ContactSelect, DeadlineBadge, Empty, Field, Modal, PageHeader, PriorityBadge, PrioritySelect,
-  StatusBadge, TagChips, TagPicker, UserSelect, confirmDialog,
+  StatusBadge, TagChips, TagPicker, UserSelect, confirmDialog, PeoplePicker, AvatarStack,
 } from '../components/ui';
+import Comments from '../components/Comments';
 import { Kanban, TaskList } from './Tasks';
 
 function Progress({ tasks }) {
@@ -24,7 +25,7 @@ function ProjectModal({ project, onClose, onSaved }) {
   const toast = useToast();
   const [p, setP] = useState(() => ({
     name: '', description: '', status: 'actief', priority: 'normaal', owner_id: null, contact_id: null,
-    start_date: '', deadline: '', folder: '', tags: [], ...project,
+    start_date: '', deadline: '', folder: '', tags: [], members: [], ...project,
   }));
   const [folders, setFolders] = useState([]);
   const [makeFolder, setMakeFolder] = useState(!project?.id);
@@ -50,6 +51,7 @@ function ProjectModal({ project, onClose, onSaved }) {
       const body = {
         name: p.name, description: p.description, status: p.status, priority: p.priority, owner_id: p.owner_id,
         contact_id: p.contact_id, start_date: p.start_date || null, deadline: p.deadline || null, folder, tags: p.tags,
+        members: [...new Set([...(p.members || []), ...(p.owner_id ? [p.owner_id] : [])])],
       };
       const saved = isNew ? await api.post('/projects', body) : await api.patch(`/projects/${p.id}`, body);
       toast(isNew ? 'Project aangemaakt' : 'Project opgeslagen', 'ok');
@@ -76,6 +78,7 @@ function ProjectModal({ project, onClose, onSaved }) {
         <Field label="Prioriteit"><PrioritySelect value={p.priority} onChange={set('priority')} /></Field>
         <Field label="Eigenaar"><UserSelect value={p.owner_id} onChange={set('owner_id')} /></Field>
         <Field label="Klant / contact"><ContactSelect value={p.contact_id} onChange={set('contact_id')} /></Field>
+        <Field label="Team (wie werken eraan)" span><PeoplePicker value={p.members || []} onChange={set('members')} placeholder="Voeg teamleden toe" /></Field>
         <Field label="Startdatum"><input type="date" value={p.start_date || ''} onChange={set('start_date')} /></Field>
         <Field label="Deadline"><input type="date" value={p.deadline || ''} onChange={set('deadline')} /></Field>
         <Field label="Map in Bestanden" span>
@@ -113,7 +116,7 @@ function ProjectCard({ project, onOpen }) {
       <TagChips ids={project.tags} />
       <div className="pcard-foot">
         <Progress tasks={ptasks} />
-        <Avatar user={maps.users[project.owner_id]} size={24} />
+        <AvatarStack ids={[...new Set([project.owner_id, ...(project.members || [])].filter(Boolean))]} size={24} />
       </div>
     </button>
   );
@@ -153,6 +156,8 @@ function ProjectDetail({ id, onBack, openTask, go }) {
           <div className="meta"><span>Eigenaar</span>{owner ? <span className="row gap-xs"><Avatar user={owner} size={20} />{owner.name}</span> : <span className="muted">—</span>}</div>
           <div className="meta"><span>Klant</span>{contact ? <button className="link" onClick={() => go('contacts', { id: contact.id })}>{contact.kind === 'bedrijf' ? <Building2 size={14} /> : <User size={14} />} {contact.name}</button> : <span className="muted">—</span>}</div>
           <div className="meta"><span>Periode</span><span>{project.start_date ? fmtDate(project.start_date) : '—'} → {project.deadline ? <DeadlineBadge date={project.deadline} done={project.status === 'afgerond'} /> : '—'}</span></div>
+          <div className="meta"><span>Team</span>{(project.members || []).length ? <AvatarStack ids={project.members} size={22} max={8} /> : <span className="muted">—</span>}</div>
+          <div className="meta"><span>Aangemaakt</span><span className="muted">{fmtDate(localDateStr(parseUtc(project.created_at)))} door {maps.users[project.created_by]?.name || 'onbekend'}</span></div>
           <div className="meta"><span>Voortgang</span><Progress tasks={ptasks} /></div>
           <div className="meta"><span>Map</span>{project.folder ? <button className="link" onClick={() => go('files', { path: project.folder })}><Folder size={14} /> /{project.folder}</button> : <span className="muted">Geen</span>}</div>
           <TagChips ids={project.tags} />
@@ -179,6 +184,7 @@ function ProjectDetail({ id, onBack, openTask, go }) {
       {view === 'kanban'
         ? <Kanban tasks={ptasks} onOpen={openTask} onNew={(d) => openTask({ ...d, project_id: id })} />
         : <TaskList tasks={ptasks} onOpen={openTask} showProject={false} />}
+      <div className="card"><Comments entity="projects" id={id} /></div>
       {editing && <ProjectModal project={project} onClose={() => setEditing(false)} />}
     </div>
   );
@@ -189,7 +195,8 @@ export default function Projects({ params, go, openTask }) {
   const [filter, setFilter] = useState('open');
   const [creating, setCreating] = useState(false);
 
-  useEffect(() => { if (params?.new) setCreating(true); }, [params]);
+  // params.prefill comes from e.g. a brainstorm idea turned into a project.
+  useEffect(() => { if (params?.new) setCreating(params.prefill || true); }, [params]);
 
   if (params?.id) return <ProjectDetail id={params.id} onBack={() => go('projects')} openTask={openTask} go={go} />;
 
@@ -214,7 +221,7 @@ export default function Projects({ params, go, openTask }) {
       ) : (
         <Empty icon={FolderKanban} title={projects.length ? 'Geen projecten in deze weergave' : 'Nog geen projecten'} text="Een project bundelt taken, vergaderingen en een map met bestanden." action={<button className="btn btn-primary" onClick={() => setCreating(true)}><Plus size={16} /> Nieuw project</button>} />
       )}
-      {creating && <ProjectModal onClose={() => setCreating(false)} onSaved={(p) => go('projects', { id: p.id })} />}
+      {creating && <ProjectModal project={creating === true ? undefined : creating} onClose={() => setCreating(false)} onSaved={(p) => go('projects', { id: p.id })} />}
     </div>
   );
 }
