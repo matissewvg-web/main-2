@@ -3,6 +3,10 @@ name: Build Windows app
 on:
   push:
     branches: ['**']
+    # The study dashboard has its own build (study-dashboard-windows.yml).
+    paths-ignore:
+      - 'study-dashboard/**'
+      - '.github/workflows/study-dashboard-windows.yml'
   workflow_dispatch:
 
 jobs:

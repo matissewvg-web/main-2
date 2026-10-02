@@ -1,0 +1,58 @@
+{
+  "name": "study-dashboard",
+  "productName": "Study Dashboard",
+  "version": "1.0.0",
+  "description": "Study Dashboard for Windows: exam countdown and study hours, synced with your claude.ai account",
+  "main": "main.js",
+  "author": "Matisse",
+  "license": "UNLICENSED",
+  "private": true,
+  "scripts": {
+    "start": "electron .",
+    "dist:win": "electron-builder --win --x64 --publish never"
+  },
+  "build": {
+    "appId": "app.studydashboard.desktop",
+    "productName": "Study Dashboard",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "main.js",
+      "offline.html",
+      "icon.png",
+      "package.json"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "icon.png"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "shortcutName": "Study Dashboard",
+      "artifactName": "Study-Dashboard-Setup.${ext}"
+    },
+    "portable": {
+      "artifactName": "Study-Dashboard-Portable.${ext}"
+    }
+  },
+  "devDependencies": {
+    "electron": "44.5.1",
+    "electron-builder": "26.15.3"
+  }
+}
