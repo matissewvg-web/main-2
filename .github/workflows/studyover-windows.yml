@@ -1,11 +1,11 @@
-name: Build Study Dashboard (Windows)
+name: Build Studyover (Windows)
 
 on:
   push:
     branches: ['**']
     paths:
-      - 'study-dashboard/desktop/**'
-      - '.github/workflows/study-dashboard-windows.yml'
+      - 'studyover/desktop/**'
+      - '.github/workflows/studyover-windows.yml'
   workflow_dispatch:
 
 jobs:
@@ -15,7 +15,7 @@ jobs:
       contents: write
     defaults:
       run:
-        working-directory: study-dashboard/desktop
+        working-directory: studyover/desktop
     steps:
       - uses: actions/checkout@v4
 
@@ -23,7 +23,7 @@ jobs:
         with:
           node-version: 22
           cache: npm
-          cache-dependency-path: study-dashboard/desktop/package-lock.json
+          cache-dependency-path: studyover/desktop/package-lock.json
 
       - name: Install
         run: npm ci
@@ -34,27 +34,27 @@ jobs:
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
         with:
-          name: Study-Dashboard-Windows
-          path: study-dashboard/desktop/release/*.exe
+          name: Studyover-Windows
+          path: studyover/desktop/release/*.exe
           if-no-files-found: error
 
       # One fixed release, refreshed on every build, so this link never changes:
-      # https://github.com/<owner>/<repo>/releases/download/study-dashboard/Study-Dashboard-Setup.exe
+      # https://github.com/<owner>/<repo>/releases/download/studyover/Studyover-Setup.exe
       # make_latest stays false so The Break 5 keeps the repo's "latest" download link.
       - name: Publish release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: study-dashboard
-          name: Study Dashboard for Windows
+          tag_name: studyover
+          name: Studyover for Windows
           make_latest: false
           overwrite_files: true
           files: |
-            study-dashboard/desktop/release/Study-Dashboard-Setup.exe
-            study-dashboard/desktop/release/Study-Dashboard-Portable.exe
+            studyover/desktop/release/Studyover-Setup.exe
+            studyover/desktop/release/Studyover-Portable.exe
           body: |
             ## Download
-            - **Study-Dashboard-Setup.exe**: installer with a desktop shortcut (recommended)
-            - **Study-Dashboard-Portable.exe**: runs without installing
+            - **Studyover-Setup.exe**: installer with a desktop shortcut (recommended)
+            - **Studyover-Portable.exe**: runs without installing
 
-            Sign in with the same claude.ai account you use on your iPhone; tests and sessions sync between them.
+            Sign in with the same claude.ai account you use on your iPhone; tests, sessions and study material sync between them.
             Windows warns because the app is not code-signed: click *More info*, then *Run anyway*.

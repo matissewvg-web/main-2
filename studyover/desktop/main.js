@@ -1,4 +1,4 @@
-// Study Dashboard for Windows: a window around the synced web dashboard.
+// Studyover for Windows: a window around the synced web app.
 // Data lives in your claude.ai account, so this app and your iPhone show the same tests and sessions.
 const { app, BrowserWindow, shell } = require('electron');
 const path = require('path');
@@ -29,7 +29,7 @@ function createWindow() {
     minWidth: 380,
     minHeight: 560,
     backgroundColor: '#05040a',
-    title: 'Study Dashboard',
+    title: 'Studyover',
     icon: path.join(__dirname, 'icon.png'),
     autoHideMenuBar: true,
     webPreferences: { contextIsolation: true, sandbox: true },
