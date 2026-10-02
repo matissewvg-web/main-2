@@ -1,0 +1,75 @@
+{
+  "name": "the-break-5",
+  "productName": "The Break 5",
+  "version": "0.1.0",
+  "description": "The Break 5 - bedrijfsapp voor taken, projecten, contacten, vergaderingen en bestanden",
+  "main": "electron/main.js",
+  "author": "The Break 5",
+  "license": "UNLICENSED",
+  "private": true,
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "server": "node --no-warnings server/standalone.js",
+    "start": "vite build && electron .",
+    "dist:win": "vite build && electron-builder --win --x64 --publish never"
+  },
+  "build": {
+    "appId": "nl.thebreak5.app",
+    "productName": "The Break 5",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "electron/**",
+      "server/**",
+      "dist/**",
+      "package.json"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "build/icon.png"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "shortcutName": "The Break 5",
+      "artifactName": "The-Break-5-Setup-${version}.${ext}"
+    },
+    "portable": {
+      "artifactName": "The-Break-5-Portable-${version}.${ext}"
+    }
+  },
+  "dependencies": {
+    "express": "^5.2.1"
+  },
+  "devDependencies": {
+    "@tiptap/extension-placeholder": "^3.31.4",
+    "@tiptap/extension-task-item": "^3.31.4",
+    "@tiptap/extension-task-list": "^3.31.4",
+    "@tiptap/pm": "^3.31.4",
+    "@tiptap/react": "^3.31.4",
+    "@tiptap/starter-kit": "^3.31.4",
+    "@vitejs/plugin-react": "^6.1.1",
+    "electron": "^44.5.1",
+    "electron-builder": "^26.15.3",
+    "lucide-react": "^1.49.0",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0",
+    "vite": "^8.3.2"
+  }
+}
