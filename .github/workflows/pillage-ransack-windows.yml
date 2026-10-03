@@ -1,0 +1,74 @@
+name: Build Pillage Ransack (Windows)
+
+on:
+  push:
+    branches: ['**']
+    paths:
+      - 'pillage-ransack/app.html'
+      - 'pillage-ransack/engine.js'
+      - 'pillage-ransack/build.mjs'
+      - 'pillage-ransack/desktop/**'
+      - '.github/workflows/pillage-ransack-windows.yml'
+  workflow_dispatch:
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    permissions:
+      contents: write
+    defaults:
+      run:
+        working-directory: pillage-ransack/desktop
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: pillage-ransack/desktop/package-lock.json
+
+      # The game itself: app.html + engine.js -> index.html, bundled into the app as game.html.
+      - name: Build the game page
+        run: |
+          node ../build.mjs
+          Copy-Item ../index.html game.html
+
+      - name: Engine tests
+        working-directory: pillage-ransack
+        run: node --test test/engine.test.js
+
+      - name: Install
+        run: npm ci
+
+      - name: Package .exe
+        run: npx electron-builder --win --x64 --publish never
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Pillage-Ransack-Windows
+          path: pillage-ransack/desktop/release/*.exe
+          if-no-files-found: error
+
+      # One fixed release, refreshed on every build, so this link never changes:
+      # https://github.com/<owner>/<repo>/releases/download/pillage-ransack/Pillage-Ransack-Setup.exe
+      # make_latest stays false so other apps keep the repo's "latest" download link.
+      - name: Publish release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: pillage-ransack
+          name: Pillage Ransack for Windows
+          make_latest: false
+          overwrite_files: true
+          files: |
+            pillage-ransack/desktop/release/Pillage-Ransack-Setup.exe
+            pillage-ransack/desktop/release/Pillage-Ransack-Portable.exe
+          body: |
+            ## Download
+            - **Pillage-Ransack-Setup.exe**: installer with a desktop shortcut (recommended)
+            - **Pillage-Ransack-Portable.exe**: runs without installing
+
+            The whole game runs offline and saves campaigns on your PC. Shared online campaigns
+            live in the claude.ai version (menu: Game > Play online); use Export / Import JSON to move a campaign between them.
+            Windows warns because the app is not code-signed: click *More info*, then *Run anyway*.

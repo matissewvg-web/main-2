@@ -1,0 +1,58 @@
+{
+  "name": "pillage-ransack",
+  "productName": "Pillage Ransack",
+  "version": "1.0.0",
+  "description": "Pillage Ransack for Windows: the campaign map and raid tracker, offline, saved on your PC",
+  "main": "main.js",
+  "author": "Matisse",
+  "license": "UNLICENSED",
+  "private": true,
+  "scripts": {
+    "start": "electron .",
+    "dist:win": "electron-builder --win --x64 --publish never"
+  },
+  "build": {
+    "appId": "app.pillageransack.desktop",
+    "productName": "Pillage Ransack",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "main.js",
+      "game.html",
+      "icon.png",
+      "package.json"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "icon.png"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "shortcutName": "Pillage Ransack",
+      "artifactName": "Pillage-Ransack-Setup.${ext}"
+    },
+    "portable": {
+      "artifactName": "Pillage-Ransack-Portable.${ext}"
+    }
+  },
+  "devDependencies": {
+    "electron": "44.5.1",
+    "electron-builder": "26.15.3"
+  }
+}

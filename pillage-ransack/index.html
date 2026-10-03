@@ -70,14 +70,26 @@ h1, h2, h3 { margin: 0; text-wrap: balance; font-weight: 700; }
 .brand h1 { font: 700 var(--step-3)/1 var(--font-display); color: var(--fg); letter-spacing: 0.01em; }
 .brand h1 span { color: var(--seal-text); }
 .brand .sub { margin: 2px 0 0; color: var(--fg-muted); font-size: var(--step--1); overflow-wrap: anywhere; }
-.stats { display: flex; flex-wrap: wrap; gap: 8px 22px; margin: 0; }
-.stats div { min-width: 0; }
-.stats dt { font: 400 var(--step--1)/1.2 var(--font-map); letter-spacing: 0.08em; color: var(--fg-muted); }
-.stats dd { margin: 2px 0 0; font-weight: 700; font-size: var(--step-1); font-variant-numeric: tabular-nums; white-space: nowrap; }
-.stats dd small { font-weight: 400; color: var(--fg-muted); font-size: var(--step--1); }
-.morale { display: inline-block; width: 54px; height: 6px; border-radius: 3px; background: var(--table-3); vertical-align: middle; margin-left: 6px; overflow: hidden; }
-.morale i { display: block; height: 100%; background: var(--brass); }
 .season-ctl { display: flex; align-items: center; gap: 8px; }
+/* HUD: who is playing and how their kingdom stands, in the kingdom's colour */
+.hud { display: grid; grid-template-columns: minmax(220px, auto) repeat(4, minmax(0, 1fr)); gap: 0; border: 1px solid var(--line); border-left: 6px solid var(--kc, var(--brass)); border-radius: var(--radius); background: var(--table-2); }
+.hud > * { margin: 0; padding: 10px 14px; min-width: 0; }
+.hud > * + * { border-left: 1px solid var(--line); }
+.hud .who { display: flex; align-items: center; gap: 10px; }
+.hud .who strong { display: block; font: 700 var(--step-1)/1.1 var(--font-display); overflow-wrap: anywhere; }
+.hud .who span { display: block; font-size: var(--step--1); color: var(--fg-muted); }
+.hud .who .turn { display: inline-block; color: var(--brass-ink); margin-top: 3px; padding: 1px 8px; border-radius: 999px; background: var(--brass); color: var(--brass-ink); font-size: 11px; font-weight: 700; }
+.tile dt { display: flex; align-items: center; gap: 6px; font: 400 var(--step--1)/1.2 var(--font-map); letter-spacing: 0.08em; color: var(--fg-muted); }
+.tile dt svg { flex: 0 0 auto; }
+.tile dd { margin: 3px 0 0; }
+.tile .val { font-weight: 700; font-size: var(--step-2); line-height: 1.05; font-variant-numeric: tabular-nums; }
+.tile .val small { font-size: var(--step--1); font-weight: 400; color: var(--fg-muted); }
+.tile .ctx { display: block; margin-top: 3px; font-size: 12px; color: var(--fg-muted); font-variant-numeric: tabular-nums; }
+.up { color: var(--good-text); }
+.down { color: var(--critical-text); }
+.meter { position: relative; display: block; height: 6px; margin-top: 5px; border-radius: 3px; background: var(--table); overflow: visible; }
+.meter i { display: block; height: 100%; border-radius: 3px; background: var(--brass); }
+.meter b { position: absolute; top: -3px; bottom: -3px; width: 2px; background: var(--fg-muted); }
 .season-now strong { display: block; font: 700 var(--step-1)/1.1 var(--font-display); white-space: nowrap; }
 
 /* buttons & fields */
@@ -219,9 +231,13 @@ h1, h2, h3 { margin: 0; text-wrap: balance; font-weight: 700; }
 
 /* ledger panel */
 .panel { grid-area: panel; position: sticky; top: calc(env(safe-area-inset-top, 0px) + 12px); max-height: calc(100vh - 24px); display: flex; flex-direction: column; border-radius: var(--radius); background: var(--table-2); border: 1px solid var(--line); min-width: 0; }
-.tabs { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); border-bottom: 1px solid var(--line); }
-.tabs button { border: 0; background: transparent; padding: 10px 4px; min-height: 44px; cursor: pointer; color: var(--fg-muted); font: 400 var(--step--1)/1.1 var(--font-map); letter-spacing: 0.06em; border-bottom: 2px solid transparent; }
-.tabs button[aria-selected="true"] { color: var(--fg); border-bottom-color: var(--brass); }
+.tabs { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); border-bottom: 1px solid var(--line); position: sticky; top: env(safe-area-inset-top, 0px); z-index: 4; background: var(--table-2); border-radius: var(--radius) var(--radius) 0 0; }
+.tabs button { position: relative; display: flex; flex-direction: column; align-items: center; gap: 3px; border: 0; background: transparent; padding: 8px 2px 7px; min-height: 52px; cursor: pointer; color: var(--fg-muted); font: 400 12px/1.1 var(--font-map); letter-spacing: 0.05em; border-bottom: 3px solid transparent; }
+.tabs button:hover { color: var(--fg); background: var(--table-3); }
+.tabs button svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+.tabs button[aria-selected="true"] { color: var(--fg); border-bottom-color: var(--brass); background: var(--table-3); }
+.tabs .badge { position: absolute; top: 4px; right: calc(50% - 22px); min-width: 17px; height: 17px; padding: 0 4px; border-radius: 9px; background: var(--warning); color: #1b1713; font: 700 11px/17px var(--font-ui); letter-spacing: 0; }
+.tabs .badge.n { background: var(--table); color: var(--fg-muted); border: 1px solid var(--line); line-height: 15px; }
 .tab-body { padding: 14px; overflow-y: auto; display: grid; gap: 14px; align-content: start; min-height: 0; }
 .tab-body h2 { font: 700 var(--step-2)/1.1 var(--font-display); overflow-wrap: anywhere; }
 .tab-body h3 { font: 400 var(--step-0)/1.2 var(--font-map); letter-spacing: 0.06em; color: var(--fg-muted); border-bottom: 1px solid var(--line); padding-bottom: 4px; }
@@ -281,8 +297,6 @@ h1, h2, h3 { margin: 0; text-wrap: balance; font-weight: 700; }
 .swatches input:disabled + span { opacity: 0.25; cursor: not-allowed; }
 .editor { display: grid; gap: 10px; padding-top: 6px; border-top: 1px dashed var(--line); }
 .arms-row { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 12px; align-items: start; }
-.playing { display: flex; align-items: center; gap: 8px; min-width: 0; }
-.playing select { min-height: 36px; padding: 4px 8px; border-radius: var(--radius); border: 1px solid var(--line); background: var(--table); max-width: 220px; }
 .ibar { display: flex; height: 8px; border-radius: 4px; overflow: hidden; background: var(--table); margin-top: 4px; }
 .ibar i { display: block; height: 100%; }
 .kchip { display: inline-flex; align-items: center; gap: 6px; min-width: 0; }
@@ -296,6 +310,20 @@ h1, h2, h3 { margin: 0; text-wrap: balance; font-weight: 700; }
 .picklist button:hover { border-color: var(--fg-faint); }
 .picklist .nm { font-weight: 700; min-width: 0; overflow-wrap: anywhere; }
 .picklist .mt { font-size: var(--step--1); color: var(--fg-muted); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.logbar { display: grid; gap: 8px; }
+.logbar .row > .field { flex: 1 1 140px; }
+.typechips { display: flex; flex-wrap: wrap; gap: 6px; }
+.typechips button { border: 1px solid var(--line); background: var(--table); color: var(--fg-muted); border-radius: 999px; padding: 4px 11px; min-height: 30px; cursor: pointer; font-size: var(--step--1); }
+.typechips button[aria-pressed="true"] { background: var(--brass); border-color: var(--brass); color: var(--brass-ink); font-weight: 700; }
+.lseason { display: grid; gap: 6px; }
+.lseason > h4 { position: sticky; top: 52px; z-index: 1; margin: 0; padding: 6px 2px; background: var(--table-2); display: flex; flex-wrap: wrap; justify-content: space-between; gap: 2px 10px; font: 400 var(--step-0)/1.2 var(--font-map); letter-spacing: 0.05em; color: var(--fg); border-bottom: 1px solid var(--line); }
+.lseason > h4 small { font: 400 12px/1.4 var(--font-ui); letter-spacing: 0; color: var(--fg-muted); font-variant-numeric: tabular-nums; }
+.nums { display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: var(--step--1); color: var(--fg-muted); font-variant-numeric: tabular-nums; }
+.nums b { color: var(--fg); }
+.log li.event { border-left-color: var(--fg-muted); }
+.log .tag { display: inline-block; padding: 0 7px; border-radius: 999px; border: 1px solid var(--line); font-size: 11px; font-weight: 700; letter-spacing: 0.04em; color: var(--fg-muted); vertical-align: 1px; }
+.log mark { background: rgba(250, 178, 25, 0.35); color: inherit; border-radius: 2px; }
+.log li.milestone { border-left-color: var(--brass); }
 .log { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
 .log li { display: grid; gap: 6px; padding: 9px 10px; border-radius: var(--radius); background: var(--table); border: 1px solid var(--line); border-left-width: 4px; min-width: 0; }
 .log li.success { border-left-color: var(--good); }
@@ -328,6 +356,11 @@ details[open] summary { margin-bottom: 8px; }
 .toast { position: fixed; left: 50%; bottom: calc(env(safe-area-inset-bottom, 0px) + 18px); transform: translateX(-50%) translateY(20px); opacity: 0; transition: opacity 0.2s, transform 0.2s; z-index: 10; max-width: min(520px, calc(100vw - 32px)); padding: 10px 16px; border-radius: var(--radius); background: var(--parchment); color: var(--map-ink); font-weight: 500; box-shadow: 0 8px 30px #000a; pointer-events: none; }
 .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 
+@media (max-width: 1100px) and (min-width: 701px) {
+  .hud { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .hud > .who { grid-column: 1 / -1; border-bottom: 1px solid var(--line); }
+  .hud > .tile:nth-child(2) { border-left: 0; }
+}
 @media (max-width: 1180px) {
   .layout { grid-template-columns: minmax(0, 1fr); grid-template-areas: "map" "panel" "chron"; }
   .panel { position: static; max-height: none; }
@@ -335,8 +368,6 @@ details[open] summary { margin-bottom: 8px; }
 }
 @media (max-width: 700px) {
   .brand h1 { font-size: var(--step-2); }
-  .stats { gap: 6px 16px; width: 100%; }
-  .stats dd { font-size: var(--step-0); }
   .season-ctl { width: 100%; }
   .season-ctl .season-now { flex: 1 1 auto; }
   .legend { gap: 6px 18px; }
@@ -346,7 +377,13 @@ details[open] summary { margin-bottom: 8px; }
   .grid3 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .tabs button { font-size: 11px; letter-spacing: 0.02em; }
   .gen-grid { grid-template-columns: minmax(0, 1fr); }
-  .playing { width: 100%; }
+  .hud { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .hud > .who { grid-column: 1 / -1; border-bottom: 1px solid var(--line); }
+  .hud > * + * { border-left: 0; }
+  .hud > .tile:nth-child(odd) { border-left: 1px solid var(--line); }
+  .hud > .tile:nth-child(n + 4) { border-top: 1px solid var(--line); }
+  .tile .val { font-size: var(--step-1); }
+  .tabs button { font-size: 11px; }
   .ktoggle { flex-basis: 100%; }
   .ktab small { max-width: 120px; }
 }
@@ -364,8 +401,6 @@ details[open] summary { margin-bottom: 8px; }
       <h1>Pillage <span>Ransack</span></h1>
       <p class="sub" id="campaignTitle">Loading the campaign…</p>
     </div>
-    <dl class="stats" id="stats"></dl>
-    <div class="playing" id="playing"></div>
     <div class="season-ctl">
       <button class="btn icon" id="seasonBack" type="button" aria-label="Go back a season" title="Go back a season">&#9666;</button>
       <div class="season-now"><span class="eyebrow">Season</span><strong id="seasonNow">&nbsp;</strong></div>
@@ -374,6 +409,7 @@ details[open] summary { margin-bottom: 8px; }
   </header>
 
   <nav class="kbar" id="kbar" aria-label="Kingdoms and players" hidden></nav>
+  <section class="hud" id="hud" aria-label="Your kingdom" aria-live="polite"></section>
 
   <div class="banner" id="exampleBanner" hidden>
     <p><b>This is an example campaign.</b> Its raids are made up to show every territory state. Start your own when you're ready; the example stays until you delete it.</p>
@@ -581,11 +617,11 @@ details[open] summary { margin-bottom: 8px; }
 
     <aside class="panel" aria-label="Campaign ledger">
       <div class="tabs" role="tablist">
-        <button type="button" role="tab" id="tab-territory" aria-selected="true" aria-controls="tabBody" data-tab="territory">Territory</button>
-        <button type="button" role="tab" id="tab-raid" aria-selected="false" aria-controls="tabBody" data-tab="raid">Raid</button>
-        <button type="button" role="tab" id="tab-log" aria-selected="false" aria-controls="tabBody" data-tab="log">Log</button>
-        <button type="button" role="tab" id="tab-kingdoms" aria-selected="false" aria-controls="tabBody" data-tab="kingdoms">Kingdoms</button>
-        <button type="button" role="tab" id="tab-campaign" aria-selected="false" aria-controls="tabBody" data-tab="campaign">Campaign</button>
+        <button type="button" role="tab" id="tab-territory" aria-selected="true" aria-controls="tabBody" data-tab="territory"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6l5-2 6 2 5-2v14l-5 2-6-2-5 2z"/><path d="M9 4v14M15 6v14"/></svg><span>Territory</span><span class="badge" id="badge-territory" hidden></span></button>
+        <button type="button" role="tab" id="tab-raid" aria-selected="false" aria-controls="tabBody" data-tab="raid"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 19l9-9M14 10l3-6 3 3-6 3"/><path d="M7 13l4 4M4 20l2-2"/></svg><span>Raid</span><span class="badge" id="badge-raid" hidden></span></button>
+        <button type="button" role="tab" id="tab-log" aria-selected="false" aria-controls="tabBody" data-tab="log"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h10l3 3v15H6z"/><path d="M9 9h7M9 13h7M9 17h4"/></svg><span>Log</span><span class="badge" id="badge-log" hidden></span></button>
+        <button type="button" role="tab" id="tab-kingdoms" aria-selected="false" aria-controls="tabBody" data-tab="kingdoms"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h14v7c0 5-3 8-7 10-4-2-7-5-7-10z"/><path d="M12 8v8M8 12h8"/></svg><span>Kingdoms</span><span class="badge" id="badge-kingdoms" hidden></span></button>
+        <button type="button" role="tab" id="tab-campaign" aria-selected="false" aria-controls="tabBody" data-tab="campaign"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M5 19l2-2M17 7l2-2"/></svg><span>Campaign</span><span class="badge" id="badge-campaign" hidden></span></button>
       </div>
       <div class="tab-body" id="tabBody" role="tabpanel"></div>
     </aside>
@@ -3730,6 +3766,9 @@ details[open] summary { margin-bottom: 8px; }
   const H = E.MAP_H;
   const reduceMotion = !!(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches);
   const inViewer = !!(window.claude && typeof window.claude.use === 'function');
+  // The Windows app loads this page from disk with ?desktop=1; campaigns then live on that PC.
+  const onDesktop = !inViewer && /[?&]desktop=1\b/.test(location.search);
+  const LOCAL_WHERE = onDesktop ? 'saved on this PC' : 'saved in this browser';
 
   // Seasonal terrain colours. The map is always parchment, so these are fixed values.
   const SEASON_PALETTE = {
@@ -3782,6 +3821,11 @@ details[open] summary { margin-bottom: 8px; }
     roundFrom: null, // kingdom the current round of turns started with
     pickCapital: null, // kingdom whose capital the next map tap sets
     logFilter: '',
+    logType: 'all',
+    logQuery: '',
+    logSeason: '',
+    logCsv: null,
+    editRaid: null,
   };
 
   /* ---------- small helpers ---------- */
@@ -4304,8 +4348,13 @@ details[open] summary { margin-bottom: 8px; }
   }
 
   function recompute() {
-    S.result = E.replay(S.campaign);
-    E.snapshot(S.campaign, S.result);
+    const c = S.campaign;
+    S.result = E.replay(c);
+    E.snapshot(c, S.result);
+    // The same campaign with only last seasons' events: what each kingdom had when this season began.
+    const now = S.result.nowIdx;
+    const before = (x) => E.seasonIndex(x.year, x.season) < now;
+    S.seasonStart = E.replay(Object.assign({}, c, { raids: c.raids.filter(before), adjustments: c.adjustments.filter(before) }));
   }
 
   function commit(message) {
@@ -5256,16 +5305,9 @@ details[open] summary { margin-bottom: 8px; }
     const k = K();
     const ks = r.kingdoms.get(k.id);
     const multi = c.kingdoms.length > 1;
-    $('campaignTitle').textContent = c.name + (c.example ? ' (example)' : '') + ' · ' + (c.shared && store.mode === 'cloud' ? 'shared campaign' : store.mode === 'cloud' ? 'synced to your claude.ai account' : 'saved in this browser');
-    $('playing').hidden = multi;
-    $('playing').innerHTML = multi ? '' : shieldSVG(k.arms, 28, k.name + ' coat of arms') + '<div><span class="eyebrow">' + esc(k.ruler.title + ' ' + k.ruler.name) + '</span><strong style="display:block;font:700 var(--step-1)/1.1 var(--font-display)">' + esc(k.name) + '</strong></div>';
+    $('campaignTitle').textContent = c.name + (c.example ? ' (example)' : '') + ' · ' + (c.shared && store.mode === 'cloud' ? 'shared campaign' : store.mode === 'cloud' ? 'synced to your claude.ai account' : LOCAL_WHERE);
     renderKbar();
-    $('stats').innerHTML =
-      '<div><dt>Treasury</dt><dd>' + fmt(ks.treasury) + ' <small>gold</small></dd></div>' +
-      '<div><dt>Army</dt><dd>' + fmt(ks.army) + ' <small>men' + (ks.inField ? ', ' + ks.inField + ' raiding' : '') + '</small></dd></div>' +
-      '<div><dt>Morale</dt><dd>' + ks.morale + '<span class="morale" aria-hidden="true"><i style="width:' + ks.morale + '%"></i></span></dd></div>' +
-      '<div><dt>Realm</dt><dd>' + Math.round(ks.progressPct) + '% <small>conquered</small></dd></div>' +
-      (r.winner ? '<div><dt>War</dt><dd>' + esc(kOf(r.winner).name) + ' <small>won</small></dd></div>' : '');
+    renderHud();
     $('seasonNow').textContent = seasonText(c.year, c.season);
     const idx = r.nowIdx;
     const busy = c.raids.some((x) => E.seasonIndex(x.year, x.season) >= idx) || c.adjustments.some((x) => E.seasonIndex(x.year, x.season) >= idx) || c.milestones.some((x) => E.seasonIndex(x.year, x.season) >= idx);
@@ -5279,6 +5321,40 @@ details[open] summary { margin-bottom: 8px; }
       const lands = S.geo.landCount;
       $('freshText').innerHTML = '<b>A fresh random map:</b> ' + esc(E.SHAPE_LABEL[E.mapShape(c.map)].toLowerCase()) + (lands > 1 ? ' with ' + lands + ' landmasses' : '') + ', ' + c.territories.length + ' territories, ' + S.geo.rivers.length + ' river' + (S.geo.rivers.length === 1 ? '' : 's') + (multi ? ', ' + c.kingdoms.length + ' kingdoms' : ', home at ' + esc(terr(k.capital).name)) + '. It is kept once you log a raid or press Keep.';
     }
+  }
+
+  const HUD_ICON = {
+    gold: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><ellipse cx="12" cy="7" rx="7" ry="3"/><path d="M5 7v5c0 1.7 3.1 3 7 3s7-1.3 7-3V7M5 12v5c0 1.7 3.1 3 7 3s7-1.3 7-3v-5"/></svg>',
+    army: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 3l7 3v5c0 5-3 8-7 10-4-2-7-5-7-10V6z"/></svg>',
+    morale: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M5 21V4M5 4h11l-2 4 2 4H5"/></svg>',
+    realm: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 20l6-12 4 6 3-4 5 10z"/></svg>',
+  };
+  function delta(n, unit) {
+    if (!n) return '<span>no change this season</span>';
+    return '<span class="' + (n > 0 ? 'up' : 'down') + '">' + (n > 0 ? '\u25b2 ' : '\u25bc ') + signed(n) + (unit ? ' ' + unit : '') + '</span> this season';
+  }
+  function moraleWord(m) {
+    return m >= 80 ? 'High' : m >= 50 ? 'Steady' : m >= 25 ? 'Wavering' : 'Breaking';
+  }
+  // The HUD: who is playing, and four tiles that each say what the number means.
+  function renderHud() {
+    const c = S.campaign;
+    const r = S.result;
+    const k = K();
+    const ks = r.kingdoms.get(k.id);
+    const was = S.seasonStart ? S.seasonStart.kingdoms.get(k.id) : null;
+    const hud = $('hud');
+    hud.style.setProperty('--kc', E.kingdomColor(k));
+    const who = atTable(k.id);
+    const out = c.raids.filter((x) => x.by === k.id && x.outcome === 'ongoing').length;
+    const multi = c.kingdoms.length > 1;
+    const goalLeft = Math.max(0, Math.ceil((c.goalPct / 100) * ks.totalTargets) - ks.conquered);
+    hud.innerHTML =
+      '<div class="who">' + shieldSVG(k.arms, 40, k.name + ' coat of arms') + '<div><strong>' + esc(k.name) + '</strong><span>' + esc(k.ruler.title + ' ' + k.ruler.name) + (who ? ' \u00b7 ' + esc(playerName(who)) + ' at the table' : '') + '</span>' + (r.winner ? '<span class="turn">' + esc(kOf(r.winner).name) + ' has won</span>' : multi ? '<span class="turn">' + (who ? esc(playerName(who)) + '\u2019s turn' : 'Playing now') + '</span>' : '') + '</div></div>' +
+      '<dl class="tile"><dt>' + HUD_ICON.gold + 'Treasury</dt><dd><span class="val">' + fmt(ks.treasury) + ' <small>gold</small></span><span class="ctx">' + delta(was ? ks.treasury - was.treasury : 0, 'gold') + '</span></dd></dl>' +
+      '<dl class="tile"><dt>' + HUD_ICON.army + 'Army</dt><dd><span class="val">' + fmt(ks.army) + ' <small>men</small></span><span class="ctx">' + fmt(ks.army - ks.inField) + ' at home' + (ks.inField ? ' \u00b7 ' + ks.inField + ' raiding in ' + out + ' raid' + (out === 1 ? '' : 's') : '') + '</span></dd></dl>' +
+      '<dl class="tile"><dt>' + HUD_ICON.morale + 'Morale</dt><dd><span class="val">' + ks.morale + ' <small>' + moraleWord(ks.morale) + '</small></span><span class="meter" aria-hidden="true"><i style="width:' + ks.morale + '%"></i></span><span class="ctx">' + delta(was ? ks.morale - was.morale : 0) + '</span></dd></dl>' +
+      '<dl class="tile"><dt>' + HUD_ICON.realm + 'Realm</dt><dd><span class="val">' + Math.round(ks.progressPct) + '% <small>conquered</small></span><span class="meter" aria-hidden="true"><i style="width:' + Math.min(100, ks.progressPct) + '%;background:' + E.kingdomColor(k) + '"></i><b style="left:calc(' + c.goalPct + '% - 1px)"></b></span><span class="ctx">' + ks.conquered + ' held \u00b7 ' + (ks.progressPct >= c.goalPct ? 'goal reached' : goalLeft + ' more for the ' + c.goalPct + '% goal') + '</span></dd></dl>';
   }
 
   // One tap per kingdom: shield, name, who plays it. "Next kingdom" passes the turn round the table.
@@ -5394,8 +5470,25 @@ details[open] summary { margin-bottom: 8px; }
   /* ---------- ledger panel ---------- */
 
   function renderTabs() {
-    document.querySelectorAll('.tabs button').forEach((b) => b.setAttribute('aria-selected', String(b.dataset.tab === S.tab)));
+    document.querySelectorAll('.tabs button').forEach((b) => {
+      const on = b.dataset.tab === S.tab;
+      b.setAttribute('aria-selected', String(on));
+      b.tabIndex = on ? 0 : -1;
+    });
     $('tabBody').setAttribute('aria-labelledby', 'tab-' + S.tab);
+    const c = S.campaign;
+    if (!c) return;
+    const badge = (tab, text, neutral, title) => {
+      const b = $('badge-' + tab);
+      b.hidden = !text;
+      b.textContent = text || '';
+      b.classList.toggle('n', !!neutral);
+      if (title) b.title = title;
+    };
+    const out = c.raids.filter((x) => x.outcome === 'ongoing').length;
+    badge('log', out ? String(out) : '', false, out + ' raid' + (out === 1 ? '' : 's') + ' under way');
+    badge('kingdoms', c.kingdoms.length > 1 ? String(c.kingdoms.length) : '', true, c.kingdoms.length + ' kingdoms');
+    badge('raid', S.plan.target && terr(S.plan.target) ? '\u2022' : '', false, S.plan.target && terr(S.plan.target) ? 'Target: ' + terr(S.plan.target).name : '');
   }
 
   function renderPanel() {
@@ -5425,26 +5518,37 @@ details[open] summary { margin-bottom: 8px; }
     const id = esc(r.id);
     let html = '<li class="' + r.outcome + '" data-raid="' + id + '">';
     const multi = S.campaign.kingdoms.length > 1;
-    html += '<div class="top"><span class="who">' + (multi ? kChip(kOf(r.by), 14) + ': ' : '') + esc(terrName(r.sourceTerritory === 'base' ? 'base' : r.sourceTerritory, r.by)) + ' → ' + esc(terrName(r.targetTerritory)) + '</span><span class="when">' + esc(seasonText(r.year, r.season)) + '</span></div>';
+    const hl = opts && opts.hl ? opts.hl : esc;
+    html += '<div class="top"><span class="who">' + (multi ? kChip(kOf(r.by), 14) + ': ' : '') + hl(terrName(r.sourceTerritory === 'base' ? 'base' : r.sourceTerritory, r.by)) + ' → ' + hl(terrName(r.targetTerritory)) + '</span><span class="when">' + esc(seasonText(r.year, r.season)) + '</span></div>';
     html += '<div class="what"><span class="outcome ' + r.outcome + '">' + o.sym + ' ' + o.label + '</span>';
     if (r.warband) html += ' · <b>' + r.warband + '</b> raiders';
     const logger = r.playerId && (S.campaign.players || []).find((p) => p.id === r.playerId);
     if (logger) html += ' \u00b7 logged by ' + esc(playerName(logger));
     if (r.outcome !== 'ongoing') html += ' · <b>' + r.losses + '</b> lost · <b>' + fmt(r.lootGained) + '</b> gold';
     html += '</div>';
-    if (r.notes) html += '<div class="note">' + esc(r.notes) + '</div>';
+    if (r.notes) html += '<div class="note">' + hl(r.notes) + '</div>';
     if (opts && opts.controls) {
       if (S.resolving === r.id) {
         html += '<form class="grid2" data-form="resolve" data-raid="' + id + '">';
         html += '<div class="field"><label for="resLosses">Men lost</label><input id="resLosses" type="number" min="0" step="1" value="0" inputmode="numeric"></div>';
         html += '<div class="field"><label for="resLoot">Gold taken</label><input id="resLoot" type="number" min="0" step="1" value="0" inputmode="numeric"></div>';
         html += '<div class="actions" style="grid-column:1/-1"><button class="btn small primary" type="submit" name="outcome" value="success">Won</button><button class="btn small danger" type="submit" name="outcome" value="failure">Lost</button><button class="btn small ghost" type="button" data-action="cancel-resolve">Cancel</button></div></form>';
+      } else if (S.editRaid === r.id) {
+        html += '<form class="editor" data-form="edit-raid" data-raid="' + id + '">';
+        html += '<div class="grid2"><div class="field"><label for="erOutcome">Outcome</label><select id="erOutcome">' + ['ongoing', 'success', 'failure'].map((k) => '<option value="' + k + '"' + (k === r.outcome ? ' selected' : '') + '>' + OUTCOME[k].label + '</option>').join('') + '</select></div>';
+        html += '<div class="field"><label for="erWarband">Raiders sent</label><input id="erWarband" type="number" min="1" step="1" inputmode="numeric" value="' + (r.warband || 1) + '"></div>';
+        html += '<div class="field"><label for="erLosses">Men lost</label><input id="erLosses" type="number" min="0" step="1" inputmode="numeric" value="' + (r.losses || 0) + '"></div>';
+        html += '<div class="field"><label for="erLoot">Gold taken</label><input id="erLoot" type="number" min="0" step="1" inputmode="numeric" value="' + (r.lootGained || 0) + '"></div></div>';
+        html += '<div class="field"><label for="erNotes">Notes</label><input id="erNotes" maxlength="200" value="' + esc(r.notes || '') + '"></div>';
+        html += '<p class="hint">Losses and gold only count once the raid is won or lost. The map recalculates from every raid, so editing an old one can change who holds what now.</p>';
+        html += '<div class="actions"><button class="btn small primary" type="submit">Save changes</button><button class="btn small ghost" type="button" data-action="cancel-edit-raid">Cancel</button></div></form>';
       } else if (S.confirm === 'raid:' + r.id) {
         html += '<div class="confirm"><span>Delete this raid? The map recalculates without it.</span><button class="btn small danger" type="button" data-action="delete-raid" data-raid="' + id + '">Delete</button><button class="btn small ghost" type="button" data-action="cancel-confirm">Keep</button></div>';
       } else {
         html += '<div class="actions">';
         if (r.outcome === 'ongoing') html += '<button class="btn small primary" type="button" data-action="resolve" data-raid="' + id + '">Record the result</button>';
         html += '<button class="btn small ghost" type="button" data-action="focus-raid" data-raid="' + id + '">Show on map</button>';
+        html += '<button class="btn small ghost" type="button" data-action="edit-raid" data-raid="' + id + '">Edit</button>';
         html += '<button class="btn small ghost" type="button" data-action="ask-delete-raid" data-raid="' + id + '">Delete</button></div>';
       }
     }
@@ -5609,20 +5713,165 @@ details[open] summary { margin-bottom: 8px; }
     $('planWarn').innerHTML = warn.map((w) => '<div class="callout warn">' + esc(w) + '</div>').join('');
   }
 
+  /* ---------- the log: the campaign chronicle ---------- */
+
+  const LOG_TYPES = [
+    ['all', 'Everything'],
+    ['raids', 'Raids'],
+    ['ongoing', 'Under way'],
+    ['success', 'Won'],
+    ['failure', 'Lost'],
+    ['treasury', 'Treasury'],
+    ['milestones', 'Milestones'],
+  ];
+
+  // Every raid, treasury entry and milestone as one list, newest season first.
+  function logEntries() {
+    const c = S.campaign;
+    const kn = (kid) => (kid && kOf(kid) ? kOf(kid).name : '');
+    const out = [];
+    for (const x of c.raids) {
+      const logger = x.playerId && (c.players || []).find((p) => p.id === x.playerId);
+      out.push({ type: 'raid', idx: E.seasonIndex(x.year, x.season), ts: x.timestamp || 0, kingdom: x.by, raid: x, text: [terrName(x.sourceTerritory === 'base' ? 'base' : x.sourceTerritory, x.by), terrName(x.targetTerritory), kn(x.by), x.notes || '', logger ? playerName(logger) : '', OUTCOME[x.outcome].label].join(' ') });
+    }
+    for (const x of c.adjustments) out.push({ type: 'adjust', idx: E.seasonIndex(x.year, x.season), ts: x.timestamp || 0, kingdom: x.kingdom, adj: x, text: [x.note || '', kn(x.kingdom), 'treasury'].join(' ') });
+    for (const m of S.result.milestones) out.push({ type: 'milestone', idx: m.idx, ts: m.timestamp || 0, kingdom: m.kingdom || null, ms: m, text: [m.label, kn(m.kingdom)].join(' ') });
+    return out;
+  }
+
+  function logMatches(e) {
+    const t = S.logType;
+    if (S.logFilter && e.kingdom && e.kingdom !== S.logFilter) return false;
+    if (S.logFilter && !e.kingdom && e.type !== 'milestone') return false;
+    if (S.logSeason !== '' && e.idx !== Number(S.logSeason)) return false;
+    if (t === 'raids' && e.type !== 'raid') return false;
+    if ((t === 'ongoing' || t === 'success' || t === 'failure') && !(e.type === 'raid' && e.raid.outcome === t)) return false;
+    if (t === 'treasury' && e.type !== 'adjust') return false;
+    if (t === 'milestones' && e.type !== 'milestone') return false;
+    const q = S.logQuery.trim().toLowerCase();
+    return !q || e.text.toLowerCase().includes(q);
+  }
+
+  function highlighter() {
+    const q = S.logQuery.trim();
+    if (!q) return esc;
+    const re = new RegExp('(' + q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + ')', 'ig');
+    return (text) => esc(text).replace(re, '<mark>$1</mark>');
+  }
+
+  function raidTotals(raids) {
+    const done = raids.filter((x) => x.outcome !== 'ongoing');
+    return {
+      n: raids.length,
+      won: raids.filter((x) => x.outcome === 'success').length,
+      lost: raids.filter((x) => x.outcome === 'failure').length,
+      out: raids.length - done.length,
+      loot: done.reduce((s2, x) => s2 + (x.lootGained || 0), 0),
+      fallen: done.reduce((s2, x) => s2 + (x.losses || 0), 0),
+    };
+  }
+
+  function adjustLine(a, hl) {
+    const multi = S.campaign.kingdoms.length > 1;
+    const parts = [];
+    if (a.treasury) parts.push('<b>' + signed(a.treasury) + '</b> gold');
+    if (a.army) parts.push('<b>' + signed(a.army) + '</b> men');
+    if (a.morale) parts.push('<b>' + signed(a.morale) + '</b> morale');
+    let html = '<li class="event"><div class="top"><span class="who">' + (multi && kOf(a.kingdom) ? kChip(kOf(a.kingdom), 14) + ': ' : '') + '<span class="tag">TREASURY</span> ' + hl(a.note || 'Adjustment') + '</span><span class="when">' + esc(seasonText(a.year, a.season)) + '</span></div>';
+    html += '<div class="what">' + (parts.join(' · ') || 'No change') + '</div>';
+    if (S.confirm === 'adj:' + a.id) html += '<div class="confirm"><span>Remove this entry? The totals recalculate without it.</span><button class="btn small danger" type="button" data-action="delete-adj" data-id="' + esc(a.id) + '">Remove</button><button class="btn small ghost" type="button" data-action="cancel-confirm">Keep</button></div>';
+    else html += '<div class="actions"><button class="btn small ghost" type="button" data-action="ask-delete-adj" data-id="' + esc(a.id) + '">Remove</button></div>';
+    return html + '</li>';
+  }
+
+  function milestoneLine(m, hl) {
+    const multi = S.campaign.kingdoms.length > 1;
+    const k = m.kingdom && kOf(m.kingdom);
+    let html = '<li class="milestone"><div class="top"><span class="who">' + (multi && k && !m.auto ? kChip(k, 14) + ': ' : '') + '<span class="tag">' + (m.auto ? 'MILESTONE' : 'NOTE') + '</span> ' + hl(m.label) + '</span><span class="when">' + esc(seasonText(m.year, m.season)) + '</span></div>';
+    const acts = [];
+    if (m.territory && terr(m.territory)) acts.push('<button class="btn small ghost" type="button" data-action="select" data-id="' + esc(m.territory) + '">Show ' + esc(terr(m.territory).name) + '</button>');
+    if (!m.auto) acts.push('<button class="btn small ghost" type="button" data-action="delete-ms" data-id="' + esc(m.id) + '">Remove</button>');
+    if (acts.length) html += '<div class="actions">' + acts.join('') + '</div>';
+    return html + '</li>';
+  }
+
+  function logList() {
+    const all = logEntries();
+    const shown = all.filter(logMatches);
+    const hl = highlighter();
+    let html = '';
+    if (S.logCsv) html += '<div class="field"><label for="csvOut">Saving files isn’t available here. Copy this CSV instead:</label><textarea id="csvOut" class="json-box" readonly>' + esc(S.logCsv) + '</textarea></div>';
+    const tot = raidTotals(shown.filter((e) => e.type === 'raid').map((e) => e.raid));
+    const filtered = shown.length !== all.length;
+    html += '<div class="callout">' + (filtered ? 'Showing <b>' + shown.length + '</b> of ' + all.length + ' entries. ' : '<b>' + all.length + '</b> entries. ') + (tot.n ? '<b>' + tot.n + '</b> raid' + (tot.n === 1 ? '' : 's') + ': <b>' + tot.won + '</b> won, <b>' + tot.lost + '</b> lost' + (tot.out ? ', <b>' + tot.out + '</b> under way' : '') + '. <b>' + fmt(tot.loot) + '</b> gold taken, <b>' + fmt(tot.fallen) + '</b> men lost.' : '') + ' The last 10 raids are drawn on the map.</div>';
+    if (!shown.length) return html + '<div class="empty"><p>Nothing matches. Clear the search or pick another filter.</p><button class="btn" type="button" data-action="log-clear">Clear filters</button></div>';
+    const groups = new Map();
+    for (const e of shown) {
+      if (!groups.has(e.idx)) groups.set(e.idx, []);
+      groups.get(e.idx).push(e);
+    }
+    const order = { milestone: 0, adjust: 1, raid: 2 };
+    for (const idx of [...groups.keys()].sort((x, y) => y - x)) {
+      const list = groups.get(idx).sort((x, y) => y.ts - x.ts || order[x.type] - order[y.type]);
+      const s0 = E.seasonFromIndex(idx);
+      const t = raidTotals(list.filter((e) => e.type === 'raid').map((e) => e.raid));
+      const gold = list.reduce((sum, e) => sum + (e.type === 'raid' && e.raid.outcome !== 'ongoing' ? e.raid.lootGained || 0 : 0) + (e.type === 'adjust' ? Number(e.adj.treasury) || 0 : 0), 0);
+      const bits = [];
+      if (t.n) bits.push(t.n + ' raid' + (t.n === 1 ? '' : 's') + (t.won || t.lost ? ' (' + t.won + ' won, ' + t.lost + ' lost)' : ''));
+      if (gold) bits.push(signed(gold) + ' gold');
+      if (t.fallen) bits.push(t.fallen + ' men lost');
+      html += '<section class="lseason"><h4><span>' + esc(seasonText(s0.year, s0.season)) + (idx === S.result.nowIdx ? ' · now' : '') + '</span><small>' + esc(bits.join(' · ') || list.length + ' entr' + (list.length === 1 ? 'y' : 'ies')) + '</small></h4><ol class="log">';
+      html += list.map((e) => (e.type === 'raid' ? raidLine(e.raid, { controls: true, hl }) : e.type === 'adjust' ? adjustLine(e.adj, hl) : milestoneLine(e.ms, hl))).join('');
+      html += '</ol></section>';
+    }
+    return html;
+  }
+
   function logTab() {
     const c = S.campaign;
     const multi = c.kingdoms.length > 1;
-    const all = c.raids.slice().sort((a, b) => b.timestamp - a.timestamp);
-    if (!all.length) return '<div class="empty"><p>No raids logged yet. Pick a target on the map, then log it from <b>Raid</b>.</p><button class="btn primary" type="button" data-tab-go="raid">Plan a raid</button></div>';
-    const raids = S.logFilter ? all.filter((x) => x.by === S.logFilter) : all;
-    const won = raids.filter((x) => x.outcome === 'success').length;
-    const lost = raids.filter((x) => x.outcome === 'failure').length;
-    const loot = raids.reduce((s, x) => s + (x.outcome === 'ongoing' ? 0 : x.lootGained), 0);
-    const fallen = raids.reduce((s, x) => s + (x.outcome === 'ongoing' ? 0 : x.losses), 0);
-    let html = '';
-    if (multi) html += '<div class="field"><label for="logFilter">Show raids by</label><select id="logFilter"><option value="">Every kingdom</option>' + c.kingdoms.map((k) => '<option value="' + esc(k.id) + '"' + (S.logFilter === k.id ? ' selected' : '') + '>' + esc(k.name) + '</option>').join('') + '</select></div>';
-    html += '<div class="callout"><b>' + raids.length + '</b> raids: <b>' + won + '</b> won, <b>' + lost + '</b> lost, <b>' + (raids.length - won - lost) + '</b> under way. <b>' + fmt(loot) + '</b> gold taken, <b>' + fmt(fallen) + '</b> men lost. The last 10 are drawn on the map.</div>';
-    return html + '<ol class="log">' + raids.map((x) => raidLine(x, { controls: true })).join('') + '</ol>';
+    if (!c.raids.length && !c.adjustments.length && !S.result.milestones.length) return '<div class="empty"><p>Nothing has happened yet. Pick a target on the map, then log it from <b>Raid</b>.</p><button class="btn primary" type="button" data-tab-go="raid">Plan a raid</button></div>';
+    const seasons = [...new Set(logEntries().map((e) => e.idx))].sort((a, b) => b - a);
+    if (S.logSeason !== '' && !seasons.includes(Number(S.logSeason))) S.logSeason = '';
+    let html = '<div class="logbar" role="search">';
+    html += '<div class="row"><div class="field"><label for="logQuery">Search the log</label><input id="logQuery" type="search" placeholder="Territory, kingdom, note…" value="' + esc(S.logQuery) + '" autocomplete="off"></div>';
+    html += '<div class="field"><label for="logSeason">Season</label><select id="logSeason"><option value="">All seasons</option>' + seasons.map((i) => { const s0 = E.seasonFromIndex(i); return '<option value="' + i + '"' + (String(i) === String(S.logSeason) ? ' selected' : '') + '>' + esc(seasonText(s0.year, s0.season)) + '</option>'; }).join('') + '</select></div>';
+    if (multi) html += '<div class="field"><label for="logFilter">Kingdom</label><select id="logFilter"><option value="">Every kingdom</option>' + c.kingdoms.map((k) => '<option value="' + esc(k.id) + '"' + (S.logFilter === k.id ? ' selected' : '') + '>' + esc(k.name) + '</option>').join('') + '</select></div>';
+    html += '</div><div class="typechips" role="group" aria-label="Show">' + LOG_TYPES.map(([v, l]) => '<button type="button" data-action="log-type" data-type="' + v + '" aria-pressed="' + (S.logType === v) + '">' + l + '</button>').join('') + '</div>';
+    html += '<div class="actions"><button class="btn small" type="button" data-action="log-csv">Export the log as CSV</button>' + (S.logQuery || S.logFilter || S.logSeason !== '' || S.logType !== 'all' ? '<button class="btn small ghost" type="button" data-action="log-clear">Clear filters</button>' : '') + '</div></div>';
+    return html + '<div id="logList" aria-live="polite">' + logList() + '</div>';
+  }
+
+  function csvCell(v) {
+    const t = v == null ? '' : String(v);
+    return /[",\n\r]/.test(t) || /^[=+\-@]/.test(t) ? '"' + t.replace(/"/g, '""') + '"' : t;
+  }
+
+  // The filtered log as a spreadsheet: one row per entry, oldest first.
+  function logCSV() {
+    const c = S.campaign;
+    const rows = [['Year', 'Season', 'Type', 'Kingdom', 'From', 'To', 'Outcome', 'Raiders', 'Men lost', 'Gold', 'Army change', 'Morale change', 'Logged by', 'Notes']];
+    const kn = (kid) => (kid && kOf(kid) ? kOf(kid).name : '');
+    const shown = logEntries().filter(logMatches).sort((a, b) => a.idx - b.idx || a.ts - b.ts);
+    for (const e of shown) {
+      const s0 = E.seasonFromIndex(e.idx);
+      const season = s0.season.charAt(0).toUpperCase() + s0.season.slice(1);
+      if (e.type === 'raid') {
+        const x = e.raid;
+        const done = x.outcome !== 'ongoing';
+        const logger = x.playerId && (c.players || []).find((p) => p.id === x.playerId);
+        rows.push([s0.year, season, 'Raid', kn(x.by), terrName(x.sourceTerritory === 'base' ? 'base' : x.sourceTerritory, x.by), terrName(x.targetTerritory), OUTCOME[x.outcome].label, x.warband || '', done ? x.losses || 0 : '', done ? x.lootGained || 0 : '', '', '', logger ? playerName(logger) : '', x.notes || '']);
+      } else if (e.type === 'adjust') {
+        const a = e.adj;
+        rows.push([s0.year, season, 'Treasury', kn(a.kingdom), '', '', '', '', '', a.treasury || 0, a.army || 0, a.morale || 0, '', a.note || '']);
+      } else rows.push([s0.year, season, e.ms.auto ? 'Milestone' : 'Note', kn(e.ms.kingdom), '', e.ms.territory ? terrName(e.ms.territory) : '', '', '', '', '', '', '', '', e.ms.label]);
+    }
+    return '﻿' + rows.map((r) => r.map(csvCell).join(',')).join('\r\n') + '\r\n';
+  }
+
+  function refreshLogList() {
+    const box = $('logList');
+    if (box) box.innerHTML = logList();
   }
 
   function swatchRadios(name, options, current, disabled) {
@@ -5717,7 +5966,7 @@ details[open] summary { margin-bottom: 8px; }
     const list = [...S.campaigns.values()].sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
     let html = '';
     const cls = store.error ? 'error' : store.mode === 'cloud' ? 'cloud' : '';
-    const msg = store.error || (c.shared && store.mode === 'cloud' ? 'Shared campaign: everyone who can open this page can follow it live; players with edit access can play.' : store.mode === 'cloud' ? 'Saved to your claude.ai account. Open this page on another device to carry on there.' : inViewer ? 'Saved in this browser only (not signed in, or this view can’t save to your account). Export JSON to keep a backup.' : 'Saved in this browser only. Export JSON to keep a backup or move to another device.');
+    const msg = store.error || (c.shared && store.mode === 'cloud' ? 'Shared campaign: everyone who can open this page can follow it live; players with edit access can play.' : store.mode === 'cloud' ? 'Saved to your claude.ai account. Open this page on another device to carry on there.' : inViewer ? 'Saved in this browser only (not signed in, or this view can’t save to your account). Export JSON to keep a backup.' : onDesktop ? 'Saved on this PC (the Windows app). Shared online play needs the claude.ai version; export JSON to move a campaign there.' : 'Saved in this browser only. Export JSON to keep a backup or move to another device.');
     html += '<div class="store-status ' + cls + '"><i></i><span>' + esc(msg) + (c.saved ? '' : ' This campaign is saved once you change something.') + '</span></div>';
     html += '<div class="field"><label for="campPick">Campaign</label><select id="campPick">' + list.map((x) => '<option value="' + esc(x.id) + '"' + (x.id === c.id ? ' selected' : '') + '>' + esc(x.name) + (x.example ? ' (example)' : '') + (x.shared ? ' (shared)' : '') + ' · ' + esc(seasonText(x.year, x.season)) + '</option>').join('') + '</select></div>';
 
@@ -5828,6 +6077,7 @@ details[open] summary { margin-bottom: 8px; }
 
   function setTab(tab) {
     S.tab = tab;
+    savePrefs({ tab });
     S.confirm = null;
     S.resolving = null;
     if (tab !== 'campaign') S.jsonBox = null;
@@ -5933,10 +6183,9 @@ details[open] summary { margin-bottom: 8px; }
     } else toast('Back to ' + seasonText(c.year, c.season) + '.');
   }
 
-  async function exportCampaigns(list, label) {
-    const json = E.exportJSON(list.map(stripRuntime));
-    const safe = label.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'campaign';
-    const filename = 'pillage-ransack-' + safe + '.json';
+  // Offers a file to the player. Resolves true when saved (or declined), false
+  // when this browser can't save files, so the caller can show the text instead.
+  async function saveFile(filename, text, type) {
     if (inViewer) {
       let dl = null;
       try {
@@ -5944,21 +6193,17 @@ details[open] summary { margin-bottom: 8px; }
       } catch (e) {
         dl = null;
       }
-      if (dl) {
-        try {
-          await dl.save({ filename, data: json });
-          toast('Saved ' + filename);
-        } catch (e) {
-          if (e && e.code === 'declined') return;
-          showJson(json, 'Saving files isn’t available here. Copy this JSON instead:');
-        }
-        return;
+      if (!dl) return false;
+      try {
+        await dl.save({ filename, data: text });
+        toast('Saved ' + filename);
+      } catch (e) {
+        if (!(e && e.code === 'declined')) return false;
       }
-      showJson(json, 'Saving files isn’t available here. Copy this JSON instead:');
-      return;
+      return true;
     }
     try {
-      const url = URL.createObjectURL(new Blob([json], { type: 'application/json' }));
+      const url = URL.createObjectURL(new Blob([text], { type: type || 'text/plain' }));
       const a = document.createElement('a');
       a.href = url;
       a.download = filename;
@@ -5967,9 +6212,31 @@ details[open] summary { margin-bottom: 8px; }
       a.remove();
       setTimeout(() => URL.revokeObjectURL(url), 4000);
       toast('Saved ' + filename);
+      return true;
     } catch (e) {
-      showJson(json, 'Copy this JSON:');
+      return false;
     }
+  }
+
+  function fileSafe(label) {
+    return label.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'campaign';
+  }
+
+  async function exportLogCSV() {
+    const csv = logCSV();
+    S.logCsv = null;
+    const ok = await saveFile('pillage-ransack-' + fileSafe(S.campaign.name) + '-log.csv', csv, 'text/csv');
+    if (!ok) {
+      S.logCsv = csv;
+      refreshLogList();
+    }
+  }
+
+  async function exportCampaigns(list, label) {
+    const json = E.exportJSON(list.map(stripRuntime));
+    const filename = 'pillage-ransack-' + fileSafe(label) + '.json';
+    if (await saveFile(filename, json, 'application/json')) return;
+    showJson(json, inViewer ? 'Saving files isn’t available here. Copy this JSON instead:' : 'Copy this JSON:');
   }
 
   function showJson(text, label) {
@@ -6062,7 +6329,7 @@ details[open] summary { margin-bottom: 8px; }
   }
 
   document.addEventListener('click', (e) => {
-    const tabBtn = e.target.closest('.tabs button');
+    const tabBtn = e.target.closest('.tabs button[data-tab]');
     if (tabBtn) return setTab(tabBtn.dataset.tab);
     const go = e.target.closest('[data-tab-go]');
     if (go) return setTab(go.dataset.tabGo);
@@ -6235,7 +6502,34 @@ details[open] summary { margin-bottom: 8px; }
       case 'ask-delete-raid':
         S.confirm = 'raid:' + rid;
         S.resolving = null;
+        S.editRaid = null;
         renderPanel();
+        break;
+      case 'edit-raid':
+        S.editRaid = rid;
+        S.resolving = null;
+        S.confirm = null;
+        renderPanel();
+        setTimeout(() => $('erOutcome') && $('erOutcome').focus(), 0);
+        break;
+      case 'cancel-edit-raid':
+        S.editRaid = null;
+        renderPanel();
+        break;
+      case 'log-type':
+        S.logType = a.dataset.type;
+        document.querySelectorAll('.typechips button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.type === S.logType)));
+        refreshLogList();
+        break;
+      case 'log-clear':
+        S.logType = 'all';
+        S.logQuery = '';
+        S.logSeason = '';
+        S.logFilter = '';
+        renderPanel();
+        break;
+      case 'log-csv':
+        exportLogCSV();
         break;
       case 'delete-raid':
         c.raids = c.raids.filter((x) => x.id !== rid);
@@ -6319,6 +6613,21 @@ details[open] summary { margin-bottom: 8px; }
     else if (kind === 'resolve') {
       const outcome = e.submitter && e.submitter.value === 'failure' ? 'failure' : 'success';
       resolveRaid(f.dataset.raid, outcome, f);
+    } else if (kind === 'edit-raid') {
+      const r = c.raids.find((x) => x.id === f.dataset.raid);
+      if (!r) return;
+      const n = (id, min) => Math.max(min, Math.round(Number($(id).value) || 0));
+      const was = r.outcome;
+      r.outcome = ['ongoing', 'success', 'failure'].includes($('erOutcome').value) ? $('erOutcome').value : r.outcome;
+      r.warband = n('erWarband', 1);
+      r.losses = r.outcome === 'ongoing' ? 0 : Math.min(n('erLosses', 0), r.warband);
+      r.lootGained = r.outcome === 'ongoing' ? 0 : n('erLoot', 0);
+      r.notes = $('erNotes').value.trim().slice(0, 200);
+      if (was === 'ongoing' && r.outcome !== 'ongoing') r.resolvedAt = Date.now();
+      if (r.outcome === 'ongoing') delete r.resolvedAt;
+      r.updatedAt = Date.now();
+      S.editRaid = null;
+      commit('Raid at ' + terrName(r.targetTerritory) + ' updated; the map has been recalculated.');
     } else if (kind === 'rename') {
       const v = $('terrRename').value.trim().slice(0, 60);
       if (!v) return toast('A territory needs a name.');
@@ -6392,6 +6701,16 @@ details[open] summary { margin-bottom: 8px; }
 
   document.addEventListener('input', (e) => {
     const t = e.target;
+    if (t.id === 'logQuery') {
+      S.logQuery = t.value.slice(0, 80);
+      refreshLogList();
+      const clr = document.querySelector('[data-action="log-clear"]');
+      if (!clr && S.logQuery) {
+        const bar = document.querySelector('.logbar .actions');
+        if (bar) bar.insertAdjacentHTML('beforeend', '<button class="btn small ghost" type="button" data-action="log-clear">Clear filters</button>');
+      }
+      return;
+    }
     if (t.closest('form[data-form="plan"]')) {
       readPlan();
       updatePlanDerived();
@@ -6425,6 +6744,11 @@ details[open] summary { margin-bottom: 8px; }
     }
     if (t.id === 'logFilter') {
       S.logFilter = t.value;
+      renderPanel();
+      return;
+    }
+    if (t.id === 'logSeason') {
+      S.logSeason = t.value;
       renderPanel();
       return;
     }
@@ -6483,6 +6807,21 @@ details[open] summary { margin-bottom: 8px; }
     });
   });
 
+  // Arrow keys move between tabs, as in any tab list.
+  document.querySelector('.tabs').addEventListener('keydown', (e) => {
+    const tabs = [...document.querySelectorAll('.tabs button[data-tab]')];
+    const i = tabs.findIndex((b) => b.dataset.tab === S.tab);
+    let j = -1;
+    if (e.key === 'ArrowRight') j = (i + 1) % tabs.length;
+    else if (e.key === 'ArrowLeft') j = (i - 1 + tabs.length) % tabs.length;
+    else if (e.key === 'Home') j = 0;
+    else if (e.key === 'End') j = tabs.length - 1;
+    if (j < 0) return;
+    e.preventDefault();
+    setTab(tabs[j].dataset.tab);
+    tabs[j].focus();
+  });
+
   document.addEventListener('keydown', (e) => {
     if (e.altKey || e.ctrlKey || e.metaKey || !S.campaign) return;
     const tag = (e.target.tagName || '').toLowerCase();
@@ -6518,6 +6857,8 @@ details[open] summary { margin-bottom: 8px; }
     }
     const want = (hot && hot.active) || prefs().active;
     const first = S.campaigns.get(want) || local.sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0))[0] || makeExample();
+    const TABS = ['territory', 'raid', 'log', 'kingdoms', 'campaign'];
+    if (TABS.includes(prefs().tab)) S.tab = prefs().tab;
     if (hot) {
       S.tab = hot.tab || S.tab;
       S.mode = hot.mode || S.mode;
