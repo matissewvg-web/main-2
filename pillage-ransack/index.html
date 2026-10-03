@@ -242,6 +242,27 @@ h1, h2, h3 { margin: 0; text-wrap: balance; font-weight: 700; }
 .actions { display: flex; flex-wrap: wrap; gap: 8px; }
 .empty { display: grid; gap: 10px; padding: 6px 0; color: var(--fg-muted); }
 .empty p { margin: 0; }
+.kbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; min-width: 0; }
+.ktoggle { display: flex; gap: 6px; overflow-x: auto; min-width: 0; flex: 1 1 420px; padding-bottom: 2px; scrollbar-width: thin; }
+.ktab { display: flex; align-items: center; gap: 8px; flex: 0 0 auto; min-height: 48px; padding: 6px 12px 6px 8px; border-radius: var(--radius); border: 1px solid var(--line); border-bottom: 3px solid var(--kc); background: var(--table-2); color: var(--fg-muted); cursor: pointer; text-align: left; }
+.ktab:hover { border-color: var(--fg-faint); border-bottom-color: var(--kc); }
+.ktab[aria-selected="true"] { background: var(--table-3); color: var(--fg); box-shadow: 0 0 0 1px var(--kc) inset; }
+.ktab:disabled { opacity: 0.55; cursor: not-allowed; }
+.ktab .ktxt { display: grid; line-height: 1.15; min-width: 0; }
+.ktab b { font: 700 var(--step-0)/1.15 var(--font-display); white-space: nowrap; }
+.ktab small { font-size: 12px; white-space: nowrap; max-width: 180px; overflow: hidden; text-overflow: ellipsis; }
+.ktab kbd { font: 11px var(--font-ui); color: var(--fg-faint); border: 1px solid var(--line); border-radius: 3px; padding: 0 4px; margin-left: 2px; }
+@media (hover: none) { .ktab kbd { display: none; } }
+.kbar-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.kbar-tools label { font-size: var(--step--1); color: var(--fg-muted); }
+.kbar-tools select { min-height: 36px; padding: 4px 8px; border-radius: var(--radius); border: 1px solid var(--line); background: var(--table); max-width: 180px; }
+.pchips { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.pchip { display: inline-flex; align-items: center; gap: 4px; padding: 2px 4px 2px 10px; border-radius: 999px; background: var(--table-3); border: 1px solid var(--line); font-size: var(--step--1); }
+.pchip button { border: 0; background: transparent; color: var(--fg-muted); cursor: pointer; width: 22px; height: 22px; border-radius: 50%; }
+.pchip button:hover { color: var(--fg); background: var(--table-2); }
+.pchip.me { border-color: var(--brass); }
+.nudge { animation: nudge 1.2s ease-in-out 3; }
+@keyframes nudge { 50% { box-shadow: 0 0 0 4px #d4ac5288; } }
 .kingdoms { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
 .kcard { display: grid; gap: 8px; padding: 10px 12px; border-radius: var(--radius); background: var(--table); border: 1px solid var(--line); border-left: 5px solid var(--kc, var(--line)); min-width: 0; }
 .kcard.active { box-shadow: 0 0 0 1px var(--brass) inset; }
@@ -326,10 +347,11 @@ details[open] summary { margin-bottom: 8px; }
   .tabs button { font-size: 11px; letter-spacing: 0.02em; }
   .gen-grid { grid-template-columns: minmax(0, 1fr); }
   .playing { width: 100%; }
-  .playing select { max-width: none; flex: 1 1 auto; }
+  .ktoggle { flex-basis: 100%; }
+  .ktab small { max-width: 120px; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .target-ring, .raid-line.ongoing, .plan-line, .reveal .cell { animation: none; }
+  .target-ring, .raid-line.ongoing, .plan-line, .reveal .cell, .nudge { animation: none; }
   .flash { animation: none; }
   .toast { transition: none; }
 }
@@ -350,6 +372,8 @@ details[open] summary { margin-bottom: 8px; }
       <button class="btn primary" id="seasonNext" type="button">End season</button>
     </div>
   </header>
+
+  <nav class="kbar" id="kbar" aria-label="Kingdoms and players" hidden></nav>
 
   <div class="banner" id="exampleBanner" hidden>
     <p><b>This is an example campaign.</b> Its raids are made up to show every territory state. Start your own when you're ready; the example stays until you delete it.</p>
@@ -2516,6 +2540,8 @@ details[open] summary { margin-bottom: 8px; }
   /* ---------- kingdoms ---------- */
 
   const MAX_KINGDOMS = 4;
+  // Players are people, kingdoms are sides: extra players join a kingdom as co-rulers.
+  const MAX_PLAYERS = 16;
   // Map colours for kingdoms. Validated as a set (all pairs, colour-blind
   // simulation and normal vision) on the parchment; a fifth could not pass,
   // which is why a campaign holds at most four kingdoms.
@@ -2589,9 +2615,34 @@ details[open] summary { margin-bottom: 8px; }
       trait: index === 0 && o.plainFirst ? 'none' : pick(rng, Object.keys(TRAITS)),
       capital,
       start: Object.assign({}, DEFAULT_START),
-      ownerId: null,
       updatedAt: o.now || 0,
     };
+  }
+
+  /* ---------- players ---------- */
+
+  // A player is a person at the table (a name) or a claude.ai account (userId), playing for one kingdom.
+  function newPlayer(name, kingdom, opts) {
+    const o = opts || {};
+    return { id: o.id || newId('p'), name: String(name || '').trim().slice(0, 30), kingdom, userId: o.userId || null, updatedAt: o.now || nowMs() };
+  }
+
+  function playersOf(c, kid) {
+    return (c.players || []).filter((p) => p.kingdom === kid);
+  }
+
+  // Shared campaigns: a kingdom with linked accounts can only be played by those accounts;
+  // one without is open. At one screen (no uid) every kingdom is playable.
+  function kingdomPlayable(c, kid, uid) {
+    if (!uid) return true;
+    const linked = playersOf(c, kid).filter((p) => p.userId);
+    return !linked.length || linked.some((p) => p.userId === uid);
+  }
+
+  // Spread names over the kingdoms in turn: four kingdoms and six players gives two teams of two.
+  function assignPlayers(c, names, now) {
+    const list = (names || []).map((n) => String(n || '').trim()).filter(Boolean).slice(0, MAX_PLAYERS);
+    return list.map((name, i) => newPlayer(name, c.kingdoms[i % c.kingdoms.length].id, { id: 'p' + (i + 1), now: now || 0 }));
   }
 
   function kingdomColor(k) {
@@ -2703,7 +2754,7 @@ details[open] summary { margin-bottom: 8px; }
       id: newId('c'),
       name: '',
       seed,
-      version: 2,
+      version: 3,
       createdAt: now,
       updatedAt: now,
       year: 1,
@@ -2714,6 +2765,7 @@ details[open] summary { margin-bottom: 8px; }
       map,
       territories,
       kingdoms: [],
+      players: [],
       raids: [],
       adjustments: [],
       milestones: [],
@@ -2724,6 +2776,7 @@ details[open] summary { margin-bottom: 8px; }
     const krng = mulberry32(hashString('kingdoms:' + seed));
     c.kingdoms = caps.map((cap, i) => randomKingdom(krng, i, cap, territories.find((t) => t.id === cap).name, { plainFirst: nK === 1, now: 0 }));
     if (Array.isArray(o.kingdomSpecs)) o.kingdomSpecs.forEach((spec, i) => c.kingdoms[i] && Object.assign(c.kingdoms[i], spec));
+    c.players = assignPlayers(c, o.players, 0);
     c.name = o.name || campaignName(c);
     return snapshot(c);
   }
@@ -2747,7 +2800,8 @@ details[open] summary { margin-bottom: 8px; }
     for (const a of c.adjustments || []) if (!a.kingdom) a.kingdom = k.id;
     delete c.baseTerritory;
     delete c.start;
-    c.version = 2;
+    c.version = 3;
+    c.players = c.players || [];
     c.deleted = c.deleted || [];
     c.seasonAt = c.seasonAt || 0;
     c.settingsAt = c.settingsAt || 0;
@@ -3161,9 +3215,14 @@ details[open] summary { margin-bottom: 8px; }
     out.raids = mergeList(a.raids, b.raids).sort((x, y) => x.timestamp - y.timestamp);
     out.adjustments = mergeList(a.adjustments, b.adjustments).sort((x, y) => x.timestamp - y.timestamp);
     out.milestones = mergeList(a.milestones, b.milestones).sort((x, y) => x.timestamp - y.timestamp);
+    const porder = (a.players || []).map((x) => x.id).concat((b.players || []).map((x) => x.id).filter((id) => !(a.players || []).some((x) => x.id === id)));
+    const pm = new Map(mergeList(a.players, b.players).map((x) => [x.id, x]));
+    out.players = porder.filter((id) => pm.has(id)).map((id) => pm.get(id));
     const order = (a.kingdoms || []).map((k) => k.id).concat((b.kingdoms || []).map((k) => k.id).filter((id) => !(a.kingdoms || []).some((k) => k.id === id)));
     const km = new Map(mergeList(a.kingdoms, b.kingdoms).map((k) => [k.id, k]));
     out.kingdoms = order.filter((id) => km.has(id)).map((id) => km.get(id));
+    const alive = new Set(out.kingdoms.map((k) => k.id));
+    out.players = out.players.filter((x) => alive.has(x.kingdom));
     const bt = new Map((b.territories || []).map((t) => [t.id, t]));
     out.territories = out.territories.map((t) => {
       const o = bt.get(t.id);
@@ -3403,10 +3462,11 @@ details[open] summary { margin-bottom: 8px; }
           army: Math.max(0, Math.round(num(st.army, DEFAULT_START.army))),
           morale: clamp(Math.round(num(st.morale, DEFAULT_START.morale)), 0, 100),
         },
-        ownerId: safeId(k.ownerId) ? k.ownerId : null,
         updatedAt: num(k.updatedAt, 0),
       });
+      if (safeId(k.ownerId)) legacyOwners.push([id, k.ownerId, num(k.updatedAt, 0)]);
     };
+    const legacyOwners = [];
     if (Array.isArray(raw.kingdoms) && raw.kingdoms.length) {
       if (raw.kingdoms.length > MAX_KINGDOMS) warnings.push('Only the first ' + MAX_KINGDOMS + ' kingdoms were kept.');
       raw.kingdoms.slice(0, MAX_KINGDOMS).forEach((k, i) => k && typeof k === 'object' && addKingdom(k, i));
@@ -3427,6 +3487,30 @@ details[open] summary { margin-bottom: 8px; }
     }
     const kIds = new Set(kingdoms.map((k) => k.id));
     const capOf = new Map(kingdoms.map((k) => [k.capital, k.id]));
+
+    const players = [];
+    const pIds = new Set();
+    const seenUsers = new Set();
+    for (const [i, pl] of (Array.isArray(raw.players) ? raw.players : []).entries()) {
+      if (!pl || typeof pl !== 'object' || players.length >= MAX_PLAYERS) continue;
+      const userId = safeId(pl.userId) ? pl.userId : null;
+      if (userId && seenUsers.has(userId)) continue; // one kingdom per account
+      let id = safeId(pl.id) ? pl.id : 'p' + (i + 1);
+      while (pIds.has(id)) id += 'x';
+      const name = typeof pl.name === 'string' ? pl.name.trim().slice(0, 30) : '';
+      if (!name && !userId) continue;
+      pIds.add(id);
+      if (userId) seenUsers.add(userId);
+      players.push({ id, name, kingdom: kIds.has(pl.kingdom) ? pl.kingdom : kingdoms[0].id, userId, updatedAt: num(pl.updatedAt, 0) });
+    }
+    // Version 2 kept one owner on each kingdom.
+    if (!Array.isArray(raw.players)) {
+      for (const [kid, userId, at] of legacyOwners) {
+        if (seenUsers.has(userId)) continue;
+        seenUsers.add(userId);
+        players.push({ id: 'p-' + kid, name: '', kingdom: kid, userId, updatedAt: at });
+      }
+    }
     for (const t of territories) {
       if (capOf.has(t.id)) t.override = null;
       if (t.overrideBy && !kIds.has(t.overrideBy)) t.overrideBy = null;
@@ -3462,6 +3546,7 @@ details[open] summary { margin-bottom: 8px; }
         };
         if (num(r.updatedAt, 0)) out.updatedAt = num(r.updatedAt, 0);
         if (safeId(r.authorId)) out.authorId = r.authorId;
+        if (safeId(r.playerId)) out.playerId = r.playerId;
         return out;
       });
     if (dropped) warnings.push(dropped + ' raid' + (dropped === 1 ? '' : 's') + ' pointed at unknown territories, at the raider’s own capital, or had no outcome, and were left out.');
@@ -3496,7 +3581,7 @@ details[open] summary { margin-bottom: 8px; }
       id: typeof raw.id === 'string' && raw.id ? raw.id : typeof key === 'string' && key ? key : newId('c'),
       name: typeof raw.name === 'string' && raw.name.trim() ? raw.name.trim().slice(0, 80) : 'Imported campaign',
       seed: typeof raw.seed === 'string' ? raw.seed : String(map.seed),
-      version: 2,
+      version: 3,
       createdAt: normalizeTimestamp(raw.createdAt, nowMs()),
       updatedAt: normalizeTimestamp(raw.updatedAt, nowMs()),
       year,
@@ -3507,6 +3592,7 @@ details[open] summary { margin-bottom: 8px; }
       map,
       territories,
       kingdoms,
+      players,
       raids,
       adjustments,
       milestones,
@@ -3573,6 +3659,7 @@ details[open] summary { margin-bottom: 8px; }
     SHAPE_LABEL,
     GEN_DEFAULTS,
     MAX_KINGDOMS,
+    MAX_PLAYERS,
     KINGDOM_COLORS,
     TINCTURES,
     DIVISIONS,
@@ -3607,6 +3694,10 @@ details[open] summary { margin-bottom: 8px; }
     kingdomOf,
     chooseCapitals,
     mergeCampaigns,
+    newPlayer,
+    playersOf,
+    kingdomPlayable,
+    assignPlayers,
     normGen,
     campaignName,
     territoryFeature,
@@ -3687,6 +3778,8 @@ details[open] summary { margin-bottom: 8px; }
     uid: null, // claude.ai viewer id, when signed in
     names: new Map(), // viewer id -> display name, for claimed kingdoms
     kEdit: null, // kingdom open in the editor
+    playerFor: new Map(), // kingdom id -> the player at the table for it
+    roundFrom: null, // kingdom the current round of turns started with
     pickCapital: null, // kingdom whose capital the next map tap sets
     logFilter: '',
   };
@@ -3768,22 +3861,35 @@ details[open] summary { margin-bottom: 8px; }
   function sharedLive() {
     return !!(S.campaign && S.campaign.shared && store.mode === 'cloud' && S.uid);
   }
-  // In a shared campaign you play the kingdom you claimed (or any unclaimed one); at one screen, any.
+  // In a shared campaign you play a kingdom you've joined (or one nobody's account has); at one screen, any.
   function canPlay(kid) {
-    const k = kOf(kid);
-    return !sharedLive() || !k.ownerId || k.ownerId === S.uid;
+    return E.kingdomPlayable(S.campaign, kid, sharedLive() ? S.uid : null);
+  }
+  function myPlayer() {
+    return S.uid ? (S.campaign.players || []).find((p) => p.userId === S.uid) || null : null;
   }
   function ensureActive() {
     const c = S.campaign;
     if (S.active && c.kingdoms.some((k) => k.id === S.active) && canPlay(S.active)) return;
-    const mine = sharedLive() && c.kingdoms.find((k) => k.ownerId === S.uid);
+    const mine = sharedLive() && myPlayer();
     const free = c.kingdoms.find((k) => canPlay(k.id));
-    S.active = (mine || free || c.kingdoms[0]).id;
+    S.active = (mine ? kOf(mine.kingdom) : free || c.kingdoms[0]).id;
+  }
+  function playerName(p) {
+    if (!p) return '';
+    if (p.userId && p.userId === S.uid) return 'you';
+    return p.name || (p.userId ? S.names.get(p.userId) || 'a player' : 'a player');
   }
   function ownerName(k) {
-    if (!k.ownerId) return '';
-    if (k.ownerId === S.uid) return 'you';
-    return S.names.get(k.ownerId) || 'another player';
+    return E.playersOf(S.campaign, k.id).map(playerName).join(', ');
+  }
+  // The player at the table for the active kingdom (for "logged by").
+  function atTable(kid) {
+    const ps = E.playersOf(S.campaign, kid);
+    const pick = S.playerFor.get(kid);
+    const me = myPlayer();
+    if (me && me.kingdom === kid && sharedLive()) return me;
+    return ps.find((p) => p.id === pick) || ps[0] || null;
   }
 
   // Charges drawn on a 100 x 120 shield; "s" parts are strokes, the rest fills.
@@ -3941,7 +4047,7 @@ details[open] summary { margin-bottom: 8px; }
   }
   // What players actually changed (derived totals left out), to tell whether a merge brought anything new.
   function sig(c) {
-    return JSON.stringify([c.raids, c.adjustments, c.milestones, (c.kingdoms || []).map((k) => [k.id, k.name, k.ruler, k.motto, k.color, k.arms, k.trait, k.capital, k.start, k.ownerId]), c.year, c.season, c.name, c.goalPct, c.territories.map((t) => [t.name, t.override, t.overrideBy || null]), c.deleted, !!c.shared, c.example]);
+    return JSON.stringify([c.raids, c.adjustments, c.milestones, (c.kingdoms || []).map((k) => [k.id, k.name, k.ruler, k.motto, k.color, k.arms, k.trait, k.capital, k.start]), (c.players || []).map((p) => [p.id, p.name, p.kingdom, p.userId]), c.year, c.season, c.name, c.goalPct, c.territories.map((t) => [t.name, t.override, t.overrideBy || null]), c.deleted, !!c.shared, c.example]);
   }
   function adopt(id, incoming) {
     const mine = S.campaigns.get(id);
@@ -4009,7 +4115,7 @@ details[open] summary { margin-bottom: 8px; }
   async function refreshNames() {
     if (!store.user) return;
     const ids = new Set();
-    for (const c of S.campaigns.values()) for (const k of c.kingdoms || []) if (k.ownerId && k.ownerId !== S.uid) ids.add(k.ownerId);
+    for (const c of S.campaigns.values()) for (const p of c.players || []) if (p.userId && p.userId !== S.uid) ids.add(p.userId);
     if (!ids.size) return;
     try {
       const ps = await store.user.profiles([...ids]);
@@ -5151,11 +5257,9 @@ details[open] summary { margin-bottom: 8px; }
     const ks = r.kingdoms.get(k.id);
     const multi = c.kingdoms.length > 1;
     $('campaignTitle').textContent = c.name + (c.example ? ' (example)' : '') + ' · ' + (c.shared && store.mode === 'cloud' ? 'shared campaign' : store.mode === 'cloud' ? 'synced to your claude.ai account' : 'saved in this browser');
-    $('playing').innerHTML =
-      shieldSVG(k.arms, 28, k.name + ' coat of arms') +
-      (multi
-        ? '<div><span class="eyebrow">Playing as</span><select id="playAs" aria-label="Playing as">' + c.kingdoms.map((x) => '<option value="' + esc(x.id) + '"' + (x.id === S.active ? ' selected' : '') + (canPlay(x.id) ? '' : ' disabled') + '>' + esc(x.name) + (x.ownerId ? ' (' + esc(ownerName(x)) + ')' : '') + '</option>').join('') + '</select></div>'
-        : '<div><span class="eyebrow">' + esc(k.ruler.title + ' ' + k.ruler.name) + '</span><strong style="display:block;font:700 var(--step-1)/1.1 var(--font-display)">' + esc(k.name) + '</strong></div>');
+    $('playing').hidden = multi;
+    $('playing').innerHTML = multi ? '' : shieldSVG(k.arms, 28, k.name + ' coat of arms') + '<div><span class="eyebrow">' + esc(k.ruler.title + ' ' + k.ruler.name) + '</span><strong style="display:block;font:700 var(--step-1)/1.1 var(--font-display)">' + esc(k.name) + '</strong></div>';
+    renderKbar();
     $('stats').innerHTML =
       '<div><dt>Treasury</dt><dd>' + fmt(ks.treasury) + ' <small>gold</small></dd></div>' +
       '<div><dt>Army</dt><dd>' + fmt(ks.army) + ' <small>men' + (ks.inField ? ', ' + ks.inField + ' raiding' : '') + '</small></dd></div>' +
@@ -5175,6 +5279,56 @@ details[open] summary { margin-bottom: 8px; }
       const lands = S.geo.landCount;
       $('freshText').innerHTML = '<b>A fresh random map:</b> ' + esc(E.SHAPE_LABEL[E.mapShape(c.map)].toLowerCase()) + (lands > 1 ? ' with ' + lands + ' landmasses' : '') + ', ' + c.territories.length + ' territories, ' + S.geo.rivers.length + ' river' + (S.geo.rivers.length === 1 ? '' : 's') + (multi ? ', ' + c.kingdoms.length + ' kingdoms' : ', home at ' + esc(terr(k.capital).name)) + '. It is kept once you log a raid or press Keep.';
     }
+  }
+
+  // One tap per kingdom: shield, name, who plays it. "Next kingdom" passes the turn round the table.
+  function renderKbar() {
+    const c = S.campaign;
+    const bar = $('kbar');
+    const players = c.players || [];
+    const multi = c.kingdoms.length > 1;
+    bar.hidden = !multi && players.length < 2;
+    if (bar.hidden) return;
+    let html = '';
+    if (multi) {
+      html += '<div class="ktoggle" role="tablist" aria-label="Choose the kingdom you are playing">';
+      c.kingdoms.forEach((k, i) => {
+        const who = ownerName(k);
+        const locked = !canPlay(k.id);
+        html += '<button type="button" role="tab" class="ktab" aria-selected="' + (k.id === S.active) + '" data-action="play-as" data-id="' + esc(k.id) + '" style="--kc:' + E.kingdomColor(k) + '"' + (locked ? ' disabled title="Played by ' + esc(who) + '"' : ' title="Play as ' + esc(k.name) + ' (key ' + (i + 1) + ')"') + '>' + shieldSVG(k.arms, 22) + '<span class="ktxt"><b>' + esc(k.name) + '</b><small>' + esc(who || (sharedLive() ? 'open: join in Kingdoms' : 'no players named')) + (locked ? ' · locked' : '') + '</small></span><kbd aria-hidden="true">' + (i + 1) + '</kbd></button>';
+      });
+      html += '</div>';
+    }
+    html += '<div class="kbar-tools">';
+    const ps = E.playersOf(c, S.active);
+    if (ps.length > 1 && !(sharedLive() && myPlayer() && myPlayer().kingdom === S.active)) {
+      const cur = atTable(S.active);
+      html += '<label for="whoPlays">At the table</label><select id="whoPlays">' + ps.map((p) => '<option value="' + esc(p.id) + '"' + (cur && cur.id === p.id ? ' selected' : '') + '>' + esc(playerName(p)) + '</option>').join('') + '</select>';
+    }
+    if (multi && c.kingdoms.filter((k) => canPlay(k.id)).length > 1) html += '<button class="btn small" type="button" data-action="next-turn" title="Pass to the next kingdom (key ])">Next kingdom ▸</button>';
+    html += '</div>';
+    bar.innerHTML = html;
+  }
+
+  function nextTurn() {
+    const c = S.campaign;
+    const order = c.kingdoms.filter((k) => canPlay(k.id));
+    if (order.length < 2) return;
+    if (!S.roundFrom || !order.some((k) => k.id === S.roundFrom)) S.roundFrom = S.active;
+    const i = order.findIndex((k) => k.id === S.active);
+    const next = order[(i + 1) % order.length];
+    S.active = next.id;
+    S.plan.source = 'base';
+    if (S.kEdit) S.kEdit = canPlay(next.id) ? next.id : null;
+    renderAll();
+    const who = atTable(next.id);
+    if (next.id === S.roundFrom) {
+      toast('Everyone has moved this round. End the season when you\u2019re ready.');
+      const b = $('seasonNext');
+      b.classList.remove('nudge');
+      void b.offsetWidth;
+      b.classList.add('nudge');
+    } else toast((who ? playerName(who) + ', it\u2019s your turn: ' : 'Your turn: ') + next.name + '.');
   }
 
   function renderChronicle() {
@@ -5274,6 +5428,8 @@ details[open] summary { margin-bottom: 8px; }
     html += '<div class="top"><span class="who">' + (multi ? kChip(kOf(r.by), 14) + ': ' : '') + esc(terrName(r.sourceTerritory === 'base' ? 'base' : r.sourceTerritory, r.by)) + ' → ' + esc(terrName(r.targetTerritory)) + '</span><span class="when">' + esc(seasonText(r.year, r.season)) + '</span></div>';
     html += '<div class="what"><span class="outcome ' + r.outcome + '">' + o.sym + ' ' + o.label + '</span>';
     if (r.warband) html += ' · <b>' + r.warband + '</b> raiders';
+    const logger = r.playerId && (S.campaign.players || []).find((p) => p.id === r.playerId);
+    if (logger) html += ' \u00b7 logged by ' + esc(playerName(logger));
     if (r.outcome !== 'ongoing') html += ' · <b>' + r.losses + '</b> lost · <b>' + fmt(r.lootGained) + '</b> gold';
     html += '</div>';
     if (r.notes) html += '<div class="note">' + esc(r.notes) + '</div>';
@@ -5376,7 +5532,7 @@ details[open] summary { margin-bottom: 8px; }
     if (p.target && !targetable(p.target)) p.target = null;
     let html = '<form data-form="plan" class="tab-form" style="display:grid;gap:12px">';
     if (multi) {
-      html += '<div class="field"><label for="planBy">Raiding kingdom</label><select id="planBy">' + c.kingdoms.map((k) => '<option value="' + esc(k.id) + '"' + (k.id === me.id ? ' selected' : '') + (canPlay(k.id) ? '' : ' disabled') + '>' + esc(k.name) + (k.ownerId ? ' (' + esc(ownerName(k)) + ')' : '') + '</option>').join('') + '</select></div>';
+      html += '<div class="field"><label for="planBy">Raiding kingdom</label><select id="planBy">' + c.kingdoms.map((k) => '<option value="' + esc(k.id) + '"' + (k.id === me.id ? ' selected' : '') + (canPlay(k.id) ? '' : ' disabled') + '>' + esc(k.name) + (ownerName(k) ? ' (' + esc(ownerName(k)) + ')' : '') + '</option>').join('') + '</select></div>';
     }
     html += '<p class="hint">Tap a territory on the map to set the target. Dotted outlines mark ' + esc(me.name) + '’s frontier.</p>';
     html += '<div class="field"><label for="planTarget">Target</label><select id="planTarget" required><option value="">Choose a target…</option>' + territoryOptions(p.target, (t) => targetable(t.id)) + '</select></div>';
@@ -5391,6 +5547,11 @@ details[open] summary { margin-bottom: 8px; }
     html += '<div class="grid2"><div class="field"><label for="planLosses">Men lost</label><input id="planLosses" type="number" min="0" step="1" inputmode="numeric" value="' + p.losses + '"></div><div class="field"><label for="planLoot">Gold taken</label><input id="planLoot" type="number" min="0" step="1" inputmode="numeric" value="' + p.loot + '"></div></div>';
     html += '<p class="hint" id="lootHint"></p>';
     html += '<div class="field"><label for="planNotes">Notes</label><textarea id="planNotes" maxlength="500" placeholder="Burned the mill, took the abbot’s silver…">' + esc(p.notes) + '</textarea></div>';
+    const ps = E.playersOf(c, me.id);
+    if (ps.length > 1 && !(sharedLive() && myPlayer() && myPlayer().kingdom === me.id)) {
+      const cur = atTable(me.id);
+      html += '<div class="field"><label for="planWho">Logged by</label><select id="planWho">' + ps.map((pl) => '<option value="' + esc(pl.id) + '"' + (cur && cur.id === pl.id ? ' selected' : '') + '>' + esc(playerName(pl)) + '</option>').join('') + '</select></div>';
+    }
     html += '<div id="planWarn"></div>';
     html += '<button class="btn primary" type="submit" id="planSubmit">Log raid' + (multi ? ' for ' + esc(me.name) : '') + '</button>';
     html += '</form>';
@@ -5423,7 +5584,7 @@ details[open] summary { margin-bottom: 8px; }
     const info = $('routeInfo');
     const odds = $('oddsInfo');
     const warn = [];
-    if (!canPlay(me.id)) warn.push(me.name + ' belongs to ' + ownerName(me) + '. Claim an unclaimed kingdom in the Kingdoms tab to play.');
+    if (!canPlay(me.id)) warn.push(me.name + ' is played by ' + ownerName(me) + '. Join an open kingdom in the Kingdoms tab to play.');
     if (!p.target || !terr(p.target)) {
       info.innerHTML = 'No target yet.';
       odds.textContent = '—';
@@ -5502,20 +5663,24 @@ details[open] summary { margin-bottom: 8px; }
   function kingdomsTab() {
     const c = S.campaign;
     const r = S.result;
-    let html = '<p class="hint">' + (c.kingdoms.length > 1 ? 'Every kingdom raids the same map. ' : '') + (sharedLive() ? 'This campaign is shared: claim a kingdom to play it from your own device.' : store.mode === 'cloud' ? 'Playing together at one screen: pick who is playing at the top. To play from separate devices, share the campaign (Campaign tab).' : 'Playing together at one screen: pick who is playing at the top.') + '</p>';
+    let html = '<p class="hint">' + (c.kingdoms.length > 1 ? 'Every kingdom raids the same map. Switch kingdoms with the bar at the top (or keys 1\u2013' + c.kingdoms.length + '); Next kingdom passes the turn. ' : '') + 'Name the people at the table and put them in a kingdom; several players can rule one kingdom together. ' + (sharedLive() ? 'This campaign is shared: join a kingdom to play it from your own device. Co-rulers can join the same kingdom.' : store.mode === 'cloud' ? 'To play from separate devices, share the campaign (Campaign tab).' : '') + '</p>';
     html += '<ol class="kingdoms">';
     for (const k of c.kingdoms) {
       const s = r.kingdoms.get(k.id);
       html += '<li class="kcard' + (k.id === S.active ? ' active' : '') + '" style="--kc:' + E.kingdomColor(k) + '">';
       html += '<div class="khead">' + shieldSVG(k.arms, 48, k.name + ' coat of arms') + '<div><h3>' + esc(k.name) + '</h3><p>' + esc(k.ruler.title + ' ' + k.ruler.name) + (k.motto ? ' · “' + esc(k.motto) + '”' : '') + '</p></div></div>';
-      html += '<div class="chips"><span class="chip"><span class="kchip"><span class="dotk" style="background:' + E.kingdomColor(k) + '"></span>' + esc((E.KINGDOM_COLORS.find((x) => x.id === k.color) || {}).label || '') + '</span></span><span class="chip" title="' + esc(E.TRAITS[k.trait].note) + '">' + esc(E.TRAITS[k.trait].label) + '</span><span class="chip">Capital: ' + esc(terr(k.capital).name) + (s.capitalHeld ? '' : ' (fallen)') + '</span>' + (k.ownerId ? '<span class="chip">Played by ' + esc(ownerName(k)) + '</span>' : '') + '</div>';
+      html += '<div class="chips"><span class="chip"><span class="kchip"><span class="dotk" style="background:' + E.kingdomColor(k) + '"></span>' + esc((E.KINGDOM_COLORS.find((x) => x.id === k.color) || {}).label || '') + '</span></span><span class="chip" title="' + esc(E.TRAITS[k.trait].note) + '">' + esc(E.TRAITS[k.trait].label) + '</span><span class="chip">Capital: ' + esc(terr(k.capital).name) + (s.capitalHeld ? '' : ' (fallen)') + '</span>' + '</div>';
       html += '<div class="kstats"><span><b>' + fmt(s.treasury) + '</b> gold</span><span><b>' + fmt(s.army) + '</b> men</span><span>morale <b>' + s.morale + '</b></span><span><b>' + Math.round(s.progressPct) + '%</b> conquered</span>' + (s.alive ? '' : '<span>fallen</span>') + '</div>';
+      const ps = E.playersOf(c, k.id);
+      const mine = myPlayer();
+      html += '<div class="pchips"><span class="hint">Players:</span>' + (ps.length ? ps.map((pl) => '<span class="pchip' + (pl.userId && pl.userId === S.uid ? ' me' : '') + '">' + esc(playerName(pl)) + (canPlay(k.id) && (!pl.userId || pl.userId === S.uid) ? '<button type="button" data-action="remove-player" data-id="' + esc(pl.id) + '" aria-label="Remove ' + esc(playerName(pl)) + '">\u2715</button>' : '') + '</span>').join('') : '<span class="hint">' + (sharedLive() ? 'open' : 'none named yet') + '</span>') + '</div>';
+      if (canPlay(k.id) && (c.players || []).length < E.MAX_PLAYERS) html += '<form class="row" data-form="add-player" data-id="' + esc(k.id) + '"><div class="field"><label for="np-' + esc(k.id) + '" class="label">Add a player to ' + esc(k.name) + '</label><input id="np-' + esc(k.id) + '" maxlength="30" placeholder="Name"></div><button class="btn small" type="submit">Add</button></form>';
       html += '<div class="actions">';
       if (k.id !== S.active && canPlay(k.id)) html += '<button class="btn small primary" type="button" data-action="play-as" data-id="' + esc(k.id) + '">Play as ' + esc(k.name) + '</button>';
       if (canPlay(k.id)) html += '<button class="btn small" type="button" data-action="edit-kingdom" data-id="' + esc(k.id) + '">' + (S.kEdit === k.id ? 'Editing…' : 'Customise') + '</button>';
       if (sharedLive()) {
-        if (!k.ownerId) html += '<button class="btn small" type="button" data-action="claim-kingdom" data-id="' + esc(k.id) + '">Claim this kingdom</button>';
-        else if (k.ownerId === S.uid) html += '<button class="btn small ghost" type="button" data-action="release-kingdom" data-id="' + esc(k.id) + '">Release</button>';
+        if (mine && mine.kingdom === k.id) html += '<button class="btn small ghost" type="button" data-action="leave-kingdom" data-id="' + esc(k.id) + '">Leave</button>';
+        else if (canPlay(k.id) || ps.some((pl) => pl.userId)) html += '<button class="btn small" type="button" data-action="join-kingdom" data-id="' + esc(k.id) + '">' + (mine ? 'Switch to ' : 'Join ') + esc(k.name) + '</button>';
       }
       if (c.kingdoms.length > 1 && canPlay(k.id)) html += S.confirm === 'kingdom:' + k.id ? '<span class="confirm">Remove ' + esc(k.name) + ' and its raids? <button class="btn small danger" type="button" data-action="remove-kingdom" data-id="' + esc(k.id) + '">Remove</button><button class="btn small ghost" type="button" data-action="cancel-confirm">Keep</button></span>' : '<button class="btn small ghost" type="button" data-action="ask-remove-kingdom" data-id="' + esc(k.id) + '">Remove</button>';
       html += '</div>';
@@ -5560,6 +5725,7 @@ details[open] summary { margin-bottom: 8px; }
     html += '<div class="preview" id="newPreview" aria-hidden="true"></div><p class="hint" id="newPreviewCap"></p>';
     html += '<div class="grid2"><div class="field"><label for="newShape">Coastline</label><select id="newShape"><option value="random">Random (from the seed)</option>' + E.SHAPES.map((k) => '<option value="' + k + '">' + E.SHAPE_LABEL[k] + '</option>').join('') + '</select></div>';
     html += '<div class="field"><label for="newKingdoms">Kingdoms</label><select id="newKingdoms">' + [1, 2, 3, 4].map((n) => '<option value="' + n + '"' + (n === c.kingdoms.length ? ' selected' : '') + '>' + n + (n === 1 ? ' (solo)' : ' players') + '</option>').join('') + '</select></div></div>';
+    html += '<div class="field"><label for="newPlayers">Players (optional, one name per line)</label><textarea id="newPlayers" rows="3" placeholder="Ragnar\nLisa\nTom"></textarea><p class="hint">Names are spread over the kingdoms in turn; more players than kingdoms makes teams. Up to ' + E.MAX_PLAYERS + '.</p></div>';
     html += '<div class="field"><label for="newCount">Territories: <output id="newCountOut">20</output></label><input id="newCount" type="range" min="' + E.MIN_TERRITORIES + '" max="' + E.MAX_TERRITORIES + '" value="20"></div>';
     html += '<details><summary>Land, borders and riches</summary><div class="gen-grid">' + GEN_FIELDS.map(([key, label, opts]) => '<div class="field"><label for="gen-' + key + '">' + label + '</label><select id="gen-' + key + '">' + opts.map((o, i) => '<option value="' + i + '"' + (i === 1 ? ' selected' : '') + '>' + o + '</option>').join('') + '</select></div>').join('') + '</div><div class="actions" style="margin-top:8px"><button class="btn small" type="button" data-action="roll-gen">↻ Surprise me</button></div></details>';
     html += '<div class="field"><label for="newSeed">Map seed</label><div class="row"><input id="newSeed" value="' + esc(E.randomSeed()) + '" maxlength="40"><button class="btn" type="button" data-action="reroll">↻ Reroll</button></div></div>';
@@ -5567,13 +5733,14 @@ details[open] summary { margin-bottom: 8px; }
     html += '<p class="hint">The same seed and settings always draw the same map. Kingdoms get random names, arms and traits; customise them afterwards in Kingdoms.</p><button class="btn primary" type="submit">Create campaign</button></form>';
 
     html += '<h3>Play together</h3>';
+    html += '<p class="hint">' + c.kingdoms.map((k) => esc(k.name) + ': ' + (ownerName(k) ? esc(ownerName(k)) : 'no players named')).join(' \u00b7 ') + '</p>';
     if (store.mode !== 'cloud') {
-      html += '<p class="hint">At one screen, choose who is playing at the top of the page each turn. Playing from separate devices needs the claude.ai version of this page while signed in.</p>';
+      html += '<p class="hint">At one screen, switch kingdoms with the bar at the top and pass the turn with Next kingdom. Playing from separate devices needs the claude.ai version of this page while signed in.</p>';
     } else if (!c.shared) {
-      html += '<p class="hint">Share this campaign to play it from separate devices. Everyone you share this page with (Share menu on claude.ai) can watch; those with edit access can claim a kingdom and log its raids. Moves from every device merge, so nobody’s raid is lost.</p><div class="actions"><button class="btn" type="button" data-action="share-campaign">Share this campaign</button></div>';
+      html += '<p class="hint">Share this campaign to play it from separate devices. Everyone you share this page with (Share menu on claude.ai) can watch; those with edit access can join a kingdom, alone or as co-rulers, and log its raids. Moves from every device merge, so nobody\u2019s raid is lost.</p><div class="actions"><button class="btn" type="button" data-action="share-campaign">Share this campaign</button></div>';
     } else {
-      const mine = c.kingdoms.find((k) => k.ownerId === S.uid);
-      html += '<p class="hint">Shared. ' + (mine ? 'You play ' + esc(mine.name) + '.' : 'You haven’t claimed a kingdom yet; claim one in Kingdoms.') + ' Players: ' + c.kingdoms.map((k) => esc(k.name) + ' – ' + (k.ownerId ? esc(ownerName(k)) : 'open')).join(', ') + '.</p>';
+      const mine = myPlayer();
+      html += '<p class="hint">Shared. ' + (mine ? 'You play ' + esc(kOf(mine.kingdom).name) + '.' : 'You haven\u2019t joined a kingdom yet; join one in Kingdoms.') + '</p>';
     }
 
     html += '<h3>This campaign</h3><form data-form="settings" style="display:grid;gap:10px">';
@@ -5701,6 +5868,11 @@ details[open] summary { margin-bottom: 8px; }
     p.losses = 0;
     p.loot = 0;
     if (S.uid) raid.authorId = S.uid;
+    const who = $('planWho') ? (c.players || []).find((x) => x.id === $('planWho').value) : atTable(S.active);
+    if (who) {
+      raid.playerId = who.id;
+      S.playerFor.set(S.active, who.id);
+    }
     const msg = (c.kingdoms.length > 1 ? K().name + ': ' : '') + (ongoing ? 'raiders set out for ' + name + '.' : OUTCOME[raid.outcome].label + ' at ' + name + (raid.lootGained ? ': ' + signed(raid.lootGained) + ' gold' : '') + (raid.losses ? ', ' + raid.losses + ' men lost' : '') + '.');
     commit(msg);
   }
@@ -5750,6 +5922,7 @@ details[open] summary { margin-bottom: 8px; }
     c.year = s.year;
     c.season = s.season;
     c.seasonAt = Date.now();
+    S.roundFrom = null; // a new season starts a new round of turns
     S.campaign.updatedAt = Date.now();
     recompute();
     persist(c);
@@ -5866,12 +6039,11 @@ details[open] summary { margin-bottom: 8px; }
     const privateRef = store.col.doc(c.id);
     c.shared = true;
     c.example = false;
-    const k = K();
-    if (!k.ownerId) {
-      k.ownerId = S.uid;
-      k.updatedAt = Date.now();
+    if (!myPlayer()) {
+      c.players = c.players || [];
+      c.players.push(E.newPlayer('', S.active, { userId: S.uid }));
     }
-    commit('Shared. Invite players from the Share menu on claude.ai; each claims a kingdom in Kingdoms.');
+    commit('Shared. Invite players from the Share menu on claude.ai; each joins a kingdom in Kingdoms.');
     try {
       await privateRef.delete();
     } catch (e) {
@@ -5921,10 +6093,11 @@ details[open] summary { margin-bottom: 8px; }
         setTab('raid');
         break;
       case 'play-as':
+        if (!canPlay(a.dataset.id)) break;
         S.active = a.dataset.id;
         S.plan.source = 'base';
+        if (S.kEdit) S.kEdit = a.dataset.id;
         renderAll();
-        toast('Playing as ' + K().name + '.');
         break;
       case 'edit-kingdom':
         S.kEdit = S.kEdit === a.dataset.id ? null : a.dataset.id;
@@ -5956,27 +6129,40 @@ details[open] summary { margin-bottom: 8px; }
         S.pickCapital = a.dataset.id;
         toast('Tap a territory on the map to make it the capital of ' + kOf(a.dataset.id).name + '.');
         break;
-      case 'claim-kingdom': {
+      case 'join-kingdom': {
         const k = kOf(a.dataset.id);
-        for (const x of c.kingdoms) {
-          if (x.ownerId === S.uid) {
-            x.ownerId = null;
-            x.updatedAt = Date.now();
-          }
+        c.players = c.players || [];
+        const mine = myPlayer();
+        if (mine) {
+          mine.kingdom = k.id;
+          mine.updatedAt = Date.now();
+        } else {
+          if (c.players.length >= E.MAX_PLAYERS) return toast('This campaign already has ' + E.MAX_PLAYERS + ' players.');
+          c.players.push(E.newPlayer('', k.id, { userId: S.uid }));
         }
-        k.ownerId = S.uid;
-        k.updatedAt = Date.now();
         S.active = k.id;
-        commit('You now play ' + k.name + '.');
+        commit('You now play ' + k.name + (E.playersOf(c, k.id).length > 1 ? ' with ' + E.playersOf(c, k.id).filter((x) => x.userId !== S.uid).map(playerName).join(', ') : '') + '.');
         break;
       }
-      case 'release-kingdom': {
-        const k = kOf(a.dataset.id);
-        k.ownerId = null;
-        k.updatedAt = Date.now();
-        commit(k.name + ' is open for another player.');
+      case 'leave-kingdom': {
+        const mine = myPlayer();
+        if (!mine) break;
+        c.players = c.players.filter((x) => x.id !== mine.id);
+        c.deleted = (c.deleted || []).concat([mine.id]);
+        commit('You left ' + kOf(a.dataset.id).name + '.');
         break;
       }
+      case 'remove-player': {
+        const pl = (c.players || []).find((x) => x.id === a.dataset.id);
+        if (!pl) break;
+        c.players = c.players.filter((x) => x.id !== pl.id);
+        c.deleted = (c.deleted || []).concat([pl.id]);
+        commit(playerName(pl) + ' left ' + kOf(pl.kingdom).name + '.');
+        break;
+      }
+      case 'next-turn':
+        nextTurn();
+        break;
       case 'add-kingdom': {
         if (c.kingdoms.length >= E.MAX_KINGDOMS) break;
         const used = new Set(c.kingdoms.map((k) => k.capital));
@@ -6004,6 +6190,11 @@ details[open] summary { margin-bottom: 8px; }
         c.adjustments = c.adjustments.filter((x) => x.kingdom !== kid);
         const name = kOf(kid).name;
         c.kingdoms = c.kingdoms.filter((k) => k.id !== kid);
+        for (const pl of (c.players || []).filter((x) => x.kingdom === kid)) {
+          const smallest = c.kingdoms.slice().sort((x, y) => E.playersOf(c, x.id).length - E.playersOf(c, y.id).length)[0];
+          pl.kingdom = smallest.id;
+          pl.updatedAt = Date.now();
+        }
         for (const t of c.territories) {
           if (t.overrideBy === kid) {
             t.overrideBy = null;
@@ -6137,7 +6328,7 @@ details[open] summary { margin-bottom: 8px; }
       commit('Renamed to ' + v + '.');
     } else if (kind === 'new') {
       const shape = $('newShape').value;
-      const nc = E.newCampaign({ name: $('newName').value.trim().slice(0, 80) || undefined, seed: $('newSeed').value.trim() || E.randomSeed(), count: Number($('newCount').value), shape: shape === 'random' ? undefined : shape, kingdoms: Number($('newKingdoms').value), gen: readGen() });
+      const nc = E.newCampaign({ name: $('newName').value.trim().slice(0, 80) || undefined, seed: $('newSeed').value.trim() || E.randomSeed(), count: Number($('newCount').value), shape: shape === 'random' ? undefined : shape, kingdoms: Number($('newKingdoms').value), gen: readGen(), players: $('newPlayers').value.split('\n') });
       nc.saved = false;
       setCampaign(nc, false, true);
       persist(nc);
@@ -6150,6 +6341,20 @@ details[open] summary { margin-bottom: 8px; }
       c.goalPct = Math.max(5, Math.min(100, Math.round(Number($('setGoal').value) || 60)));
       c.settingsAt = Date.now();
       commit('Settings saved.');
+    } else if (kind === 'add-player') {
+      const input = f.querySelector('input');
+      const name = input.value.trim().slice(0, 30);
+      if (!name) return toast('Type a name first.');
+      c.players = c.players || [];
+      if (c.players.length >= E.MAX_PLAYERS) return toast('This campaign already has ' + E.MAX_PLAYERS + ' players.');
+      const pl = E.newPlayer(name, f.dataset.id);
+      c.players.push(pl);
+      if (!S.playerFor.has(f.dataset.id)) S.playerFor.set(f.dataset.id, pl.id);
+      commit(name + ' joins ' + kOf(f.dataset.id).name + '.');
+      setTimeout(() => {
+        const again = $('np-' + f.dataset.id);
+        if (again) again.focus();
+      }, 0);
     } else if (kind === 'kingdom') {
       const k = kOf(f.dataset.id);
       const color = document.querySelector('input[name="kColor"]:checked');
@@ -6212,6 +6417,12 @@ details[open] summary { margin-bottom: 8px; }
       renderAll();
       return;
     }
+    if (t.id === 'whoPlays' || t.id === 'planWho') {
+      S.playerFor.set(S.active, t.value);
+      if (t.id === 'whoPlays' && S.tab === 'raid') renderPanel();
+      if (t.id === 'planWho') renderKbar();
+      return;
+    }
     if (t.id === 'logFilter') {
       S.logFilter = t.value;
       renderPanel();
@@ -6270,6 +6481,20 @@ details[open] summary { margin-bottom: 8px; }
       g.classList.toggle('dim', !!S.hotRaid && me !== S.hotRaid);
       g.classList.toggle('hot', me === S.hotRaid);
     });
+  });
+
+  document.addEventListener('keydown', (e) => {
+    if (e.altKey || e.ctrlKey || e.metaKey || !S.campaign) return;
+    const tag = (e.target.tagName || '').toLowerCase();
+    if (tag === 'input' || tag === 'textarea' || tag === 'select' || e.target.isContentEditable) return;
+    const n = Number(e.key);
+    const ks = S.campaign.kingdoms;
+    if (n >= 1 && n <= ks.length && ks.length > 1 && canPlay(ks[n - 1].id) && ks[n - 1].id !== S.active) {
+      S.active = ks[n - 1].id;
+      S.plan.source = 'base';
+      if (S.kEdit) S.kEdit = S.active;
+      renderAll();
+    } else if (e.key === ']') nextTurn();
   });
 
   $('seasonNext').addEventListener('click', () => advanceSeason(1));

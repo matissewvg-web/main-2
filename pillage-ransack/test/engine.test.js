@@ -528,15 +528,14 @@ test('merging keeps the newest season, settings, names and kingdom edits', () =>
   b.territories[4].editedAt = T0 + 6;
   b.kingdoms[1].name = 'Changed on B';
   b.kingdoms[1].updatedAt = T0 + 7;
-  a.kingdoms[0].ownerId = 'u_alice';
-  a.kingdoms[0].updatedAt = T0 + 8;
+  a.players = [E.newPlayer('', a.kingdoms[0].id, { id: 'pa', userId: 'u_alice', now: T0 + 8 })];
   const m = E.mergeCampaigns(a, b);
   assert.equal(m.season, 'summer');
   assert.equal(m.name, 'Renamed on A');
   assert.equal(m.territories[3].name, 'Newname');
   assert.equal(m.territories[4].override, 'conquered');
   assert.equal(m.kingdoms[1].name, 'Changed on B');
-  assert.equal(m.kingdoms[0].ownerId, 'u_alice');
+  assert.equal(m.players.find((p) => p.id === 'pa').userId, 'u_alice');
   // A resolved raid (newer edit) wins over the copy still under way.
   const c1 = JSON.parse(JSON.stringify(base));
   const r = raid(c1, c1.territories.find((x) => !c1.kingdoms.some((k) => k.capital === x.id)), 'ongoing', { by: c1.kingdoms[0].id });
@@ -583,4 +582,65 @@ test('older single-player saves import as one kingdom and redraw the same map', 
   assert.equal(r.treasury, old.treasury, 'same treasury as the old save');
   assert.equal(r.army, old.army);
   for (const t of old.territories) assert.equal(c.territories.find((x) => x.id === t.id).status, t.status);
+});
+
+
+/* ---------- players ---------- */
+
+test('extra players are spread over the kingdoms as teams', () => {
+  const c = E.newCampaign({ seed: 'teams', count: 20, kingdoms: 3, players: ['Ragnar', 'Lisa', 'Tom', 'Sigrid', 'Ulf', ' ', 'Bo'], now: T0 });
+  assert.equal(c.players.length, 6, 'blank names are skipped');
+  const per = c.kingdoms.map((k) => E.playersOf(c, k.id).map((p) => p.name));
+  assert.deepEqual(per, [['Ragnar', 'Sigrid'], ['Lisa', 'Ulf'], ['Tom', 'Bo']]);
+  const many = E.newCampaign({ seed: 'crowd', count: 20, kingdoms: 2, players: Array.from({ length: 30 }, (_, i) => 'P' + i), now: T0 });
+  assert.equal(many.players.length, E.MAX_PLAYERS);
+});
+
+test('who may play a kingdom', () => {
+  const c = E.newCampaign({ seed: 'who', count: 20, kingdoms: 2, players: ['Anna', 'Ben'], now: T0 });
+  const [k1, k2] = c.kingdoms;
+  assert.ok(E.kingdomPlayable(c, k1.id, null), 'at one screen anyone plays anything');
+  assert.ok(E.kingdomPlayable(c, k1.id, 'u_x'), 'named players without accounts leave a kingdom open');
+  c.players.push(E.newPlayer('', k2.id, { userId: 'u_bob', now: T0 }));
+  c.players.push(E.newPlayer('', k2.id, { userId: 'u_cat', now: T0 }));
+  assert.ok(E.kingdomPlayable(c, k2.id, 'u_bob'));
+  assert.ok(E.kingdomPlayable(c, k2.id, 'u_cat'), 'co-rulers both play');
+  assert.ok(!E.kingdomPlayable(c, k2.id, 'u_dan'), 'others are locked out');
+});
+
+test('version 2 owners become players, and rosters merge across devices', () => {
+  const c = E.newCampaign({ seed: 'old-owner', count: 18, kingdoms: 2, now: T0 });
+  const raw = JSON.parse(JSON.stringify(c));
+  delete raw.players;
+  raw.version = 2;
+  raw.kingdoms[1].ownerId = 'u_bob';
+  const back = E.normalizeCampaign(raw).campaign;
+  assert.equal(back.players.length, 1);
+  assert.equal(back.players[0].userId, 'u_bob');
+  assert.equal(back.players[0].kingdom, raw.kingdoms[1].id);
+  assert.equal(back.kingdoms[1].ownerId, undefined);
+
+  const a = JSON.parse(JSON.stringify(c));
+  const b = JSON.parse(JSON.stringify(c));
+  a.players.push(E.newPlayer('Lisa', c.kingdoms[0].id, { id: 'pl', now: T0 + 1 }));
+  b.players.push(E.newPlayer('Tom', c.kingdoms[1].id, { id: 'pt', now: T0 + 2 }));
+  let m = E.mergeCampaigns(a, b);
+  assert.deepEqual(m.players.map((p) => p.name).sort(), ['Lisa', 'Tom']);
+  // Tom switches sides on one device; Lisa leaves on the other.
+  const b2 = JSON.parse(JSON.stringify(m));
+  Object.assign(b2.players.find((p) => p.id === 'pt'), { kingdom: c.kingdoms[0].id, updatedAt: T0 + 9 });
+  const a2 = JSON.parse(JSON.stringify(m));
+  a2.players = a2.players.filter((p) => p.id !== 'pl');
+  a2.deleted = (a2.deleted || []).concat(['pl']);
+  m = E.mergeCampaigns(a2, b2);
+  assert.deepEqual(m.players.map((p) => [p.name, p.kingdom]), [['Tom', c.kingdoms[0].id]]);
+});
+
+test('raids remember which player logged them', () => {
+  const c = E.newCampaign({ seed: 'logger', count: 18, kingdoms: 2, players: ['Anna', 'Ben'], now: T0 });
+  const t = c.territories.find((x) => !c.kingdoms.some((k) => k.capital === x.id));
+  raid(c, t, 'success', { by: c.kingdoms[1].id, playerId: c.players[1].id });
+  const back = E.parseImport(E.exportJSON([c])).campaigns[0];
+  assert.equal(back.raids[0].playerId, c.players[1].id);
+  assert.deepEqual(back.players, c.players);
 });

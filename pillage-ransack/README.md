@@ -13,12 +13,13 @@ Back up with **Campaign → Export**. Opened as a file, a campaign lives only in
 
 ## Kingdoms and players
 
-- A campaign has **1–4 kingdoms**, each with its own capital, treasury, army, morale and raids. Choose the number when you create a campaign, or add and remove kingdoms later in **Kingdoms**.
-- **At one screen** (hot-seat): pick who is playing in **Playing as** at the top, take your turn, hand over.
-- **From separate devices** (claude.ai version only): **Campaign → Share this campaign**, then invite players from the artifact's **Share** menu on claude.ai. Each player claims a kingdom in **Kingdoms** and can then only act for that kingdom. Every device's moves are merged, so two players logging raids at the same moment both keep their raids.
+- A campaign has **1–4 kingdoms** (the sides), each with its own capital, treasury, army, morale and raids, and up to **16 players** (the people). Players join a kingdom; when there are more players than kingdoms, they rule kingdoms together as teams.
+- **The kingdom bar** under the header has one button per kingdom, showing its shield, name and players. Tap one to play as it, or press **1–4**. **Next kingdom ▸** (or **]**) passes the turn to the next kingdom and says whose turn it is. When the turn comes back round to whoever started the round, the page suggests ending the season.
+- **At one screen** (hot-seat): name the people at the table under each kingdom in **Kingdoms**, or list them when creating a campaign (*Players*, one name per line, spread over the kingdoms in turn). If a kingdom has several players, **At the table** in the bar picks who is about to move, and every raid records who logged it.
+- **From separate devices** (claude.ai version only): **Campaign → Share this campaign**, then invite players from the artifact's **Share** menu on claude.ai. Each player **joins** a kingdom in **Kingdoms**, alone or as a co-ruler. A kingdom someone's account has joined can only be played by its members; one nobody has joined stays open. Every device's moves are merged, so two players logging raids at the same moment both keep their raids.
 - Kingdoms fight over the same land. Control is shared out: a successful raid takes control from whoever holds the territory, and two kingdoms holding a share makes it **contested**. Capitals can be raided and taken, and a fallen capital counts toward the goal for whoever took it. The **first kingdom to conquer the goal share of the realm wins**.
 
-Why four: map colour is how you tell kingdoms apart at a glance, and four colours (crimson, azure, gold, sea green) is the most that stay distinguishable on the parchment for every reader. That was checked with colour-blind simulation and a normal-vision floor; no fifth colour passed. Coats of arms, the legend and the capital banners repeat each kingdom's identity, so colour is never the only cue.
+Why four kingdoms but sixteen players: map colour is how you tell kingdoms apart at a glance, and four colours (crimson, azure, gold, sea green) is the most that stay distinguishable on the parchment for every reader. That was checked with colour-blind simulation and a normal-vision floor; no fifth colour passed. Extra players therefore join existing kingdoms instead of founding new ones. Coats of arms, the legend and the capital banners repeat each kingdom's identity, so colour is never the only cue.
 
 ## Customising a kingdom
 
@@ -63,8 +64,8 @@ The capital flies the kingdom's banner (in the colour of whoever holds it) and i
 
 - **Territory**: gold, garrison, who holds how much control (a bar per kingdom), raid record, loot, losses, scorching. Rename it, set its status and holder by hand, raid it or raid from it.
 - **Raid**: the raiding kingdom, target, starting point (its capital or land it holds), raiders sent, result, men lost, gold taken, notes. The route, its length in leagues and the odds update as you type. Raids *under way* are resolved later from the log.
-- **Log**: every raid, newest first, filterable by kingdom. Record results, show a raid on the map, or delete it.
-- **Kingdoms**: each kingdom's arms, ruler, trait, capital and standing; play as it, customise it, claim it (shared campaigns), add or remove kingdoms.
+- **Log**: every raid, newest first, filterable by kingdom, with who logged it. Record results, show a raid on the map, or delete it.
+- **Kingdoms**: each kingdom's arms, ruler, trait, capital, standing and players. Play as it, customise it, add or remove players, join or leave it (shared campaigns), add or remove kingdoms. Removing a kingdom moves its players to the smallest remaining one.
 - **Campaign**: switch or create campaigns, share one, conquest goal, recruiting and spending for the kingdom you're playing, your own milestones, export/import, and the rules.
 - **Timeline**: one column per season, a dot per raid (ringed in the kingdom's colour) and flags for milestones. First blood, conquests, lost territories, fallen capitals, heavy defeats, 25/50/75%, treasury marks and the winner are added automatically. The conquest bar stacks every kingdom's share against the goal.
 - **End season** pays each kingdom tribute, recovers garrisons and fades scorch marks. **◂** goes back a season while nothing has been logged in the current one.
@@ -87,11 +88,12 @@ Exports follow the brief's shape, `{"campaigns": {"<id>": {...}}}`. Each campaig
 - `year`, `season`.
 - `territories`: `id`, `name`, `position`, `goldValue`, `garrison`, `status`, `terrain`, `conquered`, plus `garrisonBase`, `owner`, `control`, `influence` (each kingdom's share), `damage`, `override`/`overrideBy`.
 - `raids`: `id`, `sourceTerritory`, `targetTerritory`, `outcome`, `timestamp` in milliseconds, `losses`, `lootGained`, plus `by` (the raiding kingdom), `warband`, `year`, `season`, `notes`.
-- `kingdoms`: `id`, `name`, `ruler`, `motto`, `color`, `arms`, `trait`, `capital`, `start`, `ownerId`, plus derived `treasury`, `army`, `morale`.
+- `kingdoms`: `id`, `name`, `ruler`, `motto`, `color`, `arms`, `trait`, `capital`, `start`, plus derived `treasury`, `army`, `morale`.
+- `players`: `id`, `name` (for people at one screen), `kingdom`, `userId` (a claude.ai account, for shared campaigns). Raids carry `playerId` for who logged them.
 - `map`: size, seed, `shape`, and for new maps `engine: 2` with the coastline's `mask` and the `gen` settings, so the same borders redraw.
 - `goalPct`, `adjustments`, `milestones`, and sync bookkeeping (`deleted`, `seasonAt`, `settingsAt`, per-item `updatedAt`/`editedAt`).
 
-Import accepts that shape, a list of campaigns, or a single campaign. Saves from the first release become one kingdom whose capital is the old home base, and their maps redraw exactly as before. Hand-written files work too: statuses are kept as hand-set statuses, `garrison` becomes the full-strength garrison, second timestamps become milliseconds, and raids pointing at unknown territories are dropped with a note. Imports always arrive as new campaigns.
+Import accepts that shape, a list of campaigns, or a single campaign. Saves from the first release become one kingdom whose capital is the old home base, and their maps redraw exactly as before. Saves from the second release turn each kingdom's single owner into a player. Hand-written files work too: statuses are kept as hand-set statuses, `garrison` becomes the full-strength garrison, second timestamps become milliseconds, and raids pointing at unknown territories are dropped with a note. Imports always arrive as new campaigns.
 
 From the browser console, `PillageRansack.logRaid({targetTerritory: 't4', outcome: 'success', losses: 3, lootGained: 80, by: 'k2'})` logs a raid without the form.
 
@@ -100,10 +102,10 @@ From the browser console, `PillageRansack.logRaid({targetTerritory: 't4', outcom
 - `engine.js`: map generation (the fine-grid generator for new maps, and the first release's per-landmass Voronoi for old ones; no geometry library), kingdoms and traits, the rules, replay, merging, import/export. No DOM, so it runs in Node.
 - `app.html`: the page (published as the claude.ai artifact above). Edit this, then republish it.
 - `index.html`: generated by `build.mjs` as `app.html` + `engine.js` in one file that opens from disk.
-- `test/engine.test.js`, `test/fixtures/v1-campaign.json`: every coastline, rivers, settlements, kingdoms and traits, merging, generation settings, rules, routes, import/export, and a save from the first release.
+- `test/engine.test.js`, `test/fixtures/v1-campaign.json`: every coastline, rivers, settlements, kingdoms and traits, players and teams, merging, generation settings, rules, routes, import/export, and a save from the first release.
 
 ```bash
-node --test pillage-ransack/test/*.test.js   # 35 tests
+node --test pillage-ransack/test/*.test.js   # 39 tests
 node pillage-ransack/build.mjs               # rebuild index.html after editing app.html or engine.js
 ```
 
@@ -113,8 +115,8 @@ node pillage-ransack/build.mjs               # rebuild index.html after editing 
 - **Placeholder rules and traits** (above). They're untested for balance. If Pillage Ransack has real rules, they replace `RULES`, `TRAITS` and the parts of `replay()` they change.
 - **Online play depends on claude.ai sharing.** Players need claude.ai accounts and edit access to the artifact; whether you can grant that depends on your plan's share options. Who may act for which kingdom is enforced by the page, not the server, so it is a game among friends, not a cheat-proof one.
 - **Merging is per item.** Raids, adjustments and milestones from every device are kept. Two people editing the same setting at the same time (a kingdom's name, the season) keep whichever save came last.
-- **Four kingdoms at most** (see above).
+- **Four kingdoms at most**, sixteen players (see above). Turn order is a suggestion: nothing stops a kingdom from moving twice.
 - A synced campaign must stay under 250 KB (roughly 1,000 raids). Past that it keeps saving in the browser and asks you to export.
 - Rivers, lakes, islets and ships are scenery; only sea lanes change routes.
 - Generating a new map takes about a quarter of a second, so the preview lags a moment behind the sliders.
-- Tested in Chromium at desktop and phone sizes, and with two simulated players on a stand-in for claude.ai's storage. Not yet on a physical iPhone, in Safari, or with two real claude.ai accounts.
+- Tested in Chromium at desktop and phone sizes, and with three simulated players (two of them co-rulers) on a stand-in for claude.ai's storage. Not yet on a physical iPhone, in Safari, or with two real claude.ai accounts.

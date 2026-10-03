@@ -1935,6 +1935,8 @@
   /* ---------- kingdoms ---------- */
 
   const MAX_KINGDOMS = 4;
+  // Players are people, kingdoms are sides: extra players join a kingdom as co-rulers.
+  const MAX_PLAYERS = 16;
   // Map colours for kingdoms. Validated as a set (all pairs, colour-blind
   // simulation and normal vision) on the parchment; a fifth could not pass,
   // which is why a campaign holds at most four kingdoms.
@@ -2008,9 +2010,34 @@
       trait: index === 0 && o.plainFirst ? 'none' : pick(rng, Object.keys(TRAITS)),
       capital,
       start: Object.assign({}, DEFAULT_START),
-      ownerId: null,
       updatedAt: o.now || 0,
     };
+  }
+
+  /* ---------- players ---------- */
+
+  // A player is a person at the table (a name) or a claude.ai account (userId), playing for one kingdom.
+  function newPlayer(name, kingdom, opts) {
+    const o = opts || {};
+    return { id: o.id || newId('p'), name: String(name || '').trim().slice(0, 30), kingdom, userId: o.userId || null, updatedAt: o.now || nowMs() };
+  }
+
+  function playersOf(c, kid) {
+    return (c.players || []).filter((p) => p.kingdom === kid);
+  }
+
+  // Shared campaigns: a kingdom with linked accounts can only be played by those accounts;
+  // one without is open. At one screen (no uid) every kingdom is playable.
+  function kingdomPlayable(c, kid, uid) {
+    if (!uid) return true;
+    const linked = playersOf(c, kid).filter((p) => p.userId);
+    return !linked.length || linked.some((p) => p.userId === uid);
+  }
+
+  // Spread names over the kingdoms in turn: four kingdoms and six players gives two teams of two.
+  function assignPlayers(c, names, now) {
+    const list = (names || []).map((n) => String(n || '').trim()).filter(Boolean).slice(0, MAX_PLAYERS);
+    return list.map((name, i) => newPlayer(name, c.kingdoms[i % c.kingdoms.length].id, { id: 'p' + (i + 1), now: now || 0 }));
   }
 
   function kingdomColor(k) {
@@ -2122,7 +2149,7 @@
       id: newId('c'),
       name: '',
       seed,
-      version: 2,
+      version: 3,
       createdAt: now,
       updatedAt: now,
       year: 1,
@@ -2133,6 +2160,7 @@
       map,
       territories,
       kingdoms: [],
+      players: [],
       raids: [],
       adjustments: [],
       milestones: [],
@@ -2143,6 +2171,7 @@
     const krng = mulberry32(hashString('kingdoms:' + seed));
     c.kingdoms = caps.map((cap, i) => randomKingdom(krng, i, cap, territories.find((t) => t.id === cap).name, { plainFirst: nK === 1, now: 0 }));
     if (Array.isArray(o.kingdomSpecs)) o.kingdomSpecs.forEach((spec, i) => c.kingdoms[i] && Object.assign(c.kingdoms[i], spec));
+    c.players = assignPlayers(c, o.players, 0);
     c.name = o.name || campaignName(c);
     return snapshot(c);
   }
@@ -2166,7 +2195,8 @@
     for (const a of c.adjustments || []) if (!a.kingdom) a.kingdom = k.id;
     delete c.baseTerritory;
     delete c.start;
-    c.version = 2;
+    c.version = 3;
+    c.players = c.players || [];
     c.deleted = c.deleted || [];
     c.seasonAt = c.seasonAt || 0;
     c.settingsAt = c.settingsAt || 0;
@@ -2580,9 +2610,14 @@
     out.raids = mergeList(a.raids, b.raids).sort((x, y) => x.timestamp - y.timestamp);
     out.adjustments = mergeList(a.adjustments, b.adjustments).sort((x, y) => x.timestamp - y.timestamp);
     out.milestones = mergeList(a.milestones, b.milestones).sort((x, y) => x.timestamp - y.timestamp);
+    const porder = (a.players || []).map((x) => x.id).concat((b.players || []).map((x) => x.id).filter((id) => !(a.players || []).some((x) => x.id === id)));
+    const pm = new Map(mergeList(a.players, b.players).map((x) => [x.id, x]));
+    out.players = porder.filter((id) => pm.has(id)).map((id) => pm.get(id));
     const order = (a.kingdoms || []).map((k) => k.id).concat((b.kingdoms || []).map((k) => k.id).filter((id) => !(a.kingdoms || []).some((k) => k.id === id)));
     const km = new Map(mergeList(a.kingdoms, b.kingdoms).map((k) => [k.id, k]));
     out.kingdoms = order.filter((id) => km.has(id)).map((id) => km.get(id));
+    const alive = new Set(out.kingdoms.map((k) => k.id));
+    out.players = out.players.filter((x) => alive.has(x.kingdom));
     const bt = new Map((b.territories || []).map((t) => [t.id, t]));
     out.territories = out.territories.map((t) => {
       const o = bt.get(t.id);
@@ -2822,10 +2857,11 @@
           army: Math.max(0, Math.round(num(st.army, DEFAULT_START.army))),
           morale: clamp(Math.round(num(st.morale, DEFAULT_START.morale)), 0, 100),
         },
-        ownerId: safeId(k.ownerId) ? k.ownerId : null,
         updatedAt: num(k.updatedAt, 0),
       });
+      if (safeId(k.ownerId)) legacyOwners.push([id, k.ownerId, num(k.updatedAt, 0)]);
     };
+    const legacyOwners = [];
     if (Array.isArray(raw.kingdoms) && raw.kingdoms.length) {
       if (raw.kingdoms.length > MAX_KINGDOMS) warnings.push('Only the first ' + MAX_KINGDOMS + ' kingdoms were kept.');
       raw.kingdoms.slice(0, MAX_KINGDOMS).forEach((k, i) => k && typeof k === 'object' && addKingdom(k, i));
@@ -2846,6 +2882,30 @@
     }
     const kIds = new Set(kingdoms.map((k) => k.id));
     const capOf = new Map(kingdoms.map((k) => [k.capital, k.id]));
+
+    const players = [];
+    const pIds = new Set();
+    const seenUsers = new Set();
+    for (const [i, pl] of (Array.isArray(raw.players) ? raw.players : []).entries()) {
+      if (!pl || typeof pl !== 'object' || players.length >= MAX_PLAYERS) continue;
+      const userId = safeId(pl.userId) ? pl.userId : null;
+      if (userId && seenUsers.has(userId)) continue; // one kingdom per account
+      let id = safeId(pl.id) ? pl.id : 'p' + (i + 1);
+      while (pIds.has(id)) id += 'x';
+      const name = typeof pl.name === 'string' ? pl.name.trim().slice(0, 30) : '';
+      if (!name && !userId) continue;
+      pIds.add(id);
+      if (userId) seenUsers.add(userId);
+      players.push({ id, name, kingdom: kIds.has(pl.kingdom) ? pl.kingdom : kingdoms[0].id, userId, updatedAt: num(pl.updatedAt, 0) });
+    }
+    // Version 2 kept one owner on each kingdom.
+    if (!Array.isArray(raw.players)) {
+      for (const [kid, userId, at] of legacyOwners) {
+        if (seenUsers.has(userId)) continue;
+        seenUsers.add(userId);
+        players.push({ id: 'p-' + kid, name: '', kingdom: kid, userId, updatedAt: at });
+      }
+    }
     for (const t of territories) {
       if (capOf.has(t.id)) t.override = null;
       if (t.overrideBy && !kIds.has(t.overrideBy)) t.overrideBy = null;
@@ -2881,6 +2941,7 @@
         };
         if (num(r.updatedAt, 0)) out.updatedAt = num(r.updatedAt, 0);
         if (safeId(r.authorId)) out.authorId = r.authorId;
+        if (safeId(r.playerId)) out.playerId = r.playerId;
         return out;
       });
     if (dropped) warnings.push(dropped + ' raid' + (dropped === 1 ? '' : 's') + ' pointed at unknown territories, at the raider’s own capital, or had no outcome, and were left out.');
@@ -2915,7 +2976,7 @@
       id: typeof raw.id === 'string' && raw.id ? raw.id : typeof key === 'string' && key ? key : newId('c'),
       name: typeof raw.name === 'string' && raw.name.trim() ? raw.name.trim().slice(0, 80) : 'Imported campaign',
       seed: typeof raw.seed === 'string' ? raw.seed : String(map.seed),
-      version: 2,
+      version: 3,
       createdAt: normalizeTimestamp(raw.createdAt, nowMs()),
       updatedAt: normalizeTimestamp(raw.updatedAt, nowMs()),
       year,
@@ -2926,6 +2987,7 @@
       map,
       territories,
       kingdoms,
+      players,
       raids,
       adjustments,
       milestones,
@@ -2992,6 +3054,7 @@
     SHAPE_LABEL,
     GEN_DEFAULTS,
     MAX_KINGDOMS,
+    MAX_PLAYERS,
     KINGDOM_COLORS,
     TINCTURES,
     DIVISIONS,
@@ -3026,6 +3089,10 @@
     kingdomOf,
     chooseCapitals,
     mergeCampaigns,
+    newPlayer,
+    playersOf,
+    kingdomPlayable,
+    assignPlayers,
     normGen,
     campaignName,
     territoryFeature,
