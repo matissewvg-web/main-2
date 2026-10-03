@@ -1,7 +1,7 @@
 {
   "name": "pillage-ransack",
   "productName": "Pillage Ransack",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "Pillage Ransack for Windows: the campaign map and raid tracker, offline, saved on your PC",
   "main": "main.js",
   "author": "Matisse",

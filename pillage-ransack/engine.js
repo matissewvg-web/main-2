@@ -55,53 +55,251 @@
   /* ---------- Pillage: factions, troops and their gold-piece costs ---------- */
 
   // Pillage: Ransack the Middle Ages (Victrix) prices every figure in gold pieces (gp) by its
-  // equipment, and the same kit costs differently per faction. The full tables are in the rulebook.
-  // src says where each price comes from: 'book' = a published example, 'range' = inside the book's
-  // 30-50 gp range for warriors, 'est' = an estimate. A campaign can override any price (c.costs).
+  // equipment, and the same kit costs differently per faction. The full army lists are free PDFs on
+  // Victrix's site; this file was written without access to them, from what reviews and Victrix's
+  // own pages make public. So the factions are all here (the rulebook's seven, the free "The East"
+  // supplement's three and "The Fall of Rome" supplement's eight), but most troop names and prices
+  // are estimates. src says where each price comes from: 'book' = a published example, 'range' =
+  // inside the book's 30-50 gp range for warriors, 'est' = an estimate. A campaign can override any
+  // price (c.costs) or define factions of its own (c.factions).
+  const FACTION_SOURCES = { core: 'Pillage rulebook', east: 'The East (free supplement)', rome: 'The Fall of Rome (free supplement)', own: 'Your factions' };
+  const ARMOUR = { none: 'no armour', partial: 'some armour', full: 'full armour' };
+  // T(id, label, gp, src, armour, flags, note): flags 'm' = mounted, 'r' = shoots or throws.
+  const T = (id, label, gp, src, armour, flags, note) => ({ id, label, gp, src, armour, mounted: flags.includes('m'), missile: flags.includes('r'), note });
   const FACTIONS = {
     vikings: {
       label: 'Vikings',
+      source: 'core',
+      notes: 'On foot. Berserkers are terrifying in a fight but very expensive (reviews). Victrix’s Viking box: warlords, berserkers, standard bearers, armoured and unarmoured Vikings, archers or slingers.',
       troops: [
-        { id: 'chieftain', label: 'Jarl', gp: 70, src: 'est', note: 'leads the warband' },
-        { id: 'elite', label: 'Hirdman', gp: 60, src: 'est', note: 'household warrior, full armour' },
-        { id: 'warrior', label: 'Bondi warrior', gp: 40, src: 'range', note: 'shield and spear or axe, some armour' },
-        { id: 'archer', label: 'Bowman', gp: 40, src: 'est', note: 'bow, no armour' },
-        { id: 'levy', label: 'Thrall', gp: 30, src: 'range', note: 'spear, no armour' },
+        T('chieftain', 'Jarl', 70, 'est', 'full', '', 'leads the warband; chieftains have three wounds'),
+        T('berserker', 'Berserker', 80, 'est', 'none', '', 'two wounds and two attacks; expensive'),
+        T('elite', 'Hirdman', 60, 'est', 'full', '', 'household warrior'),
+        T('warrior', 'Bondi warrior', 40, 'range', 'partial', '', 'shield and spear or axe'),
+        T('levy', 'Thrall', 30, 'range', 'none', '', 'spear'),
+        T('archer', 'Bowman', 40, 'est', 'none', 'r', 'bow or sling'),
       ],
     },
     saxons: {
       label: 'Anglo-Saxons',
+      source: 'core',
+      notes: 'Not affected by fog (reviews). Published example list: chieftain 70 gp, huscarl 60 gp, warriors 30–50 gp by kit.',
       troops: [
-        { id: 'chieftain', label: 'Chieftain', gp: 70, src: 'book', note: 'leads the warband' },
-        { id: 'elite', label: 'Huscarl', gp: 60, src: 'book', note: 'household warrior, full armour' },
-        { id: 'warrior', label: 'Fyrd warrior', gp: 40, src: 'range', note: 'shield and spear, some armour' },
-        { id: 'archer', label: 'Bowman', gp: 40, src: 'est', note: 'bow, no armour' },
-        { id: 'levy', label: 'Ceorl', gp: 30, src: 'range', note: 'spear, no armour' },
+        T('chieftain', 'Chieftain', 70, 'book', 'full', '', 'leads the warband'),
+        T('elite', 'Huscarl', 60, 'book', 'full', '', 'household warrior'),
+        T('warrior', 'Fyrd warrior', 40, 'range', 'partial', '', 'shield and spear'),
+        T('levy', 'Ceorl', 30, 'range', 'none', '', 'spear'),
+        T('archer', 'Bowman', 40, 'est', 'none', 'r', 'bow'),
       ],
     },
     normans: {
       label: 'Normans',
+      source: 'core',
+      notes: 'Mounted knights (heavy armour, shield, spear) came to 135 gp in a published example. Crossbows are in the lists.',
       troops: [
-        { id: 'chieftain', label: 'Lord', gp: 70, src: 'est', note: 'leads the warband' },
-        { id: 'knight', label: 'Mounted knight', gp: 135, src: 'book', note: 'horse, heavy armour, shield, spear' },
-        { id: 'elite', label: 'Man-at-arms', gp: 60, src: 'est', note: 'on foot, full armour' },
-        { id: 'warrior', label: 'Serjeant', gp: 40, src: 'range', note: 'shield and spear, some armour' },
-        { id: 'archer', label: 'Crossbowman', gp: 40, src: 'est', note: 'crossbow, some armour' },
-        { id: 'levy', label: 'Levy', gp: 30, src: 'range', note: 'spear, no armour' },
+        T('chieftain', 'Lord', 70, 'est', 'full', '', 'leads the warband'),
+        T('knight', 'Mounted knight', 135, 'book', 'full', 'm', 'horse, shield, spear'),
+        T('elite', 'Man-at-arms', 60, 'est', 'full', '', 'on foot'),
+        T('warrior', 'Serjeant', 40, 'range', 'partial', '', 'shield and spear'),
+        T('archer', 'Crossbowman', 40, 'est', 'partial', 'r', 'crossbow'),
+        T('bowman', 'Archer', 40, 'est', 'none', 'r', 'bow'),
+        T('levy', 'Levy', 30, 'range', 'none', '', 'spear'),
       ],
     },
     irish: {
-      label: 'Irish',
+      label: 'Irish, Picts and Scots',
+      source: 'core',
+      notes: 'The rulebook’s Gaelic list covers the Irish, Picts and Scots. One published Irish build had a 160 gp chieftain, kit and talents included.',
       troops: [
-        { id: 'chieftain', label: 'R\u00ed', gp: 70, src: 'est', note: 'leads the warband' },
-        { id: 'elite', label: 'Champion', gp: 60, src: 'est', note: 'picked warrior, some armour' },
-        { id: 'warrior', label: 'Warrior', gp: 40, src: 'range', note: 'shield and spear' },
-        { id: 'levy', label: 'Kern', gp: 30, src: 'range', note: 'javelins, no armour' },
+        T('chieftain', 'Rí', 70, 'est', 'partial', '', 'leads the warband'),
+        T('elite', 'Champion', 60, 'est', 'partial', '', 'picked warrior'),
+        T('cavalry', 'Horseman', 70, 'est', 'none', 'mr', 'light horse with javelins'),
+        T('warrior', 'Warrior', 40, 'range', 'none', '', 'shield and spear'),
+        T('levy', 'Kern', 30, 'range', 'none', 'r', 'javelins'),
+      ],
+    },
+    franks: {
+      label: 'Franks',
+      source: 'core',
+      notes: 'A rulebook faction; its list isn’t public. Troops here follow Carolingian armies: armoured horsemen and spear-armed foot.',
+      troops: [
+        T('chieftain', 'Count', 70, 'est', 'full', '', 'leads the warband'),
+        T('knight', 'Scara horseman', 110, 'est', 'partial', 'm', 'mounted noble'),
+        T('elite', 'Armoured footman', 60, 'est', 'full', '', ''),
+        T('warrior', 'Freeman', 40, 'range', 'partial', '', 'shield and spear'),
+        T('archer', 'Archer', 40, 'est', 'none', 'r', 'bow'),
+        T('levy', 'Levy', 30, 'range', 'none', '', 'spear'),
+      ],
+    },
+    bretons: {
+      label: 'Bretons',
+      source: 'core',
+      notes: 'Not affected by wind and rain (reviews). The list isn’t public; Breton armies were known for javelin-throwing horsemen.',
+      troops: [
+        T('chieftain', 'Machtiern', 70, 'est', 'partial', '', 'leads the warband'),
+        T('cavalry', 'Javelin horseman', 80, 'est', 'none', 'mr', ''),
+        T('elite', 'Noble', 60, 'est', 'partial', '', ''),
+        T('warrior', 'Warrior', 40, 'range', 'none', '', 'shield and spear'),
+        T('levy', 'Levy', 30, 'range', 'none', '', 'spear'),
+      ],
+    },
+    welsh: {
+      label: 'Welsh',
+      source: 'core',
+      notes: 'The Welsh list has no armour option (reviews). The rest isn’t public.',
+      troops: [
+        T('chieftain', 'Lord', 70, 'est', 'none', '', 'leads the warband'),
+        T('elite', 'Teulu warrior', 50, 'est', 'none', '', 'household warrior'),
+        T('warrior', 'Spearman', 40, 'range', 'none', '', 'shield and spear'),
+        T('javelin', 'Javelinman', 35, 'est', 'none', 'r', 'javelins'),
+        T('archer', 'Bowman', 40, 'est', 'none', 'r', 'bow'),
+        T('levy', 'Levy', 30, 'range', 'none', '', 'spear'),
+      ],
+    },
+    rus: {
+      label: 'Rus',
+      source: 'east',
+      notes: 'From the free "The East" supplement. Reviews call Rus archers very expensive and lean on berserkers and the shieldwall.',
+      troops: [
+        T('chieftain', 'Knyaz', 70, 'est', 'full', '', 'leads the warband'),
+        T('elite', 'Druzhina', 60, 'est', 'full', '', 'household warrior'),
+        T('berserker', 'Berserker', 80, 'est', 'none', '', 'two wounds and two attacks'),
+        T('warrior', 'Warrior', 40, 'range', 'partial', '', 'shield and spear or axe'),
+        T('archer', 'Archer', 55, 'est', 'none', 'r', 'bow; expensive'),
+        T('levy', 'Levy', 30, 'range', 'none', '', 'spear'),
+      ],
+    },
+    magyars: {
+      label: 'Magyars',
+      source: 'east',
+      notes: 'From the free "The East" supplement. Troops here follow Magyar armies: horse archers above all.',
+      troops: [
+        T('chieftain', 'Chieftain', 70, 'est', 'partial', 'm', 'leads the warband, mounted'),
+        T('horsearcher', 'Horse archer', 90, 'est', 'none', 'mr', 'bow'),
+        T('cavalry', 'Armoured horseman', 120, 'est', 'partial', 'm', 'lance and sabre'),
+        T('warrior', 'Warrior', 40, 'range', 'none', '', 'on foot'),
+        T('archer', 'Foot archer', 40, 'est', 'none', 'r', 'bow'),
+      ],
+    },
+    byzantines: {
+      label: 'Byzantines',
+      source: 'east',
+      notes: 'From the free "The East" supplement. Troops here follow the middle Byzantine army.',
+      troops: [
+        T('chieftain', 'Strategos', 70, 'est', 'full', '', 'leads the warband'),
+        T('cataphract', 'Kataphraktos', 150, 'est', 'full', 'm', 'armoured horse and rider'),
+        T('cavalry', 'Kavallarios', 110, 'est', 'partial', 'm', 'lance and bow'),
+        T('elite', 'Skoutatos', 50, 'est', 'partial', '', 'large shield and spear'),
+        T('archer', 'Toxotes', 40, 'est', 'none', 'r', 'bow'),
+        T('warrior', 'Spearman', 40, 'range', 'partial', '', ''),
+      ],
+    },
+    wromans: {
+      label: 'Western Romans',
+      source: 'rome',
+      notes: 'From the free "The Fall of Rome" supplement (around 400 AD), which adds plumbatae and cataphracts for some factions. Not tested as hard as the rulebook; Victrix expects to tweak its costs.',
+      troops: [
+        T('chieftain', 'Comes', 70, 'est', 'full', '', 'leads the warband'),
+        T('elite', 'Legionary', 55, 'est', 'partial', 'r', 'spear and plumbatae'),
+        T('cavalry', 'Equites', 110, 'est', 'partial', 'm', ''),
+        T('warrior', 'Auxiliary', 40, 'range', 'partial', '', ''),
+        T('archer', 'Sagittarius', 40, 'est', 'none', 'r', 'bow'),
+        T('levy', 'Limitanei', 30, 'range', 'none', '', 'frontier soldier'),
+      ],
+    },
+    eromans: {
+      label: 'Eastern Romans',
+      source: 'rome',
+      notes: 'From the free "The Fall of Rome" supplement; one of the factions that can field cataphracts (their horses count as partially armoured).',
+      troops: [
+        T('chieftain', 'Comes', 70, 'est', 'full', '', 'leads the warband'),
+        T('cataphract', 'Cataphract', 150, 'est', 'full', 'm', 'horse partly armoured'),
+        T('cavalry', 'Horse archer', 90, 'est', 'partial', 'mr', ''),
+        T('elite', 'Legionary', 55, 'est', 'partial', 'r', 'spear and plumbatae'),
+        T('archer', 'Sagittarius', 40, 'est', 'none', 'r', 'bow'),
+        T('warrior', 'Auxiliary', 40, 'range', 'partial', '', ''),
+      ],
+    },
+    visigoths: {
+      label: 'Visigoths',
+      source: 'rome',
+      notes: 'From the free "The Fall of Rome" supplement.',
+      troops: [
+        T('chieftain', 'Chieftain', 70, 'est', 'full', '', 'leads the warband'),
+        T('cavalry', 'Noble horseman', 110, 'est', 'partial', 'm', ''),
+        T('elite', 'Gothic warrior', 50, 'est', 'partial', '', ''),
+        T('warrior', 'Warrior', 40, 'range', 'none', '', 'shield and spear'),
+        T('archer', 'Archer', 40, 'est', 'none', 'r', 'bow'),
+        T('levy', 'Levy', 30, 'range', 'none', '', ''),
+      ],
+    },
+    huns: {
+      label: 'Huns',
+      source: 'rome',
+      notes: 'From the free "The Fall of Rome" supplement. A review thought the Huns’ rules may be too strong.',
+      troops: [
+        T('chieftain', 'Chieftain', 70, 'est', 'partial', 'mr', 'leads the warband, mounted'),
+        T('horsearcher', 'Horse archer', 95, 'est', 'none', 'mr', 'composite bow'),
+        T('cavalry', 'Armoured horseman', 120, 'est', 'partial', 'm', ''),
+        T('warrior', 'Subject warrior', 35, 'est', 'none', '', 'on foot'),
+      ],
+    },
+    romanobritish: {
+      label: 'Romano-British',
+      source: 'rome',
+      notes: 'From the free "The Fall of Rome" supplement.',
+      troops: [
+        T('chieftain', 'Dux', 70, 'est', 'full', '', 'leads the warband'),
+        T('cavalry', 'Horseman', 100, 'est', 'partial', 'm', ''),
+        T('elite', 'Armoured warrior', 55, 'est', 'partial', '', ''),
+        T('warrior', 'Spearman', 40, 'range', 'none', '', ''),
+        T('archer', 'Archer', 40, 'est', 'none', 'r', 'bow'),
+        T('levy', 'Levy', 30, 'range', 'none', '', ''),
+      ],
+    },
+    picts: {
+      label: 'Picts',
+      source: 'rome',
+      notes: 'From the free "The Fall of Rome" supplement (the rulebook’s later Picts are in "Irish, Picts and Scots").',
+      troops: [
+        T('chieftain', 'Chieftain', 70, 'est', 'partial', '', 'leads the warband'),
+        T('cavalry', 'Pony horseman', 70, 'est', 'none', 'mr', 'javelins'),
+        T('warrior', 'Spearman', 35, 'est', 'none', '', ''),
+        T('javelin', 'Javelinman', 35, 'est', 'none', 'r', 'javelins'),
+        T('levy', 'Levy', 30, 'range', 'none', '', ''),
+      ],
+    },
+    earlysaxons: {
+      label: 'Saxons (Fall of Rome)',
+      source: 'rome',
+      notes: 'From the free "The Fall of Rome" supplement: the first Saxon raiders, three centuries before the rulebook’s Anglo-Saxons.',
+      troops: [
+        T('chieftain', 'Chieftain', 70, 'est', 'partial', '', 'leads the warband'),
+        T('elite', 'Gesith', 55, 'est', 'partial', '', 'sworn companion'),
+        T('warrior', 'Warrior', 40, 'range', 'none', '', 'shield, spear and seax'),
+        T('archer', 'Archer', 40, 'est', 'none', 'r', 'bow'),
+        T('levy', 'Levy', 30, 'range', 'none', '', ''),
+      ],
+    },
+    merovingians: {
+      label: 'Merovingian Franks',
+      source: 'rome',
+      notes: 'From the free "The Fall of Rome" supplement.',
+      troops: [
+        T('chieftain', 'Chieftain', 70, 'est', 'partial', '', 'leads the warband'),
+        T('elite', 'Antrustion', 60, 'est', 'partial', '', 'royal retainer'),
+        T('cavalry', 'Horseman', 100, 'est', 'partial', 'm', ''),
+        T('warrior', 'Warrior', 45, 'est', 'none', 'r', 'francisca throwing axe'),
+        T('levy', 'Levy', 30, 'range', 'none', '', ''),
       ],
     },
   };
   const FACTION_IDS = Object.keys(FACTIONS);
-  const TROOP_SRC = { book: 'rulebook example', range: 'inside the rulebook\u2019s 30\u201350 gp warrior range', est: 'estimate' };
+  // Random kingdoms draw from the rulebook's seven.
+  const CORE_FACTIONS = FACTION_IDS.filter((id) => FACTIONS[id].source === 'core');
+  const TROOP_SRC = { book: 'rulebook example', range: 'inside the rulebook’s 30–50 gp warrior range', est: 'estimate', own: 'your price' };
+  const MAX_CUSTOM_FACTIONS = 12;
+  const MAX_CUSTOM_TROOPS = 12;
 
   // The five scenarios in the Pillage rulebook. A raid records which one was played on the table.
   const SCENARIOS = {
@@ -2443,7 +2641,7 @@
       color: KINGDOM_COLORS[index % KINGDOM_COLORS.length].id,
       arms: randomArms(rng),
       trait: index === 0 && o.plainFirst ? 'none' : pick(rng, Object.keys(TRAITS)),
-      faction: FACTION_IDS[hashString(String(capitalName || index)) % FACTION_IDS.length],
+      faction: CORE_FACTIONS[hashString(String(capitalName || index)) % CORE_FACTIONS.length],
       capital,
       start: Object.assign({}, DEFAULT_START),
       updatedAt: o.now || 0,
@@ -3066,16 +3264,33 @@
 
   /* ---------- troops and costs ---------- */
 
-  function factionOf(k) {
-    return FACTIONS[k && k.faction] || FACTIONS.vikings;
+  // A faction by id: one of the built-in lists or one this campaign defined. Unknown ids read as Vikings.
+  function factionDef(c, fid) {
+    if (FACTIONS[fid]) return Object.assign({ id: fid }, FACTIONS[fid]);
+    const own = c && (c.factions || []).find((f) => f.id === fid);
+    if (own) return Object.assign({ source: 'own', notes: '' }, own, { troops: own.troops.map((t) => Object.assign({ src: 'own' }, t)) });
+    return Object.assign({ id: 'vikings' }, FACTIONS.vikings);
+  }
+
+  function factionOf(k, c) {
+    return factionDef(c, k && k.faction);
+  }
+
+  // Every faction a kingdom in this campaign can pick, built-in first.
+  function listFactions(c) {
+    return FACTION_IDS.map((id) => ({ id, label: FACTIONS[id].label, source: FACTIONS[id].source })).concat(((c && c.factions) || []).map((f) => ({ id: f.id, label: f.label, source: 'own' })));
+  }
+
+  // A faction's troops with this campaign's prices.
+  function factionTroops(c, fid) {
+    const def = factionDef(c, fid);
+    const own = (FACTIONS[def.id] && c && c.costs && c.costs[def.id]) || {};
+    return def.troops.map((t) => Object.assign({}, t, { gp: Number.isFinite(own[t.id]) ? own[t.id] : t.gp, custom: Number.isFinite(own[t.id]) && own[t.id] !== t.gp }));
   }
 
   // A kingdom's troop list with this campaign's prices.
   function troopList(c, kid) {
-    const k = kingdomOf(c, kid);
-    const fid = FACTIONS[k.faction] ? k.faction : 'vikings';
-    const own = (c.costs && c.costs[fid]) || {};
-    return FACTIONS[fid].troops.map((t) => Object.assign({}, t, { gp: Number.isFinite(own[t.id]) ? own[t.id] : t.gp, custom: Number.isFinite(own[t.id]) && own[t.id] !== t.gp }));
+    return factionTroops(c, kingdomOf(c, kid).faction);
   }
 
   function normTroops(troops) {
@@ -3083,9 +3298,53 @@
     const out = {};
     for (const [id, n] of Object.entries(troops)) {
       const v = Math.max(0, Math.min(999, Math.round(Number(n) || 0)));
-      if (/^[a-z]{1,16}$/.test(id) && v) out[id] = v;
+      if (/^[a-z][a-z0-9]{0,15}$/.test(id) && v) out[id] = v;
     }
     return Object.keys(out).length ? out : null;
+  }
+
+  // Factions a campaign defines itself: a name, notes and up to 12 troops, each with a price, armour
+  // and whether it rides or shoots.
+  function normFactions(list) {
+    if (!Array.isArray(list)) return [];
+    const out = [];
+    const seen = new Set();
+    for (const f of list) {
+      if (out.length >= MAX_CUSTOM_FACTIONS) break;
+      if (!f || typeof f !== 'object' || typeof f.id !== 'string' || !/^cf_[a-z0-9]{1,24}$/.test(f.id) || seen.has(f.id)) continue;
+      const troops = [];
+      const tids = new Set();
+      for (const t of Array.isArray(f.troops) ? f.troops : []) {
+        if (troops.length >= MAX_CUSTOM_TROOPS) break;
+        if (!t || typeof t !== 'object') continue;
+        let id = typeof t.id === 'string' && /^[a-z][a-z0-9]{0,15}$/.test(t.id) ? t.id : 'u' + (troops.length + 1);
+        for (let n = troops.length + 1; tids.has(id); n++) id = 'u' + n;
+        tids.add(id);
+        troops.push({
+          id,
+          label: typeof t.label === 'string' && t.label.trim() ? t.label.trim().slice(0, 30) : 'Troop ' + (troops.length + 1),
+          gp: clamp(Math.round(num(t.gp, 40)), 0, 9999),
+          armour: ARMOUR[t.armour] ? t.armour : 'none',
+          mounted: !!t.mounted,
+          missile: !!t.missile,
+          note: typeof t.note === 'string' ? t.note.trim().slice(0, 60) : '',
+        });
+      }
+      if (!troops.length) continue;
+      seen.add(f.id);
+      out.push({ id: f.id, label: typeof f.label === 'string' && f.label.trim() ? f.label.trim().slice(0, 40) : 'Your faction', notes: typeof f.notes === 'string' ? f.notes.trim().slice(0, 200) : '', troops, updatedAt: num(f.updatedAt, 0) });
+    }
+    return out;
+  }
+
+  function normRoster(roster) {
+    if (!Array.isArray(roster)) return null;
+    const out = roster
+      .filter((x) => Array.isArray(x) && typeof x[0] === 'string' && x[0].trim())
+      .slice(0, 16)
+      .map(([label, n, gp]) => [label.trim().slice(0, 30), clamp(Math.round(num(n, 0)), 0, 999), clamp(Math.round(num(gp, 0)), 0, 9999)])
+      .filter((x) => x[1] > 0);
+    return out.length ? out : null;
   }
 
   function normCosts(costs) {
@@ -3128,13 +3387,20 @@
     return label + 's';
   }
 
-  // "1 Jarl, 4 Hirdmen, 10 Bondi warriors" for a stored raid.
+  // "1 Jarl, 4 Hirdmen, 10 Bondi warriors" for troop counts in a kingdom's current list.
   function troopSummary(c, kid, troops) {
     const t = troops || {};
     return troopList(c, kid)
       .filter((u) => t[u.id])
       .map((u) => t[u.id] + ' ' + (t[u.id] > 1 ? plural(u.label) : u.label))
       .join(', ');
+  }
+
+  // Who went on a raid, as recorded when it set out (the roster), so later changes to a faction
+  // or its prices don't rewrite history. Older raids fall back to the current list.
+  function raidTroops(c, r) {
+    if (r.roster && r.roster.length) return r.roster.map(([label, n]) => n + ' ' + (n > 1 ? plural(label) : label)).join(', ');
+    return r.troops ? troopSummary(c, r.by, r.troops) : '';
   }
 
   /* ---------- multiplayer sync ---------- */
@@ -3164,6 +3430,7 @@
     out.raids = mergeList(a.raids, b.raids).sort((x, y) => x.timestamp - y.timestamp);
     out.adjustments = mergeList(a.adjustments, b.adjustments).sort((x, y) => x.timestamp - y.timestamp);
     out.milestones = mergeList(a.milestones, b.milestones).sort((x, y) => x.timestamp - y.timestamp);
+    out.factions = mergeList(a.factions, b.factions);
     const porder = (a.players || []).map((x) => x.id).concat((b.players || []).map((x) => x.id).filter((id) => !(a.players || []).some((x) => x.id === id)));
     const pm = new Map(mergeList(a.players, b.players).map((x) => [x.id, x]));
     out.players = porder.filter((id) => pm.has(id)).map((id) => pm.get(id));
@@ -3409,7 +3676,7 @@
           chargeColor: tinct(a.chargeColor, ra.chargeColor),
         },
         trait: TRAITS[k.trait] ? k.trait : 'none',
-        faction: FACTIONS[k.faction] ? k.faction : 'vikings',
+        faction: FACTIONS[k.faction] || customIds.has(k.faction) ? k.faction : 'vikings',
         capital: cap,
         start: {
           treasury: Math.round(num(st.treasury, DEFAULT_START.treasury)),
@@ -3421,6 +3688,8 @@
       if (safeId(k.ownerId)) legacyOwners.push([id, k.ownerId, num(k.updatedAt, 0)]);
     };
     const legacyOwners = [];
+    const customFactions = normFactions(raw.factions);
+    const customIds = new Set(customFactions.map((f) => f.id));
     if (Array.isArray(raw.kingdoms) && raw.kingdoms.length) {
       if (raw.kingdoms.length > MAX_KINGDOMS) warnings.push('Only the first ' + MAX_KINGDOMS + ' kingdoms were kept.');
       raw.kingdoms.slice(0, MAX_KINGDOMS).forEach((k, i) => k && typeof k === 'object' && addKingdom(k, i));
@@ -3510,6 +3779,8 @@
         if (num(r.value, 0) > 0) out.value = Math.round(num(r.value, 0));
         if (num(r.cost, 0) > 0) out.cost = Math.round(num(r.cost, 0));
         if (SCENARIOS[r.scenario]) out.scenario = r.scenario;
+        const roster = normRoster(r.roster);
+        if (roster) out.roster = roster;
         return out;
       });
     if (dropped) warnings.push(dropped + ' raid' + (dropped === 1 ? '' : 's') + ' pointed at unknown territories, at the raider’s own capital, or had no outcome, and were left out.');
@@ -3553,6 +3824,7 @@
       goalPct: clamp(Math.round(num(raw.goalPct, 60)), 5, 100),
       settingsAt: num(raw.settingsAt, 0),
       costs: normCosts(raw.costs),
+      factions: customFactions,
       map,
       territories,
       kingdoms,
@@ -3685,7 +3957,17 @@
     suggestScenario,
     FACTIONS,
     FACTION_IDS,
+    FACTION_SOURCES,
+    CORE_FACTIONS,
+    ARMOUR,
+    MAX_CUSTOM_FACTIONS,
+    MAX_CUSTOM_TROOPS,
     TROOP_SRC,
+    factionDef,
+    listFactions,
+    factionTroops,
+    normFactions,
+    raidTroops,
     SCENARIOS,
     factionOf,
     troopList,

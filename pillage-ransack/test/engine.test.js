@@ -769,3 +769,72 @@ test('generated maps group territories into connected provinces, and allow up to
     assert.equal(seen.size, 40, 'every territory is in a province');
   }
 });
+
+test('all eighteen Pillage factions: the rulebook, The East and The Fall of Rome', () => {
+  const by = (src) => E.FACTION_IDS.filter((id) => E.FACTIONS[id].source === src).map((id) => E.FACTIONS[id].label);
+  assert.deepEqual(by('core'), ['Vikings', 'Anglo-Saxons', 'Normans', 'Irish, Picts and Scots', 'Franks', 'Bretons', 'Welsh']);
+  assert.deepEqual(by('east'), ['Rus', 'Magyars', 'Byzantines']);
+  assert.equal(by('rome').length, 8);
+  for (const id of E.FACTION_IDS) {
+    const f = E.FACTIONS[id];
+    const ids = f.troops.map((t) => t.id);
+    assert.equal(new Set(ids).size, ids.length, id + ' troop ids are unique');
+    assert.ok(ids.includes('chieftain'), id + ' has a chieftain');
+    assert.ok(f.troops.length >= 4, id + ' has a real list');
+    for (const t of f.troops) {
+      assert.ok(E.TROOP_SRC[t.src] && E.ARMOUR[t.armour] && t.gp > 0, id + '.' + t.id);
+    }
+  }
+  // The Welsh have no armour in the rulebook.
+  assert.ok(E.FACTIONS.welsh.troops.every((t) => t.armour === 'none'));
+  // Random kingdoms come from the rulebook's seven.
+  const c = E.newCampaign({ seed: 'core', count: 18, kingdoms: 4, now: T0 });
+  assert.ok(c.kingdoms.every((k) => E.CORE_FACTIONS.includes(k.faction)));
+});
+
+test('a campaign can define its own factions, and raids remember who went', () => {
+  const c = E.newCampaign({ seed: 'own', count: 18, kingdoms: 2, now: T0 });
+  c.factions = E.normFactions([
+    { id: 'cf_joms', label: 'Jomsvikings', notes: 'Never retreat', updatedAt: 5, troops: [
+      { id: 'chieftain', label: 'Jarl', gp: 90, armour: 'full' },
+      { label: 'Jomsviking', gp: 65, armour: 'full' },
+      { label: 'Archer', gp: 45, missile: true },
+      { label: 'Rider', gp: 100, armour: 'bogus', mounted: true },
+    ] },
+    { id: 'bad id', label: 'Ignored', troops: [{ label: 'X', gp: 1 }] },
+    { id: 'cf_empty', label: 'No troops', troops: [] },
+  ]);
+  assert.deepEqual(c.factions.map((f) => f.id), ['cf_joms']);
+  assert.deepEqual(c.factions[0].troops.map((t) => [t.id, t.gp, t.armour, t.mounted, t.missile]), [['chieftain', 90, 'full', false, false], ['u2', 65, 'full', false, false], ['u3', 45, 'none', false, true], ['u4', 100, 'none', true, false]]);
+  const k = c.kingdoms[1];
+  k.faction = 'cf_joms';
+  assert.equal(E.factionOf(k, c).label, 'Jomsvikings');
+  const w = E.warbandCost(c, k.id, { chieftain: 1, u2: 4 });
+  assert.equal(w.value, 90 + 4 * 65);
+  const t = c.territories.find((x) => x.id !== k.capital && !c.kingdoms.some((o) => o.capital === x.id));
+  raid(c, t, 'ongoing', { by: k.id, troops: { chieftain: 1, u2: 4 }, roster: w.lines.map((l) => [l.label, l.n, l.gp]), value: w.value, cost: w.provisions });
+  assert.equal(E.raidTroops(c, c.raids[0]), '1 Jarl, 4 Jomsvikings');
+  // It all survives export, and an unknown faction reads as Vikings.
+  const back = E.parseImport(E.exportJSON([c])).campaigns[0];
+  assert.equal(back.kingdoms[1].faction, 'cf_joms');
+  assert.deepEqual(back.raids[0].roster, [['Jarl', 1, 90], ['Jomsviking', 4, 65]]);
+  const lost = JSON.parse(E.exportJSON([c]));
+  const cid = Object.keys(lost.campaigns)[0];
+  lost.campaigns[cid].factions = [];
+  assert.equal(E.parseImport(JSON.stringify(lost)).campaigns[0].kingdoms[1].faction, 'vikings');
+  // Deleting the faction later doesn't rewrite the raid.
+  c.factions = [];
+  assert.equal(E.raidTroops(c, c.raids[0]), '1 Jarl, 4 Jomsvikings');
+});
+
+test('two devices each adding a faction keep both after merging', () => {
+  const base = E.newCampaign({ seed: 'merge-f', count: 16, kingdoms: 2, now: T0 });
+  const a = JSON.parse(JSON.stringify(base));
+  const b = JSON.parse(JSON.stringify(base));
+  a.factions = E.normFactions([{ id: 'cf_a', label: 'A', troops: [{ label: 'X', gp: 10 }], updatedAt: T0 + 1 }]);
+  b.factions = E.normFactions([{ id: 'cf_b', label: 'B', troops: [{ label: 'Y', gp: 20 }], updatedAt: T0 + 2 }]);
+  const m = E.mergeCampaigns(a, b);
+  assert.deepEqual(m.factions.map((f) => f.id).sort(), ['cf_a', 'cf_b']);
+  b.deleted = (b.deleted || []).concat(['cf_a']);
+  assert.deepEqual(E.mergeCampaigns(m, b).factions.map((f) => f.id), ['cf_b']);
+});

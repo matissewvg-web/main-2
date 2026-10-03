@@ -324,6 +324,10 @@ h1, h2, h3 { margin: 0; text-wrap: balance; font-weight: 700; }
 .prices td:last-child { width: 88px; }
 .prices input { width: 80px; min-height: 32px; padding: 2px 6px; border-radius: var(--radius); border: 1px solid var(--line); background: var(--table); color: var(--fg); font: inherit; }
 .src { font-size: 11px; color: var(--fg-muted); }
+.frows { display: grid; gap: 8px; }
+.frow { border: 1px solid var(--line); border-radius: var(--radius); padding: 8px 10px 10px; margin: 0; display: grid; gap: 8px; min-width: 0; }
+.frow legend { padding: 0 4px; font-size: var(--step--1); color: var(--fg-muted); }
+.chk { display: inline-flex; align-items: center; gap: 6px; font-size: var(--step--1); min-height: 34px; cursor: pointer; }
 .logbar { display: grid; gap: 8px; }
 .logbar .row > .field { flex: 1 1 140px; }
 .typechips { display: flex; flex-wrap: wrap; gap: 6px; }
@@ -1004,7 +1008,7 @@ details[open] summary { margin-bottom: 8px; }
   }
   // What players actually changed (derived totals left out), to tell whether a merge brought anything new.
   function sig(c) {
-    return JSON.stringify([c.raids, c.adjustments, c.milestones, (c.kingdoms || []).map((k) => [k.id, k.name, k.ruler, k.motto, k.color, k.arms, k.trait, k.faction, k.capital, k.start]), (c.players || []).map((p) => [p.id, p.name, p.kingdom, p.userId]), c.year, c.season, c.name, c.goalPct, c.territories.map((t) => [t.name, t.override, t.overrideBy || null]), c.deleted, !!c.shared, c.example, c.costs]);
+    return JSON.stringify([c.raids, c.adjustments, c.milestones, (c.kingdoms || []).map((k) => [k.id, k.name, k.ruler, k.motto, k.color, k.arms, k.trait, k.faction, k.capital, k.start]), (c.players || []).map((p) => [p.id, p.name, p.kingdom, p.userId]), c.year, c.season, c.name, c.goalPct, c.territories.map((t) => [t.name, t.override, t.overrideBy || null]), c.deleted, !!c.shared, c.example, c.costs, c.factions]);
   }
   function adopt(id, incoming) {
     const mine = S.campaigns.get(id);
@@ -1344,6 +1348,21 @@ details[open] summary { margin-bottom: 8px; }
 
   function labelSize(shape) {
     return S.campaign.territories.length > 30 ? Math.max(8.5, Math.min(12, Math.sqrt(shape.area) / 8)) : Math.max(10.5, Math.min(15, Math.sqrt(shape.area) / 9.5));
+  }
+  // Faction pickers group the lists by where they come from: the rulebook, the free supplements, your own.
+  function factionOptions(selected) {
+    const groups = {};
+    for (const f of E.listFactions(S.campaign)) (groups[f.source] = groups[f.source] || []).push(f);
+    return Object.keys(E.FACTION_SOURCES)
+      .filter((src) => groups[src])
+      .map((src) => '<optgroup label="' + esc(E.FACTION_SOURCES[src]) + '">' + groups[src].map((f) => '<option value="' + esc(f.id) + '"' + (f.id === selected ? ' selected' : '') + '>' + esc(f.label) + '</option>').join('') + '</optgroup>')
+      .join('');
+  }
+  function troopTags(u) {
+    return [E.ARMOUR[u.armour], u.mounted ? 'mounted' : '', u.missile ? 'ranged' : ''].filter(Boolean).join(', ');
+  }
+  function factionSummary(fid) {
+    return E.factionTroops(S.campaign, fid).map((u) => u.label + ' ' + u.gp + ' gp').join(' \u00b7 ');
   }
   function regionName(id) {
     const g = S.geo;
@@ -2482,7 +2501,7 @@ details[open] summary { margin-bottom: 8px; }
     if (logger) html += ' \u00b7 logged by ' + esc(playerName(logger));
     if (r.outcome !== 'ongoing') html += ' · <b>' + r.losses + '</b> lost · <b>' + fmt(r.lootGained) + '</b> gold';
     html += '</div>';
-    if (r.troops || r.value || r.scenario) html += '<div class="what">' + [r.troops ? hl(E.troopSummary(S.campaign, r.by, r.troops)) : '', r.value ? 'worth <b>' + fmt(r.value) + '</b> gp' : '', r.cost ? 'provisions <b>' + fmt(r.cost) + '</b> gold' : '', r.scenario ? 'scenario: <b>' + hl(E.SCENARIOS[r.scenario]) + '</b>' : ''].filter(Boolean).join(' \u00b7 ') + '</div>';
+    if (r.troops || r.roster || r.value || r.scenario) html += '<div class="what">' + [r.troops || r.roster ? hl(E.raidTroops(S.campaign, r)) : '', r.value ? 'worth <b>' + fmt(r.value) + '</b> gp' : '', r.cost ? 'provisions <b>' + fmt(r.cost) + '</b> gold' : '', r.scenario ? 'scenario: <b>' + hl(E.SCENARIOS[r.scenario]) + '</b>' : ''].filter(Boolean).join(' \u00b7 ') + '</div>';
     if (r.notes) html += '<div class="note">' + hl(r.notes) + '</div>';
     if (opts && opts.controls) {
       if (S.resolving === r.id) {
@@ -2493,7 +2512,7 @@ details[open] summary { margin-bottom: 8px; }
       } else if (S.editRaid === r.id) {
         html += '<form class="editor" data-form="edit-raid" data-raid="' + id + '">';
         html += '<div class="grid2"><div class="field"><label for="erOutcome">Outcome</label><select id="erOutcome">' + ['ongoing', 'success', 'failure'].map((k) => '<option value="' + k + '"' + (k === r.outcome ? ' selected' : '') + '>' + OUTCOME[k].label + '</option>').join('') + '</select></div>';
-        html += r.troops ? '<div class="field"><span class="label">Warband</span><p class="hint">' + esc(E.troopSummary(S.campaign, r.by, r.troops)) + ' (' + r.warband + ' men). To change who went, delete the raid and log it again.</p></div>' : '<div class="field"><label for="erWarband">Raiders sent</label><input id="erWarband" type="number" min="1" step="1" inputmode="numeric" value="' + (r.warband || 1) + '"></div>';
+        html += r.troops ? '<div class="field"><span class="label">Warband</span><p class="hint">' + esc(E.raidTroops(S.campaign, r)) + ' (' + r.warband + ' men). To change who went, delete the raid and log it again.</p></div>' : '<div class="field"><label for="erWarband">Raiders sent</label><input id="erWarband" type="number" min="1" step="1" inputmode="numeric" value="' + (r.warband || 1) + '"></div>';
         html += '<div class="field"><label for="erLosses">Men lost</label><input id="erLosses" type="number" min="0" step="1" inputmode="numeric" value="' + (r.losses || 0) + '"></div>';
         html += '<div class="field"><label for="erLoot">Gold taken</label><input id="erLoot" type="number" min="0" step="1" inputmode="numeric" value="' + (r.lootGained || 0) + '"></div></div>';
         html += '<div class="field"><label for="erScenario">Pillage scenario</label><select id="erScenario"><option value="">Not recorded</option>' + Object.entries(E.SCENARIOS).map(([v, l]) => '<option value="' + v + '"' + (r.scenario === v ? ' selected' : '') + '>' + esc(l) + '</option>').join('') + '</select></div>';
@@ -2606,8 +2625,8 @@ details[open] summary { margin-bottom: 8px; }
     for (const id of sources) html += '<option value="' + esc(id) + '"' + (p.source === id ? ' selected' : '') + '>' + (id === 'base' ? 'Capital (' + esc(terr(me.capital).name) + ')' : esc(terr(id).name) + ' (' + STATUS_LABEL[r.territories.get(id).status].toLowerCase() + ')') + (E.crossesSea(S.geo, id === 'base' ? me.capital : id, p.target) ? ' · by sea' : '') + '</option>';
     html += '</select></div>';
     html += '<div class="callout" id="routeInfo"></div>';
-    html += '<fieldset class="troops"><legend>Warband · ' + esc(E.factionOf(me).label) + ', prices in gp</legend>';
-    for (const u of E.troopList(c, me.id)) html += '<div class="trow"><label for="tr-' + u.id + '"><b>' + esc(u.label) + '</b><small>' + esc(u.note) + '</small></label><span class="gp">' + u.gp + ' gp</span><input id="tr-' + u.id + '" data-troop="' + u.id + '" type="number" min="0" max="999" step="1" inputmode="numeric" value="' + (p.troops[u.id] || 0) + '" aria-label="' + esc(u.label) + ' sent"><span class="sub" id="trs-' + u.id + '"></span></div>';
+    html += '<fieldset class="troops"><legend>Warband \u00b7 ' + esc(E.factionOf(me, c).label) + ', prices in gp</legend>';
+    for (const u of E.troopList(c, me.id)) html += '<div class="trow"><label for="tr-' + u.id + '"><b>' + esc(u.label) + '</b><small>' + esc([u.note, troopTags(u)].filter(Boolean).join(' \u00b7 ')) + '</small></label><span class="gp">' + u.gp + ' gp</span><input id="tr-' + u.id + '" data-troop="' + u.id + '" type="number" min="0" max="999" step="1" inputmode="numeric" value="' + (p.troops[u.id] || 0) + '" aria-label="' + esc(u.label) + ' sent"><span class="sub" id="trs-' + u.id + '"></span></div>';
     html += '<div id="costInfo" class="callout"></div></fieldset>';
     html += '<div class="grid2"><div class="field"><label for="planScenario">Pillage scenario</label><select id="planScenario">' + Object.entries(E.SCENARIOS).map(([v, l]) => '<option value="' + v + '"' + (p.scenario === v ? ' selected' : '') + '>' + esc(l) + '</option>').join('') + '</select><p class="hint" id="scenarioHint"></p></div><div class="field"><span class="label">Odds (rough guide)</span><div id="oddsInfo" class="callout" style="padding:6px 10px"></div></div></div>';
     html += '<div class="field"><span class="label" id="outcomeLabel">Result</span><div class="seg" role="radiogroup" aria-labelledby="outcomeLabel">';
@@ -2728,7 +2747,7 @@ details[open] summary { margin-bottom: 8px; }
     const out = [];
     for (const x of c.raids) {
       const logger = x.playerId && (c.players || []).find((p) => p.id === x.playerId);
-      out.push({ type: 'raid', idx: E.seasonIndex(x.year, x.season), ts: x.timestamp || 0, kingdom: x.by, raid: x, text: [terrName(x.sourceTerritory === 'base' ? 'base' : x.sourceTerritory, x.by), terrName(x.targetTerritory), kn(x.by), x.notes || '', logger ? playerName(logger) : '', OUTCOME[x.outcome].label, x.scenario ? E.SCENARIOS[x.scenario] : '', x.troops ? E.troopSummary(c, x.by, x.troops) : ''].join(' ') });
+      out.push({ type: 'raid', idx: E.seasonIndex(x.year, x.season), ts: x.timestamp || 0, kingdom: x.by, raid: x, text: [terrName(x.sourceTerritory === 'base' ? 'base' : x.sourceTerritory, x.by), terrName(x.targetTerritory), kn(x.by), x.notes || '', logger ? playerName(logger) : '', OUTCOME[x.outcome].label, x.scenario ? E.SCENARIOS[x.scenario] : '', E.raidTroops(c, x)].join(' ') });
     }
     for (const x of c.adjustments) out.push({ type: 'adjust', idx: E.seasonIndex(x.year, x.season), ts: x.timestamp || 0, kingdom: x.kingdom, adj: x, text: [x.note || '', kn(x.kingdom), 'treasury'].join(' ') });
     for (const m of S.result.milestones) out.push({ type: 'milestone', idx: m.idx, ts: m.timestamp || 0, kingdom: m.kingdom || null, ms: m, text: [m.label, kn(m.kingdom)].join(' ') });
@@ -2856,7 +2875,7 @@ details[open] summary { margin-bottom: 8px; }
         const x = e.raid;
         const done = x.outcome !== 'ongoing';
         const logger = x.playerId && (c.players || []).find((p) => p.id === x.playerId);
-        rows.push([s0.year, season, 'Raid', kn(x.by), terrName(x.sourceTerritory === 'base' ? 'base' : x.sourceTerritory, x.by), terrName(x.targetTerritory), OUTCOME[x.outcome].label, x.warband || '', x.troops ? E.troopSummary(c, x.by, x.troops) : '', x.value || '', x.cost ? -x.cost : '', x.scenario ? E.SCENARIOS[x.scenario] : '', done ? x.losses || 0 : '', done ? x.lootGained || 0 : '', '', '', logger ? playerName(logger) : '', x.notes || '']);
+        rows.push([s0.year, season, 'Raid', kn(x.by), terrName(x.sourceTerritory === 'base' ? 'base' : x.sourceTerritory, x.by), terrName(x.targetTerritory), OUTCOME[x.outcome].label, x.warband || '', E.raidTroops(c, x), x.value || '', x.cost ? -x.cost : '', x.scenario ? E.SCENARIOS[x.scenario] : '', done ? x.losses || 0 : '', done ? x.lootGained || 0 : '', '', '', logger ? playerName(logger) : '', x.notes || '']);
       } else if (e.type === 'adjust') {
         const a = e.adj;
         rows.push([s0.year, season, 'Treasury', kn(a.kingdom), '', '', '', '', '', '', '', '', '', a.treasury || 0, a.army || 0, a.morale || 0, '', a.note || '']);
@@ -2890,8 +2909,7 @@ details[open] summary { margin-bottom: 8px; }
     html += '<div class="field"><span class="label">Field</span>' + swatchRadios('kField', tincts, a.field) + '</div>';
     html += '<div class="field"><span class="label">Second tincture (for divided fields)</span>' + swatchRadios('kSecond', tincts, a.second) + '</div>';
     html += '<div class="field"><span class="label">Charge colour</span>' + swatchRadios('kChargeColor', tincts, a.chargeColor) + '</div>';
-    const factionNote = (fid) => E.FACTIONS[fid].troops.map((u) => u.label + ' ' + u.gp + ' gp').join(' \u00b7 ');
-    html += '<div class="field"><label for="kFaction">Pillage faction</label><select id="kFaction">' + E.FACTION_IDS.map((v) => '<option value="' + v + '"' + (v === (k.faction || 'vikings') ? ' selected' : '') + '>' + esc(E.FACTIONS[v].label) + '</option>').join('') + '</select><p class="hint" id="kFactionNote">' + esc(factionNote(k.faction || 'vikings')) + '</p></div>';
+    html += '<div class="field"><label for="kFaction">Pillage faction</label><select id="kFaction">' + factionOptions(k.faction || 'vikings') + '</select><p class="hint" id="kFactionNote">' + esc(factionSummary(k.faction || 'vikings')) + '</p><p class="hint">Make your own faction, or correct a faction\u2019s prices, in Campaign \u2192 Factions and troops.</p></div>';
     html += '<div class="field"><label for="kTrait">Trait</label><select id="kTrait">' + Object.entries(E.TRAITS).map(([v, t]) => '<option value="' + v + '"' + (v === k.trait ? ' selected' : '') + '>' + t.label + '</option>').join('') + '</select><p class="hint" id="kTraitNote">' + esc(E.TRAITS[k.trait].note) + '</p></div>';
     html += '<div class="field"><label for="kCapital">Capital</label><div class="row"><select id="kCapital"' + (capFixed ? ' disabled' : '') + '>' + territoryOptions(k.capital, (t) => !capitalKingdom(t.id) || t.id === k.capital) + '</select><button class="btn" type="button" data-action="pick-capital" data-id="' + esc(k.id) + '"' + (capFixed ? ' disabled' : '') + '>Pick on map</button></div>' + (capFixed ? '<p class="hint">Capitals are fixed once raiding starts; moving one would rewrite the war.</p>' : '') + '</div>';
     html += '<div class="grid3"><div class="field"><label for="kGold">Starting gold</label><input id="kGold" type="number" step="1" value="' + k.start.treasury + '"></div><div class="field"><label for="kArmy">Starting men</label><input id="kArmy" type="number" min="0" step="1" value="' + k.start.army + '"></div><div class="field"><label for="kMorale">Starting morale</label><input id="kMorale" type="number" min="0" max="100" step="1" value="' + k.start.morale + '"></div></div>';
@@ -2916,7 +2934,7 @@ details[open] summary { margin-bottom: 8px; }
       const s = r.kingdoms.get(k.id);
       html += '<li class="kcard' + (k.id === S.active ? ' active' : '') + '" style="--kc:' + E.kingdomColor(k) + '">';
       html += '<div class="khead">' + shieldSVG(k.arms, 48, k.name + ' coat of arms') + '<div><h3>' + esc(k.name) + '</h3><p>' + esc(k.ruler.title + ' ' + k.ruler.name) + (k.motto ? ' · “' + esc(k.motto) + '”' : '') + '</p></div></div>';
-      html += '<div class="chips"><span class="chip"><span class="kchip"><span class="dotk" style="background:' + E.kingdomColor(k) + '"></span>' + esc((E.KINGDOM_COLORS.find((x) => x.id === k.color) || {}).label || '') + '</span></span><span class="chip">' + esc(E.factionOf(k).label) + '</span><span class="chip" title="' + esc(E.TRAITS[k.trait].note) + '">' + esc(E.TRAITS[k.trait].label) + '</span><span class="chip">Capital: ' + esc(terr(k.capital).name) + (s.capitalHeld ? '' : ' (fallen)') + '</span>' + '</div>';
+      html += '<div class="chips"><span class="chip"><span class="kchip"><span class="dotk" style="background:' + E.kingdomColor(k) + '"></span>' + esc((E.KINGDOM_COLORS.find((x) => x.id === k.color) || {}).label || '') + '</span></span><span class="chip">' + esc(E.factionOf(k, c).label) + '</span><span class="chip" title="' + esc(E.TRAITS[k.trait].note) + '">' + esc(E.TRAITS[k.trait].label) + '</span><span class="chip">Capital: ' + esc(terr(k.capital).name) + (s.capitalHeld ? '' : ' (fallen)') + '</span>' + '</div>';
       html += '<div class="kstats"><span><b>' + fmt(s.treasury) + '</b> gold</span><span><b>' + fmt(s.army) + '</b> men</span><span>morale <b>' + s.morale + '</b></span><span><b>' + Math.round(s.progressPct) + '%</b> conquered</span>' + (s.alive ? '' : '<span>fallen</span>') + '</div>';
       const ps = E.playersOf(c, k.id);
       const mine = myPlayer();
@@ -2957,6 +2975,67 @@ details[open] summary { margin-bottom: 8px; }
       if (f) g[key] = Number(f.value);
     }
     return g;
+  }
+
+  // Every faction, its troops and prices; built-in prices can be corrected, and campaigns can define
+  // factions of their own (from scratch, or copied from a built-in list).
+  function factionsSection() {
+    const c = S.campaign;
+    const all = E.listFactions(c);
+    if (!S.facSel || !all.some((f) => f.id === S.facSel)) S.facSel = K().faction || 'vikings';
+    const fid = S.facSel;
+    const fd = E.factionDef(c, fid);
+    let html = '<h3 id="factions">Factions and troops</h3>';
+    html += '<p class="hint">All ' + E.FACTION_IDS.length + ' Pillage factions: the rulebook\u2019s seven, plus three from the free <i>The East</i> supplement and eight from the free <i>The Fall of Rome</i>. Victrix publishes the army lists, but this tracker was built without them, so most troop names and prices are estimates (marked below). Correct the prices to your lists, or build your own faction.</p>';
+    html += '<div class="field"><label for="facSel">Faction</label><select id="facSel">' + factionOptions(fid) + '</select></div>';
+    const users = c.kingdoms.filter((k) => (k.faction || 'vikings') === fid).map((k) => k.name);
+    html += '<p class="hint"><b>' + esc(E.FACTION_SOURCES[fd.source]) + '.</b> ' + esc(fd.notes || '') + (users.length ? ' Played by ' + esc(users.join(', ')) + '.' : '') + '</p>';
+    if (fd.source !== 'own') {
+      const own = (c.costs && c.costs[fid]) || {};
+      html += '<form data-form="costs" data-fid="' + esc(fid) + '" style="display:grid;gap:10px"><table class="prices"><thead><tr><th>Troop</th><th>Kit \u00b7 price from</th><th>gp</th></tr></thead><tbody>';
+      html += fd.troops.map((u) => '<tr><td>' + esc(u.label) + (u.note ? '<br><span class="src">' + esc(u.note) + '</span>' : '') + '</td><td class="src">' + esc(troopTags(u)) + '<br>' + esc(E.TROOP_SRC[u.src]) + '</td><td><input aria-label="' + esc(fd.label + ' ' + u.label) + ' price in gp" data-cost="' + esc(fid) + '.' + u.id + '" type="number" min="0" max="9999" step="1" inputmode="numeric" value="' + (Number.isFinite(own[u.id]) ? own[u.id] : u.gp) + '"></td></tr>').join('');
+      html += '</tbody></table><div class="actions"><button class="btn" type="submit">Save prices</button><button class="btn ghost" type="button" data-action="reset-costs" data-fid="' + esc(fid) + '">Back to the defaults</button><button class="btn" type="button" data-action="faction-new" data-from="' + esc(fid) + '">Copy into a new faction</button></div></form>';
+    } else html += factionEditor(fd);
+    const full = (c.factions || []).length >= E.MAX_CUSTOM_FACTIONS;
+    html += '<div class="actions"><button class="btn" type="button" data-action="faction-new"' + (full ? ' disabled' : '') + '>+ Create a faction from scratch</button></div>';
+    if (full) html += '<p class="hint">A campaign can hold ' + E.MAX_CUSTOM_FACTIONS + ' factions of its own.</p>';
+    return html;
+  }
+
+  function factionEditor(fd) {
+    const c = S.campaign;
+    if (!S.facDraft || S.facDraft.id !== fd.id) S.facDraft = JSON.parse(JSON.stringify((c.factions || []).find((f) => f.id === fd.id)));
+    const d = S.facDraft;
+    let html = '<form class="editor" data-form="faction" data-id="' + esc(d.id) + '" style="display:grid;gap:10px">';
+    html += '<div class="field"><label for="fName">Faction name</label><input id="fName" maxlength="40" value="' + esc(d.label) + '"></div>';
+    html += '<div class="field"><label for="fNotes">Notes (special rules you play with)</label><input id="fNotes" maxlength="200" value="' + esc(d.notes || '') + '" placeholder="Not affected by fog"></div>';
+    html += '<div class="frows">' + d.troops.map((t, i) => {
+      let row = '<fieldset class="frow"><legend>Troop ' + (i + 1) + '</legend>';
+      row += '<div class="grid2"><div class="field"><label for="fl-' + i + '">Name</label><input id="fl-' + i + '" data-f="label" data-i="' + i + '" maxlength="30" value="' + esc(t.label) + '"></div>';
+      row += '<div class="field"><label for="fg-' + i + '">Price (gp)</label><input id="fg-' + i + '" data-f="gp" data-i="' + i + '" type="number" min="0" max="9999" step="1" inputmode="numeric" value="' + t.gp + '"></div></div>';
+      row += '<div class="grid2"><div class="field"><label for="fa-' + i + '">Armour</label><select id="fa-' + i + '" data-f="armour" data-i="' + i + '">' + Object.entries(E.ARMOUR).map(([v, l]) => '<option value="' + v + '"' + (t.armour === v ? ' selected' : '') + '>' + l.charAt(0).toUpperCase() + l.slice(1) + '</option>').join('') + '</select></div>';
+      row += '<div class="field"><label for="fn-' + i + '">Kit or note</label><input id="fn-' + i + '" data-f="note" data-i="' + i + '" maxlength="60" value="' + esc(t.note || '') + '" placeholder="Dane axe"></div></div>';
+      row += '<div class="row"><label class="chk"><input type="checkbox" data-f="mounted" data-i="' + i + '"' + (t.mounted ? ' checked' : '') + '> Mounted</label><label class="chk"><input type="checkbox" data-f="missile" data-i="' + i + '"' + (t.missile ? ' checked' : '') + '> Shoots or throws</label>' + (d.troops.length > 1 ? '<button class="btn small ghost" type="button" data-action="faction-remove-troop" data-i="' + i + '">Remove</button>' : '') + '</div>';
+      return row + '</fieldset>';
+    }).join('') + '</div>';
+    html += '<div class="actions"><button class="btn small" type="button" data-action="faction-add-troop"' + (d.troops.length >= E.MAX_CUSTOM_TROOPS ? ' disabled' : '') + '>+ Add a troop</button></div>';
+    html += '<p class="hint">Raids already logged keep the troops and prices they set out with. Kingdoms pick this faction in Kingdoms \u2192 Customise.</p>';
+    html += '<div class="actions"><button class="btn primary" type="submit">Save faction</button><button class="btn ghost" type="button" data-action="faction-revert">Undo changes</button>';
+    html += S.confirm === 'faction:' + d.id ? '<span class="confirm">Delete ' + esc(d.label) + '? <button class="btn small danger" type="button" data-action="delete-faction" data-id="' + esc(d.id) + '">Delete</button><button class="btn small ghost" type="button" data-action="cancel-confirm">Keep</button></span>' : '<button class="btn ghost" type="button" data-action="ask-delete-faction" data-id="' + esc(d.id) + '">Delete faction</button>';
+    return html + '</div></form>';
+  }
+
+  function readFactionForm() {
+    const f = document.querySelector('form[data-form="faction"]');
+    if (!f || !S.facDraft) return;
+    S.facDraft.label = $('fName').value;
+    S.facDraft.notes = $('fNotes').value;
+    f.querySelectorAll('[data-f]').forEach((i) => {
+      const t = S.facDraft.troops[Number(i.dataset.i)];
+      if (!t) return;
+      const k = i.dataset.f;
+      t[k] = i.type === 'checkbox' ? i.checked : k === 'gp' ? Math.max(0, Math.min(9999, Math.round(Number(i.value) || 0))) : i.value;
+    });
   }
 
   function campaignTab() {
@@ -3016,12 +3095,7 @@ details[open] summary { margin-bottom: 8px; }
     if (S.jsonBox) html += '<div class="field"><label for="jsonOut">' + esc(S.jsonBox.label) + '</label><textarea id="jsonOut" class="json-box" readonly>' + esc(S.jsonBox.text) + '</textarea></div>';
     html += '<p class="hint">Imports always arrive as new campaigns; nothing you have is overwritten.</p>';
 
-    html += '<details' + (S.pricesOpen ? ' open' : '') + ' id="pricesBox"><summary>Troop prices (gp)</summary><p class="hint">Pillage prices each figure in gold pieces by its kit, and each faction pays differently. Prices marked <i>rulebook</i> come from published examples; the rest are estimates. Type in your rulebook\u2019s prices: new raids and recruits use them, logged raids keep what they cost.</p><form data-form="costs" style="display:grid;gap:10px">';
-    for (const fid of E.FACTION_IDS) {
-      const own = (c.costs && c.costs[fid]) || {};
-      html += '<table class="prices"><thead><tr><th colspan="2">' + esc(E.FACTIONS[fid].label) + '</th><th>gp</th></tr></thead><tbody>' + E.FACTIONS[fid].troops.map((u) => '<tr><td>' + esc(u.label) + '<br><span class="src">' + esc(u.note) + '</span></td><td class="src">' + esc(E.TROOP_SRC[u.src]) + '</td><td><input aria-label="' + esc(E.FACTIONS[fid].label + ' ' + u.label) + ' price in gp" data-cost="' + fid + '.' + u.id + '" type="number" min="0" max="9999" step="1" inputmode="numeric" value="' + (Number.isFinite(own[u.id]) ? own[u.id] : u.gp) + '"></td></tr>').join('') + '</tbody></table>';
-    }
-    html += '<div class="actions"><button class="btn" type="submit">Save prices</button><button class="btn ghost" type="button" data-action="reset-costs">Back to the defaults</button></div></form></details>';
+    html += factionsSection();
 
     html += '<details><summary>How raids change the map</summary><ul class="rules">';
     const R = E.RULES;
@@ -3134,6 +3208,7 @@ details[open] summary { margin-bottom: 8px; }
       lootGained: ongoing ? 0 : p.loot,
       warband: pc.men,
       troops: Object.assign({}, p.troops),
+      roster: pc.lines.map((l) => [l.label, l.n, l.gp]),
       value: pc.value,
       cost: pc.provisions,
       scenario: p.scenario,
@@ -3578,11 +3653,66 @@ details[open] summary { margin-bottom: 8px; }
       case 'log-csv':
         exportLogCSV();
         break;
-      case 'reset-costs':
-        c.costs = {};
+      case 'reset-costs': {
+        const costs = JSON.parse(JSON.stringify(c.costs || {}));
+        delete costs[a.dataset.fid];
+        c.costs = costs;
         c.settingsAt = Date.now();
-        S.pricesOpen = true;
-        commit('Troop prices are back to the defaults.');
+        commit(E.factionDef(c, a.dataset.fid).label + ' prices are back to the defaults.');
+        break;
+      }
+      case 'faction-new': {
+        if ((c.factions || []).length >= E.MAX_CUSTOM_FACTIONS) return toast('A campaign can hold ' + E.MAX_CUSTOM_FACTIONS + ' factions of its own.');
+        const from = a.dataset.from;
+        const id = ('cf_' + E.newId('')).toLowerCase().replace(/[^a-z0-9_]/g, '').slice(0, 27);
+        const troops = from
+          ? E.factionTroops(c, from).map((u) => ({ id: u.id, label: u.label, gp: u.gp, armour: u.armour, mounted: u.mounted, missile: u.missile, note: u.note }))
+          : [
+              { id: 'chieftain', label: 'Chieftain', gp: 70, armour: 'full', mounted: false, missile: false, note: 'leads the warband' },
+              { id: 'warrior', label: 'Warrior', gp: 40, armour: 'partial', mounted: false, missile: false, note: 'shield and spear' },
+            ];
+        const label = from ? E.factionDef(c, from).label + ' (yours)' : 'New faction';
+        c.factions = E.normFactions((c.factions || []).concat([{ id, label, notes: from ? E.factionDef(c, from).notes : '', troops, updatedAt: Date.now() }]));
+        S.facSel = id;
+        S.facDraft = null;
+        commit(label + ' created. Name its troops and prices below, then pick it for a kingdom in Kingdoms \u2192 Customise.');
+        setTimeout(() => $('fName') && $('fName').focus(), 0);
+        break;
+      }
+      case 'faction-add-troop': {
+        readFactionForm();
+        const d = S.facDraft;
+        if (!d || d.troops.length >= E.MAX_CUSTOM_TROOPS) break;
+        let n = d.troops.length + 1;
+        while (d.troops.some((t) => t.id === 'u' + n)) n++;
+        d.troops.push({ id: 'u' + n, label: 'New troop', gp: 40, armour: 'partial', mounted: false, missile: false, note: '' });
+        renderPanel();
+        setTimeout(() => $('fl-' + (d.troops.length - 1)) && $('fl-' + (d.troops.length - 1)).select(), 0);
+        break;
+      }
+      case 'faction-remove-troop':
+        readFactionForm();
+        if (S.facDraft && S.facDraft.troops.length > 1) S.facDraft.troops.splice(Number(a.dataset.i), 1);
+        renderPanel();
+        break;
+      case 'faction-revert':
+        S.facDraft = null;
+        renderPanel();
+        break;
+      case 'ask-delete-faction': {
+        const users = c.kingdoms.filter((k) => k.faction === a.dataset.id);
+        if (users.length) return toast(users.map((k) => k.name).join(', ') + ' play' + (users.length === 1 ? 's' : '') + ' this faction. Pick another for ' + (users.length === 1 ? 'it' : 'them') + ' first.');
+        S.confirm = 'faction:' + a.dataset.id;
+        renderPanel();
+        break;
+      }
+      case 'delete-faction':
+        c.factions = (c.factions || []).filter((x) => x.id !== a.dataset.id);
+        c.deleted = (c.deleted || []).concat([a.dataset.id]);
+        S.facSel = null;
+        S.facDraft = null;
+        S.confirm = null;
+        commit('Faction deleted.');
         break;
       case 'delete-raid':
         c.raids = c.raids.filter((x) => x.id !== rid);
@@ -3729,7 +3859,7 @@ details[open] summary { margin-bottom: 8px; }
         color: color && !c.kingdoms.some((o) => o.id !== k.id && o.color === color.value) ? color.value : k.color,
         arms: readArmsForm(),
         trait: $('kTrait').value,
-        faction: E.FACTIONS[$('kFaction').value] ? $('kFaction').value : k.faction,
+        faction: E.listFactions(c).some((x) => x.id === $('kFaction').value) ? $('kFaction').value : k.faction,
         start: {
           treasury: Math.round(Number($('kGold').value) || 0),
           army: Math.max(0, Math.round(Number($('kArmy').value) || 0)),
@@ -3750,8 +3880,19 @@ details[open] summary { margin-bottom: 8px; }
       if (cost > ks.treasury) return toast(n + ' ' + u.label + ' cost ' + fmt(cost) + ' gold; the treasury holds ' + fmt(ks.treasury) + '.');
       c.adjustments.push({ id: E.newId('a'), kingdom: S.active, updatedAt: Date.now(), year: c.year, season: c.season, timestamp: Date.now(), army: n, treasury: -cost, morale: 0, note: 'Recruited ' + E.troopSummary(c, S.active, { [u.id]: n }) + ' (' + u.gp + ' gp each)' });
       commit(K().name + ' recruits ' + E.troopSummary(c, S.active, { [u.id]: n }) + ' for ' + fmt(cost) + ' gold.');
+    } else if (kind === 'faction') {
+      readFactionForm();
+      const d = S.facDraft;
+      if (!d) return;
+      if (!d.label.trim()) return toast('Give the faction a name.');
+      if (d.troops.some((t) => !String(t.label).trim())) return toast('Every troop needs a name.');
+      c.factions = E.normFactions((c.factions || []).map((x) => (x.id === d.id ? Object.assign({}, d, { updatedAt: Date.now() }) : x)));
+      S.facDraft = null;
+      commit(d.label.trim() + ' saved. New raids and recruits use it.');
     } else if (kind === 'costs') {
-      const costs = {};
+      // Only this faction's prices change; the others keep theirs.
+      const costs = JSON.parse(JSON.stringify(c.costs || {}));
+      delete costs[f.dataset.fid];
       f.querySelectorAll('[data-cost]').forEach((i) => {
         const [fid, tid] = i.dataset.cost.split('.');
         const v = Math.max(0, Math.min(9999, Math.round(Number(i.value))));
@@ -3760,8 +3901,7 @@ details[open] summary { margin-bottom: 8px; }
       });
       c.costs = costs;
       c.settingsAt = Date.now();
-      S.pricesOpen = true;
-      commit('Troop prices saved. New raids and recruits use them.');
+      commit(E.factionDef(c, f.dataset.fid).label + ' prices saved. New raids and recruits use them.');
     } else if (kind === 'adjust') {
       const a = { army: Math.round(Number($('adjArmy').value) || 0), treasury: Math.round(Number($('adjGold').value) || 0), morale: Math.round(Number($('adjMorale').value) || 0) };
       if (!a.army && !a.treasury && !a.morale) return toast('Enter a change to men, gold or morale.');
@@ -3808,12 +3948,21 @@ details[open] summary { margin-bottom: 8px; }
       }
     } else if (t.closest('form[data-form="kingdom"]')) {
       if (t.id === 'kTrait') $('kTraitNote').textContent = E.TRAITS[t.value].note;
-      if (t.id === 'kFaction') $('kFactionNote').textContent = E.FACTIONS[t.value].troops.map((u) => u.label + ' ' + u.gp + ' gp').join(' \u00b7 ');
+      if (t.id === 'kFaction') $('kFactionNote').textContent = factionSummary(t.value);
       if (['kDivision', 'kCharge'].includes(t.id) || ['kField', 'kSecond', 'kChargeColor'].includes(t.name)) $('armsPreview').innerHTML = shieldSVG(readArmsForm(), 64, 'Preview of the arms');
     } else if (t.id === 'recType' || t.id === 'recN') {
       const u = E.troopList(S.campaign, S.active).find((x) => x.id === $('recType').value);
       const n = Math.max(0, Math.round(Number($('recN').value) || 0));
       $('recCost').textContent = n + ' \u00d7 ' + u.gp + ' gp = ' + fmt(n * u.gp) + ' gold from a treasury of ' + fmt(S.result.kingdoms.get(S.active).treasury) + '.';
+    } else if (t.id === 'facSel') {
+      S.facSel = t.value;
+      S.facDraft = null;
+      S.confirm = null;
+      renderPanel();
+      const h = $('factions');
+      if (h) h.scrollIntoView({ block: 'start' });
+    } else if (t.closest('form[data-form="faction"]')) {
+      readFactionForm();
     } else if (t.name === 'newWorld') {
       S.newWorld = t.value;
       document.querySelectorAll('.gen-only').forEach((n) => (n.hidden = S.newWorld === 'europe'));
@@ -3986,7 +4135,7 @@ details[open] summary { margin-bottom: 8px; }
       const troops = E.normTroops(r.troops);
       if (troops) {
         const wc = E.warbandCost(c, by, troops);
-        Object.assign(raid, { troops, warband: wc.men, value: wc.value, cost: wc.provisions });
+        Object.assign(raid, { troops, roster: wc.lines.map((l) => [l.label, l.n, l.gp]), warband: wc.men, value: wc.value, cost: wc.provisions });
       }
       if (E.SCENARIOS[r.scenario]) raid.scenario = r.scenario;
       c.raids.push(raid);

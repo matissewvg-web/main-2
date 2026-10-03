@@ -30,7 +30,7 @@ Why four kingdoms but sixteen players: map colour is how you tell kingdoms apart
 **Kingdoms → Customise** opens the editor:
 
 - **Name, ruler (title and name), motto.**
-- **Pillage faction**: Vikings, Anglo-Saxons, Normans or Irish. It sets which troops the kingdom raids and recruits with, at that faction's gp prices (see *Pillage rules* below).
+- **Pillage faction**: any of the 18 Pillage factions or one you made yourself. It sets which troops the kingdom raids and recruits with, at that faction's gp prices (see *Pillage rules* below).
 - **Colour on the map** from the four map colours. Each kingdom's colour is unique.
 - **Coat of arms**: division (plain, per pale, per fess, per bend, quarterly, chevron, saltire), field, second tincture and charge colour from the eight heraldic tinctures, and a charge (wolf, raven, axe, longship, tower, dragon, boar, stag, crown, sun, hammer). The shield previews live; **Roll new arms** suggests one that follows the rule of tincture.
 - **Trait**, which bends the rules for that kingdom only:
@@ -92,19 +92,23 @@ The capital flies the kingdom's banner (in the colour of whoever holds it) and i
 
 The battles are meant to be fought on the table with **Pillage: Ransack the Middle Ages** (Victrix, written by Guillaume Rousselot). This tracker is the campaign around those games. It uses what the published rules make public; the rulebook itself is paid and isn't reproduced here.
 
-- **Gold pieces.** Pillage prices every figure in gp by its equipment, and the same kit costs differently per faction. Each kingdom has a faction with a troop list:
+- **Gold pieces.** Pillage prices every figure in gp by its equipment, and the same kit costs differently per faction. Each kingdom plays one faction and raids and recruits with its troops.
+- **All 18 factions.**
 
-  | Faction | Troops (gp) |
+  | Source | Factions |
   |---|---|
-  | Vikings | Jarl 70, Hirdman 60, Bondi warrior 40, Bowman 40, Thrall 30 |
-  | Anglo-Saxons | Chieftain 70\*, Huscarl 60\*, Fyrd warrior 40, Bowman 40, Ceorl 30 |
-  | Normans | Lord 70, Mounted knight 135\*, Man-at-arms 60, Serjeant 40, Crossbowman 40, Levy 30 |
-  | Irish | Rí 70, Champion 60, Warrior 40, Kern 30 |
+  | Pillage rulebook | Vikings, Anglo-Saxons, Normans, Irish (with Picts and Scots), Franks, Bretons, Welsh |
+  | *The East* (free supplement) | Rus, Magyars, Byzantines |
+  | *The Fall of Rome* (free supplement, around 400 AD) | Western Romans, Eastern Romans, Visigoths, Huns, Romano-British, Picts, Saxons, Merovingian Franks |
 
-  \* from published examples. Warriors at 30–50 gp are inside the range the book gives; the rest are estimates. **Campaign → Troop prices** lets you type in the real prices from your rulebook. New raids and recruits use them, and logged raids keep what they cost.
+  Each has a troop list with armour (none, some, full), whether a troop rides or shoots, and a gp price, plus the faction's public notes: the Welsh have no armour, Bretons ignore wind and rain, Anglo-Saxons ignore fog, berserkers are expensive, and a review found the Huns strong.
+- **Be clear what that data is.** Victrix publishes the army lists as free PDFs, but this tracker was written without being able to open them. Only three prices come from published examples: the Anglo-Saxon chieftain (70 gp) and huscarl (60 gp), and the Norman mounted knight (135 gp). Ordinary warriors are inside the book's 30–50 gp range; every other price, and most troop names (historical names, not necessarily the book's), are estimates. The Factions screen marks each price's source.
+- **Campaign → Factions and troops** shows every faction's list. Type in your rulebook's prices for any built-in faction (*Save prices* changes that faction only; *Back to the defaults* resets it).
+- **Make your own faction**, from scratch or by copying any list (*Copy into a new faction*): a name, notes for the special rules you play with, and up to 12 troops, each with a name, price, armour, *Mounted*, *Shoots or throws* and a kit note. Up to 12 factions per campaign. A kingdom picks it in **Kingdoms → Customise → Pillage faction** (the list is grouped: rulebook, supplements, your factions). Custom factions sync like everything else in a shared campaign, and a faction a kingdom still plays can't be deleted.
+- **Raids remember who went.** Each raid stores its roster (troop names, numbers and prices as they were), so editing or deleting a faction later doesn't rewrite the log.
 - **The warband's worth is its points value on the table.** A raid of 1 Jarl, 2 Hirdmen and 8 Bondi is a 510 gp warband, so both players know what to field.
 - **Scenarios.** Each raid records which of the book's five scenarios was played: Pitched Battle, Pillage!, Landing, Pilgrimage or St. Brice's Day Massacre. The form suggests one: a Landing over a sea lane, a Pitched Battle where a rival holds a share or at a capital, otherwise Pillage!.
-- **Not built in:** Pillage's own campaign rules (between-game progression, injuries, experience), its fire and looting tables, and every price not marked above. They aren't public, so nothing here pretends to be them.
+- **Not built in:** Pillage's own campaign rules (between-game progression, injuries, experience), its fire, looting and weather tables, faction special rules beyond the notes, and every price not marked as a rulebook example. They aren't public, so nothing here pretends to be them.
 
 ## How raids change the map
 
@@ -146,7 +150,7 @@ From the browser console, `PillageRansack.logRaid({targetTerritory: 't4', outcom
 - `test/engine.test.js`, `test/fixtures/v1-campaign.json`: every coastline, rivers, settlements, kingdoms and traits, players and teams, merging, generation settings, rules, routes, import/export, and a save from the first release.
 
 ```bash
-node --test pillage-ransack/test/*.test.js   # 45 tests
+node --test pillage-ransack/test/*.test.js   # 48 tests
 node pillage-ransack/build.mjs               # rebuild index.html after editing app.html or engine.js
 cd pillage-ransack/desktop && npm ci && npm start   # run the Windows app from a checkout
 ```
@@ -154,7 +158,7 @@ cd pillage-ransack/desktop && npm ci && npm start   # run the Windows app from a
 ## Known limitations
 
 - **Not a game engine.** It records what happened; it doesn't roll dice or decide outcomes. The odds shown are a guide.
-- **Only part of Pillage is in here.** Factions, gp pricing, the published example prices and the five scenarios are; the full price tables and the book's campaign rules aren't, because they're only in the paid rulebook. Most troop prices are estimates until you type yours in.
+- **Only part of Pillage is in here.** All 18 factions, gp pricing, the three published example prices and the five scenarios are; the real army lists (exact troop names and prices) and the book's campaign rules aren't, because this tracker couldn't read them. Most troop names and prices are estimates until you type yours in or build your own factions.
 - **The map rules and traits are this tracker's own** (above) and untested for balance. Gold on the map and gp on the table are one currency, so with the starting treasuries a single recruit is expensive: expect to tune `DEFAULT_START`, tribute and `provisionPct` after a few seasons of real play.
 - **The real map is a game board, not an atlas.** Territory seats are placed at real places, but the borders between them are grown from those seats, not traced from historical sources; realms around 1000 were far less tidy than this. There are no rivers or lakes on it (rather than invented ones), small islands vanish at this scale, and the frame cuts off Iceland, Iberia, most of Italy and the steppe. Land beyond the realms is wild and can't be raided.
 - **Troops at home aren't tracked by type.** The army is a head count; a raid can send any mix of troops as long as enough men are at home.
