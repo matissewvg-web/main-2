@@ -1,0 +1,519 @@
+{
+  "app": "pillage-ransack",
+  "version": 1,
+  "exportedAt": "2026-10-03T15:08:07.080Z",
+  "campaigns": {
+    "cmusj0vtj6y7m": {
+      "id": "cmusj0vtj6y7m",
+      "name": "The Saltmarch Raids",
+      "seed": "saltmarch",
+      "version": 1,
+      "createdAt": 1700000000000,
+      "updatedAt": 1700000000000,
+      "year": 2,
+      "season": "spring",
+      "goalPct": 60,
+      "baseTerritory": "t13",
+      "start": {
+        "treasury": 100,
+        "army": 60,
+        "morale": 60
+      },
+      "treasury": 671,
+      "army": 35,
+      "morale": 80,
+      "map": {
+        "width": 1000,
+        "height": 700,
+        "seed": 1661755208,
+        "shape": "island",
+        "rx": 375,
+        "ry": 248
+      },
+      "territories": [
+        {
+          "id": "t1",
+          "name": "Wintermouth",
+          "position": {
+            "x": 499.8,
+            "y": 526
+          },
+          "goldValue": 250,
+          "garrisonBase": 43,
+          "garrison": 43,
+          "status": "unclaimed",
+          "terrain": "coast",
+          "conquered": false,
+          "control": 0,
+          "damage": 0,
+          "override": null
+        },
+        {
+          "id": "t2",
+          "name": "Dunpeak",
+          "position": {
+            "x": 209.3,
+            "y": 290.4
+          },
+          "goldValue": 110,
+          "garrisonBase": 50,
+          "garrison": 46,
+          "status": "claimed",
+          "terrain": "mountains",
+          "conquered": false,
+          "control": 40,
+          "damage": 0,
+          "override": null
+        },
+        {
+          "id": "t3",
+          "name": "Winterdale",
+          "position": {
+            "x": 702.3,
+            "y": 351.3
+          },
+          "goldValue": 85,
+          "garrisonBase": 17,
+          "garrison": 17,
+          "status": "unclaimed",
+          "terrain": "grassland",
+          "conquered": false,
+          "control": 0,
+          "damage": 0,
+          "override": null
+        },
+        {
+          "id": "t4",
+          "name": "Whitham",
+          "position": {
+            "x": 783.8,
+            "y": 440.5
+          },
+          "goldValue": 140,
+          "garrisonBase": 44,
+          "garrison": 44,
+          "status": "unclaimed",
+          "terrain": "grassland",
+          "conquered": false,
+          "control": 0,
+          "damage": 0,
+          "override": null
+        },
+        {
+          "id": "t5",
+          "name": "Crowmouth",
+          "position": {
+            "x": 453.6,
+            "y": 201.5
+          },
+          "goldValue": 135,
+          "garrisonBase": 74,
+          "garrison": 0,
+          "status": "conquered",
+          "terrain": "coast",
+          "conquered": true,
+          "control": 100,
+          "damage": 0,
+          "override": null
+        },
+        {
+          "id": "t6",
+          "name": "Halwash",
+          "position": {
+            "x": 555.4,
+            "y": 163.7
+          },
+          "goldValue": 55,
+          "garrisonBase": 25,
+          "garrison": 25,
+          "status": "contested",
+          "terrain": "marsh",
+          "conquered": false,
+          "control": 0,
+          "damage": 0,
+          "override": null
+        },
+        {
+          "id": "t7",
+          "name": "Crowfell",
+          "position": {
+            "x": 322.6,
+            "y": 463.9
+          },
+          "goldValue": 160,
+          "garrisonBase": 108,
+          "garrison": 108,
+          "status": "unclaimed",
+          "terrain": "mountains",
+          "conquered": false,
+          "control": 0,
+          "damage": 0,
+          "override": null
+        },
+        {
+          "id": "t8",
+          "name": "Morgrove",
+          "position": {
+            "x": 769.4,
+            "y": 245
+          },
+          "goldValue": 120,
+          "garrisonBase": 80,
+          "garrison": 80,
+          "status": "unclaimed",
+          "terrain": "forest",
+          "conquered": false,
+          "control": 0,
+          "damage": 0,
+          "override": null
+        },
+        {
+          "id": "t9",
+          "name": "Wyrmholt",
+          "position": {
+            "x": 668.1,
+            "y": 198.6
+          },
+          "goldValue": 165,
+          "garrisonBase": 79,
+          "garrison": 79,
+          "status": "unclaimed",
+          "terrain": "forest",
+          "conquered": false,
+          "control": 0,
+          "damage": 0,
+          "override": null
+        },
+        {
+          "id": "t10",
+          "name": "Halknoll",
+          "position": {
+            "x": 350.9,
+            "y": 315.6
+          },
+          "goldValue": 195,
+          "garrisonBase": 64,
+          "garrison": 38,
+          "status": "claimed",
+          "terrain": "hills",
+          "conquered": false,
+          "control": 80,
+          "damage": 0,
+          "override": null
+        },
+        {
+          "id": "t11",
+          "name": "Hagdown",
+          "position": {
+            "x": 506,
+            "y": 326.5
+          },
+          "goldValue": 185,
+          "garrisonBase": 28,
+          "garrison": 32,
+          "status": "unclaimed",
+          "terrain": "hills",
+          "conquered": false,
+          "control": 0,
+          "damage": 0.5,
+          "override": null
+        },
+        {
+          "id": "t12",
+          "name": "Saltvik",
+          "position": {
+            "x": 388.4,
+            "y": 539.2
+          },
+          "goldValue": 165,
+          "garrisonBase": 74,
+          "garrison": 74,
+          "status": "unclaimed",
+          "terrain": "coast",
+          "conquered": false,
+          "control": 0,
+          "damage": 0,
+          "override": null
+        },
+        {
+          "id": "t13",
+          "name": "Thurswood",
+          "position": {
+            "x": 331,
+            "y": 185
+          },
+          "goldValue": 175,
+          "garrisonBase": 30,
+          "garrison": 0,
+          "status": "conquered",
+          "terrain": "forest",
+          "conquered": true,
+          "control": 100,
+          "damage": 0,
+          "override": null
+        },
+        {
+          "id": "t14",
+          "name": "Swartmouth",
+          "position": {
+            "x": 603.3,
+            "y": 537.8
+          },
+          "goldValue": 245,
+          "garrisonBase": 30,
+          "garrison": 30,
+          "status": "unclaimed",
+          "terrain": "coast",
+          "conquered": false,
+          "control": 0,
+          "damage": 0,
+          "override": null
+        },
+        {
+          "id": "t15",
+          "name": "Greystead",
+          "position": {
+            "x": 699.2,
+            "y": 492.9
+          },
+          "goldValue": 195,
+          "garrisonBase": 57,
+          "garrison": 57,
+          "status": "unclaimed",
+          "terrain": "grassland",
+          "conquered": false,
+          "control": 0,
+          "damage": 0,
+          "override": null
+        },
+        {
+          "id": "t16",
+          "name": "Winterpeak",
+          "position": {
+            "x": 217.8,
+            "y": 429.1
+          },
+          "goldValue": 85,
+          "garrisonBase": 93,
+          "garrison": 93,
+          "status": "unclaimed",
+          "terrain": "mountains",
+          "conquered": false,
+          "control": 0,
+          "damage": 0,
+          "override": null
+        },
+        {
+          "id": "t17",
+          "name": "Sheeptor",
+          "position": {
+            "x": 440.6,
+            "y": 413.1
+          },
+          "goldValue": 155,
+          "garrisonBase": 18,
+          "garrison": 18,
+          "status": "unclaimed",
+          "terrain": "hills",
+          "conquered": false,
+          "control": 0,
+          "damage": 0,
+          "override": null
+        },
+        {
+          "id": "t18",
+          "name": "Ravencarr",
+          "position": {
+            "x": 592.8,
+            "y": 423.9
+          },
+          "goldValue": 40,
+          "garrisonBase": 50,
+          "garrison": 50,
+          "status": "unclaimed",
+          "terrain": "marsh",
+          "conquered": false,
+          "control": 0,
+          "damage": 0,
+          "override": null
+        },
+        {
+          "id": "t19",
+          "name": "Greyhurst",
+          "position": {
+            "x": 606,
+            "y": 300.3
+          },
+          "goldValue": 55,
+          "garrisonBase": 43,
+          "garrison": 43,
+          "status": "unclaimed",
+          "terrain": "forest",
+          "conquered": false,
+          "control": 0,
+          "damage": 0,
+          "override": null
+        },
+        {
+          "id": "t20",
+          "name": "Goldby",
+          "position": {
+            "x": 822.9,
+            "y": 343.3
+          },
+          "goldValue": 165,
+          "garrisonBase": 20,
+          "garrison": 20,
+          "status": "unclaimed",
+          "terrain": "grassland",
+          "conquered": false,
+          "control": 0,
+          "damage": 0,
+          "override": null
+        }
+      ],
+      "raids": [
+        {
+          "id": "r1",
+          "sourceTerritory": "base",
+          "targetTerritory": "t5",
+          "outcome": "success",
+          "timestamp": 1699971200000,
+          "losses": 3,
+          "lootGained": 70,
+          "warband": 30,
+          "year": 1,
+          "season": "spring",
+          "notes": ""
+        },
+        {
+          "id": "r2",
+          "sourceTerritory": "base",
+          "targetTerritory": "t5",
+          "outcome": "success",
+          "timestamp": 1699974800000,
+          "losses": 2,
+          "lootGained": 55,
+          "warband": 30,
+          "year": 1,
+          "season": "spring",
+          "notes": ""
+        },
+        {
+          "id": "r3",
+          "sourceTerritory": "base",
+          "targetTerritory": "t10",
+          "outcome": "failure",
+          "timestamp": 1699978400000,
+          "losses": 10,
+          "lootGained": 10,
+          "warband": 25,
+          "year": 1,
+          "season": "summer",
+          "notes": ""
+        },
+        {
+          "id": "r4",
+          "sourceTerritory": "base",
+          "targetTerritory": "t5",
+          "outcome": "success",
+          "timestamp": 1699982000000,
+          "losses": 2,
+          "lootGained": 60,
+          "warband": 32,
+          "year": 1,
+          "season": "summer",
+          "notes": ""
+        },
+        {
+          "id": "r5",
+          "sourceTerritory": "base",
+          "targetTerritory": "t2",
+          "outcome": "success",
+          "timestamp": 1699985600000,
+          "losses": 4,
+          "lootGained": 85,
+          "warband": 28,
+          "year": 1,
+          "season": "autumn",
+          "notes": ""
+        },
+        {
+          "id": "r6",
+          "sourceTerritory": "base",
+          "targetTerritory": "t10",
+          "outcome": "success",
+          "timestamp": 1699989200000,
+          "losses": 5,
+          "lootGained": 45,
+          "warband": 35,
+          "year": 1,
+          "season": "autumn",
+          "notes": ""
+        },
+        {
+          "id": "r7",
+          "sourceTerritory": "base",
+          "targetTerritory": "t11",
+          "outcome": "failure",
+          "timestamp": 1699992800000,
+          "losses": 8,
+          "lootGained": 0,
+          "warband": 20,
+          "year": 1,
+          "season": "winter",
+          "notes": ""
+        },
+        {
+          "id": "r8",
+          "sourceTerritory": "base",
+          "targetTerritory": "t10",
+          "outcome": "success",
+          "timestamp": 1699996400000,
+          "losses": 3,
+          "lootGained": 50,
+          "warband": 34,
+          "year": 2,
+          "season": "spring",
+          "notes": ""
+        },
+        {
+          "id": "r9",
+          "sourceTerritory": "base",
+          "targetTerritory": "t6",
+          "outcome": "ongoing",
+          "timestamp": 1700000000000,
+          "losses": 0,
+          "lootGained": 0,
+          "warband": 20,
+          "year": 2,
+          "season": "spring",
+          "notes": ""
+        }
+      ],
+      "adjustments": [
+        {
+          "id": "a1",
+          "year": 1,
+          "season": "winter",
+          "timestamp": 1699992800000,
+          "treasury": -60,
+          "army": 12,
+          "morale": 0,
+          "note": "Hired 12 sellswords"
+        }
+      ],
+      "milestones": [
+        {
+          "id": "m1",
+          "year": 1,
+          "season": "spring",
+          "timestamp": 1699964000000,
+          "kind": "custom",
+          "label": "The longships land"
+        }
+      ],
+      "example": false
+    }
+  }
+}

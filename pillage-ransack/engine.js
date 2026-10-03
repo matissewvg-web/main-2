@@ -120,13 +120,16 @@
 
   /* ---------- geometry ---------- */
 
-  const SHAPES = ['island', 'archipelago', 'mainland'];
-  const SHAPE_LABEL = { island: 'Island', archipelago: 'Archipelago', mainland: 'Mainland coast' };
+  // Engine 1 (the first release) drew these three; engine 2 draws them all.
+  const SHAPES1 = ['island', 'archipelago', 'mainland'];
+  const SHAPES = ['island', 'archipelago', 'mainland', 'inland', 'strait', 'fjords', 'peninsula'];
+  const SHAPE_LABEL = { island: 'Island', archipelago: 'Archipelago', mainland: 'Mainland coast', inland: 'Inland sea', strait: 'Twin lands', fjords: 'Fjord coast', peninsula: 'Peninsula' };
   // Map furniture the coastline should stay clear of: cartouche, compass rose, scale bar.
   const DECOR_ZONES = [
     [14, 12, 258, 72],
     [880, 30, 985, 135],
     [100, 650, 300, 690],
+    [826, 628, 1000, 700], // zoom buttons
   ];
 
   function dist(a, b) {
@@ -254,12 +257,16 @@
     return p;
   }
 
+  function mapShape1(map) {
+    return SHAPES1.includes(map.shape) ? map.shape : 'island';
+  }
+
   function mapShape(map) {
     return SHAPES.includes(map.shape) ? map.shape : 'island';
   }
 
   function mapIslands(map) {
-    if (mapShape(map) !== 'mainland' && Array.isArray(map.islands) && map.islands.length) return map.islands;
+    if (mapShape1(map) !== 'mainland' && Array.isArray(map.islands) && map.islands.length) return map.islands;
     return [{ cx: map.width / 2, cy: map.height / 2, rx: map.rx, ry: map.ry }];
   }
 
@@ -289,7 +296,7 @@
 
   // How far inland a point is, 0 at the coast to 1 deep inland.
   function inlandness(map, x, y) {
-    if (mapShape(map) === 'mainland') {
+    if (mapShape1(map) === 'mainland') {
       const cf = coastFrame(map);
       return clamp((cf.c - (x * cf.nx + y * cf.ny)) / 420, 0, 1);
     }
@@ -298,7 +305,7 @@
 
   // Each landmass: a convex outline its territories are cut from.
   function landmasses(map) {
-    if (mapShape(map) === 'mainland') {
+    if (mapShape1(map) === 'mainland') {
       const m = 60;
       const cf = coastFrame(map);
       const [boundary, labels] = clipHalfPlane(
@@ -318,7 +325,7 @@
   }
 
   function landmassOf(map, x, y) {
-    return mapShape(map) === 'mainland' ? 0 : nearestIsland(mapIslands(map), x, y)[0];
+    return mapShape1(map) === 'mainland' ? 0 : nearestIsland(mapIslands(map), x, y)[0];
   }
 
   // Voronoi within each landmass; territories on different islands never share a border.
@@ -359,7 +366,7 @@
       ny: valueNoise(map.seed + 101 * i + 2),
     }));
     let shapeWarp;
-    if (mapShape(map) === 'mainland') {
+    if (mapShape1(map) === 'mainland') {
       const cf = coastFrame(map);
       const tx = -cf.ny;
       const ty = cf.nx;
@@ -523,6 +530,10 @@
    * parameters + terrain), so imported campaigns redraw the same map.
    */
   function buildGeometry(campaign) {
+    return campaign.map && campaign.map.engine === 2 ? buildGeometry2(campaign) : buildGeometry1(campaign);
+  }
+
+  function buildGeometry1(campaign) {
     const map = campaign.map;
     const sites = campaign.territories.map((t) => [t.position.x, t.position.y]);
     const { cells, groups } = landCells(sites, map);
@@ -564,6 +575,8 @@
         centroid: warp(c[0], c[1]),
         area: Math.abs(polygonArea(visible.length >= 3 ? visible : poly)),
         coastLength,
+        rings: [points],
+        d: pathData(points, true),
       };
     });
 
@@ -609,6 +622,8 @@
     const { rivers, lakes } = computeRivers(campaign, cells, warp);
     const index = new Map(campaign.territories.map((t, i) => [t.id, i]));
     return {
+      engine: 1,
+      islets: [],
       shapes,
       borders,
       coast,
@@ -631,8 +646,17 @@
     return close ? d + 'Z' : d;
   }
 
-  // Shortest route between two territories over borders and sea lanes (a crossing costs a quarter more).
-  function findRoute(geo, fromIdx, toIdx) {
+  // Shortest route between two territories over borders and sea lanes (a crossing costs a quarter more, unless opts.seaCost says otherwise).
+
+  // Even-odd test against every ring, so holes (lakes inside a territory) count as outside.
+  function pointInShape(p, shape) {
+    let inside = false;
+    for (const r of shape.rings || [shape.points]) if (pointInPolygon(p, r)) inside = !inside;
+    return inside;
+  }
+
+  function findRoute(geo, fromIdx, toIdx, opts) {
+    const seaCost = (opts && opts.seaCost) || 1.25;
     const n = geo.sites.length;
     if (fromIdx === toIdx) return [fromIdx];
     const distTo = new Array(n).fill(Infinity);
@@ -647,7 +671,7 @@
       done[u] = true;
       for (const v of geo.adjacency[u]) {
         const sea = geo.laneSet && geo.laneSet.has(Math.min(u, v) + '|' + Math.max(u, v));
-        const d = distTo[u] + dist(geo.sites[u], geo.sites[v]) * (sea ? 1.25 : 1);
+        const d = distTo[u] + dist(geo.sites[u], geo.sites[v]) * (sea ? seaCost : 1);
         if (d < distTo[v]) {
           distTo[v] = d;
           prev[v] = u;
@@ -664,6 +688,934 @@
     let d = 0;
     for (let i = 1; i < route.length; i++) d += dist(geo.sites[route[i - 1]], geo.sites[route[i]]);
     return Math.round((d / 100) * LEAGUES_PER_100);
+  }
+
+  /* ---------- engine 2: a land mask on a fine grid ----------
+   *
+   * The map is a jittered grid of ~3,800 small Voronoi cells. A shape field plus
+   * noise decides which cells are land, so any coastline works: fjords, inland
+   * seas, straits, peninsulas, lakes and islets. Territories are grown outward
+   * from their seats over land cells (never across water), which gives organic,
+   * non-convex borders, and rivers run downhill over the cell corners.
+   */
+
+  const FINE = 15;
+  const FRAME_PAD = 45;
+  const GEN_DEFAULTS = { rough: 1, mountains: 1, forests: 1, wetlands: 1, wealth: 1, defences: 1, rivers: 1, borders: 1 };
+  const GEN_LEVEL = [0, 1, 2];
+
+  function normGen(g) {
+    const out = {};
+    for (const k in GEN_DEFAULTS) {
+      const v = g && Math.round(Number(g[k]));
+      out[k] = GEN_LEVEL.includes(v) ? v : GEN_DEFAULTS[k];
+    }
+    return out;
+  }
+
+  function harmonicsFrom(rng, ks) {
+    return ks.map((k) => [k, Math.round((0.3 + rng() * 0.7) * 1000) / 1000, Math.round(rng() * Math.PI * 2 * 1000) / 1000]);
+  }
+
+  function harmonic(h, th) {
+    let s = 0;
+    let sa = 0;
+    for (const [k, a, phi] of h) {
+      s += a * Math.sin(k * th + phi);
+      sa += a;
+    }
+    return sa ? s / sa : 0;
+  }
+
+  // Positive inside a wobbly ellipse; roughly the distance to its edge in hundreds of map units.
+  function blobField(b, x, y) {
+    const dx = (x - b.cx) / b.rx;
+    const dy = (y - b.cy) / b.ry;
+    const rho = Math.sqrt(dx * dx + dy * dy);
+    const r = 1 + b.amp * harmonic(b.harm, Math.atan2(dy, dx));
+    return ((1 - rho / r) * Math.min(b.rx, b.ry)) / 100;
+  }
+
+  // A wavy coastline: positive on the land side.
+  function lineField(L, x, y) {
+    const nx = Math.cos(L.angle);
+    const ny = Math.sin(L.angle);
+    const u = -x * ny + y * nx;
+    return (L.c + L.A * harmonicU(L.waves, u) - (x * nx + y * ny)) / 100;
+  }
+
+  function harmonicU(waves, u) {
+    let s = 0;
+    let sa = 0;
+    for (const [f, a, phi] of waves) {
+      s += a * Math.sin(f * u + phi);
+      sa += a;
+    }
+    return sa ? s / sa : 0;
+  }
+
+  // Distance from a point to a curve given as sample points, with the curve
+  // parameter at the nearest point.
+  function curveDistance(pts, x, y) {
+    let best = Infinity;
+    let bt = 0;
+    for (let i = 1; i < pts.length; i++) {
+      const [ax, ay] = pts[i - 1];
+      const [bx, by] = pts[i];
+      const dx = bx - ax;
+      const dy = by - ay;
+      const l2 = dx * dx + dy * dy || 1;
+      const t = clamp(((x - ax) * dx + (y - ay) * dy) / l2, 0, 1);
+      const d = Math.hypot(x - (ax + dx * t), y - (ay + dy * t));
+      if (d < best) {
+        best = d;
+        bt = (i - 1 + t) / (pts.length - 1);
+      }
+    }
+    return [best, bt];
+  }
+
+  function bentCurve(x0, y0, angle, len, bend, from, n) {
+    const dx = Math.cos(angle);
+    const dy = Math.sin(angle);
+    const pts = [];
+    for (let i = 0; i <= n; i++) {
+      const t = from + ((1 - from) * i) / n;
+      const off = bend * len * t * t;
+      pts.push([x0 + dx * len * t - dy * off, y0 + dy * len * t + dx * off]);
+    }
+    return pts;
+  }
+
+  function lineParams(rng, share) {
+    const angle = rng() * Math.PI * 2;
+    const nx = Math.cos(angle);
+    const ny = Math.sin(angle);
+    const landShare = (c) => {
+      let land = 0;
+      let total = 0;
+      for (let x = 12; x < MAP_W; x += 25) {
+        for (let y = 12; y < MAP_H; y += 25) {
+          total++;
+          if (x * nx + y * ny <= c) land++;
+        }
+      }
+      return land / total;
+    };
+    let lo = -1500;
+    let hi = 1500;
+    for (let i = 0; i < 40; i++) {
+      const mid = (lo + hi) / 2;
+      if (landShare(mid) < share) lo = mid;
+      else hi = mid;
+    }
+    const waves = [520, 300, 170].map((lam, k) => [Math.round(((Math.PI * 2) / lam) * 1e5) / 1e5, Math.round([1, 0.6, 0.35][k] * (0.6 + rng() * 0.8) * 1000) / 1000, Math.round(rng() * 6283) / 1000]);
+    return { angle: Math.round(angle * 1000) / 1000, c: Math.round((lo + hi) / 2), A: 55, waves };
+  }
+
+  function placeBlobs(rng, n, totalArea, aspectSpread) {
+    let scale = 1;
+    for (let attempt = 0; attempt < 600; attempt++) {
+      if (attempt && attempt % 40 === 0) scale *= 0.95;
+      const weights = Array.from({ length: n }, () => 0.5 + rng());
+      const wsum = weights.reduce((s, w) => s + w, 0);
+      const blobs = [];
+      let ok = true;
+      for (let i = 0; i < n && ok; i++) {
+        const area = ((totalArea * weights[i]) / wsum) * scale * scale;
+        const aspect = 1 + rng() * aspectSpread;
+        const rx = Math.sqrt((area * aspect) / Math.PI);
+        const ry = rx / aspect;
+        let placed = false;
+        for (let t = 0; t < 120 && !placed; t++) {
+          const cx = rx * 1.05 + 20 + rng() * (MAP_W - 2 * rx * 1.05 - 40);
+          const cy = ry * 1.05 + 20 + rng() * (MAP_H - 2 * ry * 1.05 - 40);
+          if (MAP_W - 2 * rx * 1.05 - 40 < 0 || MAP_H - 2 * ry * 1.05 - 40 < 0) break;
+          if (!clearOfDecor(cx, cy, Math.max(rx, ry) * 0.9)) continue;
+          if (blobs.some((b) => Math.hypot(b.cx - cx, b.cy - cy) < Math.max(b.rx, b.ry) * 1.05 + Math.max(rx, ry) * 1.05 + 24)) continue;
+          blobs.push({ cx: Math.round(cx), cy: Math.round(cy), rx: Math.round(rx), ry: Math.round(ry), amp: 0.24, harm: harmonicsFrom(rng, [2, 3, 5]) });
+          placed = true;
+        }
+        if (!placed) ok = false;
+      }
+      if (ok) return blobs;
+    }
+    return [{ cx: 500, cy: 350, rx: 300, ry: 200, amp: 0.2, harm: harmonicsFrom(rng, [2, 3, 5]) }];
+  }
+
+  // Shape parameters, stored on the map so the same coastline redraws after an import.
+  function maskParams(rng, shape) {
+    const W = MAP_W;
+    const H = MAP_H;
+    switch (shape) {
+      case 'archipelago':
+        return { blobs: placeBlobs(rng, 3 + Math.floor(rng() * 3), W * H * 0.3, 0.6) };
+      case 'mainland':
+        return { line: lineParams(rng, 0.58 + rng() * 0.1) };
+      case 'inland': {
+        const lake = { cx: Math.round(W / 2 + (rng() - 0.5) * 120), cy: Math.round(H / 2 + (rng() - 0.5) * 80), rx: Math.round(250 + rng() * 80), ry: Math.round(150 + rng() * 60), amp: 0.28, harm: harmonicsFrom(rng, [2, 3, 4, 6]) };
+        const isles = [];
+        if (rng() < 0.6) isles.push({ cx: Math.round(lake.cx + (rng() - 0.5) * lake.rx * 0.6), cy: Math.round(lake.cy + (rng() - 0.5) * lake.ry * 0.5), rx: Math.round(70 + rng() * 40), ry: Math.round(45 + rng() * 25), amp: 0.25, harm: harmonicsFrom(rng, [2, 3]) });
+        return { lake, isles };
+      }
+      case 'strait': {
+        const angle = (rng() < 0.5 ? 0 : Math.PI / 2) + (rng() - 0.5) * 0.9;
+        const nx = Math.cos(angle);
+        const ny = Math.sin(angle);
+        return { angle: Math.round(angle * 1000) / 1000, c: Math.round((W / 2) * nx + (H / 2) * ny + (rng() - 0.5) * 80), amp: Math.round(40 + rng() * 50), lam: Math.round(420 + rng() * 300), phi: Math.round(rng() * 6283) / 1000, phi2: Math.round(rng() * 6283) / 1000, width: Math.round(70 + rng() * 35) };
+      }
+      case 'fjords': {
+        const line = lineParams(rng, 0.62);
+        const nx = Math.cos(line.angle);
+        const ny = Math.sin(line.angle);
+        // Where the coastline crosses the map, measured along it.
+        const us = [];
+        for (let x = 0; x <= W; x += 10) {
+          for (let y = 0; y <= H; y += 10) {
+            if (Math.abs(x * nx + y * ny - line.c) < 8) us.push(-x * ny + y * nx);
+          }
+        }
+        const umin = Math.min(...us) + 70;
+        const umax = Math.max(...us) - 70;
+        const inlets = [];
+        const n = 3 + Math.floor(rng() * 3);
+        for (let tries = 0; tries < 60 && inlets.length < n && umax > umin; tries++) {
+          const u = umin + rng() * (umax - umin);
+          if (inlets.some((f) => Math.abs(f.u - u) < 105)) continue;
+          inlets.push({ u: Math.round(u), len: Math.round(150 + rng() * 150), width: Math.round(34 + rng() * 22), bend: Math.round((rng() - 0.5) * 800) / 1000, tilt: Math.round((rng() - 0.5) * 500) / 1000 });
+        }
+        return { line, inlets };
+      }
+      case 'peninsula': {
+        const side = Math.floor(rng() * 4);
+        const along = 0.3 + rng() * 0.4;
+        const base = [[W * along, -40, Math.PI / 2], [W + 40, H * along, Math.PI], [W * along, H + 40, -Math.PI / 2], [-40, H * along, 0]][side];
+        const span = side % 2 === 0 ? H : W;
+        return { x0: Math.round(base[0]), y0: Math.round(base[1]), angle: Math.round((base[2] + (rng() - 0.5) * 0.7) * 1000) / 1000, len: Math.round(span * (0.75 + rng() * 0.2)), width: Math.round(150 + rng() * 45), bend: Math.round((rng() - 0.5) * 600) / 1000 };
+      }
+      default:
+        return { blobs: [{ cx: Math.round(W / 2 + (rng() - 0.5) * 40), cy: Math.round(H / 2 + (rng() - 0.5) * 30), rx: Math.round(355 + rng() * 30), ry: Math.round(232 + rng() * 22), amp: 0.22, harm: harmonicsFrom(rng, [2, 3, 4, 6]) }], sats: rng() < 0.6 ? 1 + Math.floor(rng() * 3) : 0 };
+    }
+  }
+
+  function makeShapeField(map) {
+    const m = map.mask || {};
+    switch (map.shape) {
+      case 'mainland':
+        return (x, y) => lineField(m.line, x, y);
+      case 'inland':
+        return (x, y) => {
+          let f = -blobField(m.lake, x, y);
+          for (const b of m.isles || []) f = Math.max(f, blobField(b, x, y));
+          return f;
+        };
+      case 'strait': {
+        const nx = Math.cos(m.angle);
+        const ny = Math.sin(m.angle);
+        return (x, y) => {
+          const u = -x * ny + y * nx;
+          const d = x * nx + y * ny - m.c - m.amp * Math.sin((Math.PI * 2 * u) / m.lam + m.phi);
+          const w = m.width * (0.8 + 0.4 * (0.5 + 0.5 * Math.sin((Math.PI * 2 * u) / (m.lam * 0.63) + m.phi2)));
+          return (Math.abs(d) - w / 2) / 100;
+        };
+      }
+      case 'fjords': {
+        const L = m.line;
+        const nx = Math.cos(L.angle);
+        const ny = Math.sin(L.angle);
+        const curves = (m.inlets || []).map((f) => {
+          const s = L.c + L.A * harmonicU(L.waves, f.u);
+          const x0 = nx * s - ny * f.u;
+          const y0 = ny * s + nx * f.u;
+          return { f, pts: bentCurve(x0, y0, L.angle + Math.PI + f.tilt, f.len, f.bend, -0.2, 18) };
+        });
+        return (x, y) => {
+          let v = lineField(L, x, y);
+          for (const c of curves) {
+            if (Math.abs(x - c.pts[0][0]) > c.f.len + 80 && Math.abs(y - c.pts[0][1]) > c.f.len + 80) continue;
+            const [d, t] = curveDistance(c.pts, x, y);
+            const hw = (c.f.width / 2) * (1 - 0.8 * Math.max(0, t * 1.2 - 0.2));
+            v = Math.min(v, (d - hw) / 100);
+          }
+          return v;
+        };
+      }
+      case 'peninsula': {
+        const pts = bentCurve(m.x0, m.y0, m.angle, m.len, m.bend, -0.3, 24);
+        return (x, y) => {
+          const [d, t] = curveDistance(pts, x, y);
+          return (m.width * (1 - 0.45 * clamp(t * 1.3 - 0.3, 0, 1)) - d) / 100;
+        };
+      }
+      default:
+        return (x, y) => {
+          let f = -Infinity;
+          for (const b of m.blobs || []) f = Math.max(f, blobField(b, x, y));
+          return f;
+        };
+    }
+  }
+
+  function fineWarp(map) {
+    const g = normGen(map.gen);
+    const mult = [0.55, 1, 1.45][g.rough];
+    const octaves = [
+      [10, 1 / 170],
+      [3.5, 1 / 50],
+      [1.2, 1 / 15],
+    ].map(([amp, freq], i) => ({ amp: amp * mult, freq, nx: valueNoise(map.seed + 211 * i + 3), ny: valueNoise(map.seed + 211 * i + 4) }));
+    return function (x, y) {
+      let X = x;
+      let Y = y;
+      for (const o of octaves) {
+        X += o.amp * o.nx(x * o.freq, y * o.freq);
+        Y += o.amp * o.ny(x * o.freq, y * o.freq);
+      }
+      return [X, Y];
+    };
+  }
+
+  /*
+   * The fine grid: cells, their shared corners, which cells are land, and the
+   * fields generation and rivers need (distance from the coast, elevation, moisture).
+   */
+  function buildFine(map) {
+    const W = map.width;
+    const H = map.height;
+    const s = FINE;
+    const pad = FRAME_PAD;
+    const g = normGen(map.gen);
+    const rng = mulberry32((map.seed ^ 0x27d4eb2d) >>> 0);
+    const cols = Math.ceil((W + 2 * pad) / s);
+    const rows = Math.ceil((H + 2 * pad) / s);
+    const pts = [];
+    for (let j = 0; j < rows; j++) {
+      for (let i = 0; i < cols; i++) pts.push([-pad + (i + 0.5 + (rng() - 0.5) * 0.7) * s, -pad + (j + 0.5 + (rng() - 0.5) * 0.7) * s]);
+    }
+    const frame = [[-pad, -pad], [W + pad, -pad], [W + pad, H + pad], [-pad, H + pad]];
+    const vkey = new Map();
+    const verts = [];
+    function vid(p) {
+      const kx = Math.round(p[0] * 100);
+      const ky = Math.round(p[1] * 100);
+      for (let dx = -1; dx <= 1; dx++) {
+        for (let dy = -1; dy <= 1; dy++) {
+          const id = vkey.get((kx + dx) * 200003 + (ky + dy));
+          if (id !== undefined && Math.abs(verts[id][0] - p[0]) < 1e-4 && Math.abs(verts[id][1] - p[1]) < 1e-4) return id;
+        }
+      }
+      verts.push(p);
+      vkey.set(kx * 200003 + ky, verts.length - 1);
+      return verts.length - 1;
+    }
+    const field = makeShapeField(map);
+    const nm = [0.45, 1, 1.6][g.rough];
+    const n1 = valueNoise(map.seed + 17);
+    const n2 = valueNoise(map.seed + 29);
+    const cells = pts.map((p, idx) => {
+      const ci = idx % cols;
+      const cj = (idx / cols) | 0;
+      const near = [];
+      for (let dj = -2; dj <= 2; dj++) {
+        for (let di = -2; di <= 2; di++) {
+          const ni = ci + di;
+          const nj = cj + dj;
+          if ((di || dj) && ni >= 0 && nj >= 0 && ni < cols && nj < rows) near.push(nj * cols + ni);
+        }
+      }
+      near.sort((a, b) => dist(p, pts[a]) - dist(p, pts[b]));
+      let poly = frame.slice();
+      let labels = [-2, -2, -2, -2];
+      for (const j of near) if (poly.length) [poly, labels] = clipCell(poly, labels, p, pts[j], j);
+      const vids = poly.map(vid);
+      const f = field(p[0], p[1]) + nm * (0.16 * n1(p[0] / 160, p[1] / 160) + 0.06 * n2(p[0] / 50, p[1] / 50));
+      return { p, poly, labels, vids, area: Math.abs(polygonArea(poly)), land: f > 0 };
+    });
+    const n = cells.length;
+    // Distance from the sea over land, for elevation.
+    const coastDist = new Float64Array(n).fill(Infinity);
+    const queue = [];
+    cells.forEach((c, i) => {
+      if (!c.land) return;
+      if (c.labels.some((L) => L >= 0 && !cells[L].land)) {
+        coastDist[i] = 0;
+        queue.push(i);
+      }
+    });
+    for (let qi = 0; qi < queue.length; qi++) {
+      const i = queue[qi];
+      for (const L of cells[i].labels) {
+        if (L < 0 || !cells[L].land) continue;
+        const d = coastDist[i] + dist(cells[i].p, cells[L].p);
+        if (d < coastDist[L] - 1e-9) {
+          coastDist[L] = d;
+          queue.push(L);
+        }
+      }
+    }
+    const ridge = valueNoise(map.seed + 41);
+    const hills = valueNoise(map.seed + 53);
+    const wet = valueNoise(map.seed + 67);
+    cells.forEach((c, i) => {
+      const [x, y] = c.p;
+      const cd = Number.isFinite(coastDist[i]) ? coastDist[i] : 400;
+      c.coastDist = cd;
+      c.elev = c.land ? 0.55 * Math.min(1, cd / 230) + 0.35 * (1 - Math.abs(ridge(x / 240, y / 240))) + 0.15 * hills(x / 90, y / 90) : -1;
+      c.moist = wet(x / 220, y / 220) + (cd < 40 ? 0.15 : 0);
+    });
+    return { cells, verts, cols, rows };
+  }
+
+  function landComponents(cells) {
+    const comp = new Int32Array(cells.length).fill(-1);
+    const comps = [];
+    cells.forEach((c, i) => {
+      if (!c.land || comp[i] >= 0) return;
+      const id = comps.length;
+      const members = [i];
+      comp[i] = id;
+      for (let qi = 0; qi < members.length; qi++) {
+        for (const L of cells[members[qi]].labels) {
+          if (L >= 0 && cells[L].land && comp[L] < 0) {
+            comp[L] = id;
+            members.push(L);
+          }
+        }
+      }
+      comps.push({ id, members, area: members.reduce((s, m) => s + cells[m].area, 0) });
+    });
+    return { comp, comps };
+  }
+
+  // Grow territories outward from their seats over land; noisy costs make the borders organic.
+  function growRegions(map, cells, comp, seeds) {
+    const g = normGen(map.gen);
+    const k = [0.15, 0.55, 1.0][g.borders];
+    const bn = valueNoise(map.seed + 79);
+    const owner = new Int32Array(cells.length).fill(-1);
+    const cost = new Float64Array(cells.length).fill(Infinity);
+    // Binary heap keyed by cost.
+    const heap = [];
+    const push = (i, c) => {
+      heap.push([c, i]);
+      let j = heap.length - 1;
+      while (j > 0) {
+        const p = (j - 1) >> 1;
+        if (heap[p][0] <= heap[j][0]) break;
+        [heap[p], heap[j]] = [heap[j], heap[p]];
+        j = p;
+      }
+    };
+    const pop = () => {
+      const top = heap[0];
+      const last = heap.pop();
+      if (heap.length) {
+        heap[0] = last;
+        let j = 0;
+        for (;;) {
+          const l = 2 * j + 1;
+          const r = l + 1;
+          let m = j;
+          if (l < heap.length && heap[l][0] < heap[m][0]) m = l;
+          if (r < heap.length && heap[r][0] < heap[m][0]) m = r;
+          if (m === j) break;
+          [heap[m], heap[j]] = [heap[j], heap[m]];
+          j = m;
+        }
+      }
+      return top;
+    };
+    seeds.forEach((s, t) => {
+      cost[s] = 0;
+      owner[s] = t;
+      push(s, 0);
+    });
+    while (heap.length) {
+      const [c0, i] = pop();
+      if (c0 > cost[i]) continue;
+      const pi = cells[i].p;
+      for (const L of cells[i].labels) {
+        if (L < 0 || !cells[L].land || comp[L] !== comp[i]) continue;
+        const pl = cells[L].p;
+        const mx = (pi[0] + pl[0]) / 2;
+        const my = (pi[1] + pl[1]) / 2;
+        const c1 = c0 + dist(pi, pl) * Math.exp(k * bn(mx / 90, my / 90));
+        if (c1 < cost[L]) {
+          cost[L] = c1;
+          owner[L] = owner[i];
+          push(L, c1);
+        }
+      }
+    }
+    return owner;
+  }
+
+  function nearestCell(cells, x, y, pred) {
+    let best = -1;
+    let bd = Infinity;
+    for (let i = 0; i < cells.length; i++) {
+      if (pred && !pred(i)) continue;
+      const d = (cells[i].p[0] - x) ** 2 + (cells[i].p[1] - y) ** 2;
+      if (d < bd) {
+        bd = d;
+        best = i;
+      }
+    }
+    return best;
+  }
+
+  function chaikin(pts, iterations, closed) {
+    let p = pts;
+    for (let it = 0; it < iterations && p.length > 2; it++) {
+      const out = closed ? [] : [p[0]];
+      const n = p.length;
+      const last = closed ? n : n - 1;
+      for (let i = 0; i < last; i++) {
+        const a = p[i];
+        const b = p[(i + 1) % n];
+        out.push([0.75 * a[0] + 0.25 * b[0], 0.75 * a[1] + 0.25 * b[1]]);
+        out.push([0.25 * a[0] + 0.75 * b[0], 0.25 * a[1] + 0.75 * b[1]]);
+      }
+      if (!closed) {
+        out[1] = out[1];
+        out.splice(1, 1);
+        out.splice(out.length - 1, 1);
+        out.push(p[n - 1]);
+      }
+      p = out;
+    }
+    return p;
+  }
+
+  /*
+   * Outlines of every region (territory or islet): the cell edges where the
+   * neighbour belongs elsewhere, chained into rings and cut into runs that share
+   * one neighbour. A run between two territories is smoothed and warped the same
+   * way from both sides, so shared borders match exactly.
+   */
+  function traceRegions(map, fine, region, regionCount, warp) {
+    const { cells, verts } = fine;
+    const g = normGen(map.gen);
+    const coastSmooth = [2, 1, 0][g.rough];
+    const borderSmooth = [3, 2, 1][g.borders];
+    const out = Array.from({ length: regionCount }, () => ({ rings: [], runs: [], coastLength: 0, border: new Map() }));
+    const edgesBy = Array.from({ length: regionCount }, () => new Map());
+    cells.forEach((c, i) => {
+      const R = region[i];
+      if (R < 0) return;
+      const n = c.vids.length;
+      for (let k = 0; k < n; k++) {
+        const a = c.vids[k];
+        const b = c.vids[(k + 1) % n];
+        if (a === b) continue;
+        const L = c.labels[k];
+        let lab;
+        if (L === -2) lab = -2;
+        else {
+          const o = region[L];
+          if (o === R) continue;
+          lab = o < 0 ? -1 : o;
+        }
+        const m = edgesBy[R];
+        if (!m.has(a)) m.set(a, []);
+        m.get(a).push({ a, b, lab, used: false });
+      }
+    });
+    const runCache = new Map();
+    function processRun(ids, lab, closed) {
+      const key = closed ? null : ids.join(',');
+      const rkey = closed ? null : ids.slice().reverse().join(',');
+      if (key && runCache.has(rkey)) return runCache.get(rkey).slice().reverse();
+      let pts = ids.map((v) => verts[v]);
+      const it = lab === -2 ? 0 : lab === -1 ? coastSmooth : borderSmooth;
+      pts = chaikin(pts, it, closed).map((p) => warp(p[0], p[1]));
+      if (key) runCache.set(key, pts);
+      return pts;
+    }
+    for (let R = 0; R < regionCount; R++) {
+      const m = edgesBy[R];
+      for (const list of m.values()) {
+        for (const e0 of list) {
+          if (e0.used) continue;
+          const loop = [];
+          let e = e0;
+          while (e && !e.used) {
+            e.used = true;
+            loop.push(e);
+            const next = (m.get(e.b) || []).find((x) => !x.used);
+            e = next;
+          }
+          if (loop.length < 3) continue;
+          // Rotate so the loop starts where the neighbour changes.
+          let start = loop.findIndex((x, i) => x.lab !== loop[(i - 1 + loop.length) % loop.length].lab);
+          const single = start === -1;
+          if (single) start = 0;
+          const ordered = loop.slice(start).concat(loop.slice(0, start));
+          const ring = [];
+          let i = 0;
+          while (i < ordered.length) {
+            const lab = ordered[i].lab;
+            const ids = [ordered[i].a];
+            while (i < ordered.length && ordered[i].lab === lab) {
+              ids.push(ordered[i].b);
+              i++;
+            }
+            const len = ids.reduce((s, v, k) => (k ? s + dist(verts[ids[k - 1]], verts[v]) : 0), 0);
+            let pts;
+            if (single) {
+              ids.pop();
+              pts = processRun(ids, lab, true);
+            } else pts = processRun(ids, lab, false);
+            out[R].runs.push({ lab, pts, len, closed: single });
+            if (lab === -1) out[R].coastLength += len;
+            else if (lab >= 0) out[R].border.set(lab, (out[R].border.get(lab) || 0) + len);
+            const add = single ? pts : pts.slice(0, -1);
+            for (const p of add) ring.push(p);
+          }
+          out[R].rings.push(ring);
+        }
+      }
+      out[R].rings.sort((a, b) => Math.abs(polygonArea(b)) - Math.abs(polygonArea(a)));
+    }
+    return out;
+  }
+
+  function fineRivers(map, fine, region, warp) {
+    const { cells, verts } = fine;
+    const g = normGen(map.gen);
+    const nv = verts.length;
+    const elev = new Float64Array(nv);
+    const cnt = new Int32Array(nv);
+    const coast = new Uint8Array(nv);
+    const edge = new Uint8Array(nv);
+    const nbrs = Array.from({ length: nv }, () => []);
+    cells.forEach((c, i) => {
+      if (!c.land) return;
+      const n = c.vids.length;
+      for (let k = 0; k < n; k++) {
+        const a = c.vids[k];
+        const b = c.vids[(k + 1) % n];
+        elev[a] += c.elev;
+        cnt[a]++;
+        const L = c.labels[k];
+        if (L === -2) edge[a] = edge[b] = 1;
+        else if (!cells[L].land) coast[a] = coast[b] = 1;
+        else if (a !== b && region[i] >= 0 && region[L] >= 0) {
+          nbrs[a].push(b);
+        }
+      }
+    });
+    for (let v = 0; v < nv; v++) elev[v] = coast[v] ? 0 : cnt[v] ? elev[v] / cnt[v] : -1;
+    const rng = mulberry32(hashString('rivers2:' + map.seed));
+    const want = [2, 4, 7][g.rivers];
+    const visible = (p) => p[0] > 25 && p[0] < map.width - 25 && p[1] > 25 && p[1] < map.height - 25 && clearOfDecor(p[0], p[1], 10);
+    const cand = [];
+    for (let v = 0; v < nv; v++) if (cnt[v] >= 2 && !coast[v] && !edge[v] && nbrs[v].length && visible(verts[v])) cand.push(v);
+    cand.sort((a, b) => elev[b] - elev[a]);
+    const top = cand.slice(0, Math.max(want * 6, Math.round(cand.length * 0.12)));
+    const used = new Set();
+    const sources = [];
+    const rivers = [];
+    const lakes = [];
+    for (const start of top) {
+      if (rivers.length >= want) break;
+      if (used.has(start) || sources.some((s) => dist(verts[s], verts[start]) < 100)) continue;
+      const path = [start];
+      const seen = new Set(path);
+      let cur = start;
+      let end = 'lake';
+      let budget = 0.05;
+      for (let step = 0; step < 400; step++) {
+        if (coast[cur]) {
+          end = 'sea';
+          break;
+        }
+        let best = -1;
+        for (const nb of nbrs[cur]) if (!seen.has(nb) && (best === -1 || elev[nb] < elev[best])) best = nb;
+        if (best === -1) break;
+        const rise = elev[best] - elev[cur];
+        if (rise > 0) {
+          budget -= rise;
+          if (budget < 0) break;
+        }
+        path.push(best);
+        seen.add(best);
+        if (used.has(best)) {
+          end = 'join';
+          break;
+        }
+        cur = best;
+      }
+      if (path.length < 7 || (end === 'lake' && path.length < 12)) continue;
+      const points = chaikin(path.map((v) => verts[v]), 2, false).map((p) => warp(p[0], p[1]));
+      rivers.push({ points, end });
+      if (end === 'lake') {
+        const p = points[points.length - 1];
+        lakes.push({ x: p[0], y: p[1], r: 9 + rng() * 5 });
+      }
+      path.forEach((v) => used.add(v));
+      sources.push(start);
+    }
+    return { rivers, lakes };
+  }
+
+  // Which cell each territory's seat sits on (nearest land cell to its stored position).
+  function seatCells(fine, positions) {
+    const taken = new Set();
+    return positions.map((p) => {
+      const i = nearestCell(fine.cells, p.x, p.y, (k) => fine.cells[k].land && !taken.has(k));
+      taken.add(i);
+      return i;
+    });
+  }
+
+  function buildGeometry2(campaign) {
+    const map = campaign.map;
+    const fine = buildFine(map);
+    const { cells } = fine;
+    const { comp, comps } = landComponents(cells);
+    const seeds = seatCells(fine, campaign.territories.map((t) => t.position));
+    const owner = growRegions(map, cells, comp, seeds);
+    // Land nobody's seat reaches (separate islets) becomes unowned islets.
+    const T = campaign.territories.length;
+    const region = new Int32Array(cells.length).fill(-1);
+    const isletOf = new Map();
+    cells.forEach((c, i) => {
+      if (!c.land) return;
+      if (owner[i] >= 0) region[i] = owner[i];
+      else {
+        if (!isletOf.has(comp[i])) isletOf.set(comp[i], T + isletOf.size);
+        region[i] = isletOf.get(comp[i]);
+      }
+    });
+    const regionCount = T + isletOf.size;
+    const warp = fineWarp(map);
+    const traced = traceRegions(map, fine, region, regionCount, warp);
+
+    // Label anchors: the cell deepest inside each territory (and on the visible map).
+    const depth = new Float64Array(cells.length).fill(Infinity);
+    const q = [];
+    cells.forEach((c, i) => {
+      if (region[i] < 0 || region[i] >= T) return;
+      if (c.labels.some((L) => L >= 0 && region[L] !== region[i])) {
+        depth[i] = 0;
+        q.push(i);
+      }
+    });
+    for (let qi = 0; qi < q.length; qi++) {
+      const i = q[qi];
+      for (const L of cells[i].labels) {
+        if (L < 0 || region[L] !== region[i]) continue;
+        const d = depth[i] + dist(cells[i].p, cells[L].p);
+        if (d < depth[L] - 1e-9) {
+          depth[L] = d;
+          q.push(L);
+        }
+      }
+    }
+    const anchor = new Array(T).fill(-1);
+    const area = new Array(T).fill(0);
+    cells.forEach((c, i) => {
+      const R = region[i];
+      if (R < 0 || R >= T) return;
+      const [x, y] = c.p;
+      if (x > 22 && x < map.width - 22 && y > 22 && y < map.height - 22) area[R] += c.area;
+      if (x < 58 || x > map.width - 58 || y < 34 || y > map.height - 26 || !clearOfDecor(x, y, 26)) return;
+      const d = Number.isFinite(depth[i]) ? depth[i] : 999;
+      if (anchor[R] < 0 || d > depth[anchor[R]] + 1e-9 || (!Number.isFinite(depth[anchor[R]]) && d > 0)) anchor[R] = i;
+    });
+
+    const adjacency = Array.from({ length: T }, () => new Set());
+    const borders = [];
+    const coast = [];
+    const shapes = campaign.territories.map((t, R) => {
+      const tr = traced[R];
+      for (const [o, len] of tr.border) {
+        if (o < T && len >= MIN_SHARED_EDGE) {
+          adjacency[R].add(o);
+          adjacency[o].add(R);
+        }
+      }
+      for (const run of tr.runs) {
+        if (run.lab === -1) coast.push(run.closed ? run.pts.concat([run.pts[0]]) : run.pts);
+        else if (run.lab >= 0 && run.lab < T && R < run.lab) borders.push({ a: R, b: run.lab, points: run.pts });
+      }
+      const a = anchor[R] >= 0 ? anchor[R] : seeds[R];
+      const rings = tr.rings.length ? tr.rings : [[warp(cells[seeds[R]].p[0], cells[seeds[R]].p[1])]];
+      return {
+        index: R,
+        id: t.id,
+        land: comp[seeds[R]],
+        rings,
+        points: rings[0],
+        d: rings.map((r) => pathData(r, true)).join(''),
+        centroid: warp(cells[a].p[0], cells[a].p[1]),
+        area: Math.max(area[R], 600),
+        coastLength: tr.coastLength,
+      };
+    });
+    const islets = [];
+    for (let R = T; R < regionCount; R++) {
+      for (const run of traced[R].runs) if (run.lab === -1) coast.push(run.closed ? run.pts.concat([run.pts[0]]) : run.pts);
+      for (const ring of traced[R].rings) islets.push(ring);
+    }
+
+    // Sea lanes between landmasses that hold territories.
+    const geoLite = { sites: seeds.map((s) => cells[s].p) };
+    const groups = new Map();
+    shapes.forEach((sh, i) => {
+      if (!groups.has(sh.land)) groups.set(sh.land, []);
+      groups.get(sh.land).push(i);
+    });
+    const seaLanes = laneTree([...groups.values()], shapes, geoLite.sites, adjacency);
+    const laneSet = new Set(seaLanes.map((p) => Math.min(p.a, p.b) + '|' + Math.max(p.a, p.b)));
+    const { rivers, lakes } = fineRivers(map, fine, region, warp);
+    return {
+      engine: 2,
+      shapes,
+      borders,
+      coast,
+      islets,
+      adjacency,
+      index: new Map(campaign.territories.map((t, i) => [t.id, i])),
+      sites: geoLite.sites,
+      warp,
+      seaLanes,
+      laneSet,
+      rivers,
+      lakes,
+      landCount: groups.size,
+    };
+  }
+
+  // Minimum spanning tree of the shortest crossings between landmasses, plus one loop when there are 3+.
+  function laneTree(groups, shapes, sites, adjacency) {
+    const lands = groups.map((g) => g.filter((i) => shapes[i].coastLength > 10)).filter((g) => g.length);
+    const lanes = [];
+    if (lands.length < 2) return lanes;
+    const pairs = [];
+    for (let x = 0; x < lands.length; x++) {
+      for (let y = x + 1; y < lands.length; y++) {
+        let best = null;
+        for (const i of lands[x]) for (const j of lands[y]) {
+          const d = dist(sites[i], sites[j]);
+          if (!best || d < best.d) best = { x, y, i, j, d };
+        }
+        pairs.push(best);
+      }
+    }
+    pairs.sort((p, q) => p.d - q.d);
+    const parent = lands.map((_, k) => k);
+    const find = (k) => (parent[k] === k ? k : (parent[k] = find(parent[k])));
+    const spare = [];
+    for (const p of pairs) {
+      const rx = find(p.x);
+      const ry = find(p.y);
+      if (rx !== ry) {
+        parent[rx] = ry;
+        lanes.push(p);
+      } else spare.push(p);
+    }
+    if (lands.length >= 3 && spare.length) lanes.push(spare[0]);
+    for (const p of lanes) {
+      adjacency[p.i].add(p.j);
+      adjacency[p.j].add(p.i);
+    }
+    return lanes.map((p) => ({ a: p.i, b: p.j }));
+  }
+
+  /*
+   * Generation for engine 2: land, seats spread over the land in proportion to
+   * each landmass's size, relaxed toward even territories, then grown.
+   */
+  function generateMap2(seed, count, shape, gen) {
+    const rng = mulberry32(hashString('mask:' + seed));
+    const map = { engine: 2, width: MAP_W, height: MAP_H, seed: hashString('map:' + seed), shape, gen: normGen(gen) };
+    map.mask = maskParams(rng, shape);
+    if (shape === 'island' && map.mask.sats) {
+      // A few satellite isles around the main island.
+      const b = map.mask.blobs[0];
+      for (let k = 0; k < map.mask.sats; k++) {
+        const a = rng() * Math.PI * 2;
+        const cx = b.cx + Math.cos(a) * b.rx * 1.18;
+        const cy = b.cy + Math.sin(a) * b.ry * 1.22;
+        if (cx > 60 && cx < MAP_W - 60 && cy > 60 && cy < MAP_H - 60 && clearOfDecor(cx, cy, 60)) {
+          map.mask.blobs.push({ cx: Math.round(cx), cy: Math.round(cy), rx: Math.round(40 + rng() * 45), ry: Math.round(30 + rng() * 30), amp: 0.25, harm: harmonicsFrom(rng, [2, 3]) });
+        }
+      }
+      delete map.mask.sats;
+    }
+    const fine = buildFine(map);
+    const { cells } = fine;
+    const { comp, comps } = landComponents(cells);
+    const visible = (i) => {
+      const [x, y] = cells[i].p;
+      return x > 62 && x < MAP_W - 62 && y > 42 && y < MAP_H - 36 && clearOfDecor(x, y, 34) && cells[i].coastDist > 12;
+    };
+    const visArea = (cm) => cm.members.reduce((s, m) => s + (visible(m) ? cells[m].area : 0), 0);
+    const totalVis = comps.reduce((s, cm) => s + visArea(cm), 0) || 1;
+    let eligible = comps.filter((cm) => visArea(cm) >= (0.35 * totalVis) / count).sort((a, b) => visArea(b) - visArea(a)).slice(0, count);
+    if (!eligible.length) eligible = comps.slice().sort((a, b) => b.area - a.area).slice(0, 1);
+    const eArea = eligible.reduce((s, cm) => s + visArea(cm), 0) || 1;
+    const alloc = eligible.map((cm) => Math.max(1, Math.floor((count * visArea(cm)) / eArea)));
+    while (alloc.reduce((s, x) => s + x, 0) < count) {
+      let best = 0;
+      let bestGap = -Infinity;
+      eligible.forEach((cm, k) => {
+        const gap = (count * visArea(cm)) / eArea - alloc[k];
+        if (gap > bestGap) {
+          bestGap = gap;
+          best = k;
+        }
+      });
+      alloc[best]++;
+    }
+    while (alloc.reduce((s, x) => s + x, 0) > count) alloc[alloc.indexOf(Math.max(...alloc))]--;
+    let seeds = [];
+    eligible.forEach((cm, k) => {
+      const pool = cm.members.filter(visible);
+      const usable = pool.length ? pool : cm.members;
+      const picked = [usable[Math.floor(rng() * usable.length)]];
+      while (picked.length < alloc[k] && picked.length < usable.length) {
+        let best = -1;
+        let bd = -1;
+        for (const i of usable) {
+          let d = Infinity;
+          for (const s of picked) d = Math.min(d, dist(cells[i].p, cells[s].p));
+          if (d > bd) {
+            bd = d;
+            best = i;
+          }
+        }
+        picked.push(best);
+      }
+      seeds.push(...picked);
+    });
+    const iters = [4, 2, 0][map.gen.borders];
+    for (let it = 0; it < iters; it++) {
+      const owner = growRegions(map, cells, comp, seeds);
+      const sx = new Array(seeds.length).fill(0);
+      const sy = new Array(seeds.length).fill(0);
+      const sw = new Array(seeds.length).fill(0);
+      cells.forEach((c, i) => {
+        const o = owner[i];
+        if (o < 0 || !visible(i)) return;
+        sx[o] += c.p[0] * c.area;
+        sy[o] += c.p[1] * c.area;
+        sw[o] += c.area;
+      });
+      const taken = new Set();
+      seeds = seeds.map((s, t) => {
+        if (!sw[t]) return s;
+        const cx = sx[t] / sw[t];
+        const cy = sy[t] / sw[t];
+        const i = nearestCell(cells, cx, cy, (k) => owner[k] === t && visible(k) && !taken.has(k));
+        const pick = i >= 0 ? i : s;
+        taken.add(pick);
+        return pick;
+      });
+    }
+    return { map, fine, seeds, comp };
   }
 
   /* ---------- map generation ---------- */
@@ -818,7 +1770,7 @@
 
   function relax(sites, map, iterations) {
     let s = sites;
-    const mainland = mapShape(map) === 'mainland';
+    const mainland = mapShape1(map) === 'mainland';
     const cf = mainland ? coastFrame(map) : null;
     for (let it = 0; it < iterations; it++) {
       const prev = s;
@@ -837,13 +1789,14 @@
     return s;
   }
 
-  function newCampaign(opts) {
+  // The first release's generator, kept so its maps can still be created on request.
+  function legacyNewCampaign(opts) {
     const o = opts || {};
     const seed = String(o.seed || randomSeed());
     const count = clamp(Math.round(o.count || 20), MIN_TERRITORIES, MAX_TERRITORIES);
     const now = o.now || nowMs();
     // A shape left as random comes from the seed, so a seed always means the same map.
-    const shape = SHAPES.includes(o.shape) ? o.shape : SHAPES[Math.floor(mulberry32(hashString('shape:' + seed))() * SHAPES.length)];
+    const shape = SHAPES1.includes(o.shape) ? o.shape : SHAPES1[Math.floor(mulberry32(hashString('shape:' + seed))() * SHAPES1.length)];
     const map = { width: MAP_W, height: MAP_H, seed: hashString('map:' + seed), shape, rx: 375, ry: 248 };
     const rng = mulberry32(hashString('sites:' + seed));
     let sites;
@@ -939,20 +1892,6 @@
     return snapshot(c);
   }
 
-  // "The Ravenmere Raids", "The Harrying of Ketilvik"... named after the richest prize.
-  function campaignName(c) {
-    const rng = mulberry32(hashString('name:' + c.seed));
-    const prize = c.territories.filter((t) => t.id !== c.baseTerritory).sort((a, b) => b.goldValue - a.goldValue)[0] || c.territories[0];
-    const patterns = [
-      (n) => 'The ' + n + ' Raids',
-      (n) => 'The Harrying of ' + n,
-      (n) => 'The Saga of ' + n,
-      (n) => 'The ' + n + ' War',
-      (n) => 'Fire over ' + n,
-    ];
-    return patterns[Math.floor(rng() * patterns.length)](prize.name);
-  }
-
   /* ---------- settlements ---------- */
 
   const FEATURES = {
@@ -973,7 +1912,7 @@
   // The territory's seat, from its terrain, wealth and defences. Derived rather
   // than stored, so older saves and imports get one too.
   function territoryFeature(c, t, coastLength) {
-    if (t.id === c.baseTerritory) return 'home';
+    if (t.id === c.baseTerritory || (c.kingdoms || []).some((k) => k.capital === t.id)) return 'home';
     const h = hashString((c.seed || '') + ':' + t.id) / 4294967296;
     if (t.garrisonBase >= 85) return 'castle';
     switch (t.terrain) {
@@ -991,6 +1930,256 @@
         if (t.goldValue >= 170) return coastLength > 15 ? 'harbour' : 'town';
         return h < 0.4 ? 'mill' : t.goldValue >= 120 && h < 0.7 ? 'abbey' : 'village';
     }
+  }
+
+  /* ---------- kingdoms ---------- */
+
+  const MAX_KINGDOMS = 4;
+  // Map colours for kingdoms. Validated as a set (all pairs, colour-blind
+  // simulation and normal vision) on the parchment; a fifth could not pass,
+  // which is why a campaign holds at most four kingdoms.
+  const KINGDOM_COLORS = [
+    { id: 'red', hex: '#b23a2b', label: 'Crimson' },
+    { id: 'blue', hex: '#2b5fa8', label: 'Azure' },
+    { id: 'gold', hex: '#b8860b', label: 'Gold' },
+    { id: 'teal', hex: '#1f8a70', label: 'Sea green' },
+  ];
+  const TINCTURES = {
+    or: { hex: '#d9a92e', label: 'Or (gold)', metal: true },
+    argent: { hex: '#ece6d6', label: 'Argent (silver)', metal: true },
+    gules: { hex: '#b23a2b', label: 'Gules (red)' },
+    azure: { hex: '#2b5fa8', label: 'Azure (blue)' },
+    vert: { hex: '#3f7a43', label: 'Vert (green)' },
+    sable: { hex: '#2a2520', label: 'Sable (black)' },
+    purpure: { hex: '#6d3f7a', label: 'Purpure (purple)' },
+    tenne: { hex: '#b8662a', label: 'Tenné (orange)' },
+  };
+  const DIVISIONS = { plain: 'Plain', pale: 'Per pale', fess: 'Per fess', bend: 'Per bend', quarterly: 'Quarterly', chevron: 'Chevron', saltire: 'Saltire' };
+  const CHARGES = { none: 'No charge', wolf: 'Wolf', raven: 'Raven', axe: 'Axe', ship: 'Longship', tower: 'Tower', dragon: 'Dragon', boar: 'Boar', stag: 'Stag', crown: 'Crown', sun: 'Sun', hammer: 'Hammer' };
+  const TITLES = ['King', 'Queen', 'Jarl', 'Thane', 'Earl', 'Chieftain'];
+  // Traits bend the placeholder rules for one kingdom.
+  const TRAITS = {
+    none: { label: 'No trait', note: 'Plays by the standard rules.' },
+    reavers: { label: 'Reavers', note: 'Successful raids take 50% control instead of 40%.', successControl: 10 },
+    merchants: { label: 'Merchant princes', note: 'Tribute from held land is 50% higher.', tributeMult: 1.5 },
+    ironwall: { label: 'Iron walls', note: 'Garrisons on your land recover twice as fast, and raids on your land take 10% less control.', regenMult: 2, defendControl: 10 },
+    zealots: { label: 'Zealots', note: 'Failed raids cost half the morale, and morale never falls below 30.', failureMoraleMult: 0.5, moraleFloor: 30 },
+    seafarers: { label: 'Seafarers', note: 'Sea crossings are as quick as land, and raids on coast take 10% more control.', seaCost: 1, coastControl: 10 },
+    horde: { label: 'Horde', note: 'Starts with 30 more men, and each conquest lifts morale by 15 instead of 10.', startArmy: 30, conquestMorale: 5 },
+  };
+  const RULERS = ['Ragnhild', 'Sigurd', 'Astrid', 'Ulf', 'Eadric', 'Godwin', 'Thyra', 'Ivar', 'Hilda', 'Bjorn', 'Aelfgifu', 'Halfdan', 'Gunnhild', 'Osric', 'Sweyn', 'Brynja', 'Ketil', 'Freydis', 'Wulfstan', 'Sigrid', 'Orm', 'Edith', 'Harald', 'Ingrid'];
+  const EPITHETS = ['the Bold', 'Ironside', 'the Grim', 'Bloodaxe', 'the Wise', 'Fairhair', 'Forkbeard', 'Longspear', 'Ravenfeeder', 'the Cruel', 'the Unbowed', 'Sea-wolf', 'the Red', 'Oathkeeper', 'the Old', 'Ash-hand'];
+  const MOTTOS = ['Fire before mercy', 'The sea provides', 'We take what is ours', 'Iron and salt', 'No shore is far', 'Burn bright, burn brief', 'Hold the line', 'Gold for the brave', 'The wolf does not ask', 'Ever onward', 'Ash follows us', 'By oar and axe'];
+
+  function pick(rng, list) {
+    return list[Math.floor(rng() * list.length)];
+  }
+
+  function randomArms(rng) {
+    const metals = ['or', 'argent'];
+    const colours = ['gules', 'azure', 'vert', 'sable', 'purpure', 'tenne'];
+    const metalField = rng() < 0.4;
+    const field = metalField ? pick(rng, metals) : pick(rng, colours);
+    const division = pick(rng, Object.keys(DIVISIONS));
+    let second = metalField ? pick(rng, colours) : pick(rng, metals);
+    // Rule of tincture: a charge contrasts with the field (metal on colour, colour on metal).
+    const charge = pick(rng, Object.keys(CHARGES).filter((k) => k !== 'none'));
+    const chargeColor = division === 'plain' ? second : metalField ? 'sable' : pick(rng, metals);
+    if (division === 'plain') second = field;
+    return { division, field, second, charge, chargeColor };
+  }
+
+  function realmName(rng, capitalName) {
+    const stem = pick(rng, NAME_PREFIX);
+    const patterns = [stem + 'mark', stem + 'heim', stem + 'gard', 'Kingdom of ' + capitalName, 'Jarldom of ' + capitalName, 'Realm of ' + capitalName];
+    return pick(rng, patterns);
+  }
+
+  function randomKingdom(rng, index, capital, capitalName, opts) {
+    const o = opts || {};
+    const title = pick(rng, TITLES);
+    return {
+      id: o.id || 'k' + (index + 1),
+      name: realmName(rng, capitalName || 'the North'),
+      ruler: { title, name: pick(rng, RULERS) + ' ' + pick(rng, EPITHETS) },
+      motto: pick(rng, MOTTOS),
+      color: KINGDOM_COLORS[index % KINGDOM_COLORS.length].id,
+      arms: randomArms(rng),
+      trait: index === 0 && o.plainFirst ? 'none' : pick(rng, Object.keys(TRAITS)),
+      capital,
+      start: Object.assign({}, DEFAULT_START),
+      ownerId: null,
+      updatedAt: o.now || 0,
+    };
+  }
+
+  function kingdomColor(k) {
+    return (KINGDOM_COLORS.find((c) => c.id === k.color) || KINGDOM_COLORS[0]).hex;
+  }
+
+  // Capitals spread out: the first on a western landing beach, the rest as far
+  // (by route) from the others as possible, preferring coasts.
+  function chooseCapitals(c, geo, n) {
+    const T = c.territories;
+    const landing = (i) => ['coast', 'grassland', 'forest'].includes(T[i].terrain) && geo.shapes[i].coastLength > 15;
+    const clear = (i) => {
+      const [x, y] = geo.shapes[i].centroid;
+      return x > 70 && x < MAP_W - 70 && y > 50 && y < MAP_H - 40 && clearOfDecor(x, y, 45);
+    };
+    let pool = T.map((t, i) => i).filter((i) => landing(i) && clear(i));
+    if (!pool.length) pool = T.map((t, i) => i).filter(clear);
+    if (!pool.length) pool = T.map((t, i) => i);
+    const caps = [pool.reduce((best, i) => (geo.shapes[i].centroid[0] < geo.shapes[best].centroid[0] ? i : best), pool[0])];
+    const hops = (a) => {
+      const d = new Array(T.length).fill(Infinity);
+      d[a] = 0;
+      const q = [a];
+      for (let qi = 0; qi < q.length; qi++) for (const v of geo.adjacency[q[qi]]) if (d[v] === Infinity) {
+        d[v] = d[q[qi]] + 1;
+        q.push(v);
+      }
+      return d;
+    };
+    while (caps.length < n) {
+      const ds = caps.map(hops);
+      const score = (i) => Math.min(...ds.map((d) => (Number.isFinite(d[i]) ? d[i] : 99))) * 1000 + Math.min(...caps.map((k) => dist(geo.sites[i], geo.sites[k]))) + (landing(i) ? 500 : 0);
+      const cand = T.map((t, i) => i).filter((i) => !caps.includes(i) && clear(i));
+      const options = cand.length ? cand : T.map((t, i) => i).filter((i) => !caps.includes(i));
+      if (!options.length) break;
+      caps.push(options.reduce((best, i) => (score(i) > score(best) ? i : best), options[0]));
+    }
+    return caps.map((i) => T[i].id);
+  }
+
+  /* ---------- campaign creation ---------- */
+
+  function assignTerrain(count, info, gen) {
+    const g = normGen(gen);
+    const mult = [0.5, 1, 1.7];
+    const terrain = new Array(count).fill('grassland');
+    const byElev = info.slice().sort((a, b) => b.e - a.e);
+    const nMount = Math.max(1, Math.round(count * 0.15 * mult[g.mountains]));
+    const nHills = Math.max(1, Math.round(count * 0.15 * mult[g.mountains]));
+    byElev.slice(0, nMount).forEach((x) => (terrain[x.i] = 'mountains'));
+    byElev.slice(nMount, nMount + nHills).forEach((x) => (terrain[x.i] = 'hills'));
+    const rest = byElev.slice(nMount + nHills);
+    rest.filter((x) => x.coastal).sort((a, b) => a.e - b.e).slice(0, Math.round(count * 0.22)).forEach((x) => (terrain[x.i] = 'coast'));
+    const inland = rest.filter((x) => terrain[x.i] === 'grassland');
+    inland.slice().sort((a, b) => a.e - a.m * 0.5 - (b.e - b.m * 0.5)).slice(0, Math.max(g.wetlands ? 1 : 0, Math.round(count * 0.1 * mult[g.wetlands]))).forEach((x) => (terrain[x.i] = 'marsh'));
+    const open = inland.filter((x) => terrain[x.i] === 'grassland').sort((a, b) => b.m - a.m);
+    const share = [0.25, 0.45, 0.7][g.forests];
+    open.slice(0, Math.max(Math.round(open.length * share), Math.min(g.forests ? 2 : 1, open.length))).forEach((x) => (terrain[x.i] = 'forest'));
+    return terrain;
+  }
+
+  function newCampaign(opts) {
+    const o = opts || {};
+    const seed = String(o.seed || randomSeed());
+    const count = clamp(Math.round(o.count || 20), MIN_TERRITORIES, MAX_TERRITORIES);
+    const now = o.now || nowMs();
+    const nK = clamp(Math.round(o.kingdoms || 1), 1, MAX_KINGDOMS);
+    if (o.engine === 1) return upgradeCampaign(legacyNewCampaign(Object.assign({}, o, { seed, count, now })), now, nK);
+    const shape = SHAPES.includes(o.shape) ? o.shape : SHAPES[Math.floor(mulberry32(hashString('shape:' + seed))() * SHAPES.length)];
+    const gen = normGen(o.gen);
+    const { map, fine, seeds, comp } = generateMap2(seed, count, shape, gen);
+    const rng = mulberry32(hashString('sites:' + seed));
+    const owner = growRegions(map, fine.cells, comp, seeds);
+    const acc = seeds.map(() => ({ e: 0, m: 0, w: 0, coast: false }));
+    fine.cells.forEach((c, i) => {
+      const t = owner[i];
+      if (t < 0) return;
+      acc[t].e += c.elev * c.area;
+      acc[t].m += c.moist * c.area;
+      acc[t].w += c.area;
+      if (!acc[t].coast && c.labels.some((L) => L >= 0 && !fine.cells[L].land)) acc[t].coast = true;
+    });
+    const info = acc.map((a, i) => ({ i, e: a.w ? a.e / a.w : 0, m: a.w ? a.m / a.w : 0, coastal: a.coast }));
+    const terrain = assignTerrain(seeds.length, info, gen);
+    const names = makeNames(rng, terrain);
+    const wealth = [0.65, 1, 1.45][gen.wealth];
+    const defences = [0.65, 1, 1.45][gen.defences];
+    const territories = seeds.map((s, i) => {
+      const ts = TERRAIN_STATS[terrain[i]];
+      const p = fine.cells[s].p;
+      return {
+        id: 't' + (i + 1),
+        name: names[i],
+        position: { x: Math.round(p[0] * 10) / 10, y: Math.round(p[1] * 10) / 10 },
+        goldValue: Math.max(10, Math.round(((60 + rng() * 140) * ts.gold * wealth) / 5) * 5),
+        garrisonBase: Math.max(5, Math.round((15 + rng() * 65) * ts.garrison * defences)),
+        garrison: 0,
+        status: 'unclaimed',
+        terrain: terrain[i],
+        conquered: false,
+        control: 0,
+        damage: 0,
+        override: null,
+        overrideBy: null,
+        editedAt: 0,
+      };
+    });
+    const c = {
+      id: newId('c'),
+      name: '',
+      seed,
+      version: 2,
+      createdAt: now,
+      updatedAt: now,
+      year: 1,
+      season: 'spring',
+      seasonAt: 0,
+      goalPct: 60,
+      settingsAt: 0,
+      map,
+      territories,
+      kingdoms: [],
+      raids: [],
+      adjustments: [],
+      milestones: [],
+      deleted: [],
+    };
+    const geo = buildGeometry2(c);
+    const caps = chooseCapitals(c, geo, nK);
+    const krng = mulberry32(hashString('kingdoms:' + seed));
+    c.kingdoms = caps.map((cap, i) => randomKingdom(krng, i, cap, territories.find((t) => t.id === cap).name, { plainFirst: nK === 1, now: 0 }));
+    if (Array.isArray(o.kingdomSpecs)) o.kingdomSpecs.forEach((spec, i) => c.kingdoms[i] && Object.assign(c.kingdoms[i], spec));
+    c.name = o.name || campaignName(c);
+    return snapshot(c);
+  }
+
+  // Older single-player campaigns: the home base becomes the capital of one kingdom.
+  function upgradeCampaign(c, now, nK) {
+    if (Array.isArray(c.kingdoms) && c.kingdoms.length) return c;
+    const krng = mulberry32(hashString('kingdoms:' + c.seed));
+    const base = c.baseTerritory;
+    const baseName = (c.territories.find((t) => t.id === base) || c.territories[0]).name;
+    const k = randomKingdom(krng, 0, base, baseName, { plainFirst: true, now: 0 });
+    k.name = 'Your kingdom';
+    k.start = Object.assign({}, c.start || DEFAULT_START);
+    c.kingdoms = [k];
+    if (nK > 1) {
+      const geo = buildGeometry(c);
+      const caps = chooseCapitals(Object.assign({}, c), geo, nK).filter((id) => id !== base);
+      caps.slice(0, nK - 1).forEach((cap, i) => c.kingdoms.push(randomKingdom(krng, i + 1, cap, c.territories.find((t) => t.id === cap).name, { now: 0 })));
+    }
+    for (const r of c.raids || []) if (!r.by) r.by = k.id;
+    for (const a of c.adjustments || []) if (!a.kingdom) a.kingdom = k.id;
+    delete c.baseTerritory;
+    delete c.start;
+    c.version = 2;
+    c.deleted = c.deleted || [];
+    c.seasonAt = c.seasonAt || 0;
+    c.settingsAt = c.settingsAt || 0;
+    return snapshot(c);
+  }
+
+  // "The Ravenmere Raids", "The Harrying of Ketilvik"... named after the richest prize.
+  function campaignName(c) {
+    const rng = mulberry32(hashString('name:' + c.seed));
+    const caps = new Set((c.kingdoms || []).map((k) => k.capital).concat(c.baseTerritory ? [c.baseTerritory] : []));
+    const prize = c.territories.filter((t) => !caps.has(t.id)).sort((a, b) => b.goldValue - a.goldValue)[0] || c.territories[0];
+    const patterns = [(n) => 'The ' + n + ' Raids', (n) => 'The Harrying of ' + n, (n) => 'The Saga of ' + n, (n) => 'The ' + n + ' War', (n) => 'Fire over ' + n];
+    return patterns[Math.floor(rng() * patterns.length)](prize.name);
   }
 
   /* ---------- seasons ---------- */
@@ -1012,154 +2201,206 @@
 
   /* ---------- rules ---------- */
 
-  function deriveStatus(t) {
-    if (t.control >= 100) return 'conquered';
-    if (t.ongoing > 0 || (t.lastOutcome === 'failure' && t.control > 0)) return 'contested';
-    if (t.control > 0) return 'claimed';
-    return 'unclaimed';
+  function holderOf(t) {
+    for (const k in t.inf) if (t.inf[k] >= 100) return k;
+    return null;
+  }
+
+  // Influence: each kingdom's share of control. Gaining pushes the others out.
+  function addInfluence(t, kid, gain) {
+    let next = Math.min(100, (t.inf[kid] || 0) + gain);
+    let others = 0;
+    for (const k in t.inf) if (k !== kid) others += t.inf[k];
+    const over = next + others - 100;
+    if (over > 0 && others > 0) {
+      const f = Math.max(0, (others - over) / others);
+      for (const k in t.inf) {
+        if (k === kid) continue;
+        t.inf[k] = Math.round(t.inf[k] * f);
+        if (t.inf[k] <= 0) delete t.inf[k];
+      }
+    }
+    let sum = next;
+    for (const k in t.inf) if (k !== kid) sum += t.inf[k];
+    if (sum > 100) next -= sum - 100;
+    if (next > 0) t.inf[kid] = next;
+    else delete t.inf[kid];
   }
 
   function replay(c, startOverride) {
     const R = RULES;
-    const start = startOverride || c.start || DEFAULT_START;
     const nowIdx = seasonIndex(c.year, c.season);
-    const base = c.baseTerritory;
+    const kings = c.kingdoms && c.kingdoms.length ? c.kingdoms : [{ id: 'k1', name: 'Your kingdom', capital: c.baseTerritory || c.territories[0].id, start: c.start || DEFAULT_START, trait: 'none' }];
+    const first = kings[0];
+    const multi = kings.length > 1;
+    const capOf = new Map(kings.map((k) => [k.capital, k.id]));
+    const kname = new Map(kings.map((k) => [k.id, k.name]));
+    const pre = (kid) => (multi ? kname.get(kid) + ': ' : '');
     const byId = new Map();
     for (const t of c.territories) {
-      const isBase = t.id === base;
+      const cap = capOf.get(t.id) || null;
       byId.set(t.id, {
         id: t.id,
         name: t.name,
         goldValue: t.goldValue,
         garrisonBase: t.garrisonBase,
         terrain: t.terrain,
-        isBase,
-        control: isBase ? 100 : 0,
-        garrison: isBase ? 0 : t.garrisonBase,
+        capitalOf: cap,
+        isCapital: !!cap,
+        isBase: cap === first.id,
+        inf: cap ? { [cap]: 100 } : {},
+        garrison: t.garrisonBase,
         damage: 0,
         lastOutcome: null,
+        lastBy: null,
         ongoing: 0,
         raids: 0,
         wins: 0,
         fails: 0,
         loot: 0,
         losses: 0,
-        status: isBase ? 'conquered' : 'unclaimed',
+        status: cap ? 'conquered' : 'unclaimed',
+        owner: cap,
+        control: cap ? 100 : 0,
       });
     }
-    let treasury = start.treasury;
-    let army = start.army;
-    let morale = start.morale;
-    let inField = 0;
     const totalTargets = Math.max(1, c.territories.length - 1);
-    let conquered = 0;
-    const auto = [];
-    const reached = new Set();
-    let firstBlood = false;
-    let firstConquest = false;
-    let lowMorale = false;
     const treasuryMarks = [1000, 2500, 5000, 10000];
-    let treasuryMark = treasuryMarks.findIndex((m) => m > treasury);
-    if (treasuryMark === -1) treasuryMark = treasuryMarks.length;
-
-    let clock = 0; // timestamp of the event being applied, so milestones sort with custom ones
-    function mark(si, kind, label, territory, raidId) {
+    const ks = new Map(
+      kings.map((k, i) => {
+        const st = startOverride && i === 0 ? startOverride : k.start || DEFAULT_START;
+        const tr = TRAITS[k.trait] || TRAITS.none;
+        const treasury = Number(st.treasury) || 0;
+        let mark = treasuryMarks.findIndex((m) => m > treasury);
+        if (mark === -1) mark = treasuryMarks.length;
+        return [k.id, { id: k.id, tr, treasury, army: Math.max(0, (Number(st.army) || 0) + (tr.startArmy || 0)), morale: clamp(Number(st.morale) || 0, tr.moraleFloor || 0, 100), inField: 0, firstBlood: false, firstConquest: false, reached: new Set(), lowMorale: false, mark, won: false }];
+      })
+    );
+    const auto = [];
+    let clock = 0;
+    let winner = null;
+    function mark(si, kid, kind, label, territory, raidId) {
       const s = seasonFromIndex(si);
-      auto.push({ id: 'auto-' + auto.length, auto: true, kind, label, year: s.year, season: s.season, idx: si, timestamp: clock, territory: territory || null, raid: raidId || null });
+      auto.push({ id: 'auto-' + auto.length, auto: true, kind, label, kingdom: kid, year: s.year, season: s.season, idx: si, timestamp: clock, territory: territory || null, raid: raidId || null });
     }
-
+    const moraleAdd = (k, d) => (k.morale = clamp(k.morale + d, k.tr.moraleFloor || 0, 100));
+    function conqueredBy(kid) {
+      let n = 0;
+      for (const t of byId.values()) if (t.capitalOf !== kid && holderOf(t) === kid) n++;
+      return n;
+    }
     function checkProgress(si) {
-      const pct = (conquered / totalTargets) * 100;
-      for (const p of [25, 50, 75]) {
-        if (pct >= p && !reached.has(p)) {
-          reached.add(p);
-          mark(si, 'empire', p + '% of the realm conquered');
+      for (const k of ks.values()) {
+        const pct = (conqueredBy(k.id) / totalTargets) * 100;
+        for (const p of [25, 50, 75]) {
+          if (pct >= p && !k.reached.has(p)) {
+            k.reached.add(p);
+            mark(si, k.id, 'empire', pre(k.id) + p + '% of the realm conquered');
+          }
         }
+        if (c.goalPct && pct >= c.goalPct && !k.reached.has('goal')) {
+          k.reached.add('goal');
+          if (!winner) winner = k.id;
+          mark(si, k.id, 'empire', multi ? kname.get(k.id) + (winner === k.id ? ' wins the war: ' : ' also reaches the goal: ') + c.goalPct + '% conquered' : 'Goal reached: ' + c.goalPct + '% conquered');
+        }
+        while (k.mark < treasuryMarks.length && k.treasury >= treasuryMarks[k.mark]) {
+          mark(si, k.id, 'empire', pre(k.id) + 'Treasury passes ' + treasuryMarks[k.mark].toLocaleString('en-GB') + ' gold');
+          k.mark++;
+        }
+        if (k.morale <= 15 && !k.lowMorale) {
+          k.lowMorale = true;
+          mark(si, k.id, 'defeat', pre(k.id) + 'Morale collapses');
+        } else if (k.morale > 30) k.lowMorale = false;
       }
-      if (c.goalPct && pct >= c.goalPct && !reached.has('goal')) {
-        reached.add('goal');
-        mark(si, 'empire', 'Goal reached: ' + c.goalPct + '% conquered');
-      }
-      while (treasuryMark < treasuryMarks.length && treasury >= treasuryMarks[treasuryMark]) {
-        mark(si, 'empire', 'Treasury passes ' + treasuryMarks[treasuryMark].toLocaleString('en-GB') + ' gold');
-        treasuryMark++;
-      }
-      if (morale <= 15 && !lowMorale) {
-        lowMorale = true;
-        mark(si, 'defeat', 'Morale collapses');
-      } else if (morale > 30) lowMorale = false;
     }
-
     function applyRaid(r, si) {
       const t = byId.get(r.targetTerritory);
-      if (!t || t.isBase) return;
+      const att = ks.get(r.by) || ks.get(first.id);
+      if (!t || t.capitalOf === att.id) return;
+      const A = att.id;
       t.raids++;
       if (r.outcome === 'ongoing') {
         t.ongoing++;
-        inField += Math.max(0, r.warband || 0);
+        att.inField += Math.max(0, r.warband || 0);
         return;
       }
       const losses = Math.max(0, r.losses || 0);
       const loot = Math.max(0, r.lootGained || 0);
-      const armyBefore = army;
-      army = Math.max(0, army - losses);
-      treasury += loot;
+      const armyBefore = att.army;
+      att.army = Math.max(0, att.army - losses);
+      att.treasury += loot;
       t.loot += loot;
       t.losses += losses;
+      const before = holderOf(t);
       if (r.outcome === 'success') {
         t.wins++;
-        morale = clamp(morale + R.moraleSuccess, 0, 100);
+        moraleAdd(att, R.moraleSuccess);
         t.garrison = Math.round(t.garrison * R.successGarrisonMult);
-        const before = t.control;
-        t.control = Math.min(100, t.control + R.successControl);
-        if (!firstBlood) {
-          firstBlood = true;
-          mark(si, 'victory', 'First blood at ' + t.name, t.id, r.id);
+        let gain = R.successControl + (att.tr.successControl || 0) + (t.terrain === 'coast' ? att.tr.coastControl || 0 : 0);
+        let defender = null;
+        for (const k in t.inf) if (k !== A && (!defender || t.inf[k] > t.inf[defender])) defender = k;
+        if (defender && ks.get(defender)) gain -= ks.get(defender).tr.defendControl || 0;
+        addInfluence(t, A, Math.max(5, gain));
+        if (!att.firstBlood) {
+          att.firstBlood = true;
+          mark(si, A, 'victory', pre(A) + 'First blood at ' + t.name, t.id, r.id);
         }
-        if (before < 100 && t.control >= 100) {
-          conquered++;
+        const after = holderOf(t);
+        if (before && before !== A && after !== before && ks.get(before)) {
+          moraleAdd(ks.get(before), -8);
+          mark(si, before, 'defeat', (t.capitalOf === before ? kname.get(before) + '’s capital, ' + t.name + ', is breached' : pre(before) + t.name + ' slips from your grip'), t.id, r.id);
+        }
+        if (after === A && before !== A) {
           t.garrison = 0;
-          morale = clamp(morale + R.moraleConquest, 0, 100);
-          mark(si, 'victory', (firstConquest ? '' : 'First conquest: ') + t.name + ' falls', t.id, r.id);
-          firstConquest = true;
+          moraleAdd(att, R.moraleConquest + (att.tr.conquestMorale || 0));
+          const label = t.capitalOf && t.capitalOf !== A ? kname.get(t.capitalOf) + '’s capital, ' + t.name + ', falls to ' + kname.get(A) : pre(A) + (att.firstConquest ? '' : 'First conquest: ') + t.name + ' falls';
+          mark(si, A, 'victory', label, t.id, r.id);
+          att.firstConquest = true;
         }
       } else if (r.outcome === 'failure') {
         t.fails++;
-        morale = clamp(morale + R.moraleFailure, 0, 100);
-        if (t.control >= 100) conquered--;
-        t.control = Math.max(0, t.control + R.failureControl);
+        moraleAdd(att, R.moraleFailure * (att.tr.failureMoraleMult || 1));
+        if (t.inf[A]) {
+          t.inf[A] = Math.max(0, t.inf[A] + R.failureControl);
+          if (!t.inf[A]) delete t.inf[A];
+        }
         t.damage = Math.min(R.damageMax, t.damage + R.damagePerFailure);
         const cap = Math.round(t.garrisonBase * R.garrisonCapMult);
         t.garrison = Math.min(cap, Math.max(t.garrison, Math.round(t.garrison * R.failureGarrisonMult) + 1));
         if (losses >= Math.max(R.heavyDefeatMin, armyBefore * R.heavyDefeatShare)) {
-          mark(si, 'defeat', 'Heavy defeat at ' + t.name + ' (' + losses + ' fell)', t.id, r.id);
+          mark(si, A, 'defeat', pre(A) + 'Heavy defeat at ' + t.name + ' (' + losses + ' fell)', t.id, r.id);
         }
       }
       t.lastOutcome = r.outcome;
+      t.lastBy = A;
     }
-
     function applyAdjustment(a) {
-      treasury += Number(a.treasury) || 0;
-      army = Math.max(0, army + (Number(a.army) || 0));
-      morale = clamp(morale + (Number(a.morale) || 0), 0, 100);
+      const k = ks.get(a.kingdom) || ks.get(first.id);
+      k.treasury += Number(a.treasury) || 0;
+      k.army = Math.max(0, k.army + (Number(a.army) || 0));
+      moraleAdd(k, Number(a.morale) || 0);
     }
-
     function endSeason() {
       for (const t of byId.values()) {
-        if (t.control >= 100) treasury += Math.round(t.goldValue * R.tributeRate);
-        else if (t.control > 0) treasury += Math.round(t.goldValue * R.tributeRate * R.claimedTributeFactor * (t.control / 100));
-        if (t.control < 100 && t.garrison < t.garrisonBase) {
-          t.garrison = Math.min(t.garrisonBase, t.garrison + Math.max(1, Math.round(t.garrisonBase * R.regenPerSeason)));
+        for (const kid in t.inf) {
+          const k = ks.get(kid);
+          if (!k) continue;
+          const tm = k.tr.tributeMult || 1;
+          const v = t.inf[kid];
+          k.treasury += v >= 100 ? Math.round(t.goldValue * R.tributeRate * tm) : Math.round(t.goldValue * R.tributeRate * R.claimedTributeFactor * (v / 100) * tm);
+        }
+        if (t.garrison < t.garrisonBase) {
+          const h = holderOf(t);
+          const mult = h && ks.get(h) ? ks.get(h).tr.regenMult || 1 : 1;
+          t.garrison = Math.min(t.garrisonBase, t.garrison + Math.max(1, Math.round(t.garrisonBase * R.regenPerSeason * mult)));
         }
         t.damage = Math.max(0, t.damage - R.damageHealPerSeason);
       }
     }
-
     const events = [];
     for (const r of c.raids || []) events.push({ idx: clamp(seasonIndex(r.year, r.season), 0, nowIdx), ts: r.timestamp || 0, raid: r });
     for (const a of c.adjustments || []) events.push({ idx: clamp(seasonIndex(a.year, a.season), 0, nowIdx), ts: a.timestamp || 0, adjust: a });
     events.sort((x, y) => x.idx - y.idx || x.ts - y.ts);
-
     let e = 0;
     for (let si = 0; si <= nowIdx; si++) {
       while (e < events.length && events[e].idx === si) {
@@ -1175,39 +2416,70 @@
       }
     }
 
-    let claimed = 0;
-    let contested = 0;
-    conquered = 0;
+    const counts = new Map(kings.map((k) => [k.id, { conquered: 0, claimed: 0, contested: 0, held: 0 }]));
     for (const src of c.territories) {
       const t = byId.get(src.id);
-      t.status = t.isBase ? 'conquered' : src.override || deriveStatus(t);
-      if (t.isBase) continue;
-      if (t.status === 'conquered') conquered++;
-      else if (t.status === 'claimed') claimed++;
-      else if (t.status === 'contested') contested++;
+      const holders = Object.keys(t.inf).filter((k) => t.inf[k] > 0);
+      const h = holderOf(t);
+      const top = holders.sort((a, b) => t.inf[b] - t.inf[a])[0] || null;
+      if (src.override && STATUSES.includes(src.override)) {
+        t.status = src.override;
+        t.owner = src.override === 'unclaimed' ? null : src.overrideBy && ks.has(src.overrideBy) ? src.overrideBy : h || top || first.id;
+        t.control = t.status === 'conquered' ? 100 : t.owner ? t.inf[t.owner] || 0 : 0;
+      } else if (h) {
+        t.status = 'conquered';
+        t.owner = h;
+        t.control = 100;
+      } else if (t.ongoing > 0 || holders.length >= 2 || (holders.length === 1 && t.lastOutcome === 'failure' && t.lastBy === holders[0])) {
+        t.status = 'contested';
+        t.owner = top;
+        t.control = top ? t.inf[top] : 0;
+      } else if (holders.length === 1) {
+        t.status = 'claimed';
+        t.owner = top;
+        t.control = t.inf[top];
+      } else {
+        t.status = 'unclaimed';
+        t.owner = null;
+        t.control = 0;
+      }
+      for (const [kid, n] of counts) {
+        const mine = t.owner === kid;
+        if (t.status === 'conquered' && mine && t.capitalOf !== kid) n.conquered++;
+        else if (t.status === 'claimed' && mine) n.claimed++;
+        else if (t.status === 'contested' && (mine || (t.inf[kid] || 0) > 0)) n.contested++;
+        if ((t.inf[kid] || 0) > 0 || (mine && t.status !== 'unclaimed')) n.held++;
+      }
     }
-
+    const kingdoms = new Map();
+    for (const k of kings) {
+      const s = ks.get(k.id);
+      const n = counts.get(k.id);
+      kingdoms.set(k.id, { id: k.id, treasury: s.treasury, army: s.army, inField: Math.min(s.inField, s.army), morale: s.morale, conquered: n.conquered, claimed: n.claimed, contested: n.contested, alive: n.held > 0, capitalHeld: byId.get(k.capital) ? byId.get(k.capital).owner === k.id : false, totalTargets, progressPct: (n.conquered / totalTargets) * 100 });
+    }
     const custom = (c.milestones || []).map((m) => Object.assign({}, m, { auto: false, idx: seasonIndex(m.year, m.season) }));
     const milestones = auto.concat(custom).sort((a, b) => a.idx - b.idx || (a.timestamp || 0) - (b.timestamp || 0));
-
+    const f = kingdoms.get(first.id);
     return {
       territories: byId,
-      treasury,
-      army,
-      inField: Math.min(inField, army),
-      morale,
-      conquered,
-      claimed,
-      contested,
-      totalTargets,
-      progressPct: (conquered / totalTargets) * 100,
+      kingdoms,
+      winner,
       milestones,
       nowIdx,
+      treasury: f.treasury,
+      army: f.army,
+      inField: f.inField,
+      morale: f.morale,
+      conquered: f.conquered,
+      claimed: f.claimed,
+      contested: f.contested,
+      totalTargets,
+      progressPct: f.progressPct,
     };
   }
 
   // Writes the derived state back onto the campaign so saved and exported JSON
-  // reads correctly on its own (status, garrison, conquered, treasury...).
+  // reads correctly on its own (status, owner, garrison, each kingdom's treasury...).
   function snapshot(c, result) {
     const res = result || replay(c);
     for (const t of c.territories) {
@@ -1216,7 +2488,16 @@
       t.control = d.control;
       t.damage = d.damage;
       t.status = d.status;
+      t.owner = d.owner;
+      t.influence = Object.assign({}, d.inf);
       t.conquered = d.status === 'conquered';
+    }
+    for (const k of c.kingdoms || []) {
+      const s = res.kingdoms.get(k.id);
+      if (!s) continue;
+      k.treasury = s.treasury;
+      k.army = s.army;
+      k.morale = s.morale;
     }
     c.treasury = res.treasury;
     c.army = res.army;
@@ -1235,83 +2516,154 @@
     return { ratio, label };
   }
 
-  function nextRaidId(c) {
-    let max = 0;
-    for (const r of c.raids) {
-      const m = /^r(\d+)$/.exec(r.id);
-      if (m) max = Math.max(max, Number(m[1]));
-    }
-    return 'r' + (max + 1);
+  // Unique across devices, so two players logging at once never collide.
+  function nextRaidId() {
+    return newId('r');
   }
 
-  // Territories a raid may start from: home, plus anything held or partly held.
-  function raidSources(c, result) {
+  function kingdomOf(c, kid) {
+    return (c.kingdoms || []).find((k) => k.id === kid) || (c.kingdoms || [])[0];
+  }
+
+  // Territories a kingdom's raids may start from (besides its capital): anything it holds a share of.
+  function raidSources(c, result, kid) {
+    const k = kingdomOf(c, kid);
     const out = [];
     for (const t of c.territories) {
+      if (t.id === k.capital) continue;
       const d = result.territories.get(t.id);
-      if (t.id === c.baseTerritory) continue;
-      if (d.control > 0) out.push(t.id);
+      if ((d.inf[k.id] || 0) > 0) out.push(t.id);
     }
     return out;
   }
 
-  // Unconquered territories bordering anything the player holds.
-  function frontier(c, geo, result) {
+  // Land a kingdom doesn't fully hold that borders land it does.
+  function frontier(c, geo, result, kid) {
+    const k = kingdomOf(c, kid);
     const out = new Set();
     c.territories.forEach((t, i) => {
       const d = result.territories.get(t.id);
-      if (d.control <= 0) return;
+      if ((d.inf[k.id] || 0) <= 0) return;
       for (const j of geo.adjacency[i]) {
         const n = c.territories[j];
-        if (result.territories.get(n.id).status !== 'conquered') out.add(n.id);
+        const dn = result.territories.get(n.id);
+        if (!(dn.status === 'conquered' && dn.owner === k.id) && n.id !== k.capital) out.add(n.id);
       }
     });
     return out;
   }
 
+  /* ---------- multiplayer sync ---------- */
+
+  /*
+   * Merges two copies of one campaign (this device's and the saved one) without
+   * losing anyone's moves: raids, adjustments and milestones are unioned by id
+   * (newer edit wins, deletions are remembered), and each setting group keeps
+   * whichever side changed it last.
+   */
+  function mergeCampaigns(a, b) {
+    if (!b) return a;
+    if (!a) return b;
+    const clone = (x) => JSON.parse(JSON.stringify(x));
+    const out = clone(a);
+    const deleted = new Set([...(a.deleted || []), ...(b.deleted || [])]);
+    const stamp = (x) => x.updatedAt || x.timestamp || 0;
+    const mergeList = (la, lb) => {
+      const m = new Map();
+      for (const x of la || []) m.set(x.id, x);
+      for (const y of lb || []) {
+        const x = m.get(y.id);
+        if (!x || stamp(y) > stamp(x)) m.set(y.id, y);
+      }
+      return [...m.values()].filter((x) => !deleted.has(x.id)).map(clone);
+    };
+    out.raids = mergeList(a.raids, b.raids).sort((x, y) => x.timestamp - y.timestamp);
+    out.adjustments = mergeList(a.adjustments, b.adjustments).sort((x, y) => x.timestamp - y.timestamp);
+    out.milestones = mergeList(a.milestones, b.milestones).sort((x, y) => x.timestamp - y.timestamp);
+    const order = (a.kingdoms || []).map((k) => k.id).concat((b.kingdoms || []).map((k) => k.id).filter((id) => !(a.kingdoms || []).some((k) => k.id === id)));
+    const km = new Map(mergeList(a.kingdoms, b.kingdoms).map((k) => [k.id, k]));
+    out.kingdoms = order.filter((id) => km.has(id)).map((id) => km.get(id));
+    const bt = new Map((b.territories || []).map((t) => [t.id, t]));
+    out.territories = out.territories.map((t) => {
+      const o = bt.get(t.id);
+      if (o && (o.editedAt || 0) > (t.editedAt || 0)) return Object.assign({}, t, { name: o.name, override: o.override || null, overrideBy: o.overrideBy || null, editedAt: o.editedAt });
+      return t;
+    });
+    if ((b.seasonAt || 0) > (a.seasonAt || 0)) {
+      out.year = b.year;
+      out.season = b.season;
+      out.seasonAt = b.seasonAt;
+    }
+    if ((b.settingsAt || 0) > (a.settingsAt || 0)) {
+      out.name = b.name;
+      out.goalPct = b.goalPct;
+      out.settingsAt = b.settingsAt;
+    }
+    out.deleted = [...deleted];
+    out.updatedAt = Math.max(a.updatedAt || 0, b.updatedAt || 0);
+    out.shared = !!(a.shared || b.shared);
+    if (b.example === false || a.example === false) out.example = false;
+    return snapshot(out);
+  }
+
   /* ---------- example campaign ---------- */
 
+  // Two kingdoms a year into a war, with every territory state on show.
   function exampleCampaign(now) {
     const t0 = now || nowMs();
-    const c = newCampaign({ name: 'The Saltmarch Raids', seed: 'saltmarch', count: 20, shape: 'island', now: t0 });
+    const c = newCampaign({ name: 'The Saltmarch War', seed: 'saltmarch', count: 20, shape: 'island', kingdoms: 2, now: t0 });
     c.example = true;
+    const [k1, k2] = c.kingdoms;
+    Object.assign(k1, { name: 'Ravenmark', ruler: { title: 'Queen', name: 'Ragnhild Ironside' }, motto: 'We take what is ours', trait: 'reavers', arms: { division: 'plain', field: 'sable', second: 'sable', charge: 'raven', chargeColor: 'argent' } });
+    Object.assign(k2, { name: 'Kingdom of Saltvik', ruler: { title: 'Jarl', name: 'Halfdan the Grim' }, motto: 'The sea provides', trait: 'seafarers', arms: { division: 'pale', field: 'azure', second: 'or', charge: 'ship', chargeColor: 'gules' } });
     const geo = buildGeometry(c);
-    const baseIdx = geo.index.get(c.baseTerritory);
-    const near = c.territories
-      .map((t, i) => ({ t, i, d: routeLeagues(geo, findRoute(geo, baseIdx, i)) }))
-      .filter((x) => x.i !== baseIdx)
-      .sort((a, b) => a.d - b.d)
-      .map((x) => x.t.id);
-    const [n1, n2, n3, n4, n5] = near;
+    const nearTo = (cap, skip) => {
+      const from = geo.index.get(cap);
+      return c.territories
+        .map((t, i) => ({ id: t.id, d: routeLeagues(geo, findRoute(geo, from, i)) }))
+        .filter((x) => x.id !== k1.capital && x.id !== k2.capital && !skip.includes(x.id))
+        .sort((a, b) => a.d - b.d)
+        .map((x) => x.id);
+    };
+    const a = nearTo(k1.capital, []);
+    const [n1, n2, n3, n4, n5] = a;
+    const b = nearTo(k2.capital, a.slice(0, 5));
+    const [m1, m2] = b;
+    // A territory both kingdoms reach for: the closest to both capitals not already used.
+    const shared = nearTo(k2.capital, [n1, n2, n3, n4, n5, m1, m2])[0];
     const script = [
-      [1, 'spring', n1, 'success', 30, 3, 70],
-      [1, 'spring', n1, 'success', 30, 2, 55],
-      [1, 'summer', n2, 'failure', 25, 10, 10],
-      [1, 'summer', n1, 'success', 32, 2, 60],
-      [1, 'autumn', n3, 'success', 28, 4, 85],
-      [1, 'autumn', n2, 'success', 35, 5, 45],
-      [1, 'winter', n5, 'failure', 20, 8, 0],
-      [2, 'spring', n2, 'success', 34, 3, 50],
-      [2, 'spring', n4, 'ongoing', 20, 0, 0],
+      [1, 'spring', 'k1', n1, 'success', 30, 3, 70],
+      [1, 'spring', 'k2', m1, 'success', 28, 2, 60],
+      [1, 'spring', 'k1', n1, 'success', 30, 2, 55],
+      [1, 'summer', 'k1', n2, 'failure', 25, 10, 10],
+      [1, 'summer', 'k1', n1, 'success', 32, 2, 60],
+      [1, 'summer', 'k2', m1, 'success', 30, 3, 45],
+      [1, 'autumn', 'k1', n3, 'success', 28, 4, 85],
+      [1, 'autumn', 'k2', shared, 'success', 26, 4, 40],
+      [1, 'autumn', 'k1', n2, 'success', 35, 5, 45],
+      [1, 'winter', 'k1', n5, 'failure', 20, 8, 0],
+      [1, 'winter', 'k1', shared, 'success', 30, 5, 35],
+      [2, 'spring', 'k1', n2, 'success', 34, 3, 50],
+      [2, 'spring', 'k2', m2, 'success', 25, 3, 40],
+      [2, 'spring', 'k1', n4, 'ongoing', 20, 0, 0],
     ];
     let ts = t0 - script.length * 3600e3;
-    c.raids = script.map((s, k) => ({
-      id: 'r' + (k + 1),
+    c.raids = script.map((s, i) => ({
+      id: 'r' + (i + 1),
+      by: s[2],
       sourceTerritory: 'base',
-      targetTerritory: s[2],
-      outcome: s[3],
+      targetTerritory: s[3],
+      outcome: s[4],
       timestamp: (ts += 3600e3),
-      losses: s[5],
-      lootGained: s[6],
-      warband: s[4],
+      losses: s[6],
+      lootGained: s[7],
+      warband: s[5],
       year: s[0],
       season: s[1],
       notes: '',
     }));
-    c.adjustments = [
-      { id: 'a1', year: 1, season: 'winter', timestamp: t0 - 2 * 3600e3, treasury: -60, army: 12, morale: 0, note: 'Hired 12 sellswords' },
-    ];
-    c.milestones = [{ id: 'm1', year: 1, season: 'spring', timestamp: t0 - 10 * 3600e3, kind: 'custom', label: 'The longships land' }];
+    c.adjustments = [{ id: 'a1', kingdom: 'k1', year: 1, season: 'winter', timestamp: t0 - 5 * 3600e3, treasury: -60, army: 12, morale: 0, note: 'Hired 12 sellswords' }];
+    c.milestones = [{ id: 'm1', kingdom: null, year: 1, season: 'spring', timestamp: t0 - 20 * 3600e3, kind: 'custom', label: 'The longships land' }];
     c.year = 2;
     c.season = 'spring';
     return snapshot(c);
@@ -1371,6 +2723,8 @@
         control: 0,
         damage: 0,
         override,
+        overrideBy: typeof t.overrideBy === 'string' ? t.overrideBy : null,
+        editedAt: num(t.editedAt, 0),
       };
     });
 
@@ -1380,7 +2734,20 @@
       map && Array.isArray(map.islands) && map.islands.length >= 1 && map.islands.length <= 8 &&
       map.islands.every((i) => i && num(i.rx, 0) > 0 && num(i.ry, 0) > 0 && Number.isFinite(num(i.cx, NaN)) && Number.isFinite(num(i.cy, NaN)));
     const coastOk = map && map.coast && Number.isFinite(num(map.coast.angle, NaN)) && Number.isFinite(num(map.coast.c, NaN));
-    if (map && map.shape === 'mainland' && coastOk) {
+    let engine2 = null;
+    if (map && map.engine === 2) {
+      try {
+        if (!SHAPES.includes(map.shape) || !map.mask || typeof map.mask !== 'object') throw new Error('bad mask');
+        const m2 = { engine: 2, width: num(map.width, MAP_W), height: num(map.height, MAP_H), seed: mapSeed, shape: map.shape, gen: normGen(map.gen), mask: JSON.parse(JSON.stringify(map.mask)) };
+        const f = makeShapeField(m2);
+        if (![f(500, 350), f(100, 100), f(900, 600)].every(Number.isFinite)) throw new Error('bad mask');
+        engine2 = m2;
+      } catch (e) {
+        warnings.push('The coastline settings could not be read, so the map is drawn as one island.');
+      }
+    }
+    if (engine2) map = engine2;
+    else if (map && map.shape === 'mainland' && coastOk) {
       map = { width: num(map.width, MAP_W), height: num(map.height, MAP_H), seed: mapSeed, shape: 'mainland', rx: 375, ry: 248, coast: { angle: num(map.coast.angle, 0), c: num(map.coast.c, 0) } };
     } else if (map && map.shape === 'archipelago' && islandsOk) {
       map = {
@@ -1409,48 +2776,120 @@
       map = { width: num(map.width, MAP_W), height: num(map.height, MAP_H), rx: num(map.rx, 375), ry: num(map.ry, 248), seed: mapSeed, shape: 'island' };
     }
 
-    let base = typeof raw.baseTerritory === 'string' && ids.has(raw.baseTerritory) ? raw.baseTerritory : null;
-    if (!base) {
-      const held = territories.find((t) => t.override === 'conquered');
-      base = (held || territories[0]).id;
-      warnings.push('No home base was set, so ' + territories.find((t) => t.id === base).name + ' became home.');
-    }
-    const baseT = territories.find((t) => t.id === base);
-    if (baseT.override) baseT.override = null;
-
     const year = Math.max(1, Math.floor(num(raw.year, 1)));
     const season = SEASONS.includes(raw.season) ? raw.season : 'spring';
+    const safeId = (v) => typeof v === 'string' && /^[A-Za-z0-9_\-~:@+]{1,120}$/.test(v);
+
+    // Kingdoms, or one kingdom built from an older file's home base.
+    const kingdoms = [];
+    const usedK = new Set();
+    const usedCaps = new Set();
+    const usedColors = new Set();
+    const krng = mulberry32(hashString('kingdoms:' + (raw.seed || raw.id || label)));
+    const freeCap = () => (territories.find((t) => !usedCaps.has(t.id)) || territories[0]).id;
+    const addKingdom = (k, i) => {
+      let id = safeId(k.id) && !usedK.has(k.id) ? k.id : 'k' + (i + 1);
+      while (usedK.has(id)) id += 'x';
+      const cap = ids.has(k.capital) && !usedCaps.has(k.capital) ? k.capital : freeCap();
+      const color = KINGDOM_COLORS.some((x) => x.id === k.color) && !usedColors.has(k.color) ? k.color : (KINGDOM_COLORS.find((x) => !usedColors.has(x.id)) || KINGDOM_COLORS[0]).id;
+      usedK.add(id);
+      usedCaps.add(cap);
+      usedColors.add(color);
+      const a = k.arms && typeof k.arms === 'object' ? k.arms : {};
+      const ra = randomArms(krng);
+      const tinct = (v, d) => (TINCTURES[v] ? v : d);
+      const st = k.start && typeof k.start === 'object' ? k.start : {};
+      kingdoms.push({
+        id,
+        name: typeof k.name === 'string' && k.name.trim() ? k.name.trim().slice(0, 40) : 'Kingdom ' + (i + 1),
+        ruler: {
+          title: k.ruler && TITLES.includes(k.ruler.title) ? k.ruler.title : 'King',
+          name: k.ruler && typeof k.ruler.name === 'string' && k.ruler.name.trim() ? k.ruler.name.trim().slice(0, 40) : pick(krng, RULERS),
+        },
+        motto: typeof k.motto === 'string' ? k.motto.slice(0, 60) : '',
+        color,
+        arms: {
+          division: DIVISIONS[a.division] ? a.division : ra.division,
+          field: tinct(a.field, ra.field),
+          second: tinct(a.second, ra.second),
+          charge: CHARGES[a.charge] ? a.charge : ra.charge,
+          chargeColor: tinct(a.chargeColor, ra.chargeColor),
+        },
+        trait: TRAITS[k.trait] ? k.trait : 'none',
+        capital: cap,
+        start: {
+          treasury: Math.round(num(st.treasury, DEFAULT_START.treasury)),
+          army: Math.max(0, Math.round(num(st.army, DEFAULT_START.army))),
+          morale: clamp(Math.round(num(st.morale, DEFAULT_START.morale)), 0, 100),
+        },
+        ownerId: safeId(k.ownerId) ? k.ownerId : null,
+        updatedAt: num(k.updatedAt, 0),
+      });
+    };
+    if (Array.isArray(raw.kingdoms) && raw.kingdoms.length) {
+      if (raw.kingdoms.length > MAX_KINGDOMS) warnings.push('Only the first ' + MAX_KINGDOMS + ' kingdoms were kept.');
+      raw.kingdoms.slice(0, MAX_KINGDOMS).forEach((k, i) => k && typeof k === 'object' && addKingdom(k, i));
+    }
+    let backOut = false;
+    if (!kingdoms.length) {
+      let base = typeof raw.baseTerritory === 'string' && ids.has(raw.baseTerritory) ? raw.baseTerritory : null;
+      if (!base) {
+        const held = territories.find((t) => t.override === 'conquered');
+        base = (held || territories[0]).id;
+        warnings.push('No home base was set, so ' + territories.find((t) => t.id === base).name + ' became home.');
+      }
+      const k = randomKingdom(krng, 0, base, territories.find((t) => t.id === base).name, { plainFirst: true });
+      k.name = typeof raw.kingdomName === 'string' && raw.kingdomName.trim() ? raw.kingdomName.trim().slice(0, 40) : 'Your kingdom';
+      if (raw.start && typeof raw.start === 'object') k.start = raw.start;
+      else backOut = raw.treasury != null || raw.army != null || raw.morale != null;
+      addKingdom(k, 0);
+    }
+    const kIds = new Set(kingdoms.map((k) => k.id));
+    const capOf = new Map(kingdoms.map((k) => [k.capital, k.id]));
+    for (const t of territories) {
+      if (capOf.has(t.id)) t.override = null;
+      if (t.overrideBy && !kIds.has(t.overrideBy)) t.overrideBy = null;
+    }
+
     let dropped = 0;
     const raidIds = new Set();
-    const raids = (Array.isArray(raw.raids) ? raw.raids : []).filter((r) => {
-      const ok = r && typeof r === 'object' && ids.has(r.targetTerritory) && r.targetTerritory !== base && OUTCOMES.includes(r.outcome);
-      if (!ok) dropped++;
-      return ok;
-    }).map((r, i) => {
-      let id = typeof r.id === 'string' && r.id ? r.id : 'r' + (i + 1);
-      if (raidIds.has(id)) id = 'r' + (raidIds.size + 1000 + i);
-      raidIds.add(id);
-      const hasSeason = SEASONS.includes(r.season) && num(r.year, 0) >= 1;
-      return {
-        id,
-        sourceTerritory: r.sourceTerritory === 'base' || !ids.has(r.sourceTerritory) ? 'base' : r.sourceTerritory,
-        targetTerritory: r.targetTerritory,
-        outcome: r.outcome,
-        timestamp: normalizeTimestamp(r.timestamp, nowMs()),
-        losses: Math.max(0, Math.round(num(r.losses, 0))),
-        lootGained: Math.max(0, Math.round(num(r.lootGained, 0))),
-        warband: Math.max(0, Math.round(num(r.warband, 0))),
-        year: hasSeason ? Math.floor(num(r.year, year)) : year,
-        season: hasSeason ? r.season : season,
-        notes: typeof r.notes === 'string' ? r.notes.slice(0, 500) : '',
-      };
-    });
-    if (dropped) warnings.push(dropped + ' raid' + (dropped === 1 ? '' : 's') + ' pointed at unknown territories or had no outcome, and were left out.');
+    const raids = (Array.isArray(raw.raids) ? raw.raids : [])
+      .filter((r) => {
+        const by = r && kIds.has(r.by) ? r.by : kingdoms[0].id;
+        const ok = r && typeof r === 'object' && ids.has(r.targetTerritory) && capOf.get(r.targetTerritory) !== by && OUTCOMES.includes(r.outcome);
+        if (!ok) dropped++;
+        return ok;
+      })
+      .map((r, i) => {
+        let id = safeId(r.id) ? r.id : 'r' + (i + 1);
+        while (raidIds.has(id)) id += 'x';
+        raidIds.add(id);
+        const hasSeason = SEASONS.includes(r.season) && num(r.year, 0) >= 1;
+        const out = {
+          id,
+          by: kIds.has(r.by) ? r.by : kingdoms[0].id,
+          sourceTerritory: r.sourceTerritory === 'base' || !ids.has(r.sourceTerritory) ? 'base' : r.sourceTerritory,
+          targetTerritory: r.targetTerritory,
+          outcome: r.outcome,
+          timestamp: normalizeTimestamp(r.timestamp, nowMs()),
+          losses: Math.max(0, Math.round(num(r.losses, 0))),
+          lootGained: Math.max(0, Math.round(num(r.lootGained, 0))),
+          warband: Math.max(0, Math.round(num(r.warband, 0))),
+          year: hasSeason ? Math.floor(num(r.year, year)) : year,
+          season: hasSeason ? r.season : season,
+          notes: typeof r.notes === 'string' ? r.notes.slice(0, 500) : '',
+        };
+        if (num(r.updatedAt, 0)) out.updatedAt = num(r.updatedAt, 0);
+        if (safeId(r.authorId)) out.authorId = r.authorId;
+        return out;
+      });
+    if (dropped) warnings.push(dropped + ' raid' + (dropped === 1 ? '' : 's') + ' pointed at unknown territories, at the raider’s own capital, or had no outcome, and were left out.');
 
     const adjustments = (Array.isArray(raw.adjustments) ? raw.adjustments : [])
       .filter((a) => a && typeof a === 'object')
       .map((a, i) => ({
-        id: typeof a.id === 'string' ? a.id : 'a' + (i + 1),
+        id: safeId(a.id) ? a.id : 'a' + (i + 1),
+        kingdom: kIds.has(a.kingdom) ? a.kingdom : kingdoms[0].id,
         year: Math.max(1, Math.floor(num(a.year, year))),
         season: SEASONS.includes(a.season) ? a.season : season,
         timestamp: normalizeTimestamp(a.timestamp, nowMs()),
@@ -1463,7 +2902,8 @@
     const milestones = (Array.isArray(raw.milestones) ? raw.milestones : [])
       .filter((m) => m && typeof m === 'object' && !m.auto && typeof m.label === 'string' && m.label.trim())
       .map((m, i) => ({
-        id: typeof m.id === 'string' ? m.id : 'm' + (i + 1),
+        id: safeId(m.id) ? m.id : 'm' + (i + 1),
+        kingdom: kIds.has(m.kingdom) ? m.kingdom : null,
         year: Math.max(1, Math.floor(num(m.year, year))),
         season: SEASONS.includes(m.season) ? m.season : season,
         timestamp: normalizeTimestamp(m.timestamp, nowMs()),
@@ -1475,41 +2915,35 @@
       id: typeof raw.id === 'string' && raw.id ? raw.id : typeof key === 'string' && key ? key : newId('c'),
       name: typeof raw.name === 'string' && raw.name.trim() ? raw.name.trim().slice(0, 80) : 'Imported campaign',
       seed: typeof raw.seed === 'string' ? raw.seed : String(map.seed),
-      version: 1,
+      version: 2,
       createdAt: normalizeTimestamp(raw.createdAt, nowMs()),
       updatedAt: normalizeTimestamp(raw.updatedAt, nowMs()),
       year,
       season,
+      seasonAt: num(raw.seasonAt, 0),
       goalPct: clamp(Math.round(num(raw.goalPct, 60)), 5, 100),
-      baseTerritory: base,
-      start: null,
-      treasury: 0,
-      army: 0,
-      morale: 0,
+      settingsAt: num(raw.settingsAt, 0),
       map,
       territories,
+      kingdoms,
       raids,
       adjustments,
       milestones,
+      deleted: (Array.isArray(raw.deleted) ? raw.deleted : []).filter(safeId).slice(-2000),
     };
+    if (raw.shared) c.shared = true;
 
-    if (raw.start && typeof raw.start === 'object') {
-      c.start = {
-        treasury: Math.round(num(raw.start.treasury, DEFAULT_START.treasury)),
-        army: Math.max(0, Math.round(num(raw.start.army, DEFAULT_START.army))),
-        morale: clamp(Math.round(num(raw.start.morale, DEFAULT_START.morale)), 0, 100),
-      };
-    } else if (raw.treasury != null || raw.army != null || raw.morale != null) {
+    if (backOut) {
       // Keep the file's current totals: back out what the raids already contributed.
       const zero = replay(c, { treasury: 0, army: 1e9, morale: 50 });
-      c.start = {
+      kingdoms[0].start = {
         treasury: Math.round(num(raw.treasury, DEFAULT_START.treasury) - zero.treasury),
         army: Math.max(0, Math.round(num(raw.army, DEFAULT_START.army) - (zero.army - 1e9))),
         morale: clamp(Math.round(num(raw.morale, DEFAULT_START.morale) - (zero.morale - 50)), 0, 100),
       };
-    } else c.start = Object.assign({}, DEFAULT_START);
-
+    }
     if (raw.example) c.example = true;
+    else if (raw.example === false) c.example = false;
     return { campaign: snapshot(c), warnings };
   }
 
@@ -1554,7 +2988,16 @@
     MIN_TERRITORIES,
     MAX_TERRITORIES,
     SHAPES,
+    SHAPES1,
     SHAPE_LABEL,
+    GEN_DEFAULTS,
+    MAX_KINGDOMS,
+    KINGDOM_COLORS,
+    TINCTURES,
+    DIVISIONS,
+    CHARGES,
+    TITLES,
+    TRAITS,
     FEATURES,
     DECOR_ZONES,
     clearOfDecor,
@@ -1570,11 +3013,20 @@
     polygonArea,
     polygonCentroid,
     pointInPolygon,
+    pointInShape,
     buildGeometry,
     pathData,
     findRoute,
     routeLeagues,
     newCampaign,
+    upgradeCampaign,
+    randomKingdom,
+    randomArms,
+    kingdomColor,
+    kingdomOf,
+    chooseCapitals,
+    mergeCampaigns,
+    normGen,
     campaignName,
     territoryFeature,
     mapShape,
