@@ -342,6 +342,44 @@ input[type="range"] { flex: 1; height: 44px; margin: 0; accent-color: var(--cc);
 .doc table, .xl table { border-collapse: collapse; margin: 1em 0; font-size: 14px; }
 .doc td, .doc th, .xl td, .xl th { border: 1px solid var(--line); padding: 6px 10px; vertical-align: top; }
 .doc .tbl, .xl { overflow-x: auto; }
+.seg { display: inline-flex; padding: 4px; gap: 4px; border-radius: 99px; background: rgba(0, 0, 0, .35); border: 1px solid var(--line); }
+.seg button { min-height: 44px; padding: 0 16px; border-radius: 99px; font-weight: 600; font-size: 14px; color: var(--muted); }
+.seg button[aria-selected="true"] { color: var(--fg); background: rgba(255, 255, 255, .13); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .2); }
+.docbar, .deck-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.docbar { max-width: 900px; margin: 0 auto 14px; }
+.docbar .sp, .deck-bar .sp { flex: 1; }
+.docbar .btn-sm { min-width: 96px; justify-content: center; font-variant-numeric: tabular-nums; }
+.docx-host { width: 100%; overflow-x: auto; }
+.docx-host .docx-wrapper { background: transparent !important; padding: 0 0 8px !important; }
+.docx-host .docx-wrapper > section.docx { color: #000; box-shadow: 0 14px 44px rgba(0, 0, 0, .55) !important; margin-bottom: 22px !important; border-radius: 2px; }
+.deck { max-width: 1240px; margin: 0 auto; display: grid; gap: 12px; }
+.deck-count { min-width: 4.5em; font: 600 14px var(--display); color: var(--muted); font-variant-numeric: tabular-nums; }
+.deck-count b { color: var(--fg); }
+.deck-go.next svg { transform: scaleX(-1); }
+.deck-go:disabled { opacity: .35; }
+.deck-stage { position: relative; width: 100%; margin: 0 auto; }
+.deck.mode-list .deck-stage { max-width: 1000px; }
+.btn-sm .ico { width: 17px; height: 17px; flex: none; }
+@media (max-width: 600px) {
+  .reader-top { gap: 8px 10px; }
+  .reader-acts .btn-sm:not(.armed) .lbl-t { display: none; }
+  .reader-acts .btn-sm { padding: 0 12px; }
+  .seg button { padding: 0 12px; font-size: 13px; }
+  .deck-bar { gap: 6px; }
+  .deck-count { min-width: 3.4em; font-size: 13px; }
+}
+.deck.mode-slide .deck-stage { width: min(100%, calc((100vh - 320px) * var(--ratio, 1.7778))); min-width: min(100%, 300px); border-radius: 10px; overflow: hidden; box-shadow: 0 18px 54px rgba(0, 0, 0, .6); touch-action: pan-y; }
+.deck-stage:fullscreen { width: 100vw !important; height: 100vh; display: grid; place-items: center; background: #000; border-radius: 0; }
+.deck.mode-list .deck-thumbs, .deck.mode-list .deck-notes, .deck.mode-list .deck-go { display: none; }
+@media (max-width: 759px) { .deck-present { display: none; } }
+.deck-notes { padding: 12px 14px; border-radius: 14px; background: rgba(255, 197, 61, .08); border: 1px solid rgba(255, 197, 61, .2); font-size: 14.5px; line-height: 1.5; }
+.deck-notes span { display: block; font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--warn); font-weight: 600; margin-bottom: 4px; }
+.deck-thumbs { display: flex; gap: 10px; overflow-x: auto; padding: 4px 2px 10px; scrollbar-width: thin; }
+.thumb { position: relative; flex: none; width: 136px; padding: 0; border-radius: 9px; overflow: hidden; border: 2px solid transparent; background: rgba(255, 255, 255, .06); transition: border-color .2s, box-shadow .2s, transform .12s; }
+.thumb:active { transform: scale(.96); }
+.thumb[aria-selected="true"] { border-color: var(--accent); box-shadow: 0 0 16px rgba(46, 230, 197, .4); }
+.thumb .tc { width: 132px; height: calc(132px / var(--ratio, 1.7778)); overflow: hidden; pointer-events: none; }
+.thumb .tn { position: absolute; left: 5px; bottom: 5px; font: 700 10.5px/1 var(--display); background: rgba(5, 4, 10, .75); color: #fff; padding: 3px 6px; border-radius: 6px; }
 .slides { max-width: 900px; margin: 0 auto; display: grid; gap: 16px; }
 .slide { padding: 22px 22px 20px; border-radius: 20px; background: var(--glass); border: 1px solid var(--line); }
 .slide .sn { font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--faint); font-weight: 600; }
@@ -397,6 +435,9 @@ input[type="range"] { flex: 1; height: 44px; margin: 0; accent-color: var(--cc);
 <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
   <symbol id="so-mark" viewBox="0 0 48 48"><defs><linearGradient id="so-g" x1="6" y1="8" x2="40" y2="40" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#9a6bff"/><stop offset="1" stop-color="#ff7a3d"/></linearGradient></defs><circle cx="24" cy="24" r="16" fill="none" stroke="rgba(255,255,255,.12)" stroke-width="6"/><path d="M24 8a16 16 0 1 1-15.2 21" fill="none" stroke="url(#so-g)" stroke-width="6" stroke-linecap="round"/><circle cx="8.8" cy="29" r="3.6" fill="#2ee6c5"/></symbol>
   <symbol id="i-plus" viewBox="0 0 20 20"><path d="M10 4v12M4 10h12" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></symbol>
+  <symbol id="i-minus" viewBox="0 0 20 20"><path d="M4 10h12" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></symbol>
+  <symbol id="i-save" viewBox="0 0 20 20"><path d="M10 3v9m0 0l-3.5-3.5M10 12l3.5-3.5M4 14.5V16a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1v-1.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-trash" viewBox="0 0 20 20"><path d="M4 6h12M8 6V4h4v2M6 6l.8 10.2a1 1 0 0 0 1 .8h4.4a1 1 0 0 0 1-.8L14 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
   <symbol id="i-x" viewBox="0 0 16 16"><path d="M3 3l10 10M13 3L3 13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
   <symbol id="i-back" viewBox="0 0 16 16"><path d="M10 3L5 8l5 5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
   <symbol id="i-clip" viewBox="0 0 16 16"><path d="M10.5 4.5l-5 5a1.6 1.6 0 0 0 2.3 2.3l5.4-5.4a3 3 0 0 0-4.3-4.3L3.4 7.6a4.4 4.4 0 0 0 6.2 6.2l4-4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></symbol>
@@ -583,8 +624,8 @@ input[type="range"] { flex: 1; height: 44px; margin: 0; accent-color: var(--cc);
     <div class="reader-acts">
       <span class="timer" id="r-timer"><i></i><span>0 min</span></span>
       <button type="button" class="btn-sm accent" data-act="reader-log">Log this session</button>
-      <button type="button" class="btn-sm" data-act="reader-save" id="r-save">Save a copy</button>
-      <button type="button" class="btn-sm danger" data-act="reader-del" id="r-del">Delete</button>
+      <button type="button" class="btn-sm" data-act="reader-save" id="r-save" aria-label="Save a copy"><svg class="ico" aria-hidden="true"><use href="#i-save"/></svg><span class="lbl-t">Save a copy</span></button>
+      <button type="button" class="btn-sm danger" data-act="reader-del" id="r-del" aria-label="Delete"><svg class="ico" aria-hidden="true"><use href="#i-trash"/></svg><span class="lbl-t">Delete</span></button>
     </div>
   </div>
   <div class="reader-body" id="r-body"></div>
@@ -633,8 +674,10 @@ input[type="range"] { flex: 1; height: 44px; margin: 0; accent-color: var(--cc);
   var CDN = 'https://cdn.jsdelivr.net/npm/';
   var LIBS = {
     pdf: [CDN + 'pdfjs-dist@3.11.174/build/pdf.min.js', CDN + 'pdfjs-dist@3.11.174/build/pdf.worker.min.js'],
-    docx: [CDN + 'mammoth@1.8.0/mammoth.browser.min.js'],
-    pptx: [CDN + 'jszip@3.10.1/dist/jszip.min.js'],
+    zip: [CDN + 'jszip@3.10.1/dist/jszip.min.js'],
+    docx: [CDN + 'jszip@3.10.1/dist/jszip.min.js', CDN + 'docx-preview@0.4.1/dist/docx-preview.min.js'],
+    docxText: [CDN + 'mammoth@1.8.0/mammoth.browser.min.js'],
+    pptx: CDN + '@aiden0z/pptx-renderer@1.3.0/dist/aiden0z-pptx-renderer.browser.es.js',
     xlsx: [CDN + 'xlsx@0.18.5/dist/xlsx.full.min.js']
   };
 
@@ -1386,7 +1429,7 @@ input[type="range"] { flex: 1; height: 44px; margin: 0; accent-color: var(--cc);
     var t = m.testId ? find(S.tests, m.testId) : null;
     $('r-meta').innerHTML = '<span class="tag" style="--c:' + colorOf(m.subject) + '">' + esc(m.subject) + '</span>' + (t ? '<span>' + esc(t.examType) + ' · ' + fmt(t.date) + '</span>' : '') + '<span>' + size(m.size) + '</span>';
     $('r-save').hidden = S.mode === 'db' && !S.downloads;
-    $('r-del').textContent = 'Delete'; $('r-del').classList.remove('armed');
+    $('r-del').querySelector('.lbl-t').textContent = 'Delete'; $('r-del').classList.remove('armed');
     var body = $('r-body');
     body.innerHTML = '<div class="r-msg"><strong>Opening ' + esc(m.name) + '</strong>Large files can take a few seconds.</div>';
     tick();
@@ -1413,6 +1456,8 @@ input[type="range"] { flex: 1; height: 44px; margin: 0; accent-color: var(--cc);
     if (!ui.reader) return;
     clearInterval(ui.reader.timer);
     if (ui.reader.io) ui.reader.io.disconnect();
+    if (ui.reader.deck) destroyDeck(ui.reader.deck);
+    if (document.fullscreenElement && document.exitFullscreen) document.exitFullscreen().catch(function () {});
     ui.reader.urls.forEach(function (u) { URL.revokeObjectURL(u); });
     ui.reader = null;
     $('r-body').innerHTML = '';
@@ -1423,10 +1468,16 @@ input[type="range"] { flex: 1; height: 44px; margin: 0; accent-color: var(--cc);
   function renderFile(m, blob, body) {
     var ext = m.ext;
     if (ext === 'pdf') return renderPdf(blob, body);
-    if (ext === 'docx') return loadLibs(LIBS.docx).then(function () { return blob.arrayBuffer(); })
-      .then(function (ab) { return window.mammoth.convertToHtml({ arrayBuffer: ab }); })
-      .then(function (r) { body.innerHTML = '<article class="doc">' + (sanitize(r.value) || '<p>This document has no text.</p>') + '</article>'; Array.prototype.forEach.call(body.querySelectorAll('.doc table'), function (t) { var w = document.createElement('div'); w.className = 'tbl'; t.parentNode.insertBefore(w, t); w.appendChild(t); }); });
-    if (ext === 'pptx') return loadLibs(LIBS.pptx).then(function () { return renderPptx(blob, body); });
+    if (ext === 'docx') return renderDocx(blob, body).catch(function () {
+      if (!ui.reader) return;
+      return renderDocxText(blob, body).then(function () { fallbackNote(body, 'Showing the text only, because the page view could not open this document.'); });
+    });
+    if (ext === 'pptx') return renderDeck(blob, body).catch(function () {
+      if (!ui.reader) return;
+      if (ui.reader.deck) { destroyDeck(ui.reader.deck); ui.reader.deck = null; }
+      return loadLibs(LIBS.zip).then(function () { return renderPptx(blob, body); })
+        .then(function () { fallbackNote(body, 'Showing the text only, because the slide viewer could not open this presentation.'); });
+    });
     if (ext === 'xlsx') return loadLibs(LIBS.xlsx).then(function () { return blob.arrayBuffer(); }).then(function (ab) {
       ui.reader.wb = window.XLSX.read(new Uint8Array(ab), { type: 'array' });
       ui.reader.sheet = 0;
@@ -1505,21 +1556,228 @@ input[type="range"] { flex: 1; height: 44px; margin: 0; accent-color: var(--cc);
       return { text: text, lvl: Math.min(3, lvl), bullet: bullet };
     }).filter(function (p) { return p.text.trim(); });
   }
+  /* --- Word: real pages (docx-preview), with the text-only view as a fallback --- */
+  function fallbackNote(body, text) {
+    var n = document.createElement('p'); n.className = 'notice'; n.style.cssText = 'max-width:900px;margin:0 auto 14px';
+    n.textContent = text + ' Use Save a copy to open the original.';
+    body.insertBefore(n, body.firstChild);
+  }
+  function renderDocxText(blob, body) {
+    return loadLibs(LIBS.docxText).then(function () { return blob.arrayBuffer(); })
+      .then(function (ab) { return window.mammoth.convertToHtml({ arrayBuffer: ab }); })
+      .then(function (r) {
+        if (!ui.reader) return;
+        body.innerHTML = '<article class="doc">' + (sanitize(r.value) || '<p>This document has no text.</p>') + '</article>';
+        Array.prototype.forEach.call(body.querySelectorAll('.doc table'), function (t) { var w = document.createElement('div'); w.className = 'tbl'; t.parentNode.insertBefore(w, t); w.appendChild(t); });
+      });
+  }
+  var ZOOMS = [0.5, 0.67, 0.8, 0.9, 1, 1.1, 1.25, 1.5, 2];
+  function renderDocx(blob, body) {
+    return loadLibs(LIBS.docx).then(function () {
+      if (!ui.reader) return;
+      if (!window.docx || !window.docx.renderAsync) throw { code: 'lib' };
+      body.innerHTML = '<div class="docbar"><span class="pill">Pages</span><span class="sp"></span>' +
+        '<button type="button" class="icon-btn" data-act="doc-zoom" data-v="-1" aria-label="Zoom out"><svg aria-hidden="true"><use href="#i-minus"/></svg></button>' +
+        '<button type="button" class="btn-sm" data-act="doc-zoom" data-v="fit" id="doc-zoom" aria-label="Fit to width">Fit</button>' +
+        '<button type="button" class="icon-btn" data-act="doc-zoom" data-v="1" aria-label="Zoom in"><svg aria-hidden="true"><use href="#i-plus"/></svg></button></div>' +
+        '<div class="docx-host" id="docx-host"></div>';
+      return window.docx.renderAsync(blob, $('docx-host'), $('docx-host'), {
+        className: 'docx', inWrapper: true, breakPages: true, ignoreLastRenderedPageBreak: true,
+        renderHeaders: true, renderFooters: true, renderFootnotes: true, renderEndnotes: true, useBase64URL: true
+      }).then(function () {
+        if (!ui.reader) return;
+        var host = $('docx-host'), page = host.querySelector('section.docx');
+        if (!page) throw { code: 'render' };
+        fixSymbolFont(host);
+        Array.prototype.forEach.call(host.querySelectorAll('a[href]'), function (a) {
+          if (/^https?:/i.test(a.getAttribute('href'))) { a.target = '_blank'; a.rel = 'noopener'; } else if (a.getAttribute('href').charAt(0) !== '#') a.removeAttribute('href');
+        });
+        ui.reader.pageW = page.offsetWidth;
+        ui.reader.zoom = 'fit';
+        fitDoc();
+      });
+    });
+  }
+  // Word bullets often use Symbol/Wingdings private-use characters; phones lack those fonts, so map them to normal ones.
+  var PUA = { '\uf0b7': '•', '\uf0a7': '▪', '\uf0d8': '➢', '\uf076': '❖', '\uf0fc': '✓', '\uf06e': '■', '\uf0a8': '◆', '\uf0e0': '➔', '\uf0d7': '▸', '\uf02d': '–' };
+  function puaFix(t) { return t.replace(/[\uf000-\uf0ff]/g, function (c) { return PUA[c] || '•'; }); }
+  function fixSymbolFont(host) {
+    Array.prototype.forEach.call(host.querySelectorAll('style'), function (st) {
+      var t = st.textContent, n = puaFix(t).replace(/font-family:\s*["']?(Symbol|Wingdings[^;"'}]*)["']?\s*;?/gi, '');
+      if (n !== t) st.textContent = n;
+    });
+    var w = document.createTreeWalker(host, NodeFilter.SHOW_TEXT), node;
+    while ((node = w.nextNode())) if (/[\uf000-\uf0ff]/.test(node.nodeValue)) node.nodeValue = puaFix(node.nodeValue);
+  }
+  function fitDoc() {
+    var host = $('docx-host');
+    if (!host || !ui.reader || !ui.reader.pageW) return;
+    var wrap = host.querySelector('.docx-wrapper') || host.firstElementChild;
+    var fit = Math.min(1.25, Math.max(0.3, (host.clientWidth - 4) / ui.reader.pageW));
+    var z = ui.reader.zoom === 'fit' ? fit : ui.reader.zoom;
+    wrap.style.zoom = z;
+    $('doc-zoom').textContent = ui.reader.zoom === 'fit' ? 'Fit · ' + Math.round(z * 100) + '%' : Math.round(z * 100) + '%';
+  }
+  function zoomDoc(v) {
+    if (!ui.reader || !ui.reader.pageW) return;
+    if (v === 'fit') { ui.reader.zoom = 'fit'; fitDoc(); return; }
+    var host = $('docx-host'), cur = ui.reader.zoom === 'fit' ? Math.min(1.25, (host.clientWidth - 4) / ui.reader.pageW) : ui.reader.zoom, next = cur;
+    if (+v > 0) { for (var i = 0; i < ZOOMS.length; i++) if (ZOOMS[i] > cur + 0.01) { next = ZOOMS[i]; break; } }
+    else { for (var j = ZOOMS.length - 1; j >= 0; j--) if (ZOOMS[j] < cur - 0.01) { next = ZOOMS[j]; break; } }
+    ui.reader.zoom = next;
+    fitDoc();
+  }
+
+  /* --- PowerPoint: real slides (pptx-renderer), one at a time or all, with thumbnails and speaker notes --- */
+  var modP = {};
+  function loadModule(url) {
+    if (!modP[url]) modP[url] = import(url).catch(function () { delete modP[url]; throw { code: 'lib' }; });
+    return modP[url];
+  }
+  function slideOrder(zip) {
+    var presF = zip.file('ppt/presentation.xml');
+    return (presF ? presF.async('string') : Promise.resolve('')).then(function (pres) {
+      return relsOf(zip, 'ppt/presentation.xml').then(function (rels) {
+        var order = [];
+        if (pres) Array.prototype.forEach.call(xml(pres).getElementsByTagNameNS('*', 'sldId'), function (s) { var r = rels[s.getAttributeNS(NS_R, 'id')]; if (r) order.push(r.target); });
+        if (!order.length) order = Object.keys(zip.files).filter(function (f) { return /^ppt\/slides\/slide\d+\.xml$/.test(f); }).sort(function (a, b) { return a.match(/\d+/)[0] - b.match(/\d+/)[0]; });
+        return order;
+      });
+    });
+  }
+  function notesText(s) {
+    var txt = [];
+    Array.prototype.forEach.call(xml(s).getElementsByTagNameNS('*', 'sp'), function (sp) {
+      var ph = sp.getElementsByTagNameNS('*', 'ph')[0];
+      if (ph && ph.getAttribute('type') === 'body') txt = txt.concat(paragraphs(sp).map(function (p) { return p.text; }));
+    });
+    return txt.join('\n');
+  }
+  function deckNotes(blob) {
+    return loadLibs(LIBS.zip).then(function () { return window.JSZip.loadAsync(blob); }).then(function (zip) {
+      return slideOrder(zip).then(function (order) {
+        return Promise.all(order.map(function (path) {
+          return relsOf(zip, path).then(function (rels) {
+            var nr = Object.keys(rels).map(function (k) { return rels[k]; }).filter(function (x) { return /notesSlide$/.test(x.type); })[0];
+            return nr && zip.file(nr.target) ? zip.file(nr.target).async('string').then(notesText) : '';
+          });
+        }));
+      });
+    }).catch(function () { return []; });
+  }
+  function renderDeck(blob, body) {
+    body.innerHTML = '<div class="r-msg"><strong>Loading the slides</strong>The first time you open a PowerPoint the viewer downloads, which takes a few seconds.</div>';
+    return Promise.all([loadModule(LIBS.pptx), blob.arrayBuffer(), deckNotes(blob)]).then(function (r) {
+      var lib = r[0], ab = r[1], notes = r[2];
+      if (!ui.reader) return;
+      return lib.parseZip(ab, lib.RECOMMENDED_ZIP_LIMITS).then(function (files) {
+        if (!ui.reader) return;
+        var pres = lib.buildPresentation(files);
+        var canFull = !!(document.fullscreenEnabled && document.documentElement.requestFullscreen);
+        body.innerHTML = '<div class="deck mode-slide" id="deck">' +
+          '<div class="deck-bar"><div class="seg" role="tablist" aria-label="Slide view">' +
+          '<button type="button" role="tab" data-act="deck-mode" data-v="slide" aria-selected="true">Slides</button>' +
+          '<button type="button" role="tab" data-act="deck-mode" data-v="list" aria-selected="false">All slides</button></div>' +
+          '<span class="deck-count" id="deck-count" aria-live="polite"></span><span class="sp"></span>' +
+          '<button type="button" class="icon-btn deck-go" data-act="deck-go" data-dir="-1" aria-label="Previous slide"><svg aria-hidden="true"><use href="#i-back"/></svg></button>' +
+          '<button type="button" class="icon-btn deck-go next" data-act="deck-go" data-dir="1" aria-label="Next slide"><svg aria-hidden="true"><use href="#i-back"/></svg></button>' +
+          (canFull ? '<button type="button" class="btn-sm deck-go deck-present" data-act="deck-present">Present</button>' : '') + '</div>' +
+          '<div class="deck-stage" id="deck-stage"></div>' +
+          '<div class="deck-notes" id="deck-notes" hidden></div>' +
+          '<div class="deck-thumbs" id="deck-thumbs" role="tablist" aria-label="Slides"></div></div>';
+        var deck = { lib: lib, notes: notes, cur: 0, mode: 'slide', thumbs: [], io: null, viewer: null };
+        ui.reader.deck = deck;
+        deck.viewer = new lib.PptxViewer($('deck-stage'), {
+          fitMode: 'contain', pdfjs: false, scrollContainer: body,
+          onSlideChange: function (i) { if (deck.mode === 'list') { deck.cur = i; syncDeck(); } }
+        });
+        deck.viewer.load(pres);
+        deck.count = deck.viewer.slideCount;
+        if (!deck.count) throw { code: 'render' };
+        $('deck').style.setProperty('--ratio', (deck.viewer.slideWidth / deck.viewer.slideHeight).toFixed(4));
+        buildThumbs(deck);
+        return showSlide(0);
+      });
+    });
+  }
+  function buildThumbs(deck) {
+    var strip = $('deck-thumbs');
+    for (var i = 0; i < deck.count; i++) {
+      var t = document.createElement('button');
+      t.type = 'button'; t.className = 'thumb'; t.setAttribute('role', 'tab');
+      t.setAttribute('data-act', 'deck-thumb'); t.setAttribute('data-i', i); t.setAttribute('aria-label', 'Slide ' + (i + 1));
+      t.innerHTML = '<div class="tc"></div><b class="tn">' + (i + 1) + '</b>';
+      strip.appendChild(t);
+    }
+    deck.io = new IntersectionObserver(function (entries) {
+      entries.forEach(function (en) {
+        var el = en.target, i = +el.getAttribute('data-i');
+        if (!en.isIntersecting || el.getAttribute('data-done')) return;
+        el.setAttribute('data-done', '1');
+        try { var h = deck.viewer.renderThumbnailToContainer(i, el.firstChild, { width: 132 }); if (h) deck.thumbs.push(h); } catch (e) { /* a broken slide keeps its numbered tile */ }
+      });
+    }, { root: strip, rootMargin: '0px 300px' });
+    Array.prototype.forEach.call(strip.children, function (el) { deck.io.observe(el); });
+  }
+  function showSlide(i) {
+    var deck = ui.reader && ui.reader.deck;
+    if (!deck) return Promise.resolve();
+    deck.cur = Math.max(0, Math.min(deck.count - 1, i));
+    syncDeck();
+    if (deck.mode === 'list') return deck.viewer.goToSlide(deck.cur);
+    return deck.viewer.renderSlide(deck.cur);
+  }
+  function syncDeck() {
+    var deck = ui.reader && ui.reader.deck;
+    if (!deck) return;
+    $('deck-count').innerHTML = '<b>' + (deck.cur + 1) + '</b> / ' + deck.count;
+    var n = (deck.notes[deck.cur] || '').trim(), box = $('deck-notes');
+    box.hidden = deck.mode !== 'slide' || !n;
+    box.innerHTML = n ? '<span>Speaker notes</span>' + esc(n).replace(/\n/g, '<br>') : '';
+    Array.prototype.forEach.call(document.querySelectorAll('.deck-go[data-dir]'), function (b) {
+      var d = +b.getAttribute('data-dir');
+      b.disabled = d < 0 ? deck.cur === 0 : deck.cur === deck.count - 1;
+    });
+    Array.prototype.forEach.call($('deck-thumbs').children, function (t, k) {
+      var on = k === deck.cur;
+      t.setAttribute('aria-selected', String(on));
+      if (on && deck.mode === 'slide' && t.scrollIntoView) {
+        var s = $('deck-thumbs'), left = t.offsetLeft - (s.clientWidth - t.offsetWidth) / 2;
+        s.scrollTo({ left: left, behavior: reduce ? 'auto' : 'smooth' });
+      }
+    });
+  }
+  function setDeckMode(mode) {
+    var deck = ui.reader && ui.reader.deck;
+    if (!deck || deck.mode === mode) return;
+    deck.mode = mode;
+    $('deck').className = 'deck mode-' + mode;
+    Array.prototype.forEach.call(document.querySelectorAll('[data-act=deck-mode]'), function (b) { b.setAttribute('aria-selected', String(b.getAttribute('data-v') === mode)); });
+    syncDeck();
+    var at = deck.cur;
+    if (mode === 'list') deck.viewer.renderList({ windowed: true, batchSize: 6 }).then(function () { if (at) deck.viewer.goToSlide(at, { behavior: 'instant', block: 'start' }); });
+    else { $('r-body').scrollTop = 0; deck.viewer.renderSlide(at); }
+  }
+  function presentDeck() {
+    var st = $('deck-stage');
+    if (!st || !st.requestFullscreen) return;
+    st.requestFullscreen().catch(function () { toast('Full screen is not available here.', { bad: true }); });
+  }
+  function destroyDeck(deck) {
+    if (deck.io) deck.io.disconnect();
+    deck.thumbs.forEach(function (h) { try { h.dispose(); } catch (e) { /* already gone */ } });
+    try { if (deck.viewer) deck.viewer.destroy(); } catch (e) { /* already gone */ }
+  }
+
   function renderPptx(blob, body) {
     return window.JSZip.loadAsync(blob).then(function (zip) {
-      var presF = zip.file('ppt/presentation.xml');
-      return (presF ? presF.async('string') : Promise.resolve('')).then(function (pres) {
-        return relsOf(zip, 'ppt/presentation.xml').then(function (rels) {
-          var order = [];
-          if (pres) Array.prototype.forEach.call(xml(pres).getElementsByTagNameNS('*', 'sldId'), function (s) { var r = rels[s.getAttributeNS(NS_R, 'id')]; if (r) order.push(r.target); });
-          if (!order.length) order = Object.keys(zip.files).filter(function (f) { return /^ppt\/slides\/slide\d+\.xml$/.test(f); }).sort(function (a, b) { return a.match(/\d+/)[0] - b.match(/\d+/)[0]; });
-          var out = [];
-          return order.reduce(function (p, path, idx) {
-            return p.then(function () { return slideHtml(zip, path, idx + 1); }).then(function (h) { out.push(h); });
-          }, Promise.resolve()).then(function () {
-            if (!ui.reader) return;
-            body.innerHTML = '<div class="slides">' + (out.join('') || '<div class="r-msg"><strong>No slides found</strong></div>') + '</div>';
-          });
+      return slideOrder(zip).then(function (order) {
+        var out = [];
+        return order.reduce(function (p, path, idx) {
+          return p.then(function () { return slideHtml(zip, path, idx + 1); }).then(function (h) { out.push(h); });
+        }, Promise.resolve()).then(function () {
+          if (!ui.reader) return;
+          body.innerHTML = '<div class="slides">' + (out.join('') || '<div class="r-msg"><strong>No slides found</strong></div>') + '</div>';
         });
       });
     });
@@ -1557,14 +1815,7 @@ input[type="range"] { flex: 1; height: 44px; margin: 0; accent-color: var(--cc);
         var ext = extOf(p), mime = ext === 'svg' ? 'image/svg+xml' : 'image/' + (ext === 'jpg' ? 'jpeg' : ext);
         return zf.async('blob').then(function (b) { return ui.reader ? objUrl(new Blob([b], { type: mime })) : ''; });
       }));
-      var notesP = notesRel && zip.file(notesRel.target) ? zip.file(notesRel.target).async('string').then(function (s) {
-        var nd = xml(s), txt = [];
-        Array.prototype.forEach.call(nd.getElementsByTagNameNS('*', 'sp'), function (sp) {
-          var ph = sp.getElementsByTagNameNS('*', 'ph')[0];
-          if (ph && ph.getAttribute('type') === 'body') txt = txt.concat(paragraphs(sp).map(function (p) { return p.text; }));
-        });
-        return txt.join('\n');
-      }) : Promise.resolve('');
+      var notesP = notesRel && zip.file(notesRel.target) ? zip.file(notesRel.target).async('string').then(notesText) : Promise.resolve('');
       return Promise.all([imgP, notesP]).then(function (res) {
         var urls = res[0].filter(Boolean), notes = res[1];
         return '<section class="slide"><span class="sn">Slide ' + n + '</span>' + (title ? '<h3>' + esc(title) + '</h3>' : '') +
@@ -1639,6 +1890,11 @@ input[type="range"] { flex: 1; height: 44px; margin: 0; accent-color: var(--cc);
       case 'reader-save': saveCopy(); break;
       case 'reader-del': delFromReader(b); break;
       case 'xl-sheet': ui.reader.sheet = +b.getAttribute('data-i'); renderSheetTab($('r-body')); break;
+      case 'deck-mode': setDeckMode(v); break;
+      case 'deck-go': if (ui.reader && ui.reader.deck) showSlide(ui.reader.deck.cur + +b.getAttribute('data-dir')); break;
+      case 'deck-thumb': showSlide(+b.getAttribute('data-i')); break;
+      case 'deck-present': presentDeck(); break;
+      case 'doc-zoom': zoomDoc(v); break;
       case 'cal-move': moveMonth(+b.getAttribute('data-dir')); break;
       case 'cal-now': ui.calMonth = null; ui.calSel = null; render(); break;
       case 'cal-day':
@@ -1651,14 +1907,19 @@ input[type="range"] { flex: 1; height: 44px; margin: 0; accent-color: var(--cc);
   });
   var swipe = null;
   document.addEventListener('touchstart', function (e) {
-    var g = e.target.closest && e.target.closest('.cal-grid');
-    swipe = g && e.touches.length === 1 ? { x: e.touches[0].clientX, y: e.touches[0].clientY } : null;
+    var g = e.target.closest && (e.target.closest('.cal-grid') || e.target.closest('.deck.mode-slide .deck-stage'));
+    swipe = g && e.touches.length === 1 ? { x: e.touches[0].clientX, y: e.touches[0].clientY, deck: g.classList.contains('deck-stage') } : null;
   }, { passive: true });
   document.addEventListener('touchend', function (e) {
     if (!swipe || !e.changedTouches.length) return;
     var dx = e.changedTouches[0].clientX - swipe.x, dy = e.changedTouches[0].clientY - swipe.y;
+    var onDeck = swipe.deck;
     swipe = null;
-    if (Math.abs(dx) > 60 && Math.abs(dy) < 40) { e.preventDefault(); moveMonth(dx < 0 ? 1 : -1); }
+    if (Math.abs(dx) > 50 && Math.abs(dy) < 40) {
+      e.preventDefault();
+      if (onDeck) { if (ui.reader && ui.reader.deck) showSlide(ui.reader.deck.cur + (dx < 0 ? 1 : -1)); }
+      else moveMonth(dx < 0 ? 1 : -1);
+    }
   });
   $('sheet').addEventListener('click', function (e) { if (e.target === this) closeSheet(); });
   $('sheet').addEventListener('close', function () { ui.armed = null; });
@@ -1672,7 +1933,22 @@ input[type="range"] { flex: 1; height: 44px; margin: 0; accent-color: var(--cc);
     else if (id === 't-newsub' || id === 'm-newsub') setErr(id.charAt(0) + '-sub-err', '', e.target);
   });
   document.addEventListener('keydown', function (e) {
-    if (e.key === 'Enter' && e.target.id && e.target.id.indexOf('newtag-') === 0) { e.preventDefault(); makeTag(e.target.id.slice(7)); }
+    if (e.key === 'Enter' && e.target.id && e.target.id.indexOf('newtag-') === 0) { e.preventDefault(); makeTag(e.target.id.slice(7)); return; }
+    var deck = ui.reader && ui.reader.deck;
+    if (!deck || deck.mode !== 'slide' || /^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName)) return;
+    if (e.key === 'ArrowRight' || e.key === 'PageDown' || e.key === ' ') { e.preventDefault(); showSlide(deck.cur + 1); }
+    else if (e.key === 'ArrowLeft' || e.key === 'PageUp') { e.preventDefault(); showSlide(deck.cur - 1); }
+    else if (e.key === 'Home') { e.preventDefault(); showSlide(0); }
+    else if (e.key === 'End') { e.preventDefault(); showSlide(deck.count - 1); }
+  });
+  var resizeT = null;
+  window.addEventListener('resize', function () {
+    clearTimeout(resizeT);
+    resizeT = setTimeout(function () { if (ui.reader && ui.reader.zoom === 'fit') fitDoc(); }, 120);
+  });
+  document.addEventListener('fullscreenchange', function () {
+    var deck = ui.reader && ui.reader.deck;
+    if (deck && deck.mode === 'slide') deck.viewer.renderSlide(deck.cur);
   });
   $('file-input').addEventListener('change', function () {
     var form = ui.pickFor, bad = [];
@@ -1796,7 +2072,7 @@ input[type="range"] { flex: 1; height: 44px; margin: 0; accent-color: var(--cc);
   function delFromReader(b) {
     var m = find(S.materials, ui.reader && ui.reader.id);
     if (!m) return;
-    if (!ui.reader.armed) { ui.reader.armed = true; b.textContent = 'Tap again to delete'; b.classList.add('armed'); return; }
+    if (!ui.reader.armed) { ui.reader.armed = true; b.querySelector('.lbl-t').textContent = 'Tap again to delete'; b.classList.add('armed'); return; }
     closeReader();
     deleteMaterial(m).then(function () { toast(m.name + ' deleted'); }, function () { toast('That did not delete. Try again.', { bad: true }); });
   }

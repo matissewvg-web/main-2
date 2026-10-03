@@ -19,7 +19,7 @@ Your claude.ai login is the sign-in: every device with the same account sees the
 - **Calendar**: a month grid with each test on its due date in its subject colour (high priority glows red) and a dot on days you studied. Tap a day for what's due and to add a test on that date; with no day picked it lists everything due that month. Swipe or use the arrows to change month.
 - **Tests** have a subject, exam type, priority (high, medium, low), your own tags, a study goal in hours, notes and attached files.
 - **Study sessions** have hours, subject, tags, topics, confidence and the files you studied.
-- **Study material** opens inside the app: Word (.docx), PowerPoint (.pptx, with speaker notes), Excel (.xlsx, every sheet), PDF, photos, text and video. Up to 50 MB per file. While a file is open, a timer runs; *Log this session* turns it into a study session with that file attached. *Save a copy* gives you the original to open in Word or PowerPoint.
+- **Study material** opens inside the app. PowerPoint shows real slides (shapes, colours, charts, tables, pictures) one at a time with arrows, swipe, arrow keys and thumbnails, or all slides in a row, with the speaker notes under each slide. Word shows real pages with headers, tables, bullets and zoom. Excel shows every sheet, PDF every page, plus photos, text and video. Up to 50 MB per file. While a file is open, a timer runs; *Log this session* turns it into a study session with that file attached. *Save a copy* gives you the original to open in Word or PowerPoint.
 - Old formats (.doc, .ppt, .xls), Pages and Keynote don't open; save them as .docx/.pptx/.xlsx or PDF first.
 
 ## How "on track" is worked out
@@ -35,4 +35,4 @@ Each test has a study goal (defaults: midterm 12 h, final 25 h, quiz 4 h). Hours
 
 ## How files are stored
 
-Synced files go to the artifact's file storage. PDFs, images and video are stored as they are. Word, PowerPoint and Excel are not a type that storage accepts, so they are stored as base64 text in pieces of up to 12 MB and put back together when opened. The reader loads pdf.js, mammoth, JSZip and SheetJS from jsDelivr the first time you open that kind of file, so opening documents needs an internet connection.
+Synced files go to the artifact's file storage. PDFs, images and video are stored as they are. Word, PowerPoint and Excel are not a type that storage accepts, so they are stored as base64 text in pieces of up to 12 MB and put back together when opened. The reader loads its viewers from jsDelivr (@aiden0z/pptx-renderer for slides, docx-preview for Word, pdf.js, SheetJS, JSZip; mammoth as a text-only fallback) the first time you open that kind of file, so opening documents needs an internet connection.
