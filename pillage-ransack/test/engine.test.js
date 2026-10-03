@@ -469,7 +469,7 @@ test('traits change the rules for their kingdom only', () => {
   assert.equal(r.territories.get(free[1].id).control, 40);
 
   k2.trait = 'horde';
-  assert.equal(E.replay(c).kingdoms.get(k2.id).army, E.DEFAULT_START.army + 30);
+  assert.equal(E.replay(c).kingdoms.get(k2.id).army, E.DEFAULT_START.army + 10);
 
   k1.trait = 'zealots';
   for (let i = 0; i < 8; i++) raid(c, free[2], 'failure', { by: k1.id });
@@ -837,4 +837,37 @@ test('two devices each adding a faction keep both after merging', () => {
   assert.deepEqual(m.factions.map((f) => f.id).sort(), ['cf_a', 'cf_b']);
   b.deleted = (b.deleted || []).concat(['cf_a']);
   assert.deepEqual(E.mergeCampaigns(m, b).factions.map((f) => f.id), ['cf_b']);
+});
+
+test('balance: garrisons at Pillage scale, old campaigns unchanged until rebalanced', () => {
+  const c = E.newCampaign({ seed: 'scale', count: 30, kingdoms: 2, now: T0 });
+  assert.equal(c.balance, E.BALANCE);
+  for (const t of c.territories) {
+    assert.ok(t.garrisonBase >= 3 && t.garrisonBase <= 25, t.name + ' garrison ' + t.garrisonBase);
+    assert.ok(t.goldValue >= 20 && t.goldValue <= 300, t.name + ' gold ' + t.goldValue);
+  }
+  const r = E.replay(c);
+  const cap = r.territories.get(c.kingdoms[1].capital);
+  const raw = c.territories.find((t) => t.id === c.kingdoms[1].capital);
+  assert.equal(cap.garrisonBase, Math.round(raw.garrisonBase * 1.5), 'capitals hold half again');
+  // The game a raid becomes: defenders in gp at gpPerMan each.
+  const geo = E.buildGeometry(c);
+  const target = [...E.frontier(c, geo, r, c.kingdoms[0].id)][0];
+  const tg = E.tableGame(c, r, c.kingdoms[0].id, target, 500);
+  assert.equal(tg.defenderGp, Math.round((r.territories.get(target).garrison * E.RULES.gpPerMan) / 10) * 10);
+  assert.ok(tg.suggestedLoot >= tg.haul[0] && tg.suggestedLoot <= tg.haul[1]);
+  // A first-release save keeps its old totals, then rebalancing redraws it at the new scale.
+  const v1 = require('fs').readFileSync(require('path').join(__dirname, 'fixtures', 'v1-campaign.json'), 'utf8');
+  const old = E.parseImport(v1).campaigns[0];
+  assert.equal(E.rulesFor(old).tributeRate, 0.2);
+  const before = E.replay(old).treasury;
+  E.rebalance(old, T0);
+  assert.equal(old.balance, E.BALANCE);
+  assert.ok(old.territories.every((t) => t.garrisonBase <= 25 && t.editedAt === T0));
+  assert.notEqual(E.replay(old).treasury, before);
+  // The rebalanced stats travel to another device with the territory edit stamp.
+  const other = E.parseImport(v1).campaigns[0];
+  const m = E.mergeCampaigns(other, old);
+  assert.deepEqual(m.territories.map((t) => t.garrisonBase), old.territories.map((t) => t.garrisonBase));
+  assert.equal(m.balance, E.BALANCE);
 });

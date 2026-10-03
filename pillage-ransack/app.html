@@ -1008,7 +1008,7 @@ details[open] summary { margin-bottom: 8px; }
   }
   // What players actually changed (derived totals left out), to tell whether a merge brought anything new.
   function sig(c) {
-    return JSON.stringify([c.raids, c.adjustments, c.milestones, (c.kingdoms || []).map((k) => [k.id, k.name, k.ruler, k.motto, k.color, k.arms, k.trait, k.faction, k.capital, k.start]), (c.players || []).map((p) => [p.id, p.name, p.kingdom, p.userId]), c.year, c.season, c.name, c.goalPct, c.territories.map((t) => [t.name, t.override, t.overrideBy || null]), c.deleted, !!c.shared, c.example, c.costs, c.factions]);
+    return JSON.stringify([c.raids, c.adjustments, c.milestones, (c.kingdoms || []).map((k) => [k.id, k.name, k.ruler, k.motto, k.color, k.arms, k.trait, k.faction, k.capital, k.start]), (c.players || []).map((p) => [p.id, p.name, p.kingdom, p.userId]), c.year, c.season, c.name, c.goalPct, c.territories.map((t) => [t.name, t.override, t.overrideBy || null, t.goldValue, t.garrisonBase]), c.deleted, !!c.shared, c.example, c.costs, c.factions, c.balance]);
   }
   function adopt(id, incoming) {
     const mine = S.campaigns.get(id);
@@ -2501,13 +2501,13 @@ details[open] summary { margin-bottom: 8px; }
     if (logger) html += ' \u00b7 logged by ' + esc(playerName(logger));
     if (r.outcome !== 'ongoing') html += ' · <b>' + r.losses + '</b> lost · <b>' + fmt(r.lootGained) + '</b> gold';
     html += '</div>';
-    if (r.troops || r.roster || r.value || r.scenario) html += '<div class="what">' + [r.troops || r.roster ? hl(E.raidTroops(S.campaign, r)) : '', r.value ? 'worth <b>' + fmt(r.value) + '</b> gp' : '', r.cost ? 'provisions <b>' + fmt(r.cost) + '</b> gold' : '', r.scenario ? 'scenario: <b>' + hl(E.SCENARIOS[r.scenario]) + '</b>' : ''].filter(Boolean).join(' \u00b7 ') + '</div>';
+    if (r.troops || r.roster || r.value || r.scenario) html += '<div class="what">' + [r.troops || r.roster ? hl(E.raidTroops(S.campaign, r)) : '', r.value ? 'worth <b>' + fmt(r.value) + '</b> gp' + (r.defence ? ' vs <b>' + fmt(r.defence) + '</b> gp of defenders' : '') : '', r.cost ? 'provisions <b>' + fmt(r.cost) + '</b> gold' : '', r.scenario ? 'scenario: <b>' + hl(E.SCENARIOS[r.scenario]) + '</b>' : ''].filter(Boolean).join(' \u00b7 ') + '</div>';
     if (r.notes) html += '<div class="note">' + hl(r.notes) + '</div>';
     if (opts && opts.controls) {
       if (S.resolving === r.id) {
         html += '<form class="grid2" data-form="resolve" data-raid="' + id + '">';
         html += '<div class="field"><label for="resLosses">Men lost</label><input id="resLosses" type="number" min="0" step="1" value="0" inputmode="numeric"></div>';
-        html += '<div class="field"><label for="resLoot">Gold taken</label><input id="resLoot" type="number" min="0" step="1" value="0" inputmode="numeric"></div>';
+        html += '<div class="field"><label for="resLoot">Gold taken</label><input id="resLoot" type="number" min="0" step="1" value="' + (terr(r.targetTerritory) ? Math.round((terr(r.targetTerritory).goldValue * 0.45) / 5) * 5 : 0) + '" inputmode="numeric"></div>';
         html += '<div class="actions" style="grid-column:1/-1"><button class="btn small primary" type="submit" name="outcome" value="success">Won</button><button class="btn small danger" type="submit" name="outcome" value="failure">Lost</button><button class="btn small ghost" type="button" data-action="cancel-resolve">Cancel</button></div></form>';
       } else if (S.editRaid === r.id) {
         html += '<form class="editor" data-form="edit-raid" data-raid="' + id + '">';
@@ -2577,7 +2577,7 @@ details[open] summary { margin-bottom: 8px; }
     }
     html += '<dl class="facts">';
     html += '<div><dt>Gold value</dt><dd>' + t.goldValue + ' <small>gold</small></dd></div>';
-    html += '<div><dt>Garrison</dt><dd>' + d.garrison + ' <small>of ' + t.garrisonBase + ' at full strength</small></dd></div>';
+    html += '<div><dt>Garrison</dt><dd>' + d.garrison + ' <small>men (' + fmt(Math.round((d.garrison * E.RULES.gpPerMan) / 10) * 10) + ' gp on the table) of ' + d.garrisonBase + (d.isCapital ? ', a capital' : '') + ' at full strength</small></dd></div>';
     html += '<div><dt>Defence</dt><dd>×' + ts.defense.toFixed(2) + ' <small>' + ts.label.toLowerCase() + '</small></dd></div>';
     html += '<div><dt>Raids here</dt><dd>' + d.wins + ' won · ' + d.fails + ' lost' + (d.ongoing ? ' · ' + d.ongoing + ' under way' : '') + '</dd></div>';
     html += '<div><dt>Loot taken</dt><dd>' + fmt(d.loot) + ' <small>gold</small></dd></div>';
@@ -2628,6 +2628,7 @@ details[open] summary { margin-bottom: 8px; }
     html += '<fieldset class="troops"><legend>Warband \u00b7 ' + esc(E.factionOf(me, c).label) + ', prices in gp</legend>';
     for (const u of E.troopList(c, me.id)) html += '<div class="trow"><label for="tr-' + u.id + '"><b>' + esc(u.label) + '</b><small>' + esc([u.note, troopTags(u)].filter(Boolean).join(' \u00b7 ')) + '</small></label><span class="gp">' + u.gp + ' gp</span><input id="tr-' + u.id + '" data-troop="' + u.id + '" type="number" min="0" max="999" step="1" inputmode="numeric" value="' + (p.troops[u.id] || 0) + '" aria-label="' + esc(u.label) + ' sent"><span class="sub" id="trs-' + u.id + '"></span></div>';
     html += '<div id="costInfo" class="callout"></div></fieldset>';
+    html += '<div class="callout" id="tableInfo"></div>';
     html += '<div class="grid2"><div class="field"><label for="planScenario">Pillage scenario</label><select id="planScenario">' + Object.entries(E.SCENARIOS).map(([v, l]) => '<option value="' + v + '"' + (p.scenario === v ? ' selected' : '') + '>' + esc(l) + '</option>').join('') + '</select><p class="hint" id="scenarioHint"></p></div><div class="field"><span class="label">Odds (rough guide)</span><div id="oddsInfo" class="callout" style="padding:6px 10px"></div></div></div>';
     html += '<div class="field"><span class="label" id="outcomeLabel">Result</span><div class="seg" role="radiogroup" aria-labelledby="outcomeLabel">';
     for (const k of ['ongoing', 'success', 'failure']) html += '<label><input type="radio" name="outcome" value="' + k + '"' + (p.outcome === k ? ' checked' : '') + '><span>' + OUTCOME[k].sym + ' ' + OUTCOME[k].label + '</span></label>';
@@ -2700,6 +2701,7 @@ details[open] summary { margin-bottom: 8px; }
     }
     $('costInfo').innerHTML = '<div class="costgrid"><span><b>' + pc.men + '</b> men</span><span>Warband worth <b>' + fmt(pc.value) + ' gp</b></span><span>Provisions <b>' + fmt(pc.provisions) + ' gold</b>' + (pc.free ? ' (Seafarers land free)' : '') + '</span><span>Treasury ' + fmt(ks.treasury) + ' → <b>' + fmt(ks.treasury - pc.provisions) + '</b></span></div>' + (pc.value ? '<span class="hint">On the table, this is a ' + fmt(pc.value) + ' gp warband. Provisions are ' + E.RULES.provisionPct + '% of its worth, paid when it sets out, win or lose.</span>' : '');
     if (!p.target || !terr(p.target)) {
+      $('tableInfo').innerHTML = '<b>On the table</b><br>Choose a target to see what each player fields.';
       info.innerHTML = 'No target yet.';
       odds.textContent = '—';
       $('lootHint').textContent = '';
@@ -2708,6 +2710,14 @@ details[open] summary { margin-bottom: 8px; }
       const t = terr(p.target);
       const d = r.territories.get(t.id);
       info.innerHTML = '<b>' + esc(t.name) + '</b>: ' + t.goldValue + ' gold, garrison <b>' + d.garrison + '</b>, ' + E.TERRAIN_STATS[t.terrain].label.toLowerCase() + (d.owner ? ', ' + STATUS_LABEL[d.status].toLowerCase() + ' by ' + esc(kOf(d.owner).name) : '') + '.<br>' + (pc.sea ? 'Over the sea from ' : 'Across the border from ') + esc(p.source === 'base' ? terr(me.capital).name : terr(p.source).name) + '.';
+      // The game this raid becomes: what each player puts on the table.
+      const tg = E.tableGame(c, r, me.id, t.id, pc.value);
+      const dk = tg.defender ? kOf(tg.defender) : null;
+      $('tableInfo').innerHTML = '<b>On the table</b><br>' + esc(me.name) + ' (' + esc(E.factionOf(me, c).label) + ') fields <b>' + fmt(tg.attackerGp) + ' gp</b>, ' + pc.men + ' figures.<br>' + (dk ? esc(dk.name) + ' (' + esc(E.factionOf(dk, c).label) + ') defends with <b>' + fmt(tg.defenderGp) + ' gp</b>, ' + tg.defenderMen + ' figures.' : 'The land\u2019s own defenders: <b>' + fmt(tg.defenderGp) + ' gp</b>, ' + tg.defenderMen + ' figures; the other player runs them from any faction\u2019s list.') + '<br>' + esc(E.TERRAIN_STATS[t.terrain].label) + ' table \u00b7 ' + esc(E.SCENARIOS[p.scenario] || '') + ' \u00b7 a good haul is ' + tg.haul[0] + '\u2013' + tg.haul[1] + ' gold.';
+      if (!ongoing && p.outcome === 'success' && !p.lootSet && !p.loot) {
+        p.loot = tg.suggestedLoot;
+        $('planLoot').value = p.loot;
+      }
       const od = E.raidOdds(pc.strength, d.garrison, t.terrain);
       odds.innerHTML = '<b>' + od.label + '</b>' + (Number.isFinite(od.ratio) ? ' <span class="num">(' + od.ratio.toFixed(2) + ' to 1)</span>' : '');
       $('lootHint').textContent = ongoing ? 'Men lost and gold taken are recorded when the raid comes back (Log → Record the result).' : 'A good haul here is around ' + Math.round(t.goldValue * 0.3) + '–' + Math.round(t.goldValue * 0.6) + ' gold.';
@@ -3070,6 +3080,12 @@ details[open] summary { margin-bottom: 8px; }
       html += '<p class="hint">Shared. ' + (mine ? 'You play ' + esc(kOf(mine.kingdom).name) + '.' : 'You haven\u2019t joined a kingdom yet; join one in Kingdoms.') + '</p>';
     }
 
+    if ((c.balance || 0) < E.BALANCE) {
+      const gs = c.territories.map((t) => t.garrisonBase);
+      html += '<h3>Balance</h3><div class="callout warn">This campaign was made before the balance pass: garrisons of ' + Math.min(...gs) + '\u2013' + Math.max(...gs) + ' men, too many for a Pillage game. <b>Apply the balanced stats</b> to redraw every territory\u2019s gold and garrison at Pillage scale (about 4\u201322 defenders, so a raid is one normal game; the same lands stay rich or strong) and give kingdoms still on the old 100 gold / 60 men start the new 400 gp / 30 men. Raids already logged replay with the new numbers.</div>';
+      html += S.confirm === 'rebalance' ? '<div class="confirm"><span>Redraw gold and garrisons for every territory?</span><button class="btn small primary" type="button" data-action="rebalance">Apply</button><button class="btn small ghost" type="button" data-action="cancel-confirm">Not now</button></div>' : '<div class="actions"><button class="btn" type="button" data-action="ask-rebalance">Apply the balanced stats</button></div>';
+    }
+
     html += '<h3>This campaign</h3><form data-form="settings" style="display:grid;gap:10px">';
     html += '<div class="field"><label for="setName">Name</label><input id="setName" maxlength="80" value="' + esc(c.name) + '"></div>';
     html += '<div class="grid2"><div class="field"><label for="setGoal">Conquest goal (%)</label><input id="setGoal" type="number" min="5" max="100" step="5" value="' + c.goalPct + '"></div></div>';
@@ -3098,7 +3114,7 @@ details[open] summary { margin-bottom: 8px; }
     html += factionsSection();
 
     html += '<details><summary>How raids change the map</summary><ul class="rules">';
-    const R = E.RULES;
+    const R = E.rulesFor(c);
     html += '<li><b>Borders.</b> A kingdom can only raid land that borders land it holds, across a shared border or a sea lane (a raid from the sea is Pillage\u2019s Landing scenario), or land where it already has a foothold.</li>';
     html += '<li><b>Warbands.</b> Choose who goes from your faction\u2019s troops; the warband\u2019s worth in gp is its points value for the game on the table. Provisions cost ' + R.provisionPct + '% of that worth, paid from the treasury when it sets out, win or lose. Recruiting costs a troop\u2019s full price.</li>';
     html += '<li>A successful raid takes ' + R.successControl + '% control and kills ' + Math.round((1 - R.successGarrisonMult) * 100) + '% of the garrison. Control taken from a rival comes out of their share; at 100% the territory is conquered and its garrison is gone.</li>';
@@ -3106,7 +3122,8 @@ details[open] summary { margin-bottom: 8px; }
     html += '<li>Contested: two kingdoms hold a share, a raid is under way there, or the holder’s own last raid there failed.</li>';
     html += '<li>Each season, land pays tribute to whoever holds it (' + Math.round(R.tributeRate * 100) + '% of its gold value when conquered, part of that when claimed). Garrisons recover ' + Math.round(R.regenPerSeason * 100) + '% of full strength and scorch marks fade.</li>';
     html += '<li>Morale: +' + R.moraleSuccess + ' per success, +' + R.moraleConquest + ' per conquest, ' + R.moraleFailure + ' per failure, −8 for losing a territory.</li>';
-    html += '<li>Capitals can be raided and taken; they count toward the goal for whoever takes them. The first kingdom to reach the goal wins.</li>';
+    html += '<li>Capitals can be raided and taken; they hold ' + R.capitalGarrisonMult + '\u00d7 the defenders and count toward the goal for whoever takes them. The first kingdom to reach the goal wins.</li>';
+    html += '<li><b>Scale.</b> A garrison of N men is a defending warband of N \u00d7 ' + R.gpPerMan + ' gp on the table, so a raid is one normal game: about 4\u201322 defenders against a warband of similar size. A conquered territory pays ' + Math.round(R.tributeRate * 100) + '% of its gold value a season, about one warrior\u2019s price.</li>';
     html += '<li>Traits: ' + Object.values(E.TRAITS).filter((t) => t.successControl || t.tributeMult || t.regenMult || t.moraleFloor || t.seaCost || t.startArmy || t.freeLandings).map((t) => '<b>' + t.label + '</b>: ' + t.note).join(' ') + '</li>';
     html += '<li>Odds compare the warband\u2019s worth (every ' + R.gpPerMan + ' gp counts as one warrior) with the garrison times the terrain\u2019s defence. They are a guide: the battle is fought on the table with the Pillage rules, and you record what happened.</li>';
     html += '</ul><p class="hint">The fighting, looting and fire are Pillage\u2019s, played on the table. The map rules above (control, tribute, morale, provisions, traits) are this tracker\u2019s own: Pillage\u2019s published campaign rules aren\u2019t built in. Change them in <code>engine.js</code> (RULES and TRAITS) and the whole history recalculates.</p></details>';
@@ -3210,6 +3227,7 @@ details[open] summary { margin-bottom: 8px; }
       troops: Object.assign({}, p.troops),
       roster: pc.lines.map((l) => [l.label, l.n, l.gp]),
       value: pc.value,
+      defence: E.tableGame(c, S.result, S.active, p.target, pc.value).defenderGp,
       cost: pc.provisions,
       scenario: p.scenario,
       year: c.year,
@@ -3224,6 +3242,7 @@ details[open] summary { margin-bottom: 8px; }
     p.losses = 0;
     p.loot = 0;
     p.scenarioSet = false;
+    p.lootSet = false;
     if (S.uid) raid.authorId = S.uid;
     const who = $('planWho') ? (c.players || []).find((x) => x.id === $('planWho').value) : atTable(S.active);
     if (who) {
@@ -3661,6 +3680,15 @@ details[open] summary { margin-bottom: 8px; }
         commit(E.factionDef(c, a.dataset.fid).label + ' prices are back to the defaults.');
         break;
       }
+      case 'ask-rebalance':
+        S.confirm = 'rebalance';
+        renderPanel();
+        break;
+      case 'rebalance':
+        S.confirm = null;
+        E.rebalance(c, Date.now());
+        commit('Balanced: every territory\u2019s gold and garrison redrawn at Pillage scale.');
+        break;
       case 'faction-new': {
         if ((c.factions || []).length >= E.MAX_CUSTOM_FACTIONS) return toast('A campaign can hold ' + E.MAX_CUSTOM_FACTIONS + ' factions of its own.');
         const from = a.dataset.from;
@@ -3932,6 +3960,11 @@ details[open] summary { margin-bottom: 8px; }
       readPlan();
       if (t.id === 'planScenario') S.plan.scenarioSet = true;
       if (t.id === 'planTarget' || t.id === 'planSource') S.plan.scenarioSet = false;
+      if (t.id === 'planLoot') S.plan.lootSet = true;
+      if (t.id === 'planTarget') {
+        S.plan.lootSet = false;
+        S.plan.loot = 0;
+      }
       if (t.id === 'planTarget') {
         S.selected = S.plan.target;
         renderPanel();

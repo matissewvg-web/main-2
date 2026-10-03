@@ -115,6 +115,9 @@ The battles are meant to be fought on the table with **Pillage: Ransack the Midd
 These are the tracker's own campaign rules, not Pillage's. They live in `RULES` and `TRAITS` in `engine.js`; change a number and the whole history recalculates.
 
 - **Borders.** A kingdom can only raid land that borders land it holds (it is the territory's holder), across a shared border or a sea lane, or land where it already has a foothold. Raids set out from the held territory next to the target. Never its own capital or land it has fully conquered.
+- **Scale (the balance pass).** Every raid is meant to be one normal Pillage game, so the numbers are at Pillage scale. A garrison is 4–22 defenders (a capital half again), and a garrison of N men is a defending warband of N × 40 gp on the table. Gold is in gp: territories are worth roughly 40–260 gp, and a conquered one pays 30% of that a season, about one warrior's price. Kingdoms start with 400 gp and 30 men, two warbands of about 15. On the real map, trading lands (Flanders, Lombardy, Kiev, Gotland, Dublin…) are richer and uplands poorer.
+- **The game card.** As you fill in a raid, *On the table* says what each player fields: the raider's warband in gp and figures, and the defenders in gp and figures. The defenders are the holder's kingdom and faction, or for unclaimed land the land's own defenders, which the other player runs from any faction's list. It also gives the terrain, the scenario and the expected haul. A won raid has its loot prefilled with the middle of that haul (change it if the table says otherwise). The log keeps what each side fielded.
+- **Older campaigns** keep their old numbers (20% tribute, uncapped garrisons up to about 110 men) until someone presses **Campaign → Apply the balanced stats**. That redraws every territory's gold and garrison at the new scale from the same seed, so the same lands stay rich or strong. Kingdoms still on the old 100 gold / 60 men start get 400 gp / 30 men, and the history replays with the new numbers. It syncs to other players like any edit.
 - **Provisions.** Sending a warband costs 5% of its gp worth from the treasury when it sets out, win or lose. **Recruiting** (Campaign tab) costs each troop's full gp price.
 - **Odds** count every 40 gp of warband as one warrior against the garrison times the terrain's defence, so a Mounted knight counts for more than a Thrall. They are a guide; the table decides.
 
@@ -150,7 +153,7 @@ From the browser console, `PillageRansack.logRaid({targetTerritory: 't4', outcom
 - `test/engine.test.js`, `test/fixtures/v1-campaign.json`: every coastline, rivers, settlements, kingdoms and traits, players and teams, merging, generation settings, rules, routes, import/export, and a save from the first release.
 
 ```bash
-node --test pillage-ransack/test/*.test.js   # 48 tests
+node --test pillage-ransack/test/*.test.js   # 49 tests
 node pillage-ransack/build.mjs               # rebuild index.html after editing app.html or engine.js
 cd pillage-ransack/desktop && npm ci && npm start   # run the Windows app from a checkout
 ```
@@ -159,7 +162,7 @@ cd pillage-ransack/desktop && npm ci && npm start   # run the Windows app from a
 
 - **Not a game engine.** It records what happened; it doesn't roll dice or decide outcomes. The odds shown are a guide.
 - **Only part of Pillage is in here.** All 18 factions, gp pricing, the three published example prices and the five scenarios are; the real army lists (exact troop names and prices) and the book's campaign rules aren't, because this tracker couldn't read them. Most troop names and prices are estimates until you type yours in or build your own factions.
-- **The map rules and traits are this tracker's own** (above) and untested for balance. Gold on the map and gp on the table are one currency, so with the starting treasuries a single recruit is expensive: expect to tune `DEFAULT_START`, tribute and `provisionPct` after a few seasons of real play.
+- **The map rules and traits are this tracker's own** (above). The balance pass puts them at Pillage scale on paper (one raid ≈ one normal game, a conquered land ≈ one warrior a season), but it hasn't been played. Expect to tune `RULES`, `DEFAULT_START` and `territoryStats` in `engine.js` after a few seasons at the table.
 - **The real map is a game board, not an atlas.** Territory seats are placed at real places, but the borders between them are grown from those seats, not traced from historical sources; realms around 1000 were far less tidy than this. There are no rivers or lakes on it (rather than invented ones), small islands vanish at this scale, and the frame cuts off Iceland, Iberia, most of Italy and the steppe. Land beyond the realms is wild and can't be raided.
 - **Troops at home aren't tracked by type.** The army is a head count; a raid can send any mix of troops as long as enough men are at home.
 - **Online play depends on claude.ai sharing.** Players need claude.ai accounts and edit access to the artifact; whether you can grant that depends on your plan's share options. Who may act for which kingdom is enforced by the page, not the server, so it is a game among friends, not a cheat-proof one.

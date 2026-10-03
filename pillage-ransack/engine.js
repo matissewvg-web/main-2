@@ -38,7 +38,7 @@
     failureGarrisonMult: 1.1,  // defenders grow after repelling a raid...
     garrisonCapMult: 1.5,      // ...up to 1.5x their base strength
     regenPerSeason: 0.15,      // share of base garrison restored each season
-    tributeRate: 0.2,          // share of gold value a conquered territory pays per season
+    tributeRate: 0.3,          // share of gold value a conquered territory pays per season (about one warrior's price)
     claimedTributeFactor: 0.5, // claimed land pays this x control% of full tribute
     moraleSuccess: 5,
     moraleFailure: -10,
@@ -47,7 +47,8 @@
     damageMax: 3,
     damageHealPerSeason: 0.5,
     heavyDefeatShare: 0.25,    // a failure costing this share of the army is a milestone
-    heavyDefeatMin: 10,
+    heavyDefeatMin: 5,
+    capitalGarrisonMult: 1.5,  // capitals hold half again as many defenders
     provisionPct: 5,           // a warband's provisions cost this share of its gp value, paid when it sets out
     gpPerMan: 40,              // gp of an ordinary warrior: warband strength for the odds is its value / this
   };
@@ -319,7 +320,30 @@
     coast: { gold: 1.3, garrison: 1.0, defense: 1.0, label: 'Coast' },
   };
 
-  const DEFAULT_START = { treasury: 100, army: 60, morale: 60 };
+  // Pillage scale: 30 men is two warbands of about 15 figures, and 400 gp recruits about ten more.
+  const DEFAULT_START = { treasury: 400, army: 30, morale: 60 };
+  const OLD_START = { treasury: 100, army: 60, morale: 60 }; // before the balance pass
+  // Campaigns made before the balance pass keep these until someone applies the balanced stats,
+  // so an old save still adds up to exactly what it did.
+  const LEGACY_RULES = { tributeRate: 0.2, capitalGarrisonMult: 1, heavyDefeatMin: 10 };
+  function rulesFor(c) {
+    return (c && c.balance) >= BALANCE ? RULES : Object.assign({}, RULES, LEGACY_RULES);
+  }
+  const BALANCE = 2; // campaigns made (or rebalanced) with the stats below
+
+  // Gold and garrison for one territory, at Pillage scale: a garrison is a defending warband of about
+  // 4-22 figures (gpPerMan each on the table, so roughly 160-880 gp), so one raid is one normal game;
+  // gold values make a conquered territory pay about one warrior a season.
+  function territoryStats(rng, terrain, gen, wealthMult) {
+    const ts = TERRAIN_STATS[terrain] || TERRAIN_STATS.grassland;
+    const g = normGen(gen);
+    const wealth = [0.7, 1, 1.35][g.wealth] * (wealthMult || 1);
+    const defences = [0.7, 1, 1.35][g.defences];
+    return {
+      goldValue: Math.max(20, Math.round(((70 + rng() * 110) * ts.gold * wealth) / 5) * 5),
+      garrisonBase: Math.max(3, Math.round((6 + rng() * 10) * ts.garrison * defences)),
+    };
+  }
 
   /* ---------- randomness ---------- */
 
@@ -1399,6 +1423,14 @@
     ['Aquitaine', 'fra', 45.4, 0.8, 'forest'],
     ['Auvergne', 'fra', 45.6, 3.1, 'mountains'],
   ];
+  // Rough relative wealth around 1000: trading towns and silver rich, uplands and forests poor.
+  const EUROPE_WEALTH = {
+    Flanders: 1.4, Lombardy: 1.4, Francia: 1.3, Kiev: 1.35, Novgorod: 1.3, Gotland: 1.3, 'Dublin and Mide': 1.3, 'J\u00f3rv\u00edk': 1.25,
+    Kent: 1.2, Wessex: 1.2, Saxony: 1.2, Normandy: 1.2, Jutland: 1.15, Bohemia: 1.1, Pomerania: 1.1, Champagne: 1.1, Bavaria: 1.1, Scania: 1.1, 'East Anglia': 1.1,
+    Norrland: 0.7, Finland: 0.7, Turov: 0.7, 'Tr\u00f8ndelag': 0.8, Moray: 0.8, 'Argyll and the Isles': 0.8, Connacht: 0.8, Transylvania: 0.8, Curonia: 0.8,
+    Lithuania: 0.8, Estonia: 0.8, Carinthia: 0.8, Vestlandet: 0.8, Auvergne: 0.8, Cornwall: 0.9,
+  };
+
   // The sea roads raiders actually used (Lindisfarne, the Danelaw, the Norman crossing...).
   // Pairs already sharing a land border are skipped.
   const EUROPE_LANES = [
@@ -1439,18 +1471,16 @@
     const gen = normGen(o.gen);
     const map = { engine: 2, kind: 'europe', width: MAP_W, height: MAP_H, seed: hashString('map:' + seed), shape: 'europe', gen };
     const rng = mulberry32(hashString('sites:' + seed));
-    const wealth = [0.65, 1, 1.45][gen.wealth];
-    const defences = [0.65, 1, 1.45][gen.defences];
     const territories = EUROPE_TERRITORIES.map(([name, realm, lat, lon, terrain], i) => {
-      const ts = TERRAIN_STATS[terrain];
       const [x, y] = europeXY(lat, lon);
+      const st = territoryStats(rng, terrain, gen, EUROPE_WEALTH[name]);
       return {
         id: 't' + (i + 1),
         name,
         realm: EUROPE_REALMS[realm],
         position: { x: Math.round(x * 10) / 10, y: Math.round(y * 10) / 10 },
-        goldValue: Math.max(10, Math.round(((60 + rng() * 140) * ts.gold * wealth) / 5) * 5),
-        garrisonBase: Math.max(5, Math.round((15 + rng() * 65) * ts.garrison * defences)),
+        goldValue: st.goldValue,
+        garrisonBase: st.garrisonBase,
         garrison: 0,
         status: 'unclaimed',
         terrain,
@@ -1474,6 +1504,7 @@
       seasonAt: 0,
       goalPct: 35,
       settingsAt: 0,
+      balance: BALANCE,
       map,
       territories,
       kingdoms: [],
@@ -2600,7 +2631,7 @@
     ironwall: { label: 'Iron walls', note: 'Garrisons on your land recover twice as fast, and raids on your land take 10% less control.', regenMult: 2, defendControl: 10 },
     zealots: { label: 'Zealots', note: 'Failed raids cost half the morale, and morale never falls below 30.', failureMoraleMult: 0.5, moraleFloor: 30 },
     seafarers: { label: 'Seafarers', note: 'Raids over a sea lane (Landings) need no provisions, and raids on coast take 10% more control.', seaCost: 1, coastControl: 10, freeLandings: true },
-    horde: { label: 'Horde', note: 'Starts with 30 more men, and each conquest lifts morale by 15 instead of 10.', startArmy: 30, conquestMorale: 5 },
+    horde: { label: 'Horde', note: 'Starts with 10 more men, and each conquest lifts morale by 15 instead of 10.', startArmy: 10, legacyStartArmy: 30, conquestMorale: 5 },
   };
   const RULERS = ['Ragnhild', 'Sigurd', 'Astrid', 'Ulf', 'Eadric', 'Godwin', 'Thyra', 'Ivar', 'Hilda', 'Bjorn', 'Aelfgifu', 'Halfdan', 'Gunnhild', 'Osric', 'Sweyn', 'Brynja', 'Ketil', 'Freydis', 'Wulfstan', 'Sigrid', 'Orm', 'Edith', 'Harald', 'Ingrid'];
   const EPITHETS = ['the Bold', 'Ironside', 'the Grim', 'Bloodaxe', 'the Wise', 'Fairhair', 'Forkbeard', 'Longspear', 'Ravenfeeder', 'the Cruel', 'the Unbowed', 'Sea-wolf', 'the Red', 'Oathkeeper', 'the Old', 'Ash-hand'];
@@ -2758,17 +2789,15 @@
     const info = acc.map((a, i) => ({ i, e: a.w ? a.e / a.w : 0, m: a.w ? a.m / a.w : 0, coastal: a.coast }));
     const terrain = assignTerrain(seeds.length, info, gen);
     const names = makeNames(rng, terrain);
-    const wealth = [0.65, 1, 1.45][gen.wealth];
-    const defences = [0.65, 1, 1.45][gen.defences];
     const territories = seeds.map((s, i) => {
-      const ts = TERRAIN_STATS[terrain[i]];
       const p = fine.cells[s].p;
+      const st = territoryStats(rng, terrain[i], gen);
       return {
         id: 't' + (i + 1),
         name: names[i],
         position: { x: Math.round(p[0] * 10) / 10, y: Math.round(p[1] * 10) / 10 },
-        goldValue: Math.max(10, Math.round(((60 + rng() * 140) * ts.gold * wealth) / 5) * 5),
-        garrisonBase: Math.max(5, Math.round((15 + rng() * 65) * ts.garrison * defences)),
+        goldValue: st.goldValue,
+        garrisonBase: st.garrisonBase,
         garrison: 0,
         status: 'unclaimed',
         terrain: terrain[i],
@@ -2792,6 +2821,7 @@
       seasonAt: 0,
       goalPct: 60,
       settingsAt: 0,
+      balance: BALANCE,
       map,
       territories,
       kingdoms: [],
@@ -2893,7 +2923,8 @@
   }
 
   function replay(c, startOverride) {
-    const R = RULES;
+    const R = rulesFor(c);
+    const balanced = (c.balance || 0) >= BALANCE;
     const nowIdx = seasonIndex(c.year, c.season);
     const kings = c.kingdoms && c.kingdoms.length ? c.kingdoms : [{ id: 'k1', name: 'Your kingdom', capital: c.baseTerritory || c.territories[0].id, start: c.start || DEFAULT_START, trait: 'none' }];
     const first = kings[0];
@@ -2908,13 +2939,13 @@
         id: t.id,
         name: t.name,
         goldValue: t.goldValue,
-        garrisonBase: t.garrisonBase,
+        garrisonBase: cap ? Math.round(t.garrisonBase * R.capitalGarrisonMult) : t.garrisonBase,
         terrain: t.terrain,
         capitalOf: cap,
         isCapital: !!cap,
         isBase: cap === first.id,
         inf: cap ? { [cap]: 100 } : {},
-        garrison: t.garrisonBase,
+        garrison: cap ? Math.round(t.garrisonBase * R.capitalGarrisonMult) : t.garrisonBase,
         damage: 0,
         lastOutcome: null,
         lastBy: null,
@@ -2938,7 +2969,7 @@
         const treasury = Number(st.treasury) || 0;
         let mark = treasuryMarks.findIndex((m) => m > treasury);
         if (mark === -1) mark = treasuryMarks.length;
-        return [k.id, { id: k.id, tr, treasury, army: Math.max(0, (Number(st.army) || 0) + (tr.startArmy || 0)), morale: clamp(Number(st.morale) || 0, tr.moraleFloor || 0, 100), inField: 0, firstBlood: false, firstConquest: false, reached: new Set(), lowMorale: false, mark, won: false }];
+        return [k.id, { id: k.id, tr, treasury, army: Math.max(0, (Number(st.army) || 0) + ((balanced ? tr.startArmy : tr.legacyStartArmy || tr.startArmy) || 0)), morale: clamp(Number(st.morale) || 0, tr.moraleFloor || 0, 100), inField: 0, firstBlood: false, firstConquest: false, reached: new Set(), lowMorale: false, mark, won: false }];
       })
     );
     const auto = [];
@@ -3403,6 +3434,49 @@
     return r.troops ? troopSummary(c, r.by, r.troops) : '';
   }
 
+  /* ---------- balance ---------- */
+
+  // Rescales a campaign made before the balance pass: territory gold and garrisons are redrawn at
+  // Pillage scale (same seed, so the same territories stay rich or strong), and kingdoms still on the
+  // old default start get the new one. The history replays with the new numbers.
+  function rebalance(c, now) {
+    const t0 = now || nowMs();
+    const rng = mulberry32(hashString('sites:' + c.seed));
+    const gen = c.map && c.map.gen;
+    for (const t of c.territories) {
+      const st = territoryStats(rng, t.terrain, gen, c.map && c.map.kind === 'europe' ? EUROPE_WEALTH[t.name] : 1);
+      t.goldValue = st.goldValue;
+      t.garrisonBase = st.garrisonBase;
+      t.editedAt = t0;
+    }
+    for (const k of c.kingdoms || []) {
+      const st = k.start || {};
+      if (st.treasury === OLD_START.treasury && st.army === OLD_START.army) {
+        k.start = Object.assign({}, st, { treasury: DEFAULT_START.treasury, army: DEFAULT_START.army });
+        k.updatedAt = t0;
+      }
+    }
+    c.balance = BALANCE;
+    c.settingsAt = t0;
+    return snapshot(c);
+  }
+
+  // The tabletop game a raid becomes: what each side fields, in gp.
+  function tableGame(c, result, kid, target, warbandValue) {
+    const d = result.territories.get(target);
+    const t = c.territories.find((x) => x.id === target);
+    const defender = d.owner && d.owner !== kid ? kingdomOf(c, d.owner) : null;
+    return {
+      attackerGp: warbandValue,
+      defenderMen: d.garrison,
+      defenderGp: Math.round((d.garrison * RULES.gpPerMan) / 10) * 10,
+      defender: defender ? defender.id : null,
+      terrain: t.terrain,
+      haul: [Math.round((t.goldValue * 0.3) / 5) * 5, Math.round((t.goldValue * 0.6) / 5) * 5],
+      suggestedLoot: Math.round((t.goldValue * 0.45) / 5) * 5,
+    };
+  }
+
   /* ---------- multiplayer sync ---------- */
 
   /*
@@ -3442,7 +3516,7 @@
     const bt = new Map((b.territories || []).map((t) => [t.id, t]));
     out.territories = out.territories.map((t) => {
       const o = bt.get(t.id);
-      if (o && (o.editedAt || 0) > (t.editedAt || 0)) return Object.assign({}, t, { name: o.name, override: o.override || null, overrideBy: o.overrideBy || null, editedAt: o.editedAt });
+      if (o && (o.editedAt || 0) > (t.editedAt || 0)) return Object.assign({}, t, { name: o.name, override: o.override || null, overrideBy: o.overrideBy || null, goldValue: o.goldValue, garrisonBase: o.garrisonBase, editedAt: o.editedAt });
       return t;
     });
     if ((b.seasonAt || 0) > (a.seasonAt || 0)) {
@@ -3454,6 +3528,7 @@
       out.name = b.name;
       out.goalPct = b.goalPct;
       out.costs = b.costs || {};
+      out.balance = b.balance || 0;
       out.settingsAt = b.settingsAt;
     }
     out.deleted = [...deleted];
@@ -3488,21 +3563,22 @@
     const [m1, m2] = b;
     // A territory both kingdoms reach for: the closest to both capitals not already used.
     const shared = nearTo(k2.capital, [n1, n2, n3, n4, n5, m1, m2])[0];
+    // Pillage scale: warbands of 10-17 figures against garrisons of 6-20.
     const script = [
-      [1, 'spring', 'k1', n1, 'success', 30, 3, 70],
-      [1, 'spring', 'k2', m1, 'success', 28, 2, 60],
-      [1, 'spring', 'k1', n1, 'success', 30, 2, 55],
-      [1, 'summer', 'k1', n2, 'failure', 25, 10, 10],
-      [1, 'summer', 'k1', n1, 'success', 32, 2, 60],
-      [1, 'summer', 'k2', m1, 'success', 30, 3, 45],
-      [1, 'autumn', 'k1', n3, 'success', 28, 4, 85],
-      [1, 'autumn', 'k2', shared, 'success', 26, 4, 40],
-      [1, 'autumn', 'k1', n2, 'success', 35, 5, 45],
-      [1, 'winter', 'k1', n5, 'failure', 20, 8, 0],
-      [1, 'winter', 'k1', shared, 'success', 30, 5, 35],
-      [2, 'spring', 'k1', n2, 'success', 34, 3, 50],
-      [2, 'spring', 'k2', m2, 'success', 25, 3, 40],
-      [2, 'spring', 'k1', n4, 'ongoing', 20, 0, 0],
+      [1, 'spring', 'k1', n1, 'success', 15, 2, 70],
+      [1, 'spring', 'k2', m1, 'success', 14, 1, 60],
+      [1, 'spring', 'k1', n1, 'success', 15, 1, 55],
+      [1, 'summer', 'k1', n2, 'failure', 12, 5, 10],
+      [1, 'summer', 'k1', n1, 'success', 16, 1, 60],
+      [1, 'summer', 'k2', m1, 'success', 15, 2, 45],
+      [1, 'autumn', 'k1', n3, 'success', 14, 2, 85],
+      [1, 'autumn', 'k2', shared, 'success', 13, 2, 40],
+      [1, 'autumn', 'k1', n2, 'success', 17, 3, 45],
+      [1, 'winter', 'k1', n5, 'failure', 10, 4, 0],
+      [1, 'winter', 'k1', shared, 'success', 15, 3, 35],
+      [2, 'spring', 'k1', n2, 'success', 17, 2, 50],
+      [2, 'spring', 'k2', m2, 'success', 12, 2, 40],
+      [2, 'spring', 'k1', n4, 'ongoing', 10, 0, 0],
     ];
     let ts = t0 - script.length * 3600e3;
     c.raids = script.map((s, i) => ({
@@ -3519,7 +3595,7 @@
       season: s[1],
       notes: '',
     }));
-    c.adjustments = [{ id: 'a1', kingdom: 'k1', year: 1, season: 'winter', timestamp: t0 - 5 * 3600e3, treasury: -60, army: 12, morale: 0, note: 'Hired 12 sellswords' }];
+    c.adjustments = [{ id: 'a1', kingdom: 'k1', year: 1, season: 'winter', timestamp: t0 - 5 * 3600e3, treasury: -240, army: 6, morale: 0, note: 'Hired 6 sellswords (40 gp each)' }, { id: 'a2', kingdom: 'k1', year: 2, season: 'spring', timestamp: t0 - 2.5 * 3600e3, treasury: -320, army: 8, morale: 0, note: 'Recruited 8 Bondi warriors (40 gp each)' }];
     c.milestones = [{ id: 'm1', kingdom: null, year: 1, season: 'spring', timestamp: t0 - 20 * 3600e3, kind: 'custom', label: 'The longships land' }];
     c.year = 2;
     c.season = 'spring';
@@ -3781,6 +3857,7 @@
         if (SCENARIOS[r.scenario]) out.scenario = r.scenario;
         const roster = normRoster(r.roster);
         if (roster) out.roster = roster;
+        if (num(r.defence, 0) > 0) out.defence = Math.round(num(r.defence, 0));
         return out;
       });
     if (dropped) warnings.push(dropped + ' raid' + (dropped === 1 ? '' : 's') + ' pointed at unknown territories, at the raider’s own capital, or had no outcome, and were left out.');
@@ -3825,6 +3902,7 @@
       settingsAt: num(raw.settingsAt, 0),
       costs: normCosts(raw.costs),
       factions: customFactions,
+      balance: Math.max(0, Math.round(num(raw.balance, 0))),
       map,
       territories,
       kingdoms,
@@ -3968,6 +4046,11 @@
     factionTroops,
     normFactions,
     raidTroops,
+    rebalance,
+    rulesFor,
+    tableGame,
+    territoryStats,
+    BALANCE,
     SCENARIOS,
     factionOf,
     troopList,
