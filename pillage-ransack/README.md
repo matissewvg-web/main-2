@@ -30,6 +30,7 @@ Why four kingdoms but sixteen players: map colour is how you tell kingdoms apart
 **Kingdoms → Customise** opens the editor:
 
 - **Name, ruler (title and name), motto.**
+- **Pillage faction**: Vikings, Anglo-Saxons, Normans or Irish. It sets which troops the kingdom raids and recruits with, at that faction's gp prices (see *Pillage rules* below).
 - **Colour on the map** from the four map colours. Each kingdom's colour is unique.
 - **Coat of arms**: division (plain, per pale, per fess, per bend, quarterly, chevron, saltire), field, second tincture and charge colour from the eight heraldic tinctures, and a charge (wolf, raven, axe, longship, tower, dragon, boar, stag, crown, sun, hammer). The shield previews live; **Roll new arms** suggests one that follows the rule of tincture.
 - **Trait**, which bends the rules for that kingdom only:
@@ -37,7 +38,7 @@ Why four kingdoms but sixteen players: map colour is how you tell kingdoms apart
   - *Merchant princes*: 50% more tribute.
   - *Iron walls*: garrisons on your land recover twice as fast, and raids on your land take 10% less control.
   - *Zealots*: failed raids cost half the morale, and morale never falls below 30.
-  - *Seafarers*: sea crossings are as quick as land, and raids on coast take 10% more control.
+  - *Seafarers*: raids over a sea lane (Landings) need no provisions, and raids on coast take 10% more control.
   - *Horde*: 30 more men to start, and conquests lift morale by 15.
 - **Capital**: choose from a list or **Pick on map**. It is fixed once raiding starts, because moving it would rewrite the war.
 - **Starting gold, men and morale.**
@@ -67,7 +68,7 @@ The capital flies the kingdom's banner (in the colour of whoever holds it) and i
 ## Tracker
 
 - **Territory**: gold, garrison, who holds how much control (a bar per kingdom), raid record, loot, losses, scorching. Rename it, set its status and holder by hand, raid it or raid from it.
-- **Raid**: the raiding kingdom, target, starting point (its capital or land it holds), raiders sent, result, men lost, gold taken, notes. The route, its length in leagues and the odds update as you type. Raids *under way* are resolved later from the log.
+- **Raid**: the raiding kingdom, a target **in reach** (bordering land it holds), where it sets out from (held land next to the target), **the warband** (how many of each troop), the **Pillage scenario** played, result, men lost, gold taken, notes. As you type it shows the warband's worth in gp, the provisions it costs, the treasury before and after, and the odds. It won't log a warband with more men than are at home or provisions the treasury can't pay. Raids *under way* are resolved later from the log.
 - **Log**: the campaign's chronicle. Raids, treasury entries and milestones together, grouped by season (newest first) with each season's raids, gold and losses in its heading. Search by territory, kingdom, note or player; filter by season, kingdom and type (raids, under way, won, lost, treasury, milestones). Record results, **edit** a logged raid (outcome, raiders, losses, gold, notes; the map recalculates), show it on the map, or delete it. **Export the log as CSV** saves what the filters show, oldest first, for a spreadsheet.
 - **Tabs** show icons and badges (raids under way on Log, a dot on Raid when a target is set, the kingdom count), switch with ← / → when focused, stay pinned while you scroll on a phone, and the page reopens on the tab you last used.
 - **Kingdoms**: each kingdom's arms, ruler, trait, capital, standing and players. Play as it, customise it, add or remove players, join or leave it (shared campaigns), add or remove kingdoms. Removing a kingdom moves its players to the smallest remaining one.
@@ -75,9 +76,31 @@ The capital flies the kingdom's banner (in the colour of whoever holds it) and i
 - **Timeline**: one column per season, a dot per raid (ringed in the kingdom's colour) and flags for milestones. First blood, conquests, lost territories, fallen capitals, heavy defeats, 25/50/75%, treasury marks and the winner are added automatically. The conquest bar stacks every kingdom's share against the goal.
 - **End season** pays each kingdom tribute, recovers garrisons and fades scorch marks. **◂** goes back a season while nothing has been logged in the current one.
 
+## Pillage rules
+
+The battles are meant to be fought on the table with **Pillage: Ransack the Middle Ages** (Victrix, written by Guillaume Rousselot). This tracker is the campaign around those games. It uses what the published rules make public; the rulebook itself is paid and isn't reproduced here.
+
+- **Gold pieces.** Pillage prices every figure in gp by its equipment, and the same kit costs differently per faction. Each kingdom has a faction with a troop list:
+
+  | Faction | Troops (gp) |
+  |---|---|
+  | Vikings | Jarl 70, Hirdman 60, Bondi warrior 40, Bowman 40, Thrall 30 |
+  | Anglo-Saxons | Chieftain 70\*, Huscarl 60\*, Fyrd warrior 40, Bowman 40, Ceorl 30 |
+  | Normans | Lord 70, Mounted knight 135\*, Man-at-arms 60, Serjeant 40, Crossbowman 40, Levy 30 |
+  | Irish | Rí 70, Champion 60, Warrior 40, Kern 30 |
+
+  \* from published examples. Warriors at 30–50 gp are inside the range the book gives; the rest are estimates. **Campaign → Troop prices** lets you type in the real prices from your rulebook. New raids and recruits use them, and logged raids keep what they cost.
+- **The warband's worth is its points value on the table.** A raid of 1 Jarl, 2 Hirdmen and 8 Bondi is a 510 gp warband, so both players know what to field.
+- **Scenarios.** Each raid records which of the book's five scenarios was played: Pitched Battle, Pillage!, Landing, Pilgrimage or St. Brice's Day Massacre. The form suggests one: a Landing over a sea lane, a Pitched Battle where a rival holds a share or at a capital, otherwise Pillage!.
+- **Not built in:** Pillage's own campaign rules (between-game progression, injuries, experience), its fire and looting tables, and every price not marked above. They aren't public, so nothing here pretends to be them.
+
 ## How raids change the map
 
-The rules were never written down, so these are placeholders. They live in `RULES` and `TRAITS` in `engine.js`; change a number and the whole history recalculates.
+These are the tracker's own campaign rules, not Pillage's. They live in `RULES` and `TRAITS` in `engine.js`; change a number and the whole history recalculates.
+
+- **Borders.** A kingdom can only raid land that borders land it holds (it is the territory's holder), across a shared border or a sea lane, or land where it already has a foothold. Raids set out from the held territory next to the target. Never its own capital or land it has fully conquered.
+- **Provisions.** Sending a warband costs 5% of its gp worth from the treasury when it sets out, win or lose. **Recruiting** (Campaign tab) costs each troop's full gp price.
+- **Odds** count every 40 gp of warband as one warrior against the garrison times the terrain's defence, so a Mounted knight counts for more than a Thrall. They are a guide; the table decides.
 
 - Success: +40% control (taken first from whoever else holds a share) and the garrison loses 40%. At 100% the territory is conquered and its garrison is gone. +5 morale, +10 more on a conquest; the kingdom that loses a territory loses 8 morale.
 - Failure: −25% of the raider's control there, the land is scorched, the garrison grows 10% (up to 1.5× full strength). −10 morale. Losing a quarter of your army in one raid is a "heavy defeat".
@@ -100,7 +123,7 @@ Exports follow the brief's shape, `{"campaigns": {"<id>": {...}}}`. Each campaig
 
 Import accepts that shape, a list of campaigns, or a single campaign. Saves from the first release become one kingdom whose capital is the old home base, and their maps redraw exactly as before. Saves from the second release turn each kingdom's single owner into a player. Hand-written files work too: statuses are kept as hand-set statuses, `garrison` becomes the full-strength garrison, second timestamps become milliseconds, and raids pointing at unknown territories are dropped with a note. Imports always arrive as new campaigns.
 
-From the browser console, `PillageRansack.logRaid({targetTerritory: 't4', outcome: 'success', losses: 3, lootGained: 80, by: 'k2'})` logs a raid without the form.
+From the browser console, `PillageRansack.logRaid({targetTerritory: 't4', outcome: 'success', losses: 3, lootGained: 80, by: 'k2', troops: {chieftain: 1, warrior: 6}})` logs a raid without the form. It keeps the border rule; add `force: true` to enter a raid from past history anyway.
 
 ## Files
 
@@ -111,7 +134,7 @@ From the browser console, `PillageRansack.logRaid({targetTerritory: 't4', outcom
 - `test/engine.test.js`, `test/fixtures/v1-campaign.json`: every coastline, rivers, settlements, kingdoms and traits, players and teams, merging, generation settings, rules, routes, import/export, and a save from the first release.
 
 ```bash
-node --test pillage-ransack/test/*.test.js   # 39 tests
+node --test pillage-ransack/test/*.test.js   # 43 tests
 node pillage-ransack/build.mjs               # rebuild index.html after editing app.html or engine.js
 cd pillage-ransack/desktop && npm ci && npm start   # run the Windows app from a checkout
 ```
@@ -119,7 +142,9 @@ cd pillage-ransack/desktop && npm ci && npm start   # run the Windows app from a
 ## Known limitations
 
 - **Not a game engine.** It records what happened; it doesn't roll dice or decide outcomes. The odds shown are a guide.
-- **Placeholder rules and traits** (above). They're untested for balance. If Pillage Ransack has real rules, they replace `RULES`, `TRAITS` and the parts of `replay()` they change.
+- **Only part of Pillage is in here.** Factions, gp pricing, the published example prices and the five scenarios are; the full price tables and the book's campaign rules aren't, because they're only in the paid rulebook. Most troop prices are estimates until you type yours in.
+- **The map rules and traits are this tracker's own** (above) and untested for balance. Gold on the map and gp on the table are one currency, so with the starting treasuries a single recruit is expensive: expect to tune `DEFAULT_START`, tribute and `provisionPct` after a few seasons of real play.
+- **Troops at home aren't tracked by type.** The army is a head count; a raid can send any mix of troops as long as enough men are at home.
 - **Online play depends on claude.ai sharing.** Players need claude.ai accounts and edit access to the artifact; whether you can grant that depends on your plan's share options. Who may act for which kingdom is enforced by the page, not the server, so it is a game among friends, not a cheat-proof one.
 - **Merging is per item.** Raids, adjustments and milestones from every device are kept. Two people editing the same setting at the same time (a kingdom's name, the season) keep whichever save came last.
 - **Four kingdoms at most**, sixteen players (see above). Turn order is a suggestion: nothing stops a kingdom from moving twice.

@@ -644,3 +644,83 @@ test('raids remember which player logged them', () => {
   assert.equal(back.raids[0].playerId, c.players[1].id);
   assert.deepEqual(back.players, c.players);
 });
+
+test('a kingdom can only raid land bordering land it holds', () => {
+  const c = E.newCampaign({ seed: 'borders', count: 20, kingdoms: 2, now: T0 });
+  const geo = E.buildGeometry(c);
+  const k = c.kingdoms[0];
+  const ci = geo.index.get(k.capital);
+  const neighbours = new Set([...geo.adjacency[ci]].map((j) => c.territories[j].id));
+  let r = E.replay(c);
+  const reach = E.frontier(c, geo, r, k.id);
+  assert.deepEqual([...reach].sort(), [...neighbours].filter((id) => id !== k.capital).sort());
+  assert.equal(E.canRaid(c, geo, r, k.id, k.capital), false);
+  const far = c.territories.find((t) => !neighbours.has(t.id) && t.id !== k.capital);
+  assert.equal(E.canRaid(c, geo, r, k.id, far.id), false);
+  // Taking a neighbour pushes the border out to its neighbours.
+  const next = c.territories.find((t) => neighbours.has(t.id) && !c.kingdoms.some((o) => o.capital === t.id));
+  for (let i = 0; i < 3; i++) raid(c, next, 'success', { by: k.id });
+  r = E.replay(c);
+  const ni = geo.index.get(next.id);
+  for (const j of geo.adjacency[ni]) {
+    const id = c.territories[j].id;
+    if (id !== k.capital) assert.ok(E.frontier(c, geo, r, k.id).has(id), 'neighbour of a held territory is in reach');
+  }
+  assert.ok(E.sourcesFor(c, geo, r, k.id, [...geo.adjacency[ni]].map((j) => c.territories[j].id).find((id) => id !== k.capital && !neighbours.has(id)) || next.id).length >= 1);
+});
+
+test('sea lanes count as borders, and raids across them suggest a Landing', () => {
+  let found = null;
+  for (const seed of ['isles-1', 'isles-2', 'isles-3', 'isles-4', 'isles-5']) {
+    const c = E.newCampaign({ seed, count: 20, shape: 'archipelago', kingdoms: 1, now: T0 });
+    const geo = E.buildGeometry(c);
+    if (geo.seaLanes.length) {
+      found = { c, geo };
+      break;
+    }
+  }
+  assert.ok(found, 'an archipelago has sea lanes');
+  const { c, geo } = found;
+  const lane = geo.seaLanes[0];
+  const k = c.kingdoms[0];
+  k.capital = c.territories[lane.a].id;
+  const other = c.territories[lane.b];
+  const r = E.replay(c);
+  assert.ok(E.canRaid(c, geo, r, k.id, other.id));
+  assert.equal(E.suggestScenario(c, geo, r, k.id, 'base', other.id), 'landing');
+});
+
+test('warbands are priced in gp by faction, and provisions come out of the treasury', () => {
+  const c = E.newCampaign({ seed: 'gold', count: 18, kingdoms: 1, now: T0 });
+  const k = c.kingdoms[0];
+  k.faction = 'saxons';
+  const w = E.warbandCost(c, k.id, { chieftain: 1, elite: 2, warrior: 10, bogus: 5 });
+  assert.equal(w.men, 13);
+  assert.equal(w.value, 70 + 2 * 60 + 10 * 40);
+  assert.equal(w.provisions, Math.round(w.value * E.RULES.provisionPct / 100));
+  assert.equal(E.troopSummary(c, k.id, { chieftain: 1, elite: 2 }), '1 Chieftain, 2 Huscarls');
+  k.faction = 'normans';
+  assert.equal(E.warbandCost(c, k.id, { knight: 1 }).value, 135);
+  // A campaign's own prices replace the defaults.
+  c.costs = { normans: { knight: 150 } };
+  assert.equal(E.warbandCost(c, k.id, { knight: 2 }).value, 300);
+  const before = E.replay(c).kingdoms.get(k.id).treasury;
+  const t = c.territories.find((x) => x.id !== k.capital);
+  raid(c, t, 'ongoing', { by: k.id, troops: { knight: 2 }, value: 300, cost: 15 });
+  assert.equal(E.replay(c).kingdoms.get(k.id).treasury, before - 15);
+  // Troops, worth, provisions and scenario survive export and import.
+  c.raids[0].scenario = 'pillage';
+  const back = E.parseImport(E.exportJSON([c])).campaigns[0];
+  assert.deepEqual(back.raids[0].troops, { knight: 2 });
+  assert.equal(back.raids[0].cost, 15);
+  assert.equal(back.raids[0].scenario, 'pillage');
+  assert.equal(back.kingdoms[0].faction, 'normans');
+  assert.deepEqual(back.costs, { normans: { knight: 150 } });
+});
+
+test('saves from before factions load as Vikings with no provisions charged', () => {
+  const v1 = require('fs').readFileSync(require('path').join(__dirname, 'fixtures', 'v1-campaign.json'), 'utf8');
+  const c = E.parseImport(v1).campaigns[0];
+  assert.ok(c.kingdoms.every((k) => k.faction === 'vikings'));
+  assert.ok(c.raids.every((r) => !r.cost));
+});

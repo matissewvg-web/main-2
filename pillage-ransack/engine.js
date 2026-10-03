@@ -48,6 +48,68 @@
     damageHealPerSeason: 0.5,
     heavyDefeatShare: 0.25,    // a failure costing this share of the army is a milestone
     heavyDefeatMin: 10,
+    provisionPct: 5,           // a warband's provisions cost this share of its gp value, paid when it sets out
+    gpPerMan: 40,              // gp of an ordinary warrior: warband strength for the odds is its value / this
+  };
+
+  /* ---------- Pillage: factions, troops and their gold-piece costs ---------- */
+
+  // Pillage: Ransack the Middle Ages (Victrix) prices every figure in gold pieces (gp) by its
+  // equipment, and the same kit costs differently per faction. The full tables are in the rulebook.
+  // src says where each price comes from: 'book' = a published example, 'range' = inside the book's
+  // 30-50 gp range for warriors, 'est' = an estimate. A campaign can override any price (c.costs).
+  const FACTIONS = {
+    vikings: {
+      label: 'Vikings',
+      troops: [
+        { id: 'chieftain', label: 'Jarl', gp: 70, src: 'est', note: 'leads the warband' },
+        { id: 'elite', label: 'Hirdman', gp: 60, src: 'est', note: 'household warrior, full armour' },
+        { id: 'warrior', label: 'Bondi warrior', gp: 40, src: 'range', note: 'shield and spear or axe, some armour' },
+        { id: 'archer', label: 'Bowman', gp: 40, src: 'est', note: 'bow, no armour' },
+        { id: 'levy', label: 'Thrall', gp: 30, src: 'range', note: 'spear, no armour' },
+      ],
+    },
+    saxons: {
+      label: 'Anglo-Saxons',
+      troops: [
+        { id: 'chieftain', label: 'Chieftain', gp: 70, src: 'book', note: 'leads the warband' },
+        { id: 'elite', label: 'Huscarl', gp: 60, src: 'book', note: 'household warrior, full armour' },
+        { id: 'warrior', label: 'Fyrd warrior', gp: 40, src: 'range', note: 'shield and spear, some armour' },
+        { id: 'archer', label: 'Bowman', gp: 40, src: 'est', note: 'bow, no armour' },
+        { id: 'levy', label: 'Ceorl', gp: 30, src: 'range', note: 'spear, no armour' },
+      ],
+    },
+    normans: {
+      label: 'Normans',
+      troops: [
+        { id: 'chieftain', label: 'Lord', gp: 70, src: 'est', note: 'leads the warband' },
+        { id: 'knight', label: 'Mounted knight', gp: 135, src: 'book', note: 'horse, heavy armour, shield, spear' },
+        { id: 'elite', label: 'Man-at-arms', gp: 60, src: 'est', note: 'on foot, full armour' },
+        { id: 'warrior', label: 'Serjeant', gp: 40, src: 'range', note: 'shield and spear, some armour' },
+        { id: 'archer', label: 'Crossbowman', gp: 40, src: 'est', note: 'crossbow, some armour' },
+        { id: 'levy', label: 'Levy', gp: 30, src: 'range', note: 'spear, no armour' },
+      ],
+    },
+    irish: {
+      label: 'Irish',
+      troops: [
+        { id: 'chieftain', label: 'R\u00ed', gp: 70, src: 'est', note: 'leads the warband' },
+        { id: 'elite', label: 'Champion', gp: 60, src: 'est', note: 'picked warrior, some armour' },
+        { id: 'warrior', label: 'Warrior', gp: 40, src: 'range', note: 'shield and spear' },
+        { id: 'levy', label: 'Kern', gp: 30, src: 'range', note: 'javelins, no armour' },
+      ],
+    },
+  };
+  const FACTION_IDS = Object.keys(FACTIONS);
+  const TROOP_SRC = { book: 'rulebook example', range: 'inside the rulebook\u2019s 30\u201350 gp warrior range', est: 'estimate' };
+
+  // The five scenarios in the Pillage rulebook. A raid records which one was played on the table.
+  const SCENARIOS = {
+    pitched: 'Pitched Battle',
+    pillage: 'Pillage!',
+    landing: 'Landing',
+    pilgrimage: 'Pilgrimage',
+    stbrice: 'St. Brice\u2019s Day Massacre',
   };
 
   const TERRAIN_STATS = {
@@ -1966,7 +2028,7 @@
     merchants: { label: 'Merchant princes', note: 'Tribute from held land is 50% higher.', tributeMult: 1.5 },
     ironwall: { label: 'Iron walls', note: 'Garrisons on your land recover twice as fast, and raids on your land take 10% less control.', regenMult: 2, defendControl: 10 },
     zealots: { label: 'Zealots', note: 'Failed raids cost half the morale, and morale never falls below 30.', failureMoraleMult: 0.5, moraleFloor: 30 },
-    seafarers: { label: 'Seafarers', note: 'Sea crossings are as quick as land, and raids on coast take 10% more control.', seaCost: 1, coastControl: 10 },
+    seafarers: { label: 'Seafarers', note: 'Raids over a sea lane (Landings) need no provisions, and raids on coast take 10% more control.', seaCost: 1, coastControl: 10, freeLandings: true },
     horde: { label: 'Horde', note: 'Starts with 30 more men, and each conquest lifts morale by 15 instead of 10.', startArmy: 30, conquestMorale: 5 },
   };
   const RULERS = ['Ragnhild', 'Sigurd', 'Astrid', 'Ulf', 'Eadric', 'Godwin', 'Thyra', 'Ivar', 'Hilda', 'Bjorn', 'Aelfgifu', 'Halfdan', 'Gunnhild', 'Osric', 'Sweyn', 'Brynja', 'Ketil', 'Freydis', 'Wulfstan', 'Sigrid', 'Orm', 'Edith', 'Harald', 'Ingrid'];
@@ -2008,6 +2070,7 @@
       color: KINGDOM_COLORS[index % KINGDOM_COLORS.length].id,
       arms: randomArms(rng),
       trait: index === 0 && o.plainFirst ? 'none' : pick(rng, Object.keys(TRAITS)),
+      faction: FACTION_IDS[hashString(String(capitalName || index)) % FACTION_IDS.length],
       capital,
       start: Object.assign({}, DEFAULT_START),
       updatedAt: o.now || 0,
@@ -2349,6 +2412,7 @@
       if (!t || t.capitalOf === att.id) return;
       const A = att.id;
       t.raids++;
+      att.treasury -= Math.max(0, r.cost || 0);
       if (r.outcome === 'ongoing') {
         t.ongoing++;
         att.inField += Math.max(0, r.warband || 0);
@@ -2567,20 +2631,136 @@
     return out;
   }
 
-  // Land a kingdom doesn't fully hold that borders land it does.
+  // What a kingdom may raid. Campaign rule: only land bordering land it holds (it is the
+  // territory's holder), across a shared border or a sea lane (a raid from the sea is Pillage's
+  // Landing scenario), plus land where it already has a foothold. Never its own capital or land it
+  // has fully conquered.
   function frontier(c, geo, result, kid) {
     const k = kingdomOf(c, kid);
     const out = new Set();
+    const open = (n) => {
+      const dn = result.territories.get(n.id);
+      return n.id !== k.capital && !(dn.status === 'conquered' && dn.owner === k.id);
+    };
     c.territories.forEach((t, i) => {
       const d = result.territories.get(t.id);
-      if ((d.inf[k.id] || 0) <= 0) return;
-      for (const j of geo.adjacency[i]) {
-        const n = c.territories[j];
-        const dn = result.territories.get(n.id);
-        if (!(dn.status === 'conquered' && dn.owner === k.id) && n.id !== k.capital) out.add(n.id);
-      }
+      if ((d.inf[k.id] || 0) > 0 && open(t)) out.add(t.id);
+      if (d.owner !== k.id) return;
+      for (const j of geo.adjacency[i]) if (open(c.territories[j])) out.add(c.territories[j].id);
     });
     return out;
+  }
+
+  function canRaid(c, geo, result, kid, target) {
+    return frontier(c, geo, result, kid).has(target);
+  }
+
+  // Where a raid on target can set out from: land the kingdom holds that borders it ('base' is the
+  // capital). A foothold with no held neighbour is raided from the capital.
+  function sourcesFor(c, geo, result, kid, target) {
+    const k = kingdomOf(c, kid);
+    const ti = geo.index.get(target);
+    if (ti == null) return ['base'];
+    const out = [];
+    for (const j of geo.adjacency[ti]) {
+      const n = c.territories[j];
+      if (result.territories.get(n.id).owner !== k.id) continue;
+      out.push(n.id === k.capital ? 'base' : n.id);
+    }
+    out.sort((a, b) => (a === 'base' ? -1 : b === 'base' ? 1 : 0));
+    return out.length ? out : ['base'];
+  }
+
+  function crossesSea(geo, a, b) {
+    const i = geo.index.get(a);
+    const j = geo.index.get(b);
+    return i != null && j != null && geo.laneSet.has(Math.min(i, j) + '|' + Math.max(i, j));
+  }
+
+  // The scenario a raid most likely is: over a sea lane, a Landing; on land another kingdom holds
+  // a share of, or a capital, a Pitched Battle; otherwise Pillage!.
+  function suggestScenario(c, geo, result, kid, source, target) {
+    const k = kingdomOf(c, kid);
+    const from = source === 'base' ? k.capital : source;
+    if (crossesSea(geo, from, target)) return 'landing';
+    const d = result.territories.get(target);
+    const t = c.territories.find((x) => x.id === target);
+    const rival = d && Object.keys(d.inf).some((o) => o !== k.id && d.inf[o] > 0);
+    if (rival || (d && d.owner && d.owner !== k.id) || (t && (c.kingdoms || []).some((o) => o.capital === t.id))) return 'pitched';
+    return 'pillage';
+  }
+
+  /* ---------- troops and costs ---------- */
+
+  function factionOf(k) {
+    return FACTIONS[k && k.faction] || FACTIONS.vikings;
+  }
+
+  // A kingdom's troop list with this campaign's prices.
+  function troopList(c, kid) {
+    const k = kingdomOf(c, kid);
+    const fid = FACTIONS[k.faction] ? k.faction : 'vikings';
+    const own = (c.costs && c.costs[fid]) || {};
+    return FACTIONS[fid].troops.map((t) => Object.assign({}, t, { gp: Number.isFinite(own[t.id]) ? own[t.id] : t.gp, custom: Number.isFinite(own[t.id]) && own[t.id] !== t.gp }));
+  }
+
+  function normTroops(troops) {
+    if (!troops || typeof troops !== 'object') return null;
+    const out = {};
+    for (const [id, n] of Object.entries(troops)) {
+      const v = Math.max(0, Math.min(999, Math.round(Number(n) || 0)));
+      if (/^[a-z]{1,16}$/.test(id) && v) out[id] = v;
+    }
+    return Object.keys(out).length ? out : null;
+  }
+
+  function normCosts(costs) {
+    const out = {};
+    if (!costs || typeof costs !== 'object') return out;
+    for (const fid of FACTION_IDS) {
+      const src = costs[fid];
+      if (!src || typeof src !== 'object') continue;
+      for (const t of FACTIONS[fid].troops) {
+        const v = Number(src[t.id]);
+        if (Number.isFinite(v) && v >= 0) (out[fid] = out[fid] || {})[t.id] = Math.min(9999, Math.round(v));
+      }
+    }
+    return out;
+  }
+
+  // What a warband is worth in gp (its points value for the tabletop game), what feeding it costs
+  // the treasury, and how strong it counts for the odds.
+  function warbandCost(c, kid, troops) {
+    const list = troopList(c, kid);
+    const t = normTroops(troops) || {};
+    let men = 0;
+    let value = 0;
+    const lines = [];
+    for (const u of list) {
+      const n = t[u.id] || 0;
+      if (!n) continue;
+      men += n;
+      value += n * u.gp;
+      lines.push({ id: u.id, label: u.label, n, gp: u.gp, total: n * u.gp });
+    }
+    const provisions = Math.round((value * RULES.provisionPct) / 100);
+    return { men, value, provisions, strength: value / RULES.gpPerMan, lines };
+  }
+
+  function plural(label) {
+    if (/(s|\u00ed)$/.test(label)) return label;
+    if (/man$/.test(label)) return label.slice(0, -3) + 'men';
+    if (/[^aeiou]y$/.test(label)) return label.slice(0, -1) + 'ies';
+    return label + 's';
+  }
+
+  // "1 Jarl, 4 Hirdmen, 10 Bondi warriors" for a stored raid.
+  function troopSummary(c, kid, troops) {
+    const t = troops || {};
+    return troopList(c, kid)
+      .filter((u) => t[u.id])
+      .map((u) => t[u.id] + ' ' + (t[u.id] > 1 ? plural(u.label) : u.label))
+      .join(', ');
   }
 
   /* ---------- multiplayer sync ---------- */
@@ -2632,6 +2812,7 @@
     if ((b.settingsAt || 0) > (a.settingsAt || 0)) {
       out.name = b.name;
       out.goalPct = b.goalPct;
+      out.costs = b.costs || {};
       out.settingsAt = b.settingsAt;
     }
     out.deleted = [...deleted];
@@ -2649,8 +2830,8 @@
     const c = newCampaign({ name: 'The Saltmarch War', seed: 'saltmarch', count: 20, shape: 'island', kingdoms: 2, now: t0 });
     c.example = true;
     const [k1, k2] = c.kingdoms;
-    Object.assign(k1, { name: 'Ravenmark', ruler: { title: 'Queen', name: 'Ragnhild Ironside' }, motto: 'We take what is ours', trait: 'reavers', arms: { division: 'plain', field: 'sable', second: 'sable', charge: 'raven', chargeColor: 'argent' } });
-    Object.assign(k2, { name: 'Kingdom of Saltvik', ruler: { title: 'Jarl', name: 'Halfdan the Grim' }, motto: 'The sea provides', trait: 'seafarers', arms: { division: 'pale', field: 'azure', second: 'or', charge: 'ship', chargeColor: 'gules' } });
+    Object.assign(k1, { name: 'Ravenmark', ruler: { title: 'Queen', name: 'Ragnhild Ironside' }, motto: 'We take what is ours', trait: 'reavers', faction: 'vikings', arms: { division: 'plain', field: 'sable', second: 'sable', charge: 'raven', chargeColor: 'argent' } });
+    Object.assign(k2, { name: 'Kingdom of Saltvik', ruler: { title: 'Jarl', name: 'Halfdan the Grim' }, motto: 'The sea provides', trait: 'seafarers', faction: 'vikings', arms: { division: 'pale', field: 'azure', second: 'or', charge: 'ship', chargeColor: 'gules' } });
     const geo = buildGeometry(c);
     const nearTo = (cap, skip) => {
       const from = geo.index.get(cap);
@@ -2851,6 +3032,7 @@
           chargeColor: tinct(a.chargeColor, ra.chargeColor),
         },
         trait: TRAITS[k.trait] ? k.trait : 'none',
+        faction: FACTIONS[k.faction] ? k.faction : 'vikings',
         capital: cap,
         start: {
           treasury: Math.round(num(st.treasury, DEFAULT_START.treasury)),
@@ -2876,6 +3058,7 @@
       }
       const k = randomKingdom(krng, 0, base, territories.find((t) => t.id === base).name, { plainFirst: true });
       k.name = typeof raw.kingdomName === 'string' && raw.kingdomName.trim() ? raw.kingdomName.trim().slice(0, 40) : 'Your kingdom';
+      k.faction = 'vikings';
       if (raw.start && typeof raw.start === 'object') k.start = raw.start;
       else backOut = raw.treasury != null || raw.army != null || raw.morale != null;
       addKingdom(k, 0);
@@ -2942,6 +3125,14 @@
         if (num(r.updatedAt, 0)) out.updatedAt = num(r.updatedAt, 0);
         if (safeId(r.authorId)) out.authorId = r.authorId;
         if (safeId(r.playerId)) out.playerId = r.playerId;
+        const troops = normTroops(r.troops);
+        if (troops) {
+          out.troops = troops;
+          out.warband = Object.values(troops).reduce((a, n) => a + n, 0);
+        }
+        if (num(r.value, 0) > 0) out.value = Math.round(num(r.value, 0));
+        if (num(r.cost, 0) > 0) out.cost = Math.round(num(r.cost, 0));
+        if (SCENARIOS[r.scenario]) out.scenario = r.scenario;
         return out;
       });
     if (dropped) warnings.push(dropped + ' raid' + (dropped === 1 ? '' : 's') + ' pointed at unknown territories, at the raider’s own capital, or had no outcome, and were left out.');
@@ -2984,6 +3175,7 @@
       seasonAt: num(raw.seasonAt, 0),
       goalPct: clamp(Math.round(num(raw.goalPct, 60)), 5, 100),
       settingsAt: num(raw.settingsAt, 0),
+      costs: normCosts(raw.costs),
       map,
       territories,
       kingdoms,
@@ -3107,6 +3299,19 @@
     nextRaidId,
     raidSources,
     frontier,
+    canRaid,
+    sourcesFor,
+    crossesSea,
+    suggestScenario,
+    FACTIONS,
+    FACTION_IDS,
+    TROOP_SRC,
+    SCENARIOS,
+    factionOf,
+    troopList,
+    normTroops,
+    warbandCost,
+    troopSummary,
     newId,
     normalizeCampaign,
     parseImport,

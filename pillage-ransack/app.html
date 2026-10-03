@@ -304,6 +304,20 @@ h1, h2, h3 { margin: 0; text-wrap: balance; font-weight: 700; }
 .picklist button:hover { border-color: var(--fg-faint); }
 .picklist .nm { font-weight: 700; min-width: 0; overflow-wrap: anywhere; }
 .picklist .mt { font-size: var(--step--1); color: var(--fg-muted); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.troops { border: 1px solid var(--line); border-radius: var(--radius); padding: 8px 10px 10px; margin: 0; display: grid; gap: 6px; min-width: 0; }
+.troops legend { padding: 0 4px; font: 400 var(--step--1)/1.2 var(--font-map); letter-spacing: 0.06em; color: var(--fg-muted); }
+.trow { display: grid; grid-template-columns: minmax(0, 1fr) auto 74px 64px; gap: 8px; align-items: center; }
+.trow label { display: grid; min-width: 0; }
+.trow label small { color: var(--fg-muted); font-size: 12px; overflow-wrap: anywhere; }
+.trow .gp, .trow .sub { font-size: var(--step--1); color: var(--fg-muted); font-variant-numeric: tabular-nums; text-align: right; }
+.trow input { min-height: 38px; padding: 4px 8px; border-radius: var(--radius); border: 1px solid var(--line); background: var(--table); color: var(--fg); font: inherit; font-variant-numeric: tabular-nums; width: 100%; }
+.costgrid { display: flex; flex-wrap: wrap; gap: 4px 14px; font-variant-numeric: tabular-nums; }
+.costgrid b { font-size: var(--step-0); }
+.prices { width: 100%; border-collapse: collapse; font-size: var(--step--1); }
+.prices th, .prices td { padding: 4px 6px; border-bottom: 1px solid var(--line); text-align: left; }
+.prices td:last-child { width: 88px; }
+.prices input { width: 80px; min-height: 32px; padding: 2px 6px; border-radius: var(--radius); border: 1px solid var(--line); background: var(--table); color: var(--fg); font: inherit; }
+.src { font-size: 11px; color: var(--fg-muted); }
 .logbar { display: grid; gap: 8px; }
 .logbar .row > .field { flex: 1 1 140px; }
 .typechips { display: flex; flex-wrap: wrap; gap: 6px; }
@@ -378,6 +392,9 @@ details[open] summary { margin-bottom: 8px; }
   .hud > .tile:nth-child(n + 4) { border-top: 1px solid var(--line); }
   .tile .val { font-size: var(--step-1); }
   .tabs button { font-size: 11px; }
+  .trow { grid-template-columns: minmax(0, 1fr) 70px; }
+  .trow .gp { grid-column: 1; grid-row: 2; text-align: left; }
+  .trow .sub { grid-column: 2; grid-row: 2; }
   .ktoggle { flex-basis: 100%; }
   .ktab small { max-width: 120px; }
 }
@@ -683,7 +700,7 @@ details[open] summary { margin-bottom: 8px; }
     showLabels: true,
     tab: 'territory',
     selected: null,
-    plan: { target: null, source: 'base', warband: 30, outcome: 'ongoing', losses: 0, loot: 0, notes: '' },
+    plan: { target: null, source: 'base', warband: 11, troops: null, scenario: '', scenarioSet: false, outcome: 'ongoing', losses: 0, loot: 0, notes: '' },
     hotRaid: null,
     confirm: null,
     resolving: null,
@@ -968,7 +985,7 @@ details[open] summary { margin-bottom: 8px; }
   }
   // What players actually changed (derived totals left out), to tell whether a merge brought anything new.
   function sig(c) {
-    return JSON.stringify([c.raids, c.adjustments, c.milestones, (c.kingdoms || []).map((k) => [k.id, k.name, k.ruler, k.motto, k.color, k.arms, k.trait, k.capital, k.start]), (c.players || []).map((p) => [p.id, p.name, p.kingdom, p.userId]), c.year, c.season, c.name, c.goalPct, c.territories.map((t) => [t.name, t.override, t.overrideBy || null]), c.deleted, !!c.shared, c.example]);
+    return JSON.stringify([c.raids, c.adjustments, c.milestones, (c.kingdoms || []).map((k) => [k.id, k.name, k.ruler, k.motto, k.color, k.arms, k.trait, k.faction, k.capital, k.start]), (c.players || []).map((p) => [p.id, p.name, p.kingdom, p.userId]), c.year, c.season, c.name, c.goalPct, c.territories.map((t) => [t.name, t.override, t.overrideBy || null]), c.deleted, !!c.shared, c.example, c.costs]);
   }
   function adopt(id, incoming) {
     const mine = S.campaigns.get(id);
@@ -2139,10 +2156,17 @@ details[open] summary { margin-bottom: 8px; }
     $('tooltip').hidden = true;
   }
 
-  // The active kingdom can raid anything except its own capital and land it already holds outright.
+  // The border rule: a kingdom can only raid land next to land it holds (across a border or a sea
+  // lane), or land where it already has a foothold. The engine decides (frontier).
   function targetable(id) {
+    return E.canRaid(S.campaign, S.geo, S.result, S.active, id);
+  }
+  function outOfReach(id) {
+    const t = terr(id);
     const d = S.result.territories.get(id);
-    return id !== K().capital && !(d.status === 'conquered' && d.owner === S.active);
+    if (id === K().capital) return t.name + ' is ' + K().name + '\u2019s own capital.';
+    if (d.status === 'conquered' && d.owner === S.active) return K().name + ' already holds all of ' + t.name + '.';
+    return t.name + ' doesn\u2019t border any land ' + K().name + ' holds. Take a neighbouring territory first.';
   }
 
   // A tap selects the territory and pre-fills it as the raid target.
@@ -2164,7 +2188,10 @@ details[open] summary { margin-bottom: 8px; }
       return;
     }
     S.selected = id;
-    if (targetable(id)) S.plan.target = id;
+    if (targetable(id)) {
+      if (S.plan.target !== id) S.plan.scenarioSet = false;
+      S.plan.target = id;
+    } else if (S.tab === 'raid') toast(outOfReach(id));
     if (S.tab !== 'raid') S.tab = 'territory';
     S.confirm = null;
     renderTabs();
@@ -2403,6 +2430,7 @@ details[open] summary { margin-bottom: 8px; }
     if (logger) html += ' \u00b7 logged by ' + esc(playerName(logger));
     if (r.outcome !== 'ongoing') html += ' · <b>' + r.losses + '</b> lost · <b>' + fmt(r.lootGained) + '</b> gold';
     html += '</div>';
+    if (r.troops || r.value || r.scenario) html += '<div class="what">' + [r.troops ? hl(E.troopSummary(S.campaign, r.by, r.troops)) : '', r.value ? 'worth <b>' + fmt(r.value) + '</b> gp' : '', r.cost ? 'provisions <b>' + fmt(r.cost) + '</b> gold' : '', r.scenario ? 'scenario: <b>' + hl(E.SCENARIOS[r.scenario]) + '</b>' : ''].filter(Boolean).join(' \u00b7 ') + '</div>';
     if (r.notes) html += '<div class="note">' + hl(r.notes) + '</div>';
     if (opts && opts.controls) {
       if (S.resolving === r.id) {
@@ -2413,9 +2441,10 @@ details[open] summary { margin-bottom: 8px; }
       } else if (S.editRaid === r.id) {
         html += '<form class="editor" data-form="edit-raid" data-raid="' + id + '">';
         html += '<div class="grid2"><div class="field"><label for="erOutcome">Outcome</label><select id="erOutcome">' + ['ongoing', 'success', 'failure'].map((k) => '<option value="' + k + '"' + (k === r.outcome ? ' selected' : '') + '>' + OUTCOME[k].label + '</option>').join('') + '</select></div>';
-        html += '<div class="field"><label for="erWarband">Raiders sent</label><input id="erWarband" type="number" min="1" step="1" inputmode="numeric" value="' + (r.warband || 1) + '"></div>';
+        html += r.troops ? '<div class="field"><span class="label">Warband</span><p class="hint">' + esc(E.troopSummary(S.campaign, r.by, r.troops)) + ' (' + r.warband + ' men). To change who went, delete the raid and log it again.</p></div>' : '<div class="field"><label for="erWarband">Raiders sent</label><input id="erWarband" type="number" min="1" step="1" inputmode="numeric" value="' + (r.warband || 1) + '"></div>';
         html += '<div class="field"><label for="erLosses">Men lost</label><input id="erLosses" type="number" min="0" step="1" inputmode="numeric" value="' + (r.losses || 0) + '"></div>';
         html += '<div class="field"><label for="erLoot">Gold taken</label><input id="erLoot" type="number" min="0" step="1" inputmode="numeric" value="' + (r.lootGained || 0) + '"></div></div>';
+        html += '<div class="field"><label for="erScenario">Pillage scenario</label><select id="erScenario"><option value="">Not recorded</option>' + Object.entries(E.SCENARIOS).map(([v, l]) => '<option value="' + v + '"' + (r.scenario === v ? ' selected' : '') + '>' + esc(l) + '</option>').join('') + '</select></div>';
         html += '<div class="field"><label for="erNotes">Notes</label><input id="erNotes" maxlength="200" value="' + esc(r.notes || '') + '"></div>';
         html += '<p class="hint">Losses and gold only count once the raid is won or lost. The map recalculates from every raid, so editing an old one can change who holds what now.</p>';
         html += '<div class="actions"><button class="btn small primary" type="submit">Save changes</button><button class="btn small ghost" type="button" data-action="cancel-edit-raid">Cancel</button></div></form>';
@@ -2486,7 +2515,7 @@ details[open] summary { margin-bottom: 8px; }
     html += '</dl>';
     html += '<div class="actions">';
     if (targetable(t.id)) html += '<button class="btn primary" type="button" data-action="plan-here">Raid ' + esc(t.name) + (multi ? ' as ' + esc(me.name) : '') + '</button>';
-    if (t.id !== me.capital && (d.inf[me.id] || 0) > 0) html += '<button class="btn" type="button" data-action="raid-from">Raid from here</button>';
+    else html += '<p class="hint">Out of reach: ' + esc(outOfReach(t.id)) + '</p>';
     html += '</div>';
     if (!cap) {
       html += '<div class="grid2"><div class="field"><label for="terrOverride">Status on the map</label><select id="terrOverride">';
@@ -2508,20 +2537,27 @@ details[open] summary { margin-bottom: 8px; }
     const p = S.plan;
     const me = K();
     const multi = c.kingdoms.length > 1;
-    const sources = E.raidSources(c, r, me.id);
-    if (p.source !== 'base' && !sources.includes(p.source)) p.source = 'base';
     if (p.target && !targetable(p.target)) p.target = null;
+    const front = E.frontier(c, S.geo, r, me.id);
+    const sources = p.target ? E.sourcesFor(c, S.geo, r, me.id, p.target) : [];
+    if (p.target && !sources.includes(p.source)) p.source = sources[0];
+    if (!p.troops) p.troops = { chieftain: 1, elite: 2, warrior: 8 };
     let html = '<form data-form="plan" class="tab-form" style="display:grid;gap:12px">';
     if (multi) {
       html += '<div class="field"><label for="planBy">Raiding kingdom</label><select id="planBy">' + c.kingdoms.map((k) => '<option value="' + esc(k.id) + '"' + (k.id === me.id ? ' selected' : '') + (canPlay(k.id) ? '' : ' disabled') + '>' + esc(k.name) + (ownerName(k) ? ' (' + esc(ownerName(k)) + ')' : '') + '</option>').join('') + '</select></div>';
     }
-    html += '<p class="hint">Tap a territory on the map to set the target. Dotted outlines mark ' + esc(me.name) + '’s frontier.</p>';
-    html += '<div class="field"><label for="planTarget">Target</label><select id="planTarget" required><option value="">Choose a target…</option>' + territoryOptions(p.target, (t) => targetable(t.id)) + '</select></div>';
-    html += '<div class="field"><label for="planSource">Setting out from</label><select id="planSource"><option value="base"' + (p.source === 'base' ? ' selected' : '') + '>Capital (' + esc(terr(me.capital).name) + ')</option>';
-    for (const id of sources) html += '<option value="' + esc(id) + '"' + (p.source === id ? ' selected' : '') + '>' + esc(terr(id).name) + ' (' + STATUS_LABEL[r.territories.get(id).status].toLowerCase() + ')</option>';
+    html += '<p class="hint">' + esc(me.name) + ' can only raid land that borders land it holds, across a border or a sea lane. Dotted outlines mark the <b>' + front.size + '</b> territor' + (front.size === 1 ? 'y' : 'ies') + ' in reach.</p>';
+    if (!front.size) html += '<div class="callout warn">' + esc(me.name) + ' holds no land, so nothing is in reach.</div>';
+    html += '<div class="field"><label for="planTarget">Target</label><select id="planTarget" required><option value="">Choose a target…</option>' + territoryOptions(p.target, (t) => front.has(t.id)) + '</select></div>';
+    html += '<div class="field"><label for="planSource">Setting out from</label><select id="planSource"' + (p.target ? '' : ' disabled') + '>';
+    if (!p.target) html += '<option value="base">Choose a target first</option>';
+    for (const id of sources) html += '<option value="' + esc(id) + '"' + (p.source === id ? ' selected' : '') + '>' + (id === 'base' ? 'Capital (' + esc(terr(me.capital).name) + ')' : esc(terr(id).name) + ' (' + STATUS_LABEL[r.territories.get(id).status].toLowerCase() + ')') + (E.crossesSea(S.geo, id === 'base' ? me.capital : id, p.target) ? ' · by sea' : '') + '</option>';
     html += '</select></div>';
     html += '<div class="callout" id="routeInfo"></div>';
-    html += '<div class="grid2"><div class="field"><label for="planWarband">Raiders sent</label><input id="planWarband" type="number" min="0" step="1" inputmode="numeric" value="' + p.warband + '"></div><div class="field"><span class="label">Odds (rough guide)</span><div id="oddsInfo" class="callout" style="padding:6px 10px"></div></div></div>';
+    html += '<fieldset class="troops"><legend>Warband · ' + esc(E.factionOf(me).label) + ', prices in gp</legend>';
+    for (const u of E.troopList(c, me.id)) html += '<div class="trow"><label for="tr-' + u.id + '"><b>' + esc(u.label) + '</b><small>' + esc(u.note) + '</small></label><span class="gp">' + u.gp + ' gp</span><input id="tr-' + u.id + '" data-troop="' + u.id + '" type="number" min="0" max="999" step="1" inputmode="numeric" value="' + (p.troops[u.id] || 0) + '" aria-label="' + esc(u.label) + ' sent"><span class="sub" id="trs-' + u.id + '"></span></div>';
+    html += '<div id="costInfo" class="callout"></div></fieldset>';
+    html += '<div class="grid2"><div class="field"><label for="planScenario">Pillage scenario</label><select id="planScenario">' + Object.entries(E.SCENARIOS).map(([v, l]) => '<option value="' + v + '"' + (p.scenario === v ? ' selected' : '') + '>' + esc(l) + '</option>').join('') + '</select><p class="hint" id="scenarioHint"></p></div><div class="field"><span class="label">Odds (rough guide)</span><div id="oddsInfo" class="callout" style="padding:6px 10px"></div></div></div>';
     html += '<div class="field"><span class="label" id="outcomeLabel">Result</span><div class="seg" role="radiogroup" aria-labelledby="outcomeLabel">';
     for (const k of ['ongoing', 'success', 'failure']) html += '<label><input type="radio" name="outcome" value="' + k + '"' + (p.outcome === k ? ' checked' : '') + '><span>' + OUTCOME[k].sym + ' ' + OUTCOME[k].label + '</span></label>';
     html += '</div></div>';
@@ -2545,12 +2581,30 @@ details[open] summary { margin-bottom: 8px; }
     const p = S.plan;
     p.target = $('planTarget').value || null;
     p.source = $('planSource').value || 'base';
-    p.warband = Math.max(0, Math.round(Number($('planWarband').value) || 0));
+    const tr = {};
+    f.querySelectorAll('[data-troop]').forEach((i) => {
+      const n = Math.max(0, Math.min(999, Math.round(Number(i.value) || 0)));
+      if (n) tr[i.dataset.troop] = n;
+    });
+    p.troops = tr;
+    p.warband = Object.values(tr).reduce((a, n) => a + n, 0);
+    p.scenario = $('planScenario').value;
     const o = f.querySelector('input[name="outcome"]:checked');
     p.outcome = o ? o.value : 'ongoing';
     p.losses = Math.max(0, Math.round(Number($('planLosses').value) || 0));
     p.loot = Math.max(0, Math.round(Number($('planLoot').value) || 0));
     p.notes = $('planNotes').value;
+  }
+
+  // What the planned warband is worth and what sending it costs. Seafarers land for free.
+  function planCost() {
+    const c = S.campaign;
+    const p = S.plan;
+    const me = K();
+    const wc = E.warbandCost(c, me.id, p.troops);
+    const sea = !!p.target && E.crossesSea(S.geo, p.source === 'base' ? me.capital : p.source, p.target);
+    const free = sea && !!E.TRAITS[me.trait].freeLandings;
+    return Object.assign(wc, { sea, free, provisions: free ? 0 : wc.provisions });
   }
 
   function updatePlanDerived() {
@@ -2559,34 +2613,47 @@ details[open] summary { margin-bottom: 8px; }
     const r = S.result;
     const me = K();
     const ongoing = p.outcome === 'ongoing';
+    const ks = r.kingdoms.get(me.id);
+    const home = ks.army - ks.inField;
+    const pc = planCost();
     $('planLosses').disabled = ongoing;
     $('planLoot').disabled = ongoing;
-    $('planSubmit').disabled = !p.target || !canPlay(me.id);
     const info = $('routeInfo');
     const odds = $('oddsInfo');
     const warn = [];
     if (!canPlay(me.id)) warn.push(me.name + ' is played by ' + ownerName(me) + '. Join an open kingdom in the Kingdoms tab to play.');
+    for (const u of E.troopList(c, me.id)) {
+      const n = p.troops[u.id] || 0;
+      const cell = $('trs-' + u.id);
+      if (cell) cell.textContent = n ? fmt(n * u.gp) + ' gp' : '';
+    }
+    $('costInfo').innerHTML = '<div class="costgrid"><span><b>' + pc.men + '</b> men</span><span>Warband worth <b>' + fmt(pc.value) + ' gp</b></span><span>Provisions <b>' + fmt(pc.provisions) + ' gold</b>' + (pc.free ? ' (Seafarers land free)' : '') + '</span><span>Treasury ' + fmt(ks.treasury) + ' → <b>' + fmt(ks.treasury - pc.provisions) + '</b></span></div>' + (pc.value ? '<span class="hint">On the table, this is a ' + fmt(pc.value) + ' gp warband. Provisions are ' + E.RULES.provisionPct + '% of its worth, paid when it sets out, win or lose.</span>' : '');
     if (!p.target || !terr(p.target)) {
       info.innerHTML = 'No target yet.';
       odds.textContent = '—';
       $('lootHint').textContent = '';
+      $('scenarioHint').textContent = '';
     } else {
       const t = terr(p.target);
       const d = r.territories.get(t.id);
-      const route = E.findRoute(S.geo, S.geo.index.get(resolveSource(p.source, me.id)), S.geo.index.get(t.id), routeOpts(me.id));
-      const through = route.slice(1, -1).map((i) => c.territories[i].name);
-      const sea = route.some((v, i) => i && S.geo.laneSet.has(Math.min(route[i - 1], v) + '|' + Math.max(route[i - 1], v)));
-      info.innerHTML = '<b>' + esc(t.name) + '</b>: ' + t.goldValue + ' gold, garrison <b>' + d.garrison + '</b>, ' + E.TERRAIN_STATS[t.terrain].label.toLowerCase() + (d.owner ? ', ' + STATUS_LABEL[d.status].toLowerCase() + ' by ' + esc(kOf(d.owner).name) : '') + '.<br>Route: ' + E.routeLeagues(S.geo, route) + ' leagues' + (sea ? ' by sea' : '') + (through.length ? ' through ' + esc(through.join(', ')) : ', a direct border crossing') + '.';
-      const od = E.raidOdds(p.warband, d.garrison, t.terrain);
+      info.innerHTML = '<b>' + esc(t.name) + '</b>: ' + t.goldValue + ' gold, garrison <b>' + d.garrison + '</b>, ' + E.TERRAIN_STATS[t.terrain].label.toLowerCase() + (d.owner ? ', ' + STATUS_LABEL[d.status].toLowerCase() + ' by ' + esc(kOf(d.owner).name) : '') + '.<br>' + (pc.sea ? 'Over the sea from ' : 'Across the border from ') + esc(p.source === 'base' ? terr(me.capital).name : terr(p.source).name) + '.';
+      const od = E.raidOdds(pc.strength, d.garrison, t.terrain);
       odds.innerHTML = '<b>' + od.label + '</b>' + (Number.isFinite(od.ratio) ? ' <span class="num">(' + od.ratio.toFixed(2) + ' to 1)</span>' : '');
       $('lootHint').textContent = ongoing ? 'Men lost and gold taken are recorded when the raid comes back (Log → Record the result).' : 'A good haul here is around ' + Math.round(t.goldValue * 0.3) + '–' + Math.round(t.goldValue * 0.6) + ' gold.';
+      const sug = E.suggestScenario(c, S.geo, r, me.id, p.source, p.target);
+      if (!p.scenarioSet) {
+        p.scenario = sug;
+        $('planScenario').value = sug;
+      }
+      $('scenarioHint').textContent = p.scenario === sug ? (sug === 'landing' ? 'Suggested: the raid comes from the sea.' : sug === 'pitched' ? 'Suggested: the land is defended by a rival kingdom.' : 'Suggested: unclaimed land, there for the taking.') : 'Suggested: ' + E.SCENARIOS[sug] + '.';
       const cap = capitalKingdom(t.id);
       if (cap) warn.push(t.name + ' is the capital of ' + cap.name + '. Take it and their realm loses its heart.');
     }
-    const ks = r.kingdoms.get(me.id);
-    const home = ks.army - ks.inField;
-    if (p.warband > home) warn.push(me.name + ' is sending ' + p.warband + ' but only ' + home + ' men are at home.');
-    if (!ongoing && p.losses > p.warband && p.warband > 0) warn.push('More men lost than were sent.');
+    if (!pc.men) warn.push('Choose who goes: add at least one warrior to the warband.');
+    if (pc.men > home) warn.push(me.name + ' is sending ' + pc.men + ' but only ' + home + ' men are at home.');
+    if (pc.provisions > ks.treasury) warn.push('The treasury holds ' + fmt(ks.treasury) + ' gold; provisions for this warband cost ' + fmt(pc.provisions) + '. Send fewer or better-value men.');
+    if (!ongoing && p.losses > pc.men && pc.men > 0) warn.push('More men lost than were sent.');
+    $('planSubmit').disabled = !p.target || !canPlay(me.id) || !pc.men || pc.men > home || pc.provisions > ks.treasury;
     $('planWarn').innerHTML = warn.map((w) => '<div class="callout warn">' + esc(w) + '</div>').join('');
   }
 
@@ -2609,7 +2676,7 @@ details[open] summary { margin-bottom: 8px; }
     const out = [];
     for (const x of c.raids) {
       const logger = x.playerId && (c.players || []).find((p) => p.id === x.playerId);
-      out.push({ type: 'raid', idx: E.seasonIndex(x.year, x.season), ts: x.timestamp || 0, kingdom: x.by, raid: x, text: [terrName(x.sourceTerritory === 'base' ? 'base' : x.sourceTerritory, x.by), terrName(x.targetTerritory), kn(x.by), x.notes || '', logger ? playerName(logger) : '', OUTCOME[x.outcome].label].join(' ') });
+      out.push({ type: 'raid', idx: E.seasonIndex(x.year, x.season), ts: x.timestamp || 0, kingdom: x.by, raid: x, text: [terrName(x.sourceTerritory === 'base' ? 'base' : x.sourceTerritory, x.by), terrName(x.targetTerritory), kn(x.by), x.notes || '', logger ? playerName(logger) : '', OUTCOME[x.outcome].label, x.scenario ? E.SCENARIOS[x.scenario] : '', x.troops ? E.troopSummary(c, x.by, x.troops) : ''].join(' ') });
     }
     for (const x of c.adjustments) out.push({ type: 'adjust', idx: E.seasonIndex(x.year, x.season), ts: x.timestamp || 0, kingdom: x.kingdom, adj: x, text: [x.note || '', kn(x.kingdom), 'treasury'].join(' ') });
     for (const m of S.result.milestones) out.push({ type: 'milestone', idx: m.idx, ts: m.timestamp || 0, kingdom: m.kingdom || null, ms: m, text: [m.label, kn(m.kingdom)].join(' ') });
@@ -2692,7 +2759,7 @@ details[open] summary { margin-bottom: 8px; }
       const list = groups.get(idx).sort((x, y) => y.ts - x.ts || order[x.type] - order[y.type]);
       const s0 = E.seasonFromIndex(idx);
       const t = raidTotals(list.filter((e) => e.type === 'raid').map((e) => e.raid));
-      const gold = list.reduce((sum, e) => sum + (e.type === 'raid' && e.raid.outcome !== 'ongoing' ? e.raid.lootGained || 0 : 0) + (e.type === 'adjust' ? Number(e.adj.treasury) || 0 : 0), 0);
+      const gold = list.reduce((sum, e) => sum + (e.type === 'raid' ? (e.raid.outcome !== 'ongoing' ? e.raid.lootGained || 0 : 0) - (e.raid.cost || 0) : 0) + (e.type === 'adjust' ? Number(e.adj.treasury) || 0 : 0), 0);
       const bits = [];
       if (t.n) bits.push(t.n + ' raid' + (t.n === 1 ? '' : 's') + (t.won || t.lost ? ' (' + t.won + ' won, ' + t.lost + ' lost)' : ''));
       if (gold) bits.push(signed(gold) + ' gold');
@@ -2727,7 +2794,7 @@ details[open] summary { margin-bottom: 8px; }
   // The filtered log as a spreadsheet: one row per entry, oldest first.
   function logCSV() {
     const c = S.campaign;
-    const rows = [['Year', 'Season', 'Type', 'Kingdom', 'From', 'To', 'Outcome', 'Raiders', 'Men lost', 'Gold', 'Army change', 'Morale change', 'Logged by', 'Notes']];
+    const rows = [['Year', 'Season', 'Type', 'Kingdom', 'From', 'To', 'Outcome', 'Raiders', 'Warband', 'Worth (gp)', 'Provisions', 'Scenario', 'Men lost', 'Gold', 'Army change', 'Morale change', 'Logged by', 'Notes']];
     const kn = (kid) => (kid && kOf(kid) ? kOf(kid).name : '');
     const shown = logEntries().filter(logMatches).sort((a, b) => a.idx - b.idx || a.ts - b.ts);
     for (const e of shown) {
@@ -2737,11 +2804,11 @@ details[open] summary { margin-bottom: 8px; }
         const x = e.raid;
         const done = x.outcome !== 'ongoing';
         const logger = x.playerId && (c.players || []).find((p) => p.id === x.playerId);
-        rows.push([s0.year, season, 'Raid', kn(x.by), terrName(x.sourceTerritory === 'base' ? 'base' : x.sourceTerritory, x.by), terrName(x.targetTerritory), OUTCOME[x.outcome].label, x.warband || '', done ? x.losses || 0 : '', done ? x.lootGained || 0 : '', '', '', logger ? playerName(logger) : '', x.notes || '']);
+        rows.push([s0.year, season, 'Raid', kn(x.by), terrName(x.sourceTerritory === 'base' ? 'base' : x.sourceTerritory, x.by), terrName(x.targetTerritory), OUTCOME[x.outcome].label, x.warband || '', x.troops ? E.troopSummary(c, x.by, x.troops) : '', x.value || '', x.cost ? -x.cost : '', x.scenario ? E.SCENARIOS[x.scenario] : '', done ? x.losses || 0 : '', done ? x.lootGained || 0 : '', '', '', logger ? playerName(logger) : '', x.notes || '']);
       } else if (e.type === 'adjust') {
         const a = e.adj;
-        rows.push([s0.year, season, 'Treasury', kn(a.kingdom), '', '', '', '', '', a.treasury || 0, a.army || 0, a.morale || 0, '', a.note || '']);
-      } else rows.push([s0.year, season, e.ms.auto ? 'Milestone' : 'Note', kn(e.ms.kingdom), '', e.ms.territory ? terrName(e.ms.territory) : '', '', '', '', '', '', '', '', e.ms.label]);
+        rows.push([s0.year, season, 'Treasury', kn(a.kingdom), '', '', '', '', '', '', '', '', '', a.treasury || 0, a.army || 0, a.morale || 0, '', a.note || '']);
+      } else rows.push([s0.year, season, e.ms.auto ? 'Milestone' : 'Note', kn(e.ms.kingdom), '', e.ms.territory ? terrName(e.ms.territory) : '', '', '', '', '', '', '', '', '', '', '', '', e.ms.label]);
     }
     return '﻿' + rows.map((r) => r.map(csvCell).join(',')).join('\r\n') + '\r\n';
   }
@@ -2771,6 +2838,8 @@ details[open] summary { margin-bottom: 8px; }
     html += '<div class="field"><span class="label">Field</span>' + swatchRadios('kField', tincts, a.field) + '</div>';
     html += '<div class="field"><span class="label">Second tincture (for divided fields)</span>' + swatchRadios('kSecond', tincts, a.second) + '</div>';
     html += '<div class="field"><span class="label">Charge colour</span>' + swatchRadios('kChargeColor', tincts, a.chargeColor) + '</div>';
+    const factionNote = (fid) => E.FACTIONS[fid].troops.map((u) => u.label + ' ' + u.gp + ' gp').join(' \u00b7 ');
+    html += '<div class="field"><label for="kFaction">Pillage faction</label><select id="kFaction">' + E.FACTION_IDS.map((v) => '<option value="' + v + '"' + (v === (k.faction || 'vikings') ? ' selected' : '') + '>' + esc(E.FACTIONS[v].label) + '</option>').join('') + '</select><p class="hint" id="kFactionNote">' + esc(factionNote(k.faction || 'vikings')) + '</p></div>';
     html += '<div class="field"><label for="kTrait">Trait</label><select id="kTrait">' + Object.entries(E.TRAITS).map(([v, t]) => '<option value="' + v + '"' + (v === k.trait ? ' selected' : '') + '>' + t.label + '</option>').join('') + '</select><p class="hint" id="kTraitNote">' + esc(E.TRAITS[k.trait].note) + '</p></div>';
     html += '<div class="field"><label for="kCapital">Capital</label><div class="row"><select id="kCapital"' + (capFixed ? ' disabled' : '') + '>' + territoryOptions(k.capital, (t) => !capitalKingdom(t.id) || t.id === k.capital) + '</select><button class="btn" type="button" data-action="pick-capital" data-id="' + esc(k.id) + '"' + (capFixed ? ' disabled' : '') + '>Pick on map</button></div>' + (capFixed ? '<p class="hint">Capitals are fixed once raiding starts; moving one would rewrite the war.</p>' : '') + '</div>';
     html += '<div class="grid3"><div class="field"><label for="kGold">Starting gold</label><input id="kGold" type="number" step="1" value="' + k.start.treasury + '"></div><div class="field"><label for="kArmy">Starting men</label><input id="kArmy" type="number" min="0" step="1" value="' + k.start.army + '"></div><div class="field"><label for="kMorale">Starting morale</label><input id="kMorale" type="number" min="0" max="100" step="1" value="' + k.start.morale + '"></div></div>';
@@ -2795,7 +2864,7 @@ details[open] summary { margin-bottom: 8px; }
       const s = r.kingdoms.get(k.id);
       html += '<li class="kcard' + (k.id === S.active ? ' active' : '') + '" style="--kc:' + E.kingdomColor(k) + '">';
       html += '<div class="khead">' + shieldSVG(k.arms, 48, k.name + ' coat of arms') + '<div><h3>' + esc(k.name) + '</h3><p>' + esc(k.ruler.title + ' ' + k.ruler.name) + (k.motto ? ' · “' + esc(k.motto) + '”' : '') + '</p></div></div>';
-      html += '<div class="chips"><span class="chip"><span class="kchip"><span class="dotk" style="background:' + E.kingdomColor(k) + '"></span>' + esc((E.KINGDOM_COLORS.find((x) => x.id === k.color) || {}).label || '') + '</span></span><span class="chip" title="' + esc(E.TRAITS[k.trait].note) + '">' + esc(E.TRAITS[k.trait].label) + '</span><span class="chip">Capital: ' + esc(terr(k.capital).name) + (s.capitalHeld ? '' : ' (fallen)') + '</span>' + '</div>';
+      html += '<div class="chips"><span class="chip"><span class="kchip"><span class="dotk" style="background:' + E.kingdomColor(k) + '"></span>' + esc((E.KINGDOM_COLORS.find((x) => x.id === k.color) || {}).label || '') + '</span></span><span class="chip">' + esc(E.factionOf(k).label) + '</span><span class="chip" title="' + esc(E.TRAITS[k.trait].note) + '">' + esc(E.TRAITS[k.trait].label) + '</span><span class="chip">Capital: ' + esc(terr(k.capital).name) + (s.capitalHeld ? '' : ' (fallen)') + '</span>' + '</div>';
       html += '<div class="kstats"><span><b>' + fmt(s.treasury) + '</b> gold</span><span><b>' + fmt(s.army) + '</b> men</span><span>morale <b>' + s.morale + '</b></span><span><b>' + Math.round(s.progressPct) + '%</b> conquered</span>' + (s.alive ? '' : '<span>fallen</span>') + '</div>';
       const ps = E.playersOf(c, k.id);
       const mine = myPlayer();
@@ -2874,7 +2943,9 @@ details[open] summary { margin-bottom: 8px; }
     html += '<div class="grid2"><div class="field"><label for="setGoal">Conquest goal (%)</label><input id="setGoal" type="number" min="5" max="100" step="5" value="' + c.goalPct + '"></div></div>';
     html += '<p class="hint">Starting gold, men and morale are set per kingdom in Kingdoms.</p><button class="btn" type="submit">Save settings</button></form>';
 
-    html += '<h3>Recruit, spend or rally · ' + esc(K().name) + '</h3><form data-form="adjust" style="display:grid;gap:10px">';
+    const tl = E.troopList(c, S.active);
+    html += '<h3>Recruit \u00b7 ' + esc(K().name) + '</h3><form data-form="recruit" style="display:grid;gap:10px"><div class="row"><div class="field"><label for="recType">Troop</label><select id="recType">' + tl.map((u) => '<option value="' + u.id + '">' + esc(u.label) + ' \u00b7 ' + u.gp + ' gp</option>').join('') + '</select></div><div class="field" style="flex:0 1 110px"><label for="recN">How many</label><input id="recN" type="number" min="1" max="999" step="1" inputmode="numeric" value="5"></div></div><p class="hint" id="recCost">5 \u00d7 ' + tl[0].gp + ' gp = ' + fmt(5 * tl[0].gp) + ' gold from a treasury of ' + fmt(S.result.kingdoms.get(S.active).treasury) + '.</p><button class="btn" type="submit"' + (canPlay(S.active) ? '' : ' disabled') + '>Recruit</button></form>';
+    html += '<h3>Spend or rally \u00b7 ' + esc(K().name) + '</h3><form data-form="adjust" style="display:grid;gap:10px">';
     html += '<div class="grid3"><div class="field"><label for="adjArmy">Men (+/−)</label><input id="adjArmy" type="number" step="1" value="0"></div><div class="field"><label for="adjGold">Gold (+/−)</label><input id="adjGold" type="number" step="1" value="0"></div><div class="field"><label for="adjMorale">Morale (+/−)</label><input id="adjMorale" type="number" step="1" value="0"></div></div>';
     html += '<div class="field"><label for="adjNote">What happened</label><input id="adjNote" maxlength="200" placeholder="Hired 10 sellswords for 80 gold"></div>';
     html += '<button class="btn" type="submit"' + (canPlay(S.active) ? '' : ' disabled') + '>Record for ' + esc(seasonText(c.year, c.season)) + '</button></form>';
@@ -2892,17 +2963,26 @@ details[open] summary { margin-bottom: 8px; }
     if (S.jsonBox) html += '<div class="field"><label for="jsonOut">' + esc(S.jsonBox.label) + '</label><textarea id="jsonOut" class="json-box" readonly>' + esc(S.jsonBox.text) + '</textarea></div>';
     html += '<p class="hint">Imports always arrive as new campaigns; nothing you have is overwritten.</p>';
 
+    html += '<details' + (S.pricesOpen ? ' open' : '') + ' id="pricesBox"><summary>Troop prices (gp)</summary><p class="hint">Pillage prices each figure in gold pieces by its kit, and each faction pays differently. Prices marked <i>rulebook</i> come from published examples; the rest are estimates. Type in your rulebook\u2019s prices: new raids and recruits use them, logged raids keep what they cost.</p><form data-form="costs" style="display:grid;gap:10px">';
+    for (const fid of E.FACTION_IDS) {
+      const own = (c.costs && c.costs[fid]) || {};
+      html += '<table class="prices"><thead><tr><th colspan="2">' + esc(E.FACTIONS[fid].label) + '</th><th>gp</th></tr></thead><tbody>' + E.FACTIONS[fid].troops.map((u) => '<tr><td>' + esc(u.label) + '<br><span class="src">' + esc(u.note) + '</span></td><td class="src">' + esc(E.TROOP_SRC[u.src]) + '</td><td><input aria-label="' + esc(E.FACTIONS[fid].label + ' ' + u.label) + ' price in gp" data-cost="' + fid + '.' + u.id + '" type="number" min="0" max="9999" step="1" inputmode="numeric" value="' + (Number.isFinite(own[u.id]) ? own[u.id] : u.gp) + '"></td></tr>').join('') + '</tbody></table>';
+    }
+    html += '<div class="actions"><button class="btn" type="submit">Save prices</button><button class="btn ghost" type="button" data-action="reset-costs">Back to the defaults</button></div></form></details>';
+
     html += '<details><summary>How raids change the map</summary><ul class="rules">';
     const R = E.RULES;
+    html += '<li><b>Borders.</b> A kingdom can only raid land that borders land it holds, across a shared border or a sea lane (a raid from the sea is Pillage\u2019s Landing scenario), or land where it already has a foothold.</li>';
+    html += '<li><b>Warbands.</b> Choose who goes from your faction\u2019s troops; the warband\u2019s worth in gp is its points value for the game on the table. Provisions cost ' + R.provisionPct + '% of that worth, paid from the treasury when it sets out, win or lose. Recruiting costs a troop\u2019s full price.</li>';
     html += '<li>A successful raid takes ' + R.successControl + '% control and kills ' + Math.round((1 - R.successGarrisonMult) * 100) + '% of the garrison. Control taken from a rival comes out of their share; at 100% the territory is conquered and its garrison is gone.</li>';
     html += '<li>A failed raid costs the raider ' + Math.abs(R.failureControl) + '% control there, scorches the land and stiffens the garrison by ' + Math.round((R.failureGarrisonMult - 1) * 100) + '% (up to ' + R.garrisonCapMult + '× full strength).</li>';
     html += '<li>Contested: two kingdoms hold a share, a raid is under way there, or the holder’s own last raid there failed.</li>';
     html += '<li>Each season, land pays tribute to whoever holds it (' + Math.round(R.tributeRate * 100) + '% of its gold value when conquered, part of that when claimed). Garrisons recover ' + Math.round(R.regenPerSeason * 100) + '% of full strength and scorch marks fade.</li>';
     html += '<li>Morale: +' + R.moraleSuccess + ' per success, +' + R.moraleConquest + ' per conquest, ' + R.moraleFailure + ' per failure, −8 for losing a territory.</li>';
     html += '<li>Capitals can be raided and taken; they count toward the goal for whoever takes them. The first kingdom to reach the goal wins.</li>';
-    html += '<li>Traits: ' + Object.values(E.TRAITS).filter((t) => t.successControl || t.tributeMult || t.regenMult || t.moraleFloor || t.seaCost || t.startArmy).map((t) => '<b>' + t.label + '</b>: ' + t.note).join(' ') + '</li>';
-    html += '<li>Odds compare raiders sent with the garrison times the terrain’s defence. They are a guide; you record what actually happened.</li>';
-    html += '</ul><p class="hint">These are placeholder rules. Change them in <code>engine.js</code> (RULES and TRAITS) and the whole history recalculates.</p></details>';
+    html += '<li>Traits: ' + Object.values(E.TRAITS).filter((t) => t.successControl || t.tributeMult || t.regenMult || t.moraleFloor || t.seaCost || t.startArmy || t.freeLandings).map((t) => '<b>' + t.label + '</b>: ' + t.note).join(' ') + '</li>';
+    html += '<li>Odds compare the warband\u2019s worth (every ' + R.gpPerMan + ' gp counts as one warrior) with the garrison times the terrain\u2019s defence. They are a guide: the battle is fought on the table with the Pillage rules, and you record what happened.</li>';
+    html += '</ul><p class="hint">The fighting, looting and fire are Pillage\u2019s, played on the table. The map rules above (control, tribute, morale, provisions, traits) are this tracker\u2019s own: Pillage\u2019s published campaign rules aren\u2019t built in. Change them in <code>engine.js</code> (RULES and TRAITS) and the whole history recalculates.</p></details>';
 
     html += '<h3>Danger zone</h3>';
     html += S.confirm === 'campaign' ? '<div class="confirm"><span>Delete “' + esc(c.name) + '” and all its raids' + (store.mode === 'cloud' ? (c.shared ? ' for every player' : ' from every device') : '') + '? Export it first if you might want it back.</span><button class="btn small danger" type="button" data-action="delete-campaign">Delete campaign</button><button class="btn small ghost" type="button" data-action="cancel-confirm">Keep it</button></div>' : '<div class="actions"><button class="btn danger" type="button" data-action="ask-delete-campaign">Delete this campaign</button></div>';
@@ -2972,6 +3052,12 @@ details[open] summary { margin-bottom: 8px; }
     if (!p.target || !terr(p.target)) return toast('Choose a target first.');
     const ongoing = p.outcome === 'ongoing';
     if (!canPlay(S.active)) return toast(K().name + ' belongs to another player.');
+    if (!targetable(p.target)) return toast(outOfReach(p.target));
+    const pc = planCost();
+    const ks = S.result.kingdoms.get(S.active);
+    if (!pc.men) return toast('Add at least one warrior to the warband.');
+    if (pc.men > ks.army - ks.inField) return toast('Only ' + (ks.army - ks.inField) + ' men are at home.');
+    if (pc.provisions > ks.treasury) return toast('The treasury can\u2019t pay ' + fmt(pc.provisions) + ' gold of provisions.');
     const raid = {
       id: E.nextRaidId(),
       by: S.active,
@@ -2982,7 +3068,11 @@ details[open] summary { margin-bottom: 8px; }
       timestamp: Date.now(),
       losses: ongoing ? 0 : p.losses,
       lootGained: ongoing ? 0 : p.loot,
-      warband: p.warband,
+      warband: pc.men,
+      troops: Object.assign({}, p.troops),
+      value: pc.value,
+      cost: pc.provisions,
+      scenario: p.scenario,
       year: c.year,
       season: c.season,
       notes: p.notes.trim().slice(0, 500),
@@ -2994,13 +3084,14 @@ details[open] summary { margin-bottom: 8px; }
     p.notes = '';
     p.losses = 0;
     p.loot = 0;
+    p.scenarioSet = false;
     if (S.uid) raid.authorId = S.uid;
     const who = $('planWho') ? (c.players || []).find((x) => x.id === $('planWho').value) : atTable(S.active);
     if (who) {
       raid.playerId = who.id;
       S.playerFor.set(S.active, who.id);
     }
-    const msg = (c.kingdoms.length > 1 ? K().name + ': ' : '') + (ongoing ? 'raiders set out for ' + name + '.' : OUTCOME[raid.outcome].label + ' at ' + name + (raid.lootGained ? ': ' + signed(raid.lootGained) + ' gold' : '') + (raid.losses ? ', ' + raid.losses + ' men lost' : '') + '.');
+    const msg = (c.kingdoms.length > 1 ? K().name + ': ' : '') + (ongoing ? pc.men + ' raiders set out for ' + name + (pc.provisions ? ' (' + fmt(pc.provisions) + ' gold of provisions)' : '') + '.' : OUTCOME[raid.outcome].label + ' at ' + name + (raid.lootGained ? ': ' + signed(raid.lootGained) + ' gold' : '') + (raid.losses ? ', ' + raid.losses + ' men lost' : '') + '.');
     commit(msg);
   }
 
@@ -3233,6 +3324,7 @@ details[open] summary { margin-bottom: 8px; }
         commit('Map kept as \u201c' + c.name + '\u201d.');
         break;
       case 'plan-here':
+        if (S.plan.target !== S.selected) S.plan.scenarioSet = false;
         S.plan.target = S.selected;
         setTab('raid');
         break;
@@ -3408,6 +3500,12 @@ details[open] summary { margin-bottom: 8px; }
       case 'log-csv':
         exportLogCSV();
         break;
+      case 'reset-costs':
+        c.costs = {};
+        c.settingsAt = Date.now();
+        S.pricesOpen = true;
+        commit('Troop prices are back to the defaults.');
+        break;
       case 'delete-raid':
         c.raids = c.raids.filter((x) => x.id !== rid);
         c.deleted = (c.deleted || []).concat([rid]);
@@ -3496,7 +3594,9 @@ details[open] summary { margin-bottom: 8px; }
       const n = (id, min) => Math.max(min, Math.round(Number($(id).value) || 0));
       const was = r.outcome;
       r.outcome = ['ongoing', 'success', 'failure'].includes($('erOutcome').value) ? $('erOutcome').value : r.outcome;
-      r.warband = n('erWarband', 1);
+      if (!r.troops) r.warband = n('erWarband', 1);
+      if (E.SCENARIOS[$('erScenario').value]) r.scenario = $('erScenario').value;
+      else delete r.scenario;
       r.losses = r.outcome === 'ongoing' ? 0 : Math.min(n('erLosses', 0), r.warband);
       r.lootGained = r.outcome === 'ongoing' ? 0 : n('erLoot', 0);
       r.notes = $('erNotes').value.trim().slice(0, 200);
@@ -3551,6 +3651,7 @@ details[open] summary { margin-bottom: 8px; }
         color: color && !c.kingdoms.some((o) => o.id !== k.id && o.color === color.value) ? color.value : k.color,
         arms: readArmsForm(),
         trait: $('kTrait').value,
+        faction: E.FACTIONS[$('kFaction').value] ? $('kFaction').value : k.faction,
         start: {
           treasury: Math.round(Number($('kGold').value) || 0),
           army: Math.max(0, Math.round(Number($('kArmy').value) || 0)),
@@ -3562,6 +3663,27 @@ details[open] summary { margin-bottom: 8px; }
       S.kEdit = null;
       commit(k.name + ' saved.');
 
+    } else if (kind === 'recruit') {
+      if (!canPlay(S.active)) return toast(K().name + ' belongs to another player.');
+      const u = E.troopList(c, S.active).find((x) => x.id === $('recType').value);
+      const n = Math.max(1, Math.min(999, Math.round(Number($('recN').value) || 0)));
+      const cost = n * u.gp;
+      const ks = S.result.kingdoms.get(S.active);
+      if (cost > ks.treasury) return toast(n + ' ' + u.label + ' cost ' + fmt(cost) + ' gold; the treasury holds ' + fmt(ks.treasury) + '.');
+      c.adjustments.push({ id: E.newId('a'), kingdom: S.active, updatedAt: Date.now(), year: c.year, season: c.season, timestamp: Date.now(), army: n, treasury: -cost, morale: 0, note: 'Recruited ' + E.troopSummary(c, S.active, { [u.id]: n }) + ' (' + u.gp + ' gp each)' });
+      commit(K().name + ' recruits ' + E.troopSummary(c, S.active, { [u.id]: n }) + ' for ' + fmt(cost) + ' gold.');
+    } else if (kind === 'costs') {
+      const costs = {};
+      f.querySelectorAll('[data-cost]').forEach((i) => {
+        const [fid, tid] = i.dataset.cost.split('.');
+        const v = Math.max(0, Math.min(9999, Math.round(Number(i.value))));
+        const def = E.FACTIONS[fid].troops.find((x) => x.id === tid).gp;
+        if (Number.isFinite(v) && v !== def) (costs[fid] = costs[fid] || {})[tid] = v;
+      });
+      c.costs = costs;
+      c.settingsAt = Date.now();
+      S.pricesOpen = true;
+      commit('Troop prices saved. New raids and recruits use them.');
     } else if (kind === 'adjust') {
       const a = { army: Math.round(Number($('adjArmy').value) || 0), treasury: Math.round(Number($('adjGold').value) || 0), morale: Math.round(Number($('adjMorale').value) || 0) };
       if (!a.army && !a.treasury && !a.morale) return toast('Enter a change to men, gold or morale.');
@@ -3590,6 +3712,16 @@ details[open] summary { margin-bottom: 8px; }
     }
     if (t.closest('form[data-form="plan"]')) {
       readPlan();
+      if (t.id === 'planScenario') S.plan.scenarioSet = true;
+      if (t.id === 'planTarget' || t.id === 'planSource') S.plan.scenarioSet = false;
+      if (t.id === 'planTarget') {
+        S.selected = S.plan.target;
+        renderPanel();
+        renderTabs();
+        renderPlanPath();
+        renderSelection();
+        return;
+      }
       updatePlanDerived();
       if (t.id === 'planTarget' || t.id === 'planSource') {
         if (t.id === 'planTarget') S.selected = S.plan.target;
@@ -3598,7 +3730,12 @@ details[open] summary { margin-bottom: 8px; }
       }
     } else if (t.closest('form[data-form="kingdom"]')) {
       if (t.id === 'kTrait') $('kTraitNote').textContent = E.TRAITS[t.value].note;
+      if (t.id === 'kFaction') $('kFactionNote').textContent = E.FACTIONS[t.value].troops.map((u) => u.label + ' ' + u.gp + ' gp').join(' \u00b7 ');
       if (['kDivision', 'kCharge'].includes(t.id) || ['kField', 'kSecond', 'kChargeColor'].includes(t.name)) $('armsPreview').innerHTML = shieldSVG(readArmsForm(), 64, 'Preview of the arms');
+    } else if (t.id === 'recType' || t.id === 'recN') {
+      const u = E.troopList(S.campaign, S.active).find((x) => x.id === $('recType').value);
+      const n = Math.max(0, Math.round(Number($('recN').value) || 0));
+      $('recCost').textContent = n + ' \u00d7 ' + u.gp + ' gp = ' + fmt(n * u.gp) + ' gold from a treasury of ' + fmt(S.result.kingdoms.get(S.active).treasury) + '.';
     } else if (t.id === 'newCount') {
       $('newCountOut').textContent = t.value;
       schedulePreview();
@@ -3760,7 +3897,15 @@ details[open] summary { margin-bottom: 8px; }
       const c = S.campaign;
       const by = r && r.by && c.kingdoms.some((k) => k.id === r.by) ? r.by : S.active;
       if (!r || !terr(r.targetTerritory) || r.targetTerritory === kOf(by).capital || !E.OUTCOMES.includes(r.outcome)) throw new Error('logRaid needs a targetTerritory id (not the raider\u2019s own capital) and an outcome of success, failure or ongoing.');
+      // The border rule applies here too; force: true enters a raid from past history regardless.
+      if (!r.force && !E.canRaid(c, S.geo, S.result, by, r.targetTerritory)) throw new Error(terr(r.targetTerritory).name + ' is out of reach: it doesn\u2019t border land ' + kOf(by).name + ' holds.');
       const raid = { id: E.nextRaidId(), by, updatedAt: Date.now(), sourceTerritory: r.sourceTerritory && terr(r.sourceTerritory) ? r.sourceTerritory : 'base', targetTerritory: r.targetTerritory, outcome: r.outcome, timestamp: Date.now(), losses: Math.max(0, r.losses | 0), lootGained: Math.max(0, r.lootGained | 0), warband: Math.max(0, r.warband | 0), year: c.year, season: c.season, notes: String(r.notes || '').slice(0, 500) };
+      const troops = E.normTroops(r.troops);
+      if (troops) {
+        const wc = E.warbandCost(c, by, troops);
+        Object.assign(raid, { troops, warband: wc.men, value: wc.value, cost: wc.provisions });
+      }
+      if (E.SCENARIOS[r.scenario]) raid.scenario = r.scenario;
       c.raids.push(raid);
       S.lastLogged = { id: raid.id, at: Date.now() };
       commit();
