@@ -111,6 +111,8 @@ h1, h2, h3 { margin: 0; text-wrap: balance; font-weight: 700; }
 .seg button, .seg label { border: 0; background: transparent; padding: 6px 12px; min-height: 34px; cursor: pointer; color: var(--fg-muted); display: inline-flex; align-items: center; gap: 6px; }
 .seg button[aria-pressed="true"], .seg input:checked + span { color: var(--brass-ink); }
 .seg button[aria-pressed="true"] { background: var(--brass); font-weight: 700; }
+.seg.small button { min-height: 32px; padding: 4px 10px; font-size: var(--step--1); color: var(--fg); }
+.seg.small button + button { border-left: 1px solid var(--line); }
 .seg label { position: relative; }
 .seg label input { position: absolute; opacity: 0; pointer-events: none; }
 .seg label:has(input:checked) { background: var(--brass); color: var(--brass-ink); font-weight: 700; }
@@ -144,6 +146,7 @@ h1, h2, h3 { margin: 0; text-wrap: balance; font-weight: 700; }
 .sw.stripes { background: repeating-linear-gradient(45deg, var(--seal) 0 3px, #cdb99a 3px 6px); }
 .sw.line { height: 4px; border: 0; border-radius: 2px; }
 .sw.river { height: 4px; border: 0; background: #3f7186; }
+.sw.realmb { height: 0; border-top: 2.5px solid var(--map-ink); background: none; border-radius: 0; align-self: center; }
 .sw.lane { height: 0; border: 0; border-top: 2px dashed #6f9aa6; border-radius: 0; }
 .preview { display: block; width: 100%; aspect-ratio: 1000 / 700; border-radius: 4px; border: 1px solid var(--line); background: var(--sea); }
 .preview svg { display: block; width: 100%; height: 100%; }
@@ -158,6 +161,9 @@ h1, h2, h3 { margin: 0; text-wrap: balance; font-weight: 700; }
 .border, .coastline, .raid-glow, .raid-line, .select-ring, .target-ring, .frontier, .route-line, .plan-line, .owned-ring { vector-effect: non-scaling-stroke; }
 .border { fill: none; stroke: var(--map-ink); stroke-width: 0.8; stroke-opacity: 0.6; stroke-linejoin: round; }
 .coastline { fill: none; stroke: var(--map-ink); stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+.border.realm { stroke-width: 2.2; stroke-opacity: 0.85; stroke-dasharray: none; }
+.realm-label { font-family: var(--font-map); font-style: italic; fill: #3a2817; fill-opacity: 0.42; text-anchor: middle; pointer-events: none; letter-spacing: 0.22em; text-transform: uppercase; }
+.lod-hide { display: none; }
 .glyph { fill: var(--glyph-fill, #9fb27a); stroke: var(--map-ink); stroke-width: 0.9; stroke-linejoin: round; stroke-linecap: round; pointer-events: none; }
 .glyph.g-mountains { fill: var(--mtn-fill, #a89f91); }
 .glyph.g-hills { fill: var(--hill-fill, #c4b07a); }
@@ -447,7 +453,10 @@ details[open] summary { margin-bottom: 8px; }
             <label><input type="checkbox" id="optRoutes"> Trade routes</label>
             <label><input type="checkbox" id="optLabels" checked> Names</label>
           </div>
-          <button class="btn small" type="button" data-action="random-map" title="Roll a new random map as a new campaign">&#9861; New random map</button>
+          <div class="seg small" role="group" aria-label="New map">
+            <button type="button" data-action="random-map" title="Roll a new random map as a new campaign">&#9861; New random map</button>
+            <button type="button" data-action="europe-map" title="Start a new campaign on the real map of Europe around 1000 AD">&#127757; Real Europe</button>
+          </div>
         </div>
       </div>
       <div class="map-shell">
@@ -767,11 +776,21 @@ details[open] summary { margin-bottom: 8px; }
     if (scale) n.dataset.s = scale.toFixed(2);
     if (flip) n.dataset.flip = '1';
     n.setAttribute('transform', csTransform(n, S.csf || { label: 1, glyph: 1 }));
+    lod(n, S.csf || csFactors());
     return n;
+  }
+  // Level of detail: crowded names show once their territory is wide enough on screen;
+  // realm names show only while zoomed out.
+  function lod(n, f) {
+    if (n.dataset.room) n.classList.toggle('lod-hide', Number(n.dataset.room) < Number(n.dataset.w) * f.label);
+    else if (n.dataset.maxz) n.classList.toggle('lod-hide', S.view.k >= Number(n.dataset.maxz));
   }
   function counterScale() {
     const f = (S.csf = csFactors());
-    for (const n of viewport.querySelectorAll('.cs')) n.setAttribute('transform', csTransform(n, f));
+    for (const n of viewport.querySelectorAll('.cs')) {
+      n.setAttribute('transform', csTransform(n, f));
+      lod(n, f);
+    }
   }
   function terr(id) {
     return S.campaign.territories.find((t) => t.id === id);
@@ -1275,10 +1294,13 @@ details[open] summary { margin-bottom: 8px; }
       const p = el('path', { class: 'cell', d: s.d, 'fill-rule': 'evenodd', 'data-id': s.id });
       cells.appendChild(p);
     });
-    borders.appendChild(el('path', { class: 'border', d: geo.borders.map((b) => E.pathData(b.points, false)).join('') }));
+    // Borders between realms (real map) or provinces (generated) are drawn heavier: the states over the territories.
+    const realmEdge = (b) => b.b < 0 || (geo.regionOf && geo.regionOf[b.a] !== geo.regionOf[b.b]);
+    borders.appendChild(el('path', { class: 'border', d: geo.borders.filter((b) => !realmEdge(b)).map((b) => E.pathData(b.points, false)).join('') }));
+    borders.appendChild(el('path', { class: 'border realm', d: geo.borders.filter(realmEdge).map((b) => E.pathData(b.points, false)).join('') }));
     borders.appendChild(el('path', { class: 'coastline', d: geo.coast.map((c) => E.pathData(c, false)).join('') }));
     S.sea = seaFeatures();
-    S.lakes = placeLakes();
+    S.lakes = S.campaign.map.kind === 'europe' ? [] : placeLakes(); // no invented lakes on the real map
     placeGlyphs();
     drawSea();
     drawDecor();
@@ -1321,7 +1343,12 @@ details[open] summary { margin-bottom: 8px; }
   }
 
   function labelSize(shape) {
-    return Math.max(10.5, Math.min(15, Math.sqrt(shape.area) / 9.5));
+    return S.campaign.territories.length > 30 ? Math.max(8.5, Math.min(12, Math.sqrt(shape.area) / 8)) : Math.max(10.5, Math.min(15, Math.sqrt(shape.area) / 9.5));
+  }
+  function regionName(id) {
+    const g = S.geo;
+    const i = g.index.get(id);
+    return g.regions && i != null && g.regionOf[i] >= 0 ? g.regions[g.regionOf[i]].name : '';
   }
 
   function placeGlyphs() {
@@ -1860,10 +1887,28 @@ details[open] summary { margin-bottom: 8px; }
     const g = $('layerLabels');
     g.textContent = '';
     if (!S.showLabels) return;
+    // Realm (or province) names, large and faint, while the whole map is in view.
+    for (const rg of S.geo.regions || []) {
+      if (rg.members.length < 2 && S.geo.regionKind !== 'realm') continue;
+      const holder = el('g', { 'data-maxz': S.geo.regionKind === 'realm' ? 2.2 : 1.6 });
+      const tx = el('text', { class: 'realm-label', 'font-size': S.geo.regionKind === 'realm' ? 15 : 13 });
+      tx.textContent = rg.name;
+      holder.appendChild(tx);
+      // A realm across the sea (Norway and Orkney) has its middle in the water: use its nearest land instead.
+      let [x, y] = rg.centroid;
+      if (!rg.members.some((i) => E.pointInShape([x, y], S.geo.shapes[i]))) {
+        const near = rg.members.slice().sort((a, b) => Math.hypot(S.geo.shapes[a].centroid[0] - x, S.geo.shapes[a].centroid[1] - y) - Math.hypot(S.geo.shapes[b].centroid[0] - x, S.geo.shapes[b].centroid[1] - y))[0];
+        [x, y] = S.geo.shapes[near].centroid;
+        y += 16;
+      }
+      g.appendChild(csNode(holder, x, y + 4));
+    }
+    const crowded = S.campaign.territories.length > 30;
     S.campaign.territories.forEach((t, i) => {
       const sh = S.geo.shapes[i];
       const fs = labelSize(sh);
-      const holder = el('g');
+      // On crowded maps a name shows once its territory is wide enough for it on screen.
+      const holder = el('g', crowded && !capitalKingdom(t.id) ? { 'data-w': (fs * 0.56 * t.name.length).toFixed(1), 'data-room': Math.sqrt(sh.area).toFixed(1) } : {});
       const tx = el('text', { class: 'label', 'font-size': fs.toFixed(1) });
       tx.textContent = t.name;
       holder.appendChild(tx);
@@ -1918,9 +1963,10 @@ details[open] summary { margin-bottom: 8px; }
       html += '</ul>';
     }
     html += '</div>';
-    if (S.geo.rivers.length || S.geo.seaLanes.length) {
+    if (S.geo.rivers.length || S.geo.seaLanes.length || S.geo.regions) {
       html += '<div class="group"><h4>Map</h4><ul>';
       if (S.geo.rivers.length) html += item('<span class="sw river"></span>', 'River');
+      if (S.geo.regions) html += item('<span class="sw realmb"></span>', S.geo.regionKind === 'realm' ? 'Realm border (c. 1000)' : 'Province border');
       if (S.geo.seaLanes.length) html += item('<span class="sw lane"></span>', 'Sea lane (raids can cross)');
       if (S.mode === 'political' && $('layerRoads').childNodes.length) html += item('<span class="sw lane" style="border-top-color:#5d4630"></span>', 'Road (land one kingdom holds)');
       html += '</ul></div>';
@@ -2141,7 +2187,7 @@ details[open] summary { margin-bottom: 8px; }
     const t = terr(id);
     const d = S.result.territories.get(id);
     const feat = E.FEATURES[E.territoryFeature(S.campaign, t, S.geo.shapes[S.geo.index.get(id)].coastLength)];
-    tip.innerHTML = '<strong>' + esc(t.name) + '</strong>' + (feat ? ' <span class="muted">' + feat.label.toLowerCase() + '</span>' : '') + '<br>' + (d.isCapital ? 'Capital of ' + esc(kOf(d.capitalOf).name) + (d.owner && d.owner !== d.capitalOf ? ', held by ' + esc(kOf(d.owner).name) : '') : STATUS_LABEL[d.status] + (d.owner ? ' by ' + esc(kOf(d.owner).name) : '') + (d.control > 0 && d.control < 100 ? ' · ' + d.control + '%' : '')) + '<br><span class="num">' + t.goldValue + ' gold · garrison ' + d.garrison + '</span>';
+    tip.innerHTML = '<strong>' + esc(t.name) + '</strong>' + (feat ? ' <span class="muted">' + feat.label.toLowerCase() + '</span>' : '') + (regionName(id) ? '<br><span class="muted">' + esc(regionName(id)) + '</span>' : '') + '<br>' + (d.isCapital ? 'Capital of ' + esc(kOf(d.capitalOf).name) + (d.owner && d.owner !== d.capitalOf ? ', held by ' + esc(kOf(d.owner).name) : '') : STATUS_LABEL[d.status] + (d.owner ? ' by ' + esc(kOf(d.owner).name) : '') + (d.control > 0 && d.control < 100 ? ' · ' + d.control + '%' : '')) + '<br><span class="num">' + t.goldValue + ' gold · garrison ' + d.garrison + '</span>';
     tip.hidden = false;
     const fr = $('mapFrame').getBoundingClientRect();
     let x = clientX - fr.left + 14;
@@ -2223,7 +2269,8 @@ details[open] summary { margin-bottom: 8px; }
     $('freshBanner').hidden = !fresh;
     if (fresh) {
       const lands = S.geo.landCount;
-      $('freshText').innerHTML = '<b>A fresh random map:</b> ' + esc(E.SHAPE_LABEL[E.mapShape(c.map)].toLowerCase()) + (lands > 1 ? ' with ' + lands + ' landmasses' : '') + ', ' + c.territories.length + ' territories, ' + S.geo.rivers.length + ' river' + (S.geo.rivers.length === 1 ? '' : 's') + (multi ? ', ' + c.kingdoms.length + ' kingdoms' : ', home at ' + esc(terr(k.capital).name)) + '. It is kept once you log a raid or press Keep.';
+      if (c.map.kind === 'europe') $('freshText').innerHTML = '<b>Europe, around 1000 AD:</b> ' + c.territories.length + ' territories in ' + S.geo.regions.length + ' realms, ' + c.kingdoms.map((x) => esc(x.name) + ' at ' + esc(terr(x.capital).name)).join(', ') + '. It is kept once you log a raid or press Keep.';
+      else $('freshText').innerHTML = '<b>A fresh random map:</b> ' + esc(E.SHAPE_LABEL[E.mapShape(c.map)].toLowerCase()) + (lands > 1 ? ' with ' + lands + ' landmasses' : '') + ', ' + c.territories.length + ' territories, ' + S.geo.rivers.length + ' river' + (S.geo.rivers.length === 1 ? '' : 's') + (multi ? ', ' + c.kingdoms.length + ' kingdoms' : ', home at ' + esc(terr(k.capital).name)) + '. It is kept once you log a raid or press Keep.';
     }
   }
 
@@ -2409,12 +2456,17 @@ details[open] summary { margin-bottom: 8px; }
   }
 
   function territoryOptions(selected, filter) {
-    return S.campaign.territories
-      .slice()
-      .sort((a, b) => a.name.localeCompare(b.name))
-      .filter(filter || (() => true))
-      .map((t) => '<option value="' + esc(t.id) + '"' + (t.id === selected ? ' selected' : '') + '>' + esc(t.name) + (capitalKingdom(t.id) ? ' (capital of ' + esc(capitalKingdom(t.id).name) + ')' : '') + '</option>')
-      .join('');
+    const opt = (t) => '<option value="' + esc(t.id) + '"' + (t.id === selected ? ' selected' : '') + '>' + esc(t.name) + (capitalKingdom(t.id) ? ' (capital of ' + esc(capitalKingdom(t.id).name) + ')' : '') + '</option>';
+    const list = S.campaign.territories.slice().sort((a, b) => a.name.localeCompare(b.name)).filter(filter || (() => true));
+    if (!S.geo.regions || S.campaign.territories.length <= 30) return list.map(opt).join('');
+    // Long lists (the real map) are grouped by realm.
+    const groups = new Map();
+    for (const t of list) {
+      const r = regionName(t.id);
+      if (!groups.has(r)) groups.set(r, []);
+      groups.get(r).push(t);
+    }
+    return [...groups.keys()].sort().map((r) => '<optgroup label="' + esc(r) + '">' + groups.get(r).map(opt).join('') + '</optgroup>').join('');
   }
 
   function raidLine(r, opts) {
@@ -2497,7 +2549,7 @@ details[open] summary { margin-bottom: 8px; }
     })();
     const feat = E.FEATURES[E.territoryFeature(c, t, S.geo.shapes[S.geo.index.get(t.id)].coastLength)];
     let html = pick;
-    html += '<div class="terr-head"><h2>' + esc(t.name) + '</h2><div class="chips"><span class="pill ' + d.status + '">' + STATUS_LABEL[d.status] + '</span>' + (d.owner ? '<span class="chip">' + kChip(kOf(d.owner), 13) + '</span>' : '') + '<span class="chip">' + ts.label + '</span>' + (feat ? '<span class="chip">' + feat.label + '</span>' : '') + (t.override ? '<span class="chip">Set by hand</span>' : '') + '</div>';
+    html += '<div class="terr-head"><h2>' + esc(t.name) + '</h2><div class="chips"><span class="pill ' + d.status + '">' + STATUS_LABEL[d.status] + '</span>' + (d.owner ? '<span class="chip">' + kChip(kOf(d.owner), 13) + '</span>' : '') + '<span class="chip">' + ts.label + '</span>' + (regionName(t.id) ? '<span class="chip" title="' + (S.geo.regionKind === 'realm' ? 'Realm, c. 1000' : 'Province') + '">' + esc(regionName(t.id)) + '</span>' : '') + (feat ? '<span class="chip">' + feat.label + '</span>' : '') + (t.override ? '<span class="chip">Set by hand</span>' : '') + '</div>';
     html += cap ? '<p class="hint">Capital of ' + esc(cap.name) + ', seat of ' + esc(cap.ruler.title + ' ' + cap.ruler.name) + '.' + (d.owner && d.owner !== cap.id ? ' Now held by ' + esc(kOf(d.owner).name) + '.' : '') + '</p>' : feat ? '<p class="hint">' + feat.note + '</p>' : '';
     html += '</div>';
     const holders = Object.keys(d.inf).filter((k) => d.inf[k] > 0).sort((a, b) => d.inf[b] - d.inf[a]);
@@ -2918,14 +2970,15 @@ details[open] summary { margin-bottom: 8px; }
 
     html += '<h3>New campaign</h3><form data-form="new" style="display:grid;gap:10px">';
     html += '<div class="preview" id="newPreview" aria-hidden="true"></div><p class="hint" id="newPreviewCap"></p>';
-    html += '<div class="grid2"><div class="field"><label for="newShape">Coastline</label><select id="newShape"><option value="random">Random (from the seed)</option>' + E.SHAPES.map((k) => '<option value="' + k + '">' + E.SHAPE_LABEL[k] + '</option>').join('') + '</select></div>';
+    html += '<div class="field"><span class="label" id="newWorldLabel">Map</span><div class="seg" role="radiogroup" aria-labelledby="newWorldLabel"><label><input type="radio" name="newWorld" value="generated"' + (S.newWorld === 'europe' ? '' : ' checked') + '><span>Generated</span></label><label><input type="radio" name="newWorld" value="europe"' + (S.newWorld === 'europe' ? ' checked' : '') + '><span>Real Europe, c. 1000</span></label></div><p class="hint" id="newWorldHint">' + (S.newWorld === 'europe' ? europeHint() : 'A new coastline and territories from the seed and the settings below.') + '</p></div>';
+    html += '<div class="grid2"><div class="field gen-only"' + (S.newWorld === 'europe' ? ' hidden' : '') + '><label for="newShape">Coastline</label><select id="newShape"><option value="random">Random (from the seed)</option>' + E.SHAPES.map((k) => '<option value="' + k + '">' + E.SHAPE_LABEL[k] + '</option>').join('') + '</select></div>';
     html += '<div class="field"><label for="newKingdoms">Kingdoms</label><select id="newKingdoms">' + [1, 2, 3, 4].map((n) => '<option value="' + n + '"' + (n === c.kingdoms.length ? ' selected' : '') + '>' + n + (n === 1 ? ' (solo)' : ' players') + '</option>').join('') + '</select></div></div>';
     html += '<div class="field"><label for="newPlayers">Players (optional, one name per line)</label><textarea id="newPlayers" rows="3" placeholder="Ragnar\nLisa\nTom"></textarea><p class="hint">Names are spread over the kingdoms in turn; more players than kingdoms makes teams. Up to ' + E.MAX_PLAYERS + '.</p></div>';
-    html += '<div class="field"><label for="newCount">Territories: <output id="newCountOut">20</output></label><input id="newCount" type="range" min="' + E.MIN_TERRITORIES + '" max="' + E.MAX_TERRITORIES + '" value="20"></div>';
-    html += '<details><summary>Land, borders and riches</summary><div class="gen-grid">' + GEN_FIELDS.map(([key, label, opts]) => '<div class="field"><label for="gen-' + key + '">' + label + '</label><select id="gen-' + key + '">' + opts.map((o, i) => '<option value="' + i + '"' + (i === 1 ? ' selected' : '') + '>' + o + '</option>').join('') + '</select></div>').join('') + '</div><div class="actions" style="margin-top:8px"><button class="btn small" type="button" data-action="roll-gen">↻ Surprise me</button></div></details>';
+    html += '<div class="field gen-only"' + (S.newWorld === 'europe' ? ' hidden' : '') + '><label for="newCount">Territories: <output id="newCountOut">20</output></label><input id="newCount" type="range" min="' + E.MIN_TERRITORIES + '" max="' + E.MAX_TERRITORIES + '" value="20"></div>';
+    html += '<details class="gen-only"' + (S.newWorld === 'europe' ? ' hidden' : '') + '><summary>Land, borders and riches</summary><div class="gen-grid">' + GEN_FIELDS.map(([key, label, opts]) => '<div class="field"><label for="gen-' + key + '">' + label + '</label><select id="gen-' + key + '">' + opts.map((o, i) => '<option value="' + i + '"' + (i === 1 ? ' selected' : '') + '>' + o + '</option>').join('') + '</select></div>').join('') + '</div><div class="actions" style="margin-top:8px"><button class="btn small" type="button" data-action="roll-gen">↻ Surprise me</button></div></details>';
     html += '<div class="field"><label for="newSeed">Map seed</label><div class="row"><input id="newSeed" value="' + esc(E.randomSeed()) + '" maxlength="40"><button class="btn" type="button" data-action="reroll">↻ Reroll</button></div></div>';
     html += '<div class="field"><label for="newName">Name</label><input id="newName" maxlength="80"></div>';
-    html += '<p class="hint">The same seed and settings always draw the same map. Kingdoms get random names, arms and traits; customise them afterwards in Kingdoms.</p><button class="btn primary" type="submit">Create campaign</button></form>';
+    html += '<p class="hint">The same seed and settings always draw the same map. On a generated map kingdoms get random names, arms and traits; on the real map they start as the historical realms. Customise them afterwards in Kingdoms.</p><button class="btn primary" type="submit">Create campaign</button></form>';
 
     html += '<h3>Play together</h3>';
     html += '<p class="hint">' + c.kingdoms.map((k) => esc(k.name) + ': ' + (ownerName(k) ? esc(ownerName(k)) : 'no players named')).join(' \u00b7 ') + '</p>';
@@ -2998,13 +3051,18 @@ details[open] summary { margin-bottom: 8px; }
   }
 
   // The map the New campaign form would create, drawn small with its terrain, rivers and sea lanes.
+  function europeHint() {
+    return E.EUROPE_TERRITORIES.length + ' territories in ' + Object.keys(E.EUROPE_REALMS).length + ' realms, from Ireland to Kiev, on the real coastline. Kingdoms start as Denmark (Vikings), England (Anglo-Saxons), Normandy (Normans) and Munster (Irish) at their historical seats; the seed varies gold and garrisons.';
+  }
+
   function renderPreview() {
     const box = $('newPreview');
     if (!box) return;
     const shape = $('newShape').value;
     const count = Number($('newCount').value);
     const kn = Number(($('newKingdoms') || {}).value || 1);
-    const c = E.newCampaign({ seed: $('newSeed').value.trim() || 'x', count, shape: shape === 'random' ? undefined : shape, kingdoms: kn, gen: readGen(), now: 1 });
+    const europe = S.newWorld === 'europe';
+    const c = E.newCampaign({ world: europe ? 'europe' : undefined, seed: $('newSeed').value.trim() || 'x', count, shape: shape === 'random' ? undefined : shape, kingdoms: kn, gen: readGen(), now: 1 });
     const g = E.buildGeometry(c);
     const pal = SEASON_PALETTE.summer;
     let out = '<svg viewBox="0 0 1000 700" preserveAspectRatio="xMidYMid meet"><rect width="1000" height="700" fill="' + pal.sea + '"/>';
@@ -3013,6 +3071,7 @@ details[open] summary { margin-bottom: 8px; }
     g.shapes.forEach((sh, i) => (out += '<path d="' + sh.d + '" fill-rule="evenodd" fill="' + pal[c.territories[i].terrain] + '"/>'));
     if (g.islets.length) out += '<path d="' + g.islets.map((r) => E.pathData(r, true)).join('') + '" fill="' + pal.coast + '"/>';
     out += '<path d="' + g.borders.map((b) => E.pathData(b.points, false)).join('') + '" fill="none" stroke="#3a2817" stroke-opacity="0.5" stroke-width="1.5"/>';
+    out += '<path d="' + g.borders.filter((b) => b.b < 0 || g.regionOf[b.a] !== g.regionOf[b.b]).map((b) => E.pathData(b.points, false)).join('') + '" fill="none" stroke="#3a2817" stroke-opacity="0.8" stroke-width="3.5"/>';
     out += '<path d="' + g.rivers.map((r) => E.pathData(r.points, false)).join('') + '" fill="none" stroke="#3f7186" stroke-width="4" stroke-linecap="round"/>';
     for (const ln of g.seaLanes) {
       const a = g.shapes[ln.a].centroid;
@@ -3026,7 +3085,12 @@ details[open] summary { margin-bottom: 8px; }
     }
     out += '</svg>';
     box.innerHTML = out;
-    $('newPreviewCap').textContent = E.SHAPE_LABEL[c.map.shape] + (g.landCount > 1 ? ' of ' + g.landCount + ' islands' : '') + ' · ' + count + ' territories · ' + g.rivers.length + ' river' + (g.rivers.length === 1 ? '' : 's') + ' \u00b7 ' + (kn > 1 ? 'dots are the capitals' : 'the dot is home') + '. Suggested name: ' + c.name;
+    if (europe) {
+      $('newPreviewCap').textContent = 'Europe, c. 1000 \u00b7 ' + c.territories.length + ' territories in ' + g.regions.length + ' realms \u00b7 ' + g.seaLanes.length + ' sea roads \u00b7 ' + c.kingdoms.map((k) => k.name).join(', ') + '.';
+      $('newName').placeholder = c.name;
+      return;
+    }
+    $('newPreviewCap').textContent = E.SHAPE_LABEL[c.map.shape] + (g.landCount > 1 ? ' of ' + g.landCount + ' islands' : '') + ' · ' + count + ' territories in ' + g.regions.length + ' provinces · ' + g.rivers.length + ' river' + (g.rivers.length === 1 ? '' : 's') + ' \u00b7 ' + (kn > 1 ? 'dots are the capitals' : 'the dot is home') + '. Suggested name: ' + c.name;
     $('newName').placeholder = c.name;
   }
 
@@ -3268,6 +3332,17 @@ details[open] summary { margin-bottom: 8px; }
     toast('Rolled \u201c' + nc.name + '\u201d: ' + E.SHAPE_LABEL[nc.map.shape].toLowerCase() + ', ' + nc.territories.length + ' territories.');
   }
 
+  // A fresh campaign on the real map, kept like a random map once something is logged.
+  function europeMap() {
+    const prev = S.campaign;
+    const nc = E.newCampaign({ world: 'europe', seed: E.randomSeed(), kingdoms: prev ? prev.kingdoms.length : 1 });
+    nc.saved = false;
+    nc.fresh = true;
+    if (prev && prev.fresh && !prev.saved) S.campaigns.delete(prev.id);
+    setCampaign(nc, false, true);
+    toast('Europe, c. 1000: ' + nc.territories.length + ' territories in ' + S.geo.regions.length + ' realms. ' + nc.kingdoms.map((k) => k.name).join(', ') + '.');
+  }
+
   async function shareCampaign() {
     const c = S.campaign;
     if (store.mode !== 'cloud' || c.shared) return;
@@ -3316,6 +3391,9 @@ details[open] summary { margin-bottom: 8px; }
     switch (act) {
       case 'select':
         onMapTap(a.dataset.id);
+        break;
+      case 'europe-map':
+        europeMap();
         break;
       case 'random-map':
         randomMap();
@@ -3614,7 +3692,7 @@ details[open] summary { margin-bottom: 8px; }
       commit('Renamed to ' + v + '.');
     } else if (kind === 'new') {
       const shape = $('newShape').value;
-      const nc = E.newCampaign({ name: $('newName').value.trim().slice(0, 80) || undefined, seed: $('newSeed').value.trim() || E.randomSeed(), count: Number($('newCount').value), shape: shape === 'random' ? undefined : shape, kingdoms: Number($('newKingdoms').value), gen: readGen(), players: $('newPlayers').value.split('\n') });
+      const nc = E.newCampaign({ world: S.newWorld === 'europe' ? 'europe' : undefined, name: $('newName').value.trim().slice(0, 80) || undefined, seed: $('newSeed').value.trim() || E.randomSeed(), count: Number($('newCount').value), shape: shape === 'random' ? undefined : shape, kingdoms: Number($('newKingdoms').value), gen: readGen(), players: $('newPlayers').value.split('\n') });
       nc.saved = false;
       setCampaign(nc, false, true);
       persist(nc);
@@ -3736,6 +3814,11 @@ details[open] summary { margin-bottom: 8px; }
       const u = E.troopList(S.campaign, S.active).find((x) => x.id === $('recType').value);
       const n = Math.max(0, Math.round(Number($('recN').value) || 0));
       $('recCost').textContent = n + ' \u00d7 ' + u.gp + ' gp = ' + fmt(n * u.gp) + ' gold from a treasury of ' + fmt(S.result.kingdoms.get(S.active).treasury) + '.';
+    } else if (t.name === 'newWorld') {
+      S.newWorld = t.value;
+      document.querySelectorAll('.gen-only').forEach((n) => (n.hidden = S.newWorld === 'europe'));
+      $('newWorldHint').textContent = S.newWorld === 'europe' ? europeHint() : 'A new coastline and territories from the seed and the settings below.';
+      schedulePreview();
     } else if (t.id === 'newCount') {
       $('newCountOut').textContent = t.value;
       schedulePreview();

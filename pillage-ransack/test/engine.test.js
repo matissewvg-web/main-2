@@ -59,9 +59,9 @@ test('maps have the requested number of connected, non-empty territories', () =>
   }
 });
 
-test('territory count is clamped to 15-25', () => {
+test('territory count is clamped to 15-40', () => {
   assert.equal(E.newCampaign({ seed: 'x', count: 3, now: T0 }).territories.length, 15);
-  assert.equal(E.newCampaign({ seed: 'x', count: 99, now: T0 }).territories.length, 25);
+  assert.equal(E.newCampaign({ seed: 'x', count: 99, now: T0 }).territories.length, 40);
 });
 
 test('the same seed draws the same map', () => {
@@ -723,4 +723,49 @@ test('saves from before factions load as Vikings with no provisions charged', ()
   const c = E.parseImport(v1).campaigns[0];
   assert.ok(c.kingdoms.every((k) => k.faction === 'vikings'));
   assert.ok(c.raids.every((r) => !r.cost));
+});
+
+test('the real map of Europe: realms, sea roads, historical seats, and it survives export', () => {
+  const c = E.newCampaign({ world: 'europe', seed: 'ad1000', kingdoms: 4, now: T0 });
+  assert.equal(c.map.kind, 'europe');
+  assert.equal(c.territories.length, E.EUROPE_TERRITORIES.length);
+  const geo = E.buildGeometry(c);
+  assert.equal(geo.regionKind, 'realm');
+  assert.equal(geo.regions.length, Object.keys(E.EUROPE_REALMS).length);
+  // Every territory has land, a neighbour (by border or sea road) and its realm.
+  geo.shapes.forEach((sh, i) => {
+    assert.ok(sh.area > 300, c.territories[i].name + ' has land');
+    assert.ok(geo.adjacency[i].size > 0, c.territories[i].name + ' has a neighbour');
+    assert.equal(geo.regions[geo.regionOf[i]].name, c.territories[i].realm);
+  });
+  const name = (i) => c.territories[i].name;
+  const lanes = geo.seaLanes.map((l) => [name(l.a), name(l.b)].sort().join('|'));
+  assert.ok(lanes.includes(['Northumbria', 'Vestlandet'].sort().join('|')), 'Lindisfarne is a sea road');
+  assert.deepEqual(c.kingdoms.map((k) => [k.faction, c.territories.find((t) => t.id === k.capital).name]), [['vikings', 'Jutland'], ['saxons', 'Wessex'], ['normans', 'Normandy'], ['irish', 'Munster']]);
+  // Wessex and Mercia share a border; Kent and Flanders are a crossing; Wessex can't reach Kiev.
+  const idx = (n) => c.territories.findIndex((t) => t.name === n);
+  assert.ok(geo.adjacency[idx('Wessex')].has(idx('Mercia')));
+  assert.ok(geo.laneSet.has(Math.min(idx('Kent'), idx('Flanders')) + '|' + Math.max(idx('Kent'), idx('Flanders'))));
+  const r = E.replay(c);
+  assert.equal(E.canRaid(c, geo, r, c.kingdoms[1].id, c.territories[idx('Kiev')].id), false);
+  const back = E.parseImport(E.exportJSON([c])).campaigns[0];
+  assert.equal(back.map.kind, 'europe');
+  assert.equal(back.territories[idx('Kent')].realm, 'Kingdom of England');
+  assert.equal(E.buildGeometry(back).shapes.length, c.territories.length);
+});
+
+test('generated maps group territories into connected provinces, and allow up to 40 territories', () => {
+  for (const shape of E.SHAPES) {
+    const c = E.newCampaign({ seed: 'prov-' + shape, count: 40, shape, kingdoms: 2, now: T0 });
+    assert.equal(c.territories.length, 40, shape);
+    const geo = E.buildGeometry(c);
+    assert.equal(geo.regionKind, 'province');
+    assert.ok(geo.regions.length >= 3 && geo.regions.length <= 10);
+    const seen = new Set();
+    for (const rg of geo.regions) {
+      assert.ok(rg.members.length >= 1 && rg.name);
+      for (const m of rg.members) seen.add(m);
+    }
+    assert.equal(seen.size, 40, 'every territory is in a province');
+  }
 });

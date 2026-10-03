@@ -23,7 +23,7 @@
   const STATUSES = ['unclaimed', 'claimed', 'contested', 'conquered'];
   const OUTCOMES = ['success', 'failure', 'ongoing'];
   const MIN_TERRITORIES = 15;
-  const MAX_TERRITORIES = 25;
+  const MAX_TERRITORIES = 40;
   // Shared Voronoi edges shorter than this don't count as a land border.
   const MIN_SHARED_EDGE = 6;
   // 100 map units on the scale bar.
@@ -185,7 +185,7 @@
   // Engine 1 (the first release) drew these three; engine 2 draws them all.
   const SHAPES1 = ['island', 'archipelago', 'mainland'];
   const SHAPES = ['island', 'archipelago', 'mainland', 'inland', 'strait', 'fjords', 'peninsula'];
-  const SHAPE_LABEL = { island: 'Island', archipelago: 'Archipelago', mainland: 'Mainland coast', inland: 'Inland sea', strait: 'Twin lands', fjords: 'Fjord coast', peninsula: 'Peninsula' };
+  const SHAPE_LABEL = { island: 'Island', archipelago: 'Archipelago', mainland: 'Mainland coast', inland: 'Inland sea', strait: 'Twin lands', fjords: 'Fjord coast', peninsula: 'Peninsula', europe: 'Europe, c. 1000' };
   // Map furniture the coastline should stay clear of: cartouche, compass rose, scale bar.
   const DECOR_ZONES = [
     [14, 12, 258, 72],
@@ -324,6 +324,7 @@
   }
 
   function mapShape(map) {
+    if (map.kind === 'europe') return 'europe';
     return SHAPES.includes(map.shape) ? map.shape : 'island';
   }
 
@@ -762,6 +763,8 @@
    */
 
   const FINE = 15;
+  const FINE_EUROPE = 8; // the real map needs a finer grid for its coastline
+  const EUROPE_REACH = 110; // land further than this from every seat stays wild
   const FRAME_PAD = 45;
   const GEN_DEFAULTS = { rough: 1, mountains: 1, forests: 1, wetlands: 1, wealth: 1, defences: 1, rivers: 1, borders: 1 };
   const GEN_LEVEL = [0, 1, 2];
@@ -1020,7 +1023,7 @@
 
   function fineWarp(map) {
     const g = normGen(map.gen);
-    const mult = [0.55, 1, 1.45][g.rough];
+    const mult = [0.55, 1, 1.45][g.rough] * (map.kind === 'europe' ? 0.22 : 1);
     const octaves = [
       [10, 1 / 170],
       [3.5, 1 / 50],
@@ -1037,6 +1040,263 @@
     };
   }
 
+
+  /* ---------- the real map: Europe around the year 1000 ---------- */
+
+  // Ireland to Kiev, Trondheim to the Alps: the Viking-age world of Pillage's four factions,
+  // in an equirectangular projection true at 54°N (so the 1000x700 map keeps real proportions).
+  const EUROPE_FRAME = { lon0: -12, lon1: 34, lat0: 44.5, lat1: 63.5 };
+  function europeXY(lat, lon) {
+    const F = EUROPE_FRAME;
+    return [((lon - F.lon0) / (F.lon1 - F.lon0)) * MAP_W, ((F.lat1 - lat) / (F.lat1 - F.lat0)) * MAP_H];
+  }
+
+  // Coastline: Natural Earth 1:50m land (public domain), clipped to the frame, projected and
+  // simplified to half a pixel. Rings separated by ';', each a list of base-36 deltas in half-pixels.
+  const EUROPE_LAND = '15t,9z,3,2,6,-2,6,2,f,9,1,2,-9,1,-h,f,-a,0,-6,1,-4,4,-2,8,-3,7,-7,2,0,-4,8,-c,-d,-8,-1,-3,3,-1,3,-5,-6,-8,6,-1,4,2,4,-3,4,1,3,-5,9,-4;11j,bl,-4,2,-2,5,-5,3,-1,g,5,7,-6,2,-3,9,-a,6,-4,6,-2,8,-4,3,-4,1,6,-c,-3,-4,-5,-a,2,-5,-1,-g,i,-k,8,-3,3,3,2,-5,3,-2;to,fs,-1,a,-a,5,-3,4,-1,5,2,4,5,2,2,7,-5,4,-a,3,-1,s,-8,3,-6,-a,-4,-k,-a,-2,-5,0,-6,-9,1,-a,-2,-5,-1,-5,-5,-3,-1,-6,f,-2,6,-9,1,-5,6,-1,3,3,0,e,6,2,4,-a,1,-5,-3,-5,f,-b,5,0,b,4,1,2,-4,9;rd,g5,7,m,-1,3,1,5,-1,6,-7,5,-8,1,-k,-9,-6,-e,1,-c,i,-7,6,4,4,0;ar,a7,-1,8,-4,7,-y,q,-2,8,8,3,-a,a,-2,7,c,-1,k,-8,g,2,8,-1,q,1,8,-2,5,2,4,5,3,a,-a,g,-3,b,-7,i,-f,m,-8,6,-c,3,-b,6,i,-3,a,6,0,5,-5,4,-9,0,-8,9,-8,4,-f,-3,-4,-2,8,5,o,5,9,-5,b,0,j,9,m,o,a,14,8,o,4,4,l,b,d,g,c,c,-5,7,e,v,-4,-2,-4,-1,-9,-7,-8,2,-9,-1,g,3,i,g,7,a,3,d,-2,6,-b,d,a,7,4,-1,8,-b,m,1,e,5,c,a,2,5,2,g,-7,q,-8,9,-4,3,-4,-2,2,a,-4,3,-3,1,-7,-1,-9,5,7,3,1,3,-2,6,-3,2,-d,3,-4,3,5,-2,3,2,4,6,8,2,n,-1,0,e,-g,a,-4,8,-8,0,-3,3,-l,a,-i,-4,-b,0,-e,3,-s,-9,4,5,-8,6,-f,2,-8,-1,3,7,-3,2,-d,-2,-4,3,-5,-2,-a,-6,-a,-1,-h,6,-4,6,-4,h,-4,6,-5,1,-i,-c,-4,2,-9,2,-a,3,-c,a,-5,9,-4,1,-5,-4,-5,-2,-8,4,-1,-6,4,-5,a,-3,e,-j,5,-3,1,-3,c,-f,3,-e,a,-4,5,-c,f,-3,a,0,a,3,a,-1,4,-3,7,-c,k,-p,-d,c,-b,3,-d,b,-c,-1,-e,-e,-f,2,6,-7,-8,-1,-5,-5,-9,1,-d,8,-c,-9,-1,-8,-3,-2,3,-5,4,-3,v,-f,7,-6,b,-k,-3,-1,-2,-3,2,-8,-3,-8,0,-7,-b,1,-a,6,-4,1,2,-6,a,-9,6,-a,7,-5,d,-7,7,1,a,-3,4,-1,a,7,-3,-a,4,-3,7,9,2,1,5,-1,-7,-3,-7,-c,1,-5,6,-b,-5,-3,0,-a,6,-4,2,-d,-1,-3,-5,0,-5,4,-3,0,-7,-8,-a,-h,-1,-8,5,-f,9,-a,a,-3,-i,-1,-5,1,-4,4,-6,2,-7,7,-8,0,-5,-5,-c,6,-d,-6,-3,5,-1,6,-5,-5,-5,-7,-1,-a,2,-2,3,2,4,-c,c,-q,-2,-7,-7,-7,1,-d,3,-5,9,0,-b,-8,2,-8,-5,a,-8,3,-1,3,-3,1,-2,3,1,-d,9,-d,-3,3,-e,f,1,c,-8,x,-3,4,-4,0,-2,-5,4,-h,7,-d,-3,1,-2,-2,1,-h,9,-y,3,-3,1,-5,5,-a,-k,g,-9,-2,-3,-3,-2,-6,-7,-1,4,-5,7,-1,7,-5,-6,-4,5,-4,7,-b,1,-9,-4,-8,-6,-3,-1,-4,2,-5,8,-3,-4,-2,-3,-7,6,-g,b,0,3,-2,6,2,-c,-e,3,-5,1,-7,e,-2,-4,-9,1,-a,3,-3,4,-2,5,1,4,5,9,-5,3,4,b,-3,14,-7,9,2;5u,ha,3,1,3,-3,4,-7,b,-1,9,-3,f,1,4,6,3,8,5,9,6,7,0,4,-7,6,0,3,6,-3,7,1,5,c,-1,4,-3,-5,-5,-2,1,c,4,1,-2,7,-a,3,-4,a,-4,3,-9,-3,3,6,-7,0,-1,2,1,8,2,3,6,j,-1,g,5,k,1,c,-6,e,-2,e,-6,b,-5,4,6,7,-5,3,-6,1,-9,-1,-5,4,-3,-7,-2,6,-3,2,-6,0,-d,3,-5,8,-9,3,-a,9,-3,1,-7,-6,-5,1,3,3,0,8,-b,6,-6,1,-4,4,-k,6,-8,-2,-c,4,-4,-1,6,-8,8,-6,-h,2,-9,4,2,-4,e,-d,6,-3,-l,7,-5,-1,-1,-2,-5,1,-1,-5,6,-8,c,-7,2,-4,-l,-1,1,-5,7,-5,3,0,9,3,7,-1,-3,-3,-1,-6,-2,-2,c,-b,p,-5,c,-5,-6,-2,-3,-3,-8,9,-a,1,-7,-3,-9,6,-6,0,h,-f,5,-9,-3,-3,7,-c,c,-4,4,-4,-9,-3,-g,1,-3,-2,-2,-5,-8,1,-3,-2,4,-3,-d,-2,2,-5,-3,-5,h,-4,-8,-4,0,-5,7,-4,7,-2,0,-5,-7,-1,-7,2,2,-h,-3,1,-2,-8,-5,3,0,-5,1,-3,3,-1,8,0,4,-2,7,-1,b,1,7,7,6,-6,i,4,2,-1,-3,-8,6,-7,b,-4,4,-a,-e,2,-d,-5,2,-4,8,-4,6,-8,-1,-5,1,-4,3,-3,2,-6,c,-4,b,1,-1,-5,4,-1,5,7,0,3,-3,5,2,2,-3,4,8,-5,-3,-b,1,-4,3,-2,6,-2,-3,-4,3,-1,f,a,-9,7,-2,3;1m2,-2i,0,17w,0,-6x,-b,2,-i,i,-6,d,-9,8,-2,0,c,-d,0,-7,-2,-5,-8,d,-9,5,0,9,2,e,5,e,g,p,3,3,5,0,8,-6,4,0,8,2,2,-4,0,t,-9,2,-8,-7,-5,-2,-4,2,-5,9,-9,6,-3,7,-8,-2,-8,1,-b,7,-8,d,-9,9,-7,2,-7,-1,-d,-b,7,-q,-2,-e,-7,-7,-6,2,-3,-2,-c,-c,-6,0,-7,2,-5,-6,s,-p,6,-1,g,-e,-3,-b,-7,3,-a,-9,-b,4,-6,0,-e,3,-j,-d,-5,-2,-4,1,-3,-3,a,-3,0,-5,-c,-3,-7,-6,7,0,s,5,9,-a,-a,4,-9,-2,-4,-4,-4,-a,-1,-f,-4,-d,-3,-4,6,l,-1,l,-5,1,-a,-2,1,-9,-7,b,-4,1,-7,-1,-f,6,-6,l,-7,c,-c,h,-i,a,-6,-1,-2,2,-1,9,3,4,2,f,-4,r,-3,a,-m,6,1,-3,-1,-9,2,-4,-5,-1,-2,2,-2,3,1,8,-3,7,-2,b,4,0,-b,k,1,n,-3,e,-1,m,-5,8,-6,-3,-8,2,-4,9,-da,0,-6,-8,-d,-6,-a,-5,-b,2,-6,-1,-2,-3,0,-7,-j,-i,-e,-k,-3,-6,7,-2,8,1,-8,-8,-d,-h,-4,-7,1,-k,-2,-8,-e,-g,-7,-3,-3,0,-3,d,-c,o,-5,0,-a,-k,-5,-r,c,-b,-7,-b,-3,0,-4,5,-b,-5,-8,a,-n,d,-3,0,5,-6,-2,0,-a,7,-2,f,3,3,5,c,5,5,-2,a,-4,3,-4,-3,-2,9,3,l,4,f,4,7,9,a,9,6,h,h,9,5,b,p,-3y,0,-2,-7,-6,-a,-3,-p,-2,-7,-6,-6,-e,-6,-j,-g,-4,0,-c,-6,-7,-1,-9,5,-o,z,-c,5,-a,3,-e,8,-e,g,-6,5,-2,7,-1l,0,-2,-5,-b,-1,0,-6,-f,5,-m,-8,-7,-8,-6,2,-6,8,-f,d,-ez,0,4,-4,9,1,e,-6,4,-3,-2,-7,2,-3,b,-9,6,-1,7,-4,5,3,3,-1,b,b,9,3,7,-3,z,0,a,-4,8,5,g,2,9,4,p,6,9,0,j,-6,5,1,7,-3,4,1,4,4,g,6,5,-5,3,-1,b,3,c,6,6,1,9,-2,g,-7,6,-9,6,-y,5,-13,3,-8,4,-2,-3,-5,-4,7,2,-11,5,-r,b,b,2,5,4,g,6,7,-4,-6,-4,-m,-3,-6,-h,-j,-1,-4,4,1,4,2,-3,-e,-2,-t,-b,-2,-h,-c,-c,-m,-1,-8,3,-9,-3,-5,-5,-4,4,-8,4,0,c,4,-a,-7,-h,2,-6,-2,-1,-5,4,-7,-5,-4,-a,1,-1,-2,3,-5,-2,-1,-8,1,-5,-1,-4,-5,-4,0,-3,-2,-5,0,-3,-3,-h,-6,-7,-1,-7,3,-4,-1,-5,-b,-b,-5,3,-3,a,-3,3,-3,-8,-5,-3,-4,2,-2,5,2,7,-1,-2,-3,-4,-2,-e,0,-2,-6,1,-7,9,-6,k,-6,9,1,6,-1,8,-4,3,-4,a,-2,a,4,e,i,a,-8,g,1,4,4,4,-8,3,5,k,-2,-5,-3,-3,-8,-1,-t,-a,-m,-3,-7,1,-7,c,1,9,-3,5,2,1,e,4,8,8,-1,8,3,b,0,g,5,6,-3,7,-5,c,-4,1,-1,-7,0,-7,-3,0,-4,3,-a,j,-c,d,-4,e,-6,7,-7,8,-c,-2,-3,1,-x,4,-a,5,-4,6,-4,n,-6,m,-e,l,-a,7,0,d,3,5,-3,5,3,4,-2,-9,-5,-8,3,-6,-3,-4,0,-6,-7,4,-3,8,-1,7,2,b,8,6,-1,-c,-9,8,-1,-b,-f,4,-8,k,-s,3,-a,5,-r,4,-a,5,2,8,-3,d,-a,3,-9,4,-4,f,-8,8,-2,x,-3,7,9,a,3,-7,-7,3,-d,4,-8,3,-2,f,-1,h,1,7,b,-3,5,4,3,2,-1,4,-c,7,7,0,9,2,-c,-1,-9,0,-8,5,-7,c,3,d,-1,5,3,b,f,4,3,5,1,-6,-4,-e,-j,-f,-5,-3,-5,0,-j,-6,-4,-5,1,0,-7,d,-5,0,-6,-c,-i,-1,-f,-4,-b,5,-1,-1,-d,-2,-7,-l,-d,3,-s,-3,-c,2,-y,5,-1,c,4,5,5,3,-a,6,-8,8,-4,6,7,2,-n,-6,-2,-5,2,-a,l,-7,1,-6,4,-9,-7,1,-7,6,-a,9,-9,8,0,a,-3,b,0,6,-2,5,-4,i,-q,d,-3,c,-8,3,0,-6,9,-1,3,4,9,-1,f,-a,i,0,s,9,7,f,0,4,6,-3,b,-5,4,-9,3,-5,-6,-2,2,-3,3,-6,q,-7,-1,-5,2,6,6,-6,4,-d,g,3,h,-1,4,-6,7,-2,5,5,0,5,3,2,3,-1,3,2,8,6,3,5,7,1,7,-7,8,c,-1,3,6,6,-2,g,9,d,-5,2,7,-3,8,-8,7,2,5,2,1,9,-1,c,5,i,-f,d,-1,3,-5,i,-h,j,4,5,9,d,b,c,-1,5,a,2,c,3,4,s,c,-1,-e,-9,-3,-j,-1,-1,-4,1,-5,-4,-4,0,-5,i,e,6,1,f,-7,o,-9,14,-b,g,-k,e,-3,g,-a,10,-8,a,0,j,c,2,3,-d,-8,-3,0,a,n,8,5,6,1,i,-2,7,-4,9,-8,4,-7,4,-8,1,-d,6,-3,d,1,5,-3,7,-8,e,-m,5,-g,-1,9,-3,b,-j,r,d,5,5,0,8,-2,2,-p,-1,-5,1,-8,-8,-r,-2,-w,1,-s,2,-e,c,-e,5,-n,b,-i,10,-b,5,9,l,k,6,h,g,9,c,-3,f,-c,5,-6,1,-5,-2,-o,-3,-a,2,-9,5,-f,1,-b,3,-3,-1,-4,-8,-2,-4,7,-6,2,-f,-7,-3,-6,0,-5,-6,-5,-2,-6,1,-4,6,-6,-7,0,-4,-a,4,-5,-2,-3,2,-5,-1,-7,d,-6,d,-1,-1,-6,5,0,9,-7,9,1,c,-5,p,0,3,-3,0,-6,c,1,t,6,7,0,f,7,g,0,o,3,5,-4,3,-6,-2,-d,2,-4,3,0,3,4,6,3,4,-4,1,-5,3,-3,3,2,7,1,8,-1,9,-d,n,3,j,6,2,-2,1,-4,-9,-5,-5,-7,-6,-5,-7,-1,-8,2,-d,-1,-c,-b,-7,-3,-6,-c,5,4,1,-9,-6,-5,-e,8,-i,3,-d,5,-b,-6,-6,1,-5,4,-a,1,-9,3,0,-4,3,-9,1,-2,-2,0,-5,b,-3,4,-8,1,-7,-5,-4,0,4,a,-4,-1,-8,6,-2,0,-3,-5,-9,6,-8,1,-5,4,-o,5,-6,7,-5,-1,-r,5,-b,-1,-c,a,-7,2,-3,0,a,-b,0,-4,-5,-2,-3,-3,-4,-9,-2,0,-2,8,-3,4,-5,2,-8,0,-1,-5,2,-4,-1,-1,1,-3,4,0,1,-2,0,-2,-3,0,0,-2,3,-7,-f,-2,-e,-7,-3,0,-2,-7,-9,5,-7,-5,-1,-3,-3,-o,1,-7,5,-8,1,-o,2,0,-3,-4,4,-2,1,-1,-9,-o,-6,-6,4,-h,-1,-9,-7,-5,-3,-f,1,-5,3,-8,c,-b,0,-7,8,0,-3,-5,-2,-7,c,-3,4,2,9,-2,9,-5,-3,-9,1,-2,3,1,-1,-4,4,1,5,-7,0,-5,a,-3,b,-a,a,-5,b,-a,5,-1,2,-7,c,-a,4,-8,b,-a,a,-f,-3w,0,5,d,5,6,-1,3,-1,3,-j,f,-c,n,-3,3,-a,4,-b,8,-c,4,-6,5,-3,6,-3,0,-6,-4,-1,7,-6,-4,-5,9,-9,8,-9,-1,-1,1,3,3,-b,2,-4,8,-8,3,-1,2,8,1,-2,7,-9,3,-3,4,-4,0,0,-3,-6,0,-2,-4,-1,1,4,b,-3,5,6,4,-4,2,-5,6,-5,0,-3,3,-3,0,-7,-4,-2,6,3,7,4,5,4,2,-5,5,-6,m,4,e,-c,-3,1,5,-3,6,1,8,-1,6,3,5,-2,3,2,o,3,a,-1,8,5,5,8,0,5,7,c,-4,3,6,6,8,4,3,7,2,7,6,-1,8,2,2,9,3,6,a,2,9,0,5,-v,n,-2,2,-3,-1,-8,5,0,2,7,1,6,-3,5,-1,6,-3,2,2,2,4,-9,3,-1,8,-4,5,-8,4,-c,8,-3,-1,-4,4,-9,4,-5,6,-g,9,-t,-1,-4,2,7,3,4,-1,e,2,6,7,-c,4,5,g,-3,4,0,i,-5,1,-1,7,2,i,2,5,-1,5,-7,c,2,f,-7,q,-9,g,-7,k,-7,7,-9,-4,-d,2,-c,-1,-b,1,-3,2,1,7,-4,1,-4,-2,-7,5,-8,b,-1,8,6,e,-7,a,-g,-2,-l,6,-j,-5,2,-5,2,-k,-m,-14,a,4,4,-2,-6,-d,9,-1,2,-4,-1,-8,-7,-3,-7,-c,-6,-6,-c,-o,-4,-g,-4,2,-4,-j,-6,-3,-1,-j,-7,-2,-4,-8,-1,-h,-5,-3,-3,1,1,-8,-3,-t,-3,-9,2,-6,5,-1,4,4,0,-2,-1,-3,-n,-6,-8,-f,-3,-s,-2,5,1,8,-7,5,2,b,-1,7,-b,k,-4,-2,-5,5,-5,1,-2,-5,-7,-7,-4,0,6,8,-1,3,-f,8,3,4,-3,4,-4,1,-2,4,-b,8,-i,k,-f,c,-6,-1,-7,5,-i,5,-b,-2,-9,1,-4,-3,0,-5,-1,-1,-4,0,-3,6,-7,-4,6,-7,-2,-3,-c,0,-e,-8,-3,-5,-c,-6,-5,-7,-3,-8,1,-j,3,-2,a,4,b,6,b,-9,-1,-2,-a,5,-9,-8,0,-3,2,-2,1,-4,0,-8,k,-j,-1,-1,-5,2,-j,e,-c,4,-5,7,-4,2,-8,1,-2,-5,5,-p,2,-6,5,-1,3,-4,d,4,4,-6,5,0,a,-6,0,-1,-h,3,-3,-1,-1,-4,f,-g,3,-b,9,-9,7,-4,2,3,-2,g,9,-k,3,-3,7,-1,2,-3,-8,1,-k,6,-9,5,-a,f,-2,6,-3,3,-5,1,-6,8,-2,6,-g,d,-1,-2,0,-c,5,-b,-2,-4,1,-4,d,2,8,-4,-1,-3,-b,0,-5,-3,-5,-8,-2,-a,1,-3,h,-a,4,-5,-2,0,-6,5,-9,4,-6,-5,-3,-5,-1,-p,3,-2,9,2,9,-1,l,-4,j,2,8,-4,7,0,9,6,0,5,3,3,2,-1,-2,-9,m,-7,2,-2,-8,-1,-3,-6,4,-a,-5,5,-2,6,0,8,-4,1,-a,0,-d,-3,-2,-2,1,-3,-1,-1,-5,a,-5,1,-d,-2,-j,1,-8,4,-6,-1,-9,-6,-4,-4,-1,-e,b,-1,4,-3,-8,-4,-3,-5,-4,-2,-3,-5,0,-d,2,-1,6,1,f,-1,o,8,k,-1,b,-5,-2,-1,-c,3,-c,-1,-s,-7,-9,1,-5,-1,-3,-5,2,-a,5,-2,2,2,3,0,5,-6,2,-5,8,-5,9,-3,3,1,4,4,m,-4,5,-5,-o,4,-1,-2,5,-6,1,-4,4,-3,h,-1,9,0,e,2,a,4,8,-3,-7,-1,0,-5,c,-4,d,0,-3,-3,-r,4,-7,-3,-6,0,-e,4,-2,-2,8,-f,k,-7,8,-5,d,-1,a,1,5,7,i,b,-1,-2,-g,-f,-4,-6,2,-6,3,-3,e,-2,2,-2,0,-4,-2,-3,-9,-1,-1,-4,2,-3,c,-6,7,-2,d,4,1,2,-4,5,1,3,3,0,7,-8,g,-4,b,b,2,6,1,0,3,-3,5,-2,p,0,-4,-7,2,-5,a,-6,7,-1,b,-7,-3,-5,-5,-1,c,-8,-1,-2,-6,-1,-a,4,-7,5,6,6,-5,5,-q,f,-c,4,-6,-1,-7,-d,-7,2,-1,-2,2,-7,4,-5,7,-4,6,-c,a,-7,e,-i,c,-5,4,-6,7,-3,6,-5,9,-3,sb,0,0,c,7,9,b,5,6,2,a,-3,i,c;yh,15e,-5,-3,1,-5,h,3,2,2,-3,3;bh,so,-2,5,-4,-2,0,-1,4,-3;c2,t7,0,4,-2,1,-1,-1,-7,0,1,-6;10y,89,-1,2,-1,-3,1,-3,2,-2,4,1;1h6,ze,6,4,-7,-1,-d,-3,-6,-4,-2,-8,5,7;166,9k,-3,4,-3,-3,-5,8,-5,1,-3,-1,0,-3,-3,-8,-4,-3,-7,0,-4,-3,h,-3,6,-7,3,-1,2,1,1,5,8,1,3,5,1,7;16p,a5,-4,0,-8,-5,4,-5,7,3;96,j2,-9,a,-3,-2,-4,1,3,-c,4,-3,5,-8,3,-2,2,1,2,9;6i,e5,-2,1,0,-1,4,-5,4,0;8c,gh,-6,0,-4,-2,-3,-a,3,-7,3,-1,4,4,3,7;7j,en,-i,4,-6,0,1,-3,5,-2,2,-9,-8,-5,1,-4,5,-3,3,0,7,8,8,4;73,fi,3,h,-1,3,-9,4,1,-5,-1,-8,-2,0,-7,6,2,-8,4,-5,2,1;7a,fq,-3,1,-1,-6,1,-3,6,-3,-3,-2,2,-4,9,-5;d8,64,-1,1,-4,-8,3,-8,4,0,1,2,-1,2,-2,1;cx,62,1,5,2,-1,3,5,5,-2,-6,w,-5,a,-2,-3,3,-f,0,-2,-2,-3,-7,1,0,-4,-7,-1,-1,-3,8,-1,5,-3,-3,-a,-6,-2,9,-8,3,0;dk,5i,-2,9,-4,0,-1,-4,1,-5,2,1,2,-2;ao,9n,-5,1,-4,-5,-1,-5,6,1,2,6;9f,ku,2,1,5,0,-2,3,-c,a,-2,-3,-3,0,-3,-7,-1,-9,5,-2,6,0;bf,8r,-5,0,2,-5,9,0;ay,9r,-4,-6,6,-1;at,95,-1,2,b,2,3,2,-2,3,-3,2,-5,-4,-9,1,-2,-5,-4,2,-1,-7,2,-5,2,-1,9,3,1,3;6i,3h,-2,3,-8,-6,-2,-4,a,3;6f,47,-1,2,-8,-8,-2,-8,9,5;5t,2s,6,5,-5,3,-9,-3,-2,-5;6i,2m,-2,a,-5,-3,-2,-1,-1,2,5,9,0,3,-c,-a,-7,-e,9,-3;b7,8u,-4,2,-1,-2,-1,-5,-6,-3,-2,-3,3,-1,7,8,4,1;6r,2j,-2,6,-4,-2,0,-b;70,ai,-5,d,-a,7,6,2,-1,4,-b,8,-5,6,-2,0,-5,6,-2,-1,-3,-4,a,-8,-9,-6,3,-3,-5,-4,1,-6,3,-4,5,4,7,-1,-2,-8,o,-f,1,5;6x,de,-3,0,-4,-4,5,-3,2,3;73,ca,-1,7,1,7,3,2,8,2,8,-1,1,1,-1,4,-b,c,-3,-1,-1,-b,-5,1,-7,-1,-5,-9,-b,-3,-3,-6,2,-4,3,1,3,-1,-2,-5,a,-2,1,-5,5,1,4,5;5s,bx,5,4,-4,7,-6,0,-8,-5,2,-4,9,0;5r,d2,-6,-1,-2,-7,1,-b,6,1;2h,jm,0,3,-5,-6,-9,-1,4,-3,8,1,2,1;5j,dd,-4,1,-1,-1,1,-3,3,-1,2,2;152,6h,-3,0,-5,-3,0,-2,2,0,-1,-5,3,3,2,2,-2,1;129,6s,0,2,-3,0,-1,2,-2,-1,-1,-3,2,-4,3,0;12n,6g,4,0,8,7,-3,5,-7,1,0,6,-a,1,-3,-1,-3,-a,1,-3,4,-1,0,5,3,0,1,-6,-4,-4,2,-3,2,-1;144,j,1,1,2,0,4,-2,2,1,0,3,-2,0,-5,4,-5,-4,-3,-6,7,0;11n,bf,-1,5,-2,-1,-2,-3,4,-5,8,1,-7,3;yg,er,-2,4,-2,0,-1,-5,0,-j,a,-n,4,-2,d,-w,4,1,-3,3,0,6,-7,g,-2,b,-3,2;wq,hd,-2,1,-7,-2,-9,-5,2,-a,2,-5,g,c,0,4;v2,io,1,5,-1,2,-5,-4,-5,0,-3,7,-2,0,-8,-6,-1,-5,1,-b,2,-3,0,-4,5,-4,3,0,3,6,8,4,0,2,-4,5,1,3;tn,hh,-1,1,-7,-1,-8,5,-2,-1,2,-5,4,-3,0,-3,2,1,7,2;ts,g6,-5,3,-1,-4,3,-5;s8,hm,7,5,6,0,3,1,1,a,-d,4,-i,-b,1,-c,8,-1;r6,hq,-3,0,-4,-1,-6,-8,9,5,4,3;qn,hn,-4,1,-7,-3,-1,-c,9,6;rg,hx,-1,0,-3,-8,e,-m;rb,ft,-1,1,-3,-1,0,-d,1,-3,5,9;s4,il,-6,0,-6,-3,2,-4,2,-1,6,2;ru,cs,-2,2,-5,-2,2,-4,7,-1,4,0;oj,hu,-1,2,0,-b,5,-b,2,0,-2,5,-1,7,b,0,-1,2,-b,2;d2,101,-1,6,-7,-b,-1,-6,5,3;d7,q8,-3,2,-2,5,-3,0,-2,0,-9,-6,-2,1,2,-3,9,-5,7,3;ke,ld,-4,5,-3,-3,1,-4,6,-7,0,9;we,11x,-6,1,-3,-5,-4,0,-3,-4,-1,-1,4,-4,2,-5;wf,12d,1,3,-8,-4,0,-6,3,1;wu,138,-1,2,-b,-d,-7,-g,7,7,e,j;wu,143,1,1,-3,0,-c,-k;w0,12k,-1,3,-2,-4,-5,-j,1,-6,-2,-a,3,-1,2,a,3,4;j9,o3,6,6,-5,2,-6,-5,-4,1,-1,-2,0,-2,3,-1;ov,hz,-2,2,-6,-2,5,-3,2,1;15a,6f,8,1,2,3,-4,3,-1,3,3,5,-5,0,-3,-6,-4,-3,2,-5;14e,63,0,3,-6,1,-3,-4,0,-7,1,-1,2,3;14v,6w,-4,2,-2,-1,0,-4,3,-2,4,0;13e,73,0,2,-4,0,-5,-2,4,-3,3,1;14m,6y,-4,1,-2,-2,4,-4,2,0;kh,4y,-7,0,2,-7,1,-1,2,-1,3,4;oa,c,-9,-1,-4,-5,c,-4,3,3,0,5;oq,-c,-5,0,-3,-2,i,-6,1,-2,4,2,-1,5;kn,6j,0,9,-4,-1,-2,-3,-1,-c,1,-3,2,0';
+
+  let europeMask = null;
+  // A 1px land raster of the frame (plus the grid's padding), filled once from the rings.
+  function europeLand() {
+    if (europeMask) return europeMask;
+    const pad = FRAME_PAD;
+    const cols = MAP_W + 2 * pad;
+    const rows = MAP_H + 2 * pad;
+    const grid = new Uint8Array(cols * rows);
+    const rings = EUROPE_LAND.split(';').map((r) => {
+      const v = r.split(',').map((n) => parseInt(n, 36));
+      const pts = [];
+      let x = 0;
+      let y = 0;
+      for (let i = 0; i < v.length; i += 2) {
+        x += v[i];
+        y += v[i + 1];
+        pts.push([x / 2 + pad, y / 2 + pad]);
+      }
+      return pts;
+    });
+    const xs = [];
+    for (let row = 0; row < rows; row++) {
+      const y = row + 0.5;
+      xs.length = 0;
+      for (const r of rings) {
+        for (let i = 0, j = r.length - 1; i < r.length; j = i++) {
+          const [x1, y1] = r[j];
+          const [x2, y2] = r[i];
+          if (y1 > y !== y2 > y) xs.push(x1 + ((y - y1) / (y2 - y1)) * (x2 - x1));
+        }
+      }
+      xs.sort((a, b) => a - b);
+      for (let k = 0; k + 1 < xs.length; k += 2) {
+        const a = Math.max(0, Math.ceil(xs[k] - 0.5));
+        const b = Math.min(cols - 1, Math.floor(xs[k + 1] - 0.5));
+        for (let col = a; col <= b; col++) grid[row * cols + col] = 1;
+      }
+    }
+    europeMask = (x, y) => {
+      const col = Math.floor(x + pad);
+      const row = Math.floor(y + pad);
+      return col >= 0 && row >= 0 && col < cols && row < rows && grid[row * cols + col] === 1;
+    };
+    return europeMask;
+  }
+
+  // The realms of about 1000 AD (the "states"), and their lands (the territories, or "substates").
+  const EUROPE_REALMS = {
+    eng: 'Kingdom of England',
+    wal: 'Welsh Kingdoms',
+    alba: 'Kingdom of Alba',
+    iri: 'Kingdoms of Ireland',
+    den: 'Kingdom of Denmark',
+    nor: 'Kingdom of Norway',
+    swe: 'Kingdom of Sweden',
+    balt: 'Baltic and Finnic Lands',
+    rus: 'Kievan Rus’',
+    pol: 'Duchy of Poland',
+    boh: 'Duchy of Bohemia',
+    hun: 'Kingdom of Hungary',
+    ger: 'Kingdom of Germany',
+    ita: 'Kingdom of Italy',
+    bur: 'Kingdom of Burgundy',
+    fra: 'Kingdom of France',
+  };
+  // [name, realm, latitude, longitude, terrain]
+  const EUROPE_TERRITORIES = [
+    ['Wessex', 'eng', 51.1, -1.6, 'grassland'],
+    ['Kent', 'eng', 51.2, 0.8, 'coast'],
+    ['Mercia', 'eng', 52.6, -1.7, 'grassland'],
+    ['East Anglia', 'eng', 52.5, 0.9, 'marsh'],
+    ['Jórvík', 'eng', 54.0, -1.1, 'grassland'],
+    ['Northumbria', 'eng', 55.2, -1.9, 'hills'],
+    ['Cornwall', 'eng', 50.4, -4.8, 'coast'],
+    ['Gwynedd', 'wal', 52.9, -3.8, 'mountains'],
+    ['Deheubarth', 'wal', 51.9, -4.3, 'hills'],
+    ['Strathclyde', 'alba', 55.6, -4.2, 'hills'],
+    ['Alba', 'alba', 56.5, -3.5, 'hills'],
+    ['Moray', 'alba', 57.4, -3.8, 'mountains'],
+    ['Argyll and the Isles', 'alba', 56.3, -5.3, 'coast'],
+    ['Ulaid', 'iri', 54.5, -6.0, 'hills'],
+    ['Ailech', 'iri', 54.8, -7.5, 'hills'],
+    ['Dublin and Mide', 'iri', 53.5, -6.6, 'grassland'],
+    ['Leinster', 'iri', 52.7, -6.7, 'grassland'],
+    ['Munster', 'iri', 52.4, -8.4, 'grassland'],
+    ['Connacht', 'iri', 53.7, -9.0, 'marsh'],
+    ['Jutland', 'den', 56.2, 9.1, 'grassland'],
+    ['Zealand', 'den', 55.5, 11.8, 'coast'],
+    ['Scania', 'den', 55.8, 13.6, 'grassland'],
+    ['Viken', 'nor', 59.5, 10.6, 'coast'],
+    ['Agder', 'nor', 58.5, 7.5, 'coast'],
+    ['Vestlandet', 'nor', 60.8, 6.3, 'mountains'],
+    ['Trøndelag', 'nor', 62.9, 10.5, 'mountains'],
+    ['Orkney and Caithness', 'nor', 58.4, -3.3, 'coast'],
+    ['Götaland', 'swe', 57.8, 14.2, 'forest'],
+    ['Svealand', 'swe', 59.7, 16.8, 'forest'],
+    ['Norrland', 'swe', 61.8, 16.0, 'forest'],
+    ['Gotland', 'swe', 57.5, 18.5, 'coast'],
+    ['Finland', 'balt', 61.0, 23.8, 'forest'],
+    ['Estonia', 'balt', 58.7, 25.6, 'forest'],
+    ['Curonia', 'balt', 57.0, 22.3, 'forest'],
+    ['Lithuania', 'balt', 55.3, 24.2, 'forest'],
+    ['Prussia', 'balt', 54.3, 21.0, 'forest'],
+    ['Novgorod', 'rus', 58.5, 31.2, 'forest'],
+    ['Polotsk', 'rus', 55.6, 28.6, 'forest'],
+    ['Turov', 'rus', 52.1, 27.5, 'marsh'],
+    ['Volhynia', 'rus', 50.8, 25.3, 'grassland'],
+    ['Kiev', 'rus', 50.4, 30.4, 'grassland'],
+    ['Pomerania', 'pol', 53.9, 15.6, 'coast'],
+    ['Greater Poland', 'pol', 52.4, 17.2, 'grassland'],
+    ['Masovia', 'pol', 52.4, 21.0, 'grassland'],
+    ['Silesia', 'pol', 51.0, 16.8, 'grassland'],
+    ['Lesser Poland', 'pol', 50.0, 20.2, 'hills'],
+    ['Bohemia', 'boh', 50.0, 14.4, 'hills'],
+    ['Moravia', 'boh', 49.3, 17.0, 'hills'],
+    ['Nitra', 'hun', 48.4, 18.6, 'hills'],
+    ['Hungary', 'hun', 47.3, 19.6, 'grassland'],
+    ['Transylvania', 'hun', 46.6, 24.0, 'mountains'],
+    ['Frisia', 'ger', 53.1, 6.3, 'marsh'],
+    ['Saxony', 'ger', 52.4, 10.0, 'grassland'],
+    ['Wendland', 'ger', 53.7, 12.4, 'forest'],
+    ['Thuringia', 'ger', 51.0, 11.2, 'forest'],
+    ['Meissen', 'ger', 51.2, 13.6, 'hills'],
+    ['Brabant', 'ger', 50.9, 5.2, 'grassland'],
+    ['Lotharingia', 'ger', 49.4, 6.6, 'forest'],
+    ['Franconia', 'ger', 49.8, 9.9, 'forest'],
+    ['Swabia', 'ger', 48.3, 9.3, 'hills'],
+    ['Bavaria', 'ger', 48.5, 12.2, 'grassland'],
+    ['East March', 'ger', 48.2, 15.9, 'hills'],
+    ['Carinthia', 'ger', 46.8, 14.2, 'mountains'],
+    ['Lombardy', 'ita', 45.6, 9.6, 'grassland'],
+    ['Friuli', 'ita', 46.0, 13.0, 'hills'],
+    ['Upper Burgundy', 'bur', 46.8, 7.2, 'mountains'],
+    ['Franche-Comté', 'bur', 47.3, 6.0, 'forest'],
+    ['Flanders', 'fra', 51.0, 3.0, 'grassland'],
+    ['Normandy', 'fra', 49.1, 0.2, 'coast'],
+    ['Brittany', 'fra', 48.1, -2.9, 'coast'],
+    ['Francia', 'fra', 48.8, 2.4, 'grassland'],
+    ['Champagne', 'fra', 48.9, 4.4, 'grassland'],
+    ['Blois', 'fra', 47.6, 1.4, 'grassland'],
+    ['Anjou', 'fra', 47.4, -0.6, 'grassland'],
+    ['Duchy of Burgundy', 'fra', 47.2, 4.6, 'hills'],
+    ['Poitou', 'fra', 46.5, 0.1, 'grassland'],
+    ['Aquitaine', 'fra', 45.4, 0.8, 'forest'],
+    ['Auvergne', 'fra', 45.6, 3.1, 'mountains'],
+  ];
+  // The sea roads raiders actually used (Lindisfarne, the Danelaw, the Norman crossing...).
+  // Pairs already sharing a land border are skipped.
+  const EUROPE_LANES = [
+    ['Vestlandet', 'Orkney and Caithness'],
+    ['Vestlandet', 'Northumbria'],
+    ['Agder', 'Jutland'],
+    ['Viken', 'Jutland'],
+    ['Jutland', 'East Anglia'],
+    ['Jutland', 'Zealand'],
+    ['Zealand', 'Scania'],
+    ['Zealand', 'Wendland'],
+    ['Scania', 'Pomerania'],
+    ['Gotland', 'Götaland'],
+    ['Gotland', 'Svealand'],
+    ['Gotland', 'Curonia'],
+    ['Svealand', 'Finland'],
+    ['Svealand', 'Estonia'],
+    ['Finland', 'Estonia'],
+    ['East Anglia', 'Frisia'],
+    ['Kent', 'Flanders'],
+    ['Wessex', 'Normandy'],
+    ['Cornwall', 'Brittany'],
+    ['Gwynedd', 'Dublin and Mide'],
+    ['Deheubarth', 'Leinster'],
+    ['Argyll and the Isles', 'Ulaid'],
+    ['Strathclyde', 'Ulaid'],
+    ['Orkney and Caithness', 'Argyll and the Isles'],
+  ];
+  // Who starts where: one kingdom per Pillage faction, at its historical seat, with the ruler of about 1000.
+  const EUROPE_KINGDOMS = [
+    { faction: 'vikings', name: 'Kingdom of Denmark', ruler: { title: 'King', name: 'Sweyn Forkbeard' }, motto: 'The whale-road is ours', capital: 'Jutland', trait: 'reavers', arms: { division: 'plain', field: 'or', second: 'or', charge: 'raven', chargeColor: 'sable' } },
+    { faction: 'saxons', name: 'Kingdom of England', ruler: { title: 'King', name: 'Æthelred the Unready' }, motto: 'Not one hide of land', capital: 'Wessex', trait: 'ironwall', arms: { division: 'plain', field: 'gules', second: 'gules', charge: 'dragon', chargeColor: 'or' } },
+    { faction: 'normans', name: 'Duchy of Normandy', ruler: { title: 'Duke', name: 'Richard the Good' }, motto: 'Dex aie', capital: 'Normandy', trait: 'merchants', arms: { division: 'plain', field: 'azure', second: 'azure', charge: 'crown', chargeColor: 'or' } },
+    { faction: 'irish', name: 'Kingdom of Munster', ruler: { title: 'King', name: 'Brian Bóruma' }, motto: 'From Cashel to the sea', capital: 'Munster', trait: 'zealots', arms: { division: 'plain', field: 'vert', second: 'vert', charge: 'stag', chargeColor: 'or' } },
+  ];
+
+  function europeCampaign(o, seed, now, nK) {
+    const gen = normGen(o.gen);
+    const map = { engine: 2, kind: 'europe', width: MAP_W, height: MAP_H, seed: hashString('map:' + seed), shape: 'europe', gen };
+    const rng = mulberry32(hashString('sites:' + seed));
+    const wealth = [0.65, 1, 1.45][gen.wealth];
+    const defences = [0.65, 1, 1.45][gen.defences];
+    const territories = EUROPE_TERRITORIES.map(([name, realm, lat, lon, terrain], i) => {
+      const ts = TERRAIN_STATS[terrain];
+      const [x, y] = europeXY(lat, lon);
+      return {
+        id: 't' + (i + 1),
+        name,
+        realm: EUROPE_REALMS[realm],
+        position: { x: Math.round(x * 10) / 10, y: Math.round(y * 10) / 10 },
+        goldValue: Math.max(10, Math.round(((60 + rng() * 140) * ts.gold * wealth) / 5) * 5),
+        garrisonBase: Math.max(5, Math.round((15 + rng() * 65) * ts.garrison * defences)),
+        garrison: 0,
+        status: 'unclaimed',
+        terrain,
+        conquered: false,
+        control: 0,
+        damage: 0,
+        override: null,
+        overrideBy: null,
+        editedAt: 0,
+      };
+    });
+    const c = {
+      id: newId('c'),
+      name: '',
+      seed,
+      version: 3,
+      createdAt: now,
+      updatedAt: now,
+      year: 1,
+      season: 'spring',
+      seasonAt: 0,
+      goalPct: 35,
+      settingsAt: 0,
+      map,
+      territories,
+      kingdoms: [],
+      players: [],
+      raids: [],
+      adjustments: [],
+      milestones: [],
+      deleted: [],
+    };
+    const byName = new Map(territories.map((t) => [t.name, t.id]));
+    const krng = mulberry32(hashString('kingdoms:' + seed));
+    c.kingdoms = EUROPE_KINGDOMS.slice(0, nK).map((spec, i) => {
+      const k = randomKingdom(krng, i, byName.get(spec.capital), spec.capital, { now: 0 });
+      return Object.assign(k, JSON.parse(JSON.stringify(spec)), { capital: byName.get(spec.capital) });
+    });
+    if (Array.isArray(o.kingdomSpecs)) o.kingdomSpecs.forEach((spec, i) => c.kingdoms[i] && Object.assign(c.kingdoms[i], spec));
+    c.players = assignPlayers(c, o.players, 0);
+    c.name = o.name || 'Anno Domini 1000';
+    return snapshot(c);
+  }
+
   /*
    * The fine grid: cells, their shared corners, which cells are land, and the
    * fields generation and rivers need (distance from the coast, elevation, moisture).
@@ -1044,7 +1304,8 @@
   function buildFine(map) {
     const W = map.width;
     const H = map.height;
-    const s = FINE;
+    const europe = map.kind === 'europe';
+    const s = europe ? FINE_EUROPE : FINE;
     const pad = FRAME_PAD;
     const g = normGen(map.gen);
     const rng = mulberry32((map.seed ^ 0x27d4eb2d) >>> 0);
@@ -1070,7 +1331,8 @@
       vkey.set(kx * 200003 + ky, verts.length - 1);
       return verts.length - 1;
     }
-    const field = makeShapeField(map);
+    const field = europe ? null : makeShapeField(map);
+    const onLand = europe ? europeLand() : null;
     const nm = [0.45, 1, 1.6][g.rough];
     const n1 = valueNoise(map.seed + 17);
     const n2 = valueNoise(map.seed + 29);
@@ -1090,8 +1352,8 @@
       let labels = [-2, -2, -2, -2];
       for (const j of near) if (poly.length) [poly, labels] = clipCell(poly, labels, p, pts[j], j);
       const vids = poly.map(vid);
-      const f = field(p[0], p[1]) + nm * (0.16 * n1(p[0] / 160, p[1] / 160) + 0.06 * n2(p[0] / 50, p[1] / 50));
-      return { p, poly, labels, vids, area: Math.abs(polygonArea(poly)), land: f > 0 };
+      const land = europe ? onLand(p[0], p[1]) : field(p[0], p[1]) + nm * (0.16 * n1(p[0] / 160, p[1] / 160) + 0.06 * n2(p[0] / 50, p[1] / 50)) > 0;
+      return { p, poly, labels, vids, area: Math.abs(polygonArea(poly)), land };
     });
     const n = cells.length;
     // Distance from the sea over land, for elevation.
@@ -1156,6 +1418,7 @@
     const bn = valueNoise(map.seed + 79);
     const owner = new Int32Array(cells.length).fill(-1);
     const cost = new Float64Array(cells.length).fill(Infinity);
+    const reach = map.kind === 'europe' ? EUROPE_REACH : Infinity;
     // Binary heap keyed by cost.
     const heap = [];
     const push = (i, c) => {
@@ -1202,7 +1465,7 @@
         const mx = (pi[0] + pl[0]) / 2;
         const my = (pi[1] + pl[1]) / 2;
         const c1 = c0 + dist(pi, pl) * Math.exp(k * bn(mx / 90, my / 90));
-        if (c1 < cost[L]) {
+        if (c1 < cost[L] && c1 <= reach) {
           cost[L] = c1;
           owner[L] = owner[i];
           push(L, c1);
@@ -1501,6 +1764,7 @@
       for (const run of tr.runs) {
         if (run.lab === -1) coast.push(run.closed ? run.pts.concat([run.pts[0]]) : run.pts);
         else if (run.lab >= 0 && run.lab < T && R < run.lab) borders.push({ a: R, b: run.lab, points: run.pts });
+        else if (run.lab >= T) borders.push({ a: R, b: -1, points: run.pts });
       }
       const a = anchor[R] >= 0 ? anchor[R] : seeds[R];
       const rings = tr.rings.length ? tr.rings : [[warp(cells[seeds[R]].p[0], cells[seeds[R]].p[1])]];
@@ -1529,9 +1793,11 @@
       if (!groups.has(sh.land)) groups.set(sh.land, []);
       groups.get(sh.land).push(i);
     });
-    const seaLanes = laneTree([...groups.values()], shapes, geoLite.sites, adjacency);
+    const europe = map.kind === 'europe';
+    const seaLanes = europe ? europeLanes(campaign, adjacency) : laneTree([...groups.values()], shapes, geoLite.sites, adjacency);
     const laneSet = new Set(seaLanes.map((p) => Math.min(p.a, p.b) + '|' + Math.max(p.a, p.b)));
-    const { rivers, lakes } = fineRivers(map, fine, region, warp);
+    const { rivers, lakes } = europe ? { rivers: [], lakes: [] } : fineRivers(map, fine, region, warp);
+    const prov = provinces(campaign, adjacency, shapes, map.seed);
     return {
       engine: 2,
       shapes,
@@ -1547,7 +1813,109 @@
       rivers,
       lakes,
       landCount: groups.size,
+      regions: prov.regions,
+      regionOf: prov.regionOf,
+      regionKind: prov.kind,
     };
+  }
+
+  function europeLanes(campaign, adjacency) {
+    const idx = new Map(campaign.territories.map((t, i) => [t.name, i]));
+    const out = [];
+    for (const [a, b] of EUROPE_LANES) {
+      const i = idx.get(a);
+      const j = idx.get(b);
+      if (i == null || j == null || adjacency[i].has(j)) continue;
+      adjacency[i].add(j);
+      adjacency[j].add(i);
+      out.push({ a: i, b: j });
+    }
+    return out;
+  }
+
+  // The "states" above the territories. Real maps carry each territory's realm; generated maps
+  // group neighbouring territories into named provinces of about four.
+  function provinces(campaign, adjacency, shapes, seed) {
+    const ts = campaign.territories;
+    const T = ts.length;
+    const regionOf = new Int32Array(T).fill(-1);
+    const regions = [];
+    const centroidOf = (members) => {
+      let x = 0;
+      let y = 0;
+      let w = 0;
+      for (const i of members) {
+        const a = shapes[i].area;
+        x += shapes[i].centroid[0] * a;
+        y += shapes[i].centroid[1] * a;
+        w += a;
+      }
+      return [x / w, y / w];
+    };
+    if (ts.some((t) => t.realm)) {
+      const byName = new Map();
+      ts.forEach((t, i) => {
+        const name = t.realm || 'Free lands';
+        if (!byName.has(name)) {
+          byName.set(name, regions.length);
+          regions.push({ name, members: [] });
+        }
+        regionOf[i] = byName.get(name);
+        regions[regionOf[i]].members.push(i);
+      });
+      for (const r of regions) r.centroid = centroidOf(r.members);
+      return { regions, regionOf, kind: 'realm' };
+    }
+    const rng = mulberry32(hashString('provinces:' + seed));
+    const k = clamp(Math.round(T / 4), 3, 10);
+    const c = (i) => shapes[i].centroid;
+    const heads = [Math.floor(rng() * T)];
+    while (heads.length < k) {
+      let best = -1;
+      let bd = -1;
+      for (let i = 0; i < T; i++) {
+        if (heads.includes(i)) continue;
+        const d = Math.min(...heads.map((h) => dist(c(i), c(h))));
+        if (d > bd) {
+          bd = d;
+          best = i;
+        }
+      }
+      heads.push(best);
+    }
+    // Grow from the heads over borders, nearest first, so provinces stay in one piece.
+    const q = heads.map((h, r) => [0, h, r]);
+    heads.forEach((h, r) => (regionOf[h] = r));
+    const cost = new Float64Array(T).fill(Infinity);
+    heads.forEach((h) => (cost[h] = 0));
+    while (q.length) {
+      q.sort((a, b) => a[0] - b[0]);
+      const [d0, i, r] = q.shift();
+      if (d0 > cost[i]) continue;
+      for (const j of adjacency[i]) {
+        const d1 = d0 + dist(c(i), c(j));
+        if (d1 < cost[j]) {
+          cost[j] = d1;
+          regionOf[j] = r;
+          q.push([d1, j, r]);
+        }
+      }
+    }
+    for (let i = 0; i < T; i++) {
+      if (regionOf[i] >= 0) continue;
+      let best = 0;
+      heads.forEach((h, r) => {
+        if (dist(c(i), c(h)) < dist(c(i), c(heads[best]))) best = r;
+      });
+      regionOf[i] = best;
+    }
+    const styles = [(n) => 'Duchy of ' + n, (n) => 'Earldom of ' + n, (n) => 'March of ' + n, (n) => n + ' Riding', (n) => 'Lordship of ' + n, (n) => n + 'shire', (n) => 'Hundred of ' + n];
+    heads.forEach((h, r) => {
+      const members = [];
+      for (let i = 0; i < T; i++) if (regionOf[i] === r) members.push(i);
+      regions.push({ name: styles[Math.floor(rng() * styles.length)](ts[h].name), members, centroid: centroidOf(members) });
+    });
+    return { regions, regionOf, kind: 'province' };
   }
 
   // Minimum spanning tree of the shortest crossings between landmasses, plus one loop when there are 3+.
@@ -1826,8 +2194,12 @@
     return Date.now();
   }
 
+  // Time, then six fixed-width random base-36 digits, then a counter: unique within this device, and two
+  // devices only collide with the same millisecond and the same 1-in-2-billion draw.
+  let idCount = 0;
   function newId(prefix) {
-    return prefix + Date.now().toString(36) + Math.floor(Math.random() * 1e6).toString(36);
+    idCount = (idCount + 1) % 1296;
+    return prefix + Date.now().toString(36) + Math.floor(Math.random() * 2176782336).toString(36).padStart(6, '0') + idCount.toString(36).padStart(2, '0');
   }
 
   function relax(sites, map, iterations) {
@@ -2020,7 +2392,8 @@
   };
   const DIVISIONS = { plain: 'Plain', pale: 'Per pale', fess: 'Per fess', bend: 'Per bend', quarterly: 'Quarterly', chevron: 'Chevron', saltire: 'Saltire' };
   const CHARGES = { none: 'No charge', wolf: 'Wolf', raven: 'Raven', axe: 'Axe', ship: 'Longship', tower: 'Tower', dragon: 'Dragon', boar: 'Boar', stag: 'Stag', crown: 'Crown', sun: 'Sun', hammer: 'Hammer' };
-  const TITLES = ['King', 'Queen', 'Jarl', 'Thane', 'Earl', 'Chieftain'];
+  const RANDOM_TITLES = ['King', 'Queen', 'Jarl', 'Thane', 'Earl', 'Chieftain'];
+  const TITLES = RANDOM_TITLES.concat(['Duke', 'Duchess', 'High King', 'Prince']);
   // Traits bend the placeholder rules for one kingdom.
   const TRAITS = {
     none: { label: 'No trait', note: 'Plays by the standard rules.' },
@@ -2061,7 +2434,7 @@
 
   function randomKingdom(rng, index, capital, capitalName, opts) {
     const o = opts || {};
-    const title = pick(rng, TITLES);
+    const title = pick(rng, RANDOM_TITLES);
     return {
       id: o.id || 'k' + (index + 1),
       name: realmName(rng, capitalName || 'the North'),
@@ -2169,6 +2542,7 @@
     const now = o.now || nowMs();
     const nK = clamp(Math.round(o.kingdoms || 1), 1, MAX_KINGDOMS);
     if (o.engine === 1) return upgradeCampaign(legacyNewCampaign(Object.assign({}, o, { seed, count, now })), now, nK);
+    if (o.world === 'europe') return europeCampaign(o, seed, now, nK);
     const shape = SHAPES.includes(o.shape) ? o.shape : SHAPES[Math.floor(mulberry32(hashString('shape:' + seed))() * SHAPES.length)];
     const gen = normGen(o.gen);
     const { map, fine, seeds, comp } = generateMap2(seed, count, shape, gen);
@@ -2904,8 +3278,8 @@
     if (!raw || typeof raw !== 'object') throw new Error('A campaign entry is not an object.');
     const label = raw.name || key || 'campaign';
     if (!Array.isArray(raw.territories)) throw new Error('"' + label + '" has no territories list.');
-    if (raw.territories.length < 2 || raw.territories.length > 60) {
-      throw new Error('"' + label + '" has ' + raw.territories.length + ' territories; it needs between 2 (a home base and a target) and 60.');
+    if (raw.territories.length < 2 || raw.territories.length > 120) {
+      throw new Error('"' + label + '" has ' + raw.territories.length + ' territories; it needs between 2 (a home base and a target) and 120.');
     }
     const foreign = raw.version == null; // written by hand or by another tool
     const ids = new Set();
@@ -2941,6 +3315,7 @@
         override,
         overrideBy: typeof t.overrideBy === 'string' ? t.overrideBy : null,
         editedAt: num(t.editedAt, 0),
+        ...(typeof t.realm === 'string' && t.realm.trim() ? { realm: t.realm.trim().slice(0, 40) } : {}),
       };
     });
 
@@ -2951,7 +3326,9 @@
       map.islands.every((i) => i && num(i.rx, 0) > 0 && num(i.ry, 0) > 0 && Number.isFinite(num(i.cx, NaN)) && Number.isFinite(num(i.cy, NaN)));
     const coastOk = map && map.coast && Number.isFinite(num(map.coast.angle, NaN)) && Number.isFinite(num(map.coast.c, NaN));
     let engine2 = null;
-    if (map && map.engine === 2) {
+    if (map && map.engine === 2 && map.kind === 'europe') {
+      engine2 = { engine: 2, kind: 'europe', width: MAP_W, height: MAP_H, seed: mapSeed, shape: 'europe', gen: normGen(map.gen) };
+    } else if (map && map.engine === 2) {
       try {
         if (!SHAPES.includes(map.shape) || !map.mask || typeof map.mask !== 'object') throw new Error('bad mask');
         const m2 = { engine: 2, width: num(map.width, MAP_W), height: num(map.height, MAP_H), seed: mapSeed, shape: map.shape, gen: normGen(map.gen), mask: JSON.parse(JSON.stringify(map.mask)) };
@@ -3240,6 +3617,9 @@
     STATUSES,
     OUTCOMES,
     MIN_TERRITORIES,
+    EUROPE_REALMS,
+    EUROPE_TERRITORIES,
+    europeXY,
     MAX_TERRITORIES,
     SHAPES,
     SHAPES1,

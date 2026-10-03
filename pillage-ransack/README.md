@@ -1,6 +1,6 @@
 # Pillage Ransack
 
-Campaign map and raid tracker for Pillage Ransack. Up to four kingdoms fight over a procedurally drawn map of 15–25 territories: an island, an archipelago, a mainland coast, an inland sea, twin lands split by a strait, a fjord coast or a peninsula. The map shows who holds what, where everyone raided and who is winning. Logging a raid updates the map, and tapping a territory on the map fills in the raid form. Like Studyover, it stands apart from The Break 5 and just lives in this repo.
+Campaign map and raid tracker for Pillage Ransack. Up to four kingdoms fight over either a procedurally drawn map of 15–40 territories (an island, an archipelago, a mainland coast, an inland sea, twin lands split by a strait, a fjord coast or a peninsula) or **the real map of Europe around 1000 AD**, with 78 historical territories in 16 realms. The map shows who holds what, where everyone raided and who is winning. Logging a raid updates the map, and tapping a territory on the map fills in the raid form. Like Studyover, it stands apart from The Break 5 and just lives in this repo.
 
 ## Where it runs
 
@@ -45,7 +45,19 @@ Why four kingdoms but sixteen players: map colour is how you tell kingdoms apart
 
 The capital flies the kingdom's banner (in the colour of whoever holds it) and its coat of arms.
 
+## The real map: Europe, c. 1000
+
+**Real Europe** (next to the map) or **Campaign → New campaign → Map: Real Europe, c. 1000** starts a campaign on the actual coastline, from Ireland to Kiev and from Trøndelag to the Alps: the world of Pillage's Vikings, Anglo-Saxons, Normans and Irish.
+
+- **States and substates.** 16 realms as they stood around the year 1000 (Kingdom of England, Kingdom of Denmark, Kingdom of France, Kievan Rus', Duchy of Poland…) divided into 78 territories (Wessex, Mercia, Jórvík, Jutland, Scania, Normandy, Flanders, Novgorod, Kiev…). Realm borders are drawn heavier and realm names show while zoomed out; territory names appear as you zoom in. Territory lists in the raid form are grouped by realm.
+- **Sea roads.** 24 historical crossings count as borders: Norway to Orkney, Norway to Northumbria (Lindisfarne), Denmark to East Anglia (the Danelaw), the Dover strait, Wessex to Normandy, Wales to Dublin, the Øresund, Gotland to Curonia and so on.
+- **Starting kingdoms** follow the four Pillage factions at their historical seats with the ruler of about 1000: Denmark (Vikings, King Sweyn Forkbeard, Jutland), England (Anglo-Saxons, King Æthelred the Unready, Wessex), Normandy (Normans, Duke Richard the Good, Normandy) and Munster (Irish, King Brian Bóruma, Munster). Fewer kingdoms take the first ones on that list. Rename or customise them like any kingdom.
+- The seed still matters: it varies gold, garrisons and the exact line of inland borders. The conquest goal defaults to 35%, because 78 territories is a long war.
+- Coastline: [Natural Earth](https://www.naturalearthdata.com/) 1:50m land (public domain), projected so the map keeps real proportions at 54°N and simplified to half a pixel; it adds about 12 KB.
+
 ## Random maps
+
+- **Provinces.** Generated maps also have a level above the territory: neighbouring territories are grouped into named provinces of about four (*Duchy of …*, *Earldom of …*, *March of …*), with heavier borders between them.
 
 - **New random map** (next to the map) rolls a new campaign with the same number of kingdoms as the current one, and a random seed, coastline, size and land settings. A rolled map is only saved once you log a raid on it or press *Keep this map*, so rerolling doesn't pile up campaigns. New maps rise out of the sea from the middle outward.
 - **Campaign → New campaign** gives the controls, with a live preview of exactly the map you'll get:
@@ -134,7 +146,7 @@ From the browser console, `PillageRansack.logRaid({targetTerritory: 't4', outcom
 - `test/engine.test.js`, `test/fixtures/v1-campaign.json`: every coastline, rivers, settlements, kingdoms and traits, players and teams, merging, generation settings, rules, routes, import/export, and a save from the first release.
 
 ```bash
-node --test pillage-ransack/test/*.test.js   # 43 tests
+node --test pillage-ransack/test/*.test.js   # 45 tests
 node pillage-ransack/build.mjs               # rebuild index.html after editing app.html or engine.js
 cd pillage-ransack/desktop && npm ci && npm start   # run the Windows app from a checkout
 ```
@@ -144,6 +156,7 @@ cd pillage-ransack/desktop && npm ci && npm start   # run the Windows app from a
 - **Not a game engine.** It records what happened; it doesn't roll dice or decide outcomes. The odds shown are a guide.
 - **Only part of Pillage is in here.** Factions, gp pricing, the published example prices and the five scenarios are; the full price tables and the book's campaign rules aren't, because they're only in the paid rulebook. Most troop prices are estimates until you type yours in.
 - **The map rules and traits are this tracker's own** (above) and untested for balance. Gold on the map and gp on the table are one currency, so with the starting treasuries a single recruit is expensive: expect to tune `DEFAULT_START`, tribute and `provisionPct` after a few seasons of real play.
+- **The real map is a game board, not an atlas.** Territory seats are placed at real places, but the borders between them are grown from those seats, not traced from historical sources; realms around 1000 were far less tidy than this. There are no rivers or lakes on it (rather than invented ones), small islands vanish at this scale, and the frame cuts off Iceland, Iberia, most of Italy and the steppe. Land beyond the realms is wild and can't be raided.
 - **Troops at home aren't tracked by type.** The army is a head count; a raid can send any mix of troops as long as enough men are at home.
 - **Online play depends on claude.ai sharing.** Players need claude.ai accounts and edit access to the artifact; whether you can grant that depends on your plan's share options. Who may act for which kingdom is enforced by the page, not the server, so it is a game among friends, not a cheat-proof one.
 - **Merging is per item.** Raids, adjustments and milestones from every device are kept. Two people editing the same setting at the same time (a kingdom's name, the season) keep whichever save came last.
