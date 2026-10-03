@@ -16,6 +16,7 @@ Your claude.ai login is the sign-in: every device with the same account sees the
 ## What's in it
 
 - **One + button** opens Test, Study session, Study material and Tags.
+- **Calendar**: a month grid with each test on its due date in its subject colour (high priority glows red) and a dot on days you studied. Tap a day for what's due and to add a test on that date; with no day picked it lists everything due that month. Swipe or use the arrows to change month.
 - **Tests** have a subject, exam type, priority (high, medium, low), your own tags, a study goal in hours, notes and attached files.
 - **Study sessions** have hours, subject, tags, topics, confidence and the files you studied.
 - **Study material** opens inside the app: Word (.docx), PowerPoint (.pptx, with speaker notes), Excel (.xlsx, every sheet), PDF, photos, text and video. Up to 50 MB per file. While a file is open, a timer runs; *Log this session* turns it into a study session with that file attached. *Save a copy* gives you the original to open in Word or PowerPoint.
