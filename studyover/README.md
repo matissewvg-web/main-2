@@ -2,6 +2,8 @@
 
 Exams, study hours and study material for an accounting student at KdG Antwerpen, in one place. It is a sibling of Carryover and stands apart from The Break 5; it just lives in the same repo.
 
+> **Merged into Lifeboard on 2026-10-03.** Tests, sessions and study material now live in [Lifeboard](../lifeboard/README.md) under *Studie*, and the data here was copied over. This app still works, but nothing added here shows up in Lifeboard.
+
 ## Where it runs
 
 | Device | How | Data |

@@ -1,0 +1,60 @@
+name: Build Lifeboard (Windows)
+
+on:
+  push:
+    branches: ['**']
+    paths:
+      - 'lifeboard/desktop/**'
+      - '.github/workflows/lifeboard-windows.yml'
+  workflow_dispatch:
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    permissions:
+      contents: write
+    defaults:
+      run:
+        working-directory: lifeboard/desktop
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: lifeboard/desktop/package-lock.json
+
+      - name: Install
+        run: npm ci
+
+      - name: Package .exe
+        run: npx electron-builder --win --x64 --publish never
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Lifeboard-Windows
+          path: lifeboard/desktop/release/*.exe
+          if-no-files-found: error
+
+      # One fixed release, refreshed on every build, so this link never changes:
+      # https://github.com/<owner>/<repo>/releases/download/lifeboard/Lifeboard-Setup.exe
+      # make_latest stays false so The Break 5 keeps the repo's "latest" download link.
+      - name: Publish release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: lifeboard
+          name: Lifeboard for Windows
+          make_latest: false
+          overwrite_files: true
+          files: |
+            lifeboard/desktop/release/Lifeboard-Setup.exe
+            lifeboard/desktop/release/Lifeboard-Portable.exe
+          body: |
+            ## Download
+            - **Lifeboard-Setup.exe**: installer with a desktop shortcut (recommended)
+            - **Lifeboard-Portable.exe**: runs without installing
+
+            Sign in with the same claude.ai account you use on your iPhone; tasks, study, skills and budget sync between them.
+            Windows warns because the app is not code-signed: click *More info*, then *Run anyway*.

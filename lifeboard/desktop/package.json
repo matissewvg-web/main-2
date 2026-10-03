@@ -1,0 +1,58 @@
+{
+  "name": "lifeboard",
+  "productName": "Lifeboard",
+  "version": "1.0.0",
+  "description": "Lifeboard for Windows: tasks, agenda, study, daily skill and budget, synced with your claude.ai account",
+  "main": "main.js",
+  "author": "Matisse",
+  "license": "UNLICENSED",
+  "private": true,
+  "scripts": {
+    "start": "electron .",
+    "dist:win": "electron-builder --win --x64 --publish never"
+  },
+  "build": {
+    "appId": "app.lifeboard.desktop",
+    "productName": "Lifeboard",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "main.js",
+      "offline.html",
+      "icon.png",
+      "package.json"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "icon.png"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "shortcutName": "Lifeboard",
+      "artifactName": "Lifeboard-Setup.${ext}"
+    },
+    "portable": {
+      "artifactName": "Lifeboard-Portable.${ext}"
+    }
+  },
+  "devDependencies": {
+    "electron": "44.5.1",
+    "electron-builder": "26.15.3"
+  }
+}
