@@ -271,6 +271,21 @@ button { cursor: pointer; background: none; border: 0; padding: 0; touch-action:
 .pv.short { border-color: rgba(255, 84, 104, .45); }
 .pv .warn-line { grid-column: 1 / -1; color: #ff8a98; font-size: 12.5px; }
 .pctlive { font: 700 28px/1 var(--display); color: var(--accent); font-variant-numeric: tabular-nums; }
+.rs-sum { display: grid; gap: 10px; padding: 14px; border-radius: 18px; background: linear-gradient(120deg, color-mix(in srgb, var(--c) 16%, transparent), var(--glass) 70%); border: 1px solid color-mix(in srgb, var(--c) 28%, var(--line)); }
+.rs-list { display: grid; gap: 8px; }
+.rs-row { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 12px; align-items: center; width: 100%; min-height: 60px; padding: 8px 12px 8px 8px; text-align: left; border-radius: 16px; background: linear-gradient(100deg, color-mix(in srgb, var(--c) 14%, transparent), var(--glass) 70%); border: 1px solid color-mix(in srgb, var(--c) 26%, var(--line)); }
+.rs-row:active { transform: scale(.98); }
+.rs-row .due-date { width: 44px; padding: 6px 0 5px; }
+.rs-row .due-date b { font-size: 17px; }
+.rs-main { min-width: 0; }
+.rs-main b { display: block; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rs-main small { display: block; color: var(--muted); font-size: 12.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rs-score { text-align: right; font: 700 18px/1.1 var(--display); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.rs-score small { display: block; font: 500 11.5px var(--body); color: var(--muted); }
+.rs-score.good { color: var(--good); } .rs-score.bad { color: #ff8a98; }
+.rs-add { display: grid; gap: 14px; padding: 16px; border-radius: 18px; background: rgba(255, 255, 255, .04); border: 1px dashed var(--line); }
+.rs-add h3 { margin: 0; font: 700 16px var(--display); }
+.rs-add .two { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
 
 /* timeline */
 .chart { padding: 14px 12px 10px; }
@@ -524,6 +539,7 @@ input[type="range"] { flex: 1; height: 44px; margin: 0; accent-color: var(--cc);
   <symbol id="i-check" viewBox="0 0 16 16"><path d="M3.5 8.5l3 3 6-7" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></symbol>
   <symbol id="i-plan" viewBox="0 0 20 20"><rect x="3" y="3.5" width="14" height="13" rx="2.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M6.5 8l1.5 1.5L11 6.5M6.5 13h7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
   <symbol id="i-target" viewBox="0 0 20 20"><circle cx="10" cy="10" r="7" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="10" cy="10" r="3.5" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="10" cy="10" r="1" fill="currentColor"/></symbol>
+  <symbol id="i-grade" viewBox="0 0 20 20"><path d="M4 16V11M10 16V5M16 16V8" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/><path d="M3 17.5h14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
   <symbol id="i-x" viewBox="0 0 16 16"><path d="M3 3l10 10M13 3L3 13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
   <symbol id="i-back" viewBox="0 0 16 16"><path d="M10 3L5 8l5 5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
   <symbol id="i-clip" viewBox="0 0 16 16"><path d="M10.5 4.5l-5 5a1.6 1.6 0 0 0 2.3 2.3l5.4-5.4a3 3 0 0 0-4.3-4.3L3.4 7.6a4.4 4.4 0 0 0 6.2 6.2l4-4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></symbol>
@@ -566,6 +582,7 @@ input[type="range"] { flex: 1; height: 44px; margin: 0; accent-color: var(--cc);
     <div class="menu">
       <button type="button" class="tilebtn" style="--c:#9a6bff" data-act="stage" data-stage="test"><span class="ti"><svg aria-hidden="true"><use href="#i-cal"/></svg></span><b>Test</b><span>Midterm, final or quiz with a date, priority and goal</span></button>
       <button type="button" class="tilebtn" style="--c:#2ee6c5" data-act="stage" data-stage="session"><span class="ti"><svg aria-hidden="true"><use href="#i-clock"/></svg></span><b>Study session</b><span>Hours you studied and how confident you feel</span></button>
+      <button type="button" class="tilebtn" style="--c:#a3e635" data-act="stage" data-stage="results"><span class="ti"><svg aria-hidden="true"><use href="#i-grade"/></svg></span><b>Results</b><span>Scores per subject; add a test result in one step</span></button>
       <button type="button" class="tilebtn" style="--c:#ff7a3d" data-act="stage" data-stage="material"><span class="ti"><svg aria-hidden="true"><use href="#i-file"/></svg></span><b>Study material</b><span>Word, PowerPoint, Excel, PDF and photos to read here</span></button>
       <button type="button" class="tilebtn" style="--c:#3d8bff" data-act="stage" data-stage="plan"><span class="ti"><svg aria-hidden="true"><use href="#i-plan"/></svg></span><b>Study plan</b><span>Plan a study block, or let Studyover plan your week</span></button>
       <button type="button" class="tilebtn" style="--c:#ff4fa3" data-act="stage" data-stage="goal"><span class="ti"><svg aria-hidden="true"><use href="#i-target"/></svg></span><b>Subject goal</b><span>The percentage you want to score on a subject</span></button>
@@ -739,6 +756,59 @@ input[type="range"] { flex: 1; height: 44px; margin: 0; accent-color: var(--cc);
     </div>
   </div>
 
+  <div class="pane" id="pane-results" hidden>
+    <div class="stack">
+      <div class="field">
+        <span class="lbl" id="rs-sub-lbl">Subject</span>
+        <div class="chips" id="rs-subjects" role="group" aria-labelledby="rs-sub-lbl"></div>
+        <input class="inp" id="rs-newsub" maxlength="60" autocomplete="off" placeholder="Course name, e.g. Financial Accounting" aria-label="New subject name" hidden>
+        <p class="err" id="rs-sub-err"></p>
+      </div>
+      <div id="rs-summary"></div>
+      <div class="field" id="rs-tests-field">
+        <span class="lbl">Tests</span>
+        <div class="rs-list" id="rs-list"></div>
+      </div>
+      <form class="rs-add" id="rs-form" novalidate>
+        <h3>Add a result</h3>
+        <div class="field">
+          <span class="lbl" id="rs-type-lbl">Type</span>
+          <div class="chips" id="rs-types" role="group" aria-labelledby="rs-type-lbl">
+            <button type="button" class="chip" data-act="rs-type" data-v="Midterm" aria-pressed="false">Midterm</button>
+            <button type="button" class="chip" data-act="rs-type" data-v="Final" aria-pressed="false">Final</button>
+            <button type="button" class="chip" data-act="rs-type" data-v="Quiz" aria-pressed="false">Quiz</button>
+          </div>
+          <p class="err" id="rs-type-err"></p>
+        </div>
+        <div class="field">
+          <label for="rs-date">Date of the test</label>
+          <input class="inp" type="date" id="rs-date" aria-describedby="rs-date-err">
+          <p class="err" id="rs-date-err"></p>
+        </div>
+        <div class="two">
+          <div class="field">
+            <label for="rs-score">Score</label>
+            <input class="inp" type="number" id="rs-score" min="0" step="0.5" inputmode="decimal" placeholder="14" aria-describedby="rs-score-err">
+          </div>
+          <div class="field">
+            <label for="rs-out">Out of</label>
+            <input class="inp" type="number" id="rs-out" min="1" step="1" inputmode="numeric" value="20">
+          </div>
+        </div>
+        <div class="quick" aria-label="Common maximums">
+          <button type="button" data-act="out-quick" data-t="rs-out" data-v="10">/10</button><button type="button" data-act="out-quick" data-t="rs-out" data-v="20">/20</button><button type="button" data-act="out-quick" data-t="rs-out" data-v="50">/50</button><button type="button" data-act="out-quick" data-t="rs-out" data-v="100">/100</button>
+          <span class="pctlive" id="rs-pct" style="margin-left:auto;align-self:center">–</span>
+        </div>
+        <p class="err" id="rs-score-err"></p>
+        <div class="field">
+          <label for="rs-note">What it was about <em>(optional)</em></label>
+          <input class="inp" id="rs-note" maxlength="120" autocomplete="off" placeholder="Chapters 1–3, VAT exercises">
+        </div>
+        <button type="submit" class="submit">Add result</button>
+      </form>
+    </div>
+  </div>
+
   <form class="pane" id="pane-goal" novalidate hidden>
     <div class="stack">
       <div class="field">
@@ -876,7 +946,7 @@ input[type="range"] { flex: 1; height: 44px; margin: 0; accent-color: var(--cc);
   var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   function freshForms() {
     return { test: { subject: '', type: '', prio: 'med', tags: [], goalTouched: false }, session: { subject: '', tags: [], materialIds: [], planId: null }, material: { subject: '', testId: null, sessionId: null },
-      plan: { subject: '', testId: null }, goal: { subject: '' }, result: { testId: null } };
+      plan: { subject: '', testId: null }, goal: { subject: '' }, result: { testId: null, from: null }, results: { subject: '', type: '' } };
   }
   ui.f = freshForms();
 
@@ -1390,6 +1460,49 @@ input[type="range"] { flex: 1; height: 44px; margin: 0; accent-color: var(--cc);
       est != null ? { k: 'good', label: 'On target', rank: 3 } : { k: '', label: 'No results yet', rank: 2 };
     return { sub: sub, results: results, avg: avg, est: est, fromConf: avg == null && est != null, goal: goal, aim: aim, gap: gap, next: next, r: r, planned: planned, missing: missing, why: why, st: st, score: score };
   }
+  function goalBar(x) {
+    return '<div class="gbar" role="img" aria-label="' + (x.est != null ? Math.round(x.est) + '% now, ' : '') + 'goal ' + x.aim + '%">' +
+      '<u style="left:' + PASS + '%" title="Pass mark"></u>' +
+      (x.est != null ? '<i class="' + (x.fromConf ? 'est' : '') + '" style="width:' + Math.max(1, Math.min(100, x.est)).toFixed(1) + '%"></i>' : '') +
+      (x.est != null && x.gap > 0 ? '<s style="left:' + Math.min(100, x.est).toFixed(1) + '%;width:' + Math.min(100 - x.est, x.gap).toFixed(1) + '%" title="Gap to ' + (x.goal != null ? 'goal' : 'pass mark') + '"></s>' : '') +
+      '<em style="left:' + x.aim + '%" title="' + (x.goal != null ? 'Goal' : 'Pass mark') + '"></em></div>' +
+      '<div class="gscale" aria-hidden="true"><span style="left:0">0</span><span style="left:' + PASS + '%">pass 50%</span>' + (x.aim !== PASS && Math.abs(x.aim - PASS) > 12 && x.aim < 88 ? '<span style="left:' + x.aim + '%">goal</span>' : '') + '<span style="left:100%">100%</span></div>';
+  }
+  // The Results pane: one subject's tests with their scores, plus a form to add a result in one step.
+  function renderResults() {
+    var fr = ui.f.results, subs = allSubjects(), now = today();
+    $('rs-subjects').innerHTML = subjectChips('results', subs, true);
+    $('rs-newsub').hidden = fr.subject !== NEW;
+    Array.prototype.forEach.call($('rs-types').children, function (b) { b.setAttribute('aria-pressed', String(b.getAttribute('data-v') === fr.type)); });
+    var sub = fr.subject && fr.subject !== NEW ? fr.subject : null;
+    $('rs-tests-field').hidden = !sub;
+    if (!sub) {
+      $('rs-summary').innerHTML = fr.subject === NEW ? '<div class="none-yet">Type the new subject’s name, then add its first result below.</div>' : '<div class="none-yet">Pick a subject to see its results.</div>';
+      $('rs-list').innerHTML = '';
+      updateRsPct();
+      return;
+    }
+    var x = subjectStats(sub, now), c = colorOf(sub);
+    $('rs-summary').innerHTML = '<div class="rs-sum" style="--c:' + c + '"><div class="sg-row"><div class="sg-now">' +
+      (x.avg != null ? '<b>' + Math.round(x.avg) + '%</b><small>average of ' + x.results.length + ' ' + (x.results.length === 1 ? 'result' : 'results') + '</small>' : '<b class="est">–</b><small>no results yet</small>') + '</div>' +
+      '<button type="button" class="sg-goal' + (x.goal == null ? ' unset' : '') + '" data-act="set-goal" data-s="' + esc(sub) + '"><small>Goal</small><b>' + (x.goal != null ? x.goal + '%' : 'Set goal') + '</b></button></div>' +
+      goalBar(x) + '</div>';
+    var past = S.tests.filter(function (t) { return t.subject === sub && t.date <= now; }).sort(function (a, b) { return a.date < b.date ? 1 : a.date > b.date ? -1 : b.createdAt - a.createdAt; });
+    var upcoming = S.tests.filter(function (t) { return t.subject === sub && t.date > now; }).length;
+    $('rs-list').innerHTML = (past.length ? past.map(function (t) {
+      var pc = t.score != null ? pctOf(t) : null;
+      return '<button type="button" class="rs-row" style="--c:' + c + '" data-act="rs-open" data-id="' + esc(t.id) + '" aria-label="' + esc(t.examType + ' on ' + fmt(t.date, { day: 'numeric', month: 'long' }) + (pc != null ? ', ' + hrs(t.score) + ' out of ' + hrs(t.outOf) : ', no score yet')) + '">' +
+        '<span class="due-date" aria-hidden="true"><b>' + parse(t.date).getDate() + '</b><span>' + fmt(t.date, { month: 'short' }) + '</span></span>' +
+        '<span class="rs-main"><b>' + esc(t.examType) + '</b><small>' + fmt(t.date, { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' }) + (t.notes ? ' · ' + esc(t.notes) : '') + '</small></span>' +
+        (pc != null ? '<span class="rs-score ' + (pc >= x.aim ? 'good' : 'bad') + '">' + Math.round(pc) + '%<small>' + hrs(t.score) + ' / ' + hrs(t.outOf) + '</small></span>' : '<span class="pill warn">+ Score</span>') + '</button>';
+    }).join('') : '<div class="none-yet">No past tests for ' + esc(sub) + ' yet. Add a result below.</div>') +
+      (upcoming ? '<p class="cal-note">' + upcoming + ' upcoming ' + (upcoming === 1 ? 'test gets' : 'tests get') + ' a score here once ' + (upcoming === 1 ? 'its date has' : 'their dates have') + ' passed.</p>' : '');
+    updateRsPct();
+  }
+  function updateRsPct() {
+    var sc = Number($('rs-score').value), out = Number($('rs-out').value);
+    $('rs-pct').textContent = $('rs-score').value !== '' && out > 0 && sc >= 0 && sc <= out ? Math.round(sc / out * 1000) / 10 + '%' : '–';
+  }
   function subjects(now) {
     if (!S.loaded) return '';
     var list = allSubjects().map(function (sub) { return subjectStats(sub, now); })
@@ -1399,14 +1512,10 @@ input[type="range"] { flex: 1; height: 44px; margin: 0; accent-color: var(--cc);
       var c = colorOf(x.sub), r = x.r;
       var nowTxt = x.avg != null ? '<b>' + Math.round(x.avg) + '%</b><small>average of ' + x.results.length + ' ' + (x.results.length === 1 ? 'result' : 'results') + '</small>' :
         x.est != null ? '<b class="est">~' + Math.round(x.est) + '%</b><small>estimate from your confidence</small>' : '<b class="est">–</b><small>no results yet</small>';
-      var bar = '<div class="gbar" role="img" aria-label="' + (x.est != null ? Math.round(x.est) + '% now, ' : '') + 'goal ' + x.aim + '%">' +
-        '<u style="left:' + PASS + '%" title="Pass mark"></u>' +
-        (x.est != null ? '<i class="' + (x.fromConf ? 'est' : '') + '" style="width:' + Math.max(1, Math.min(100, x.est)).toFixed(1) + '%"></i>' : '') +
-        (x.est != null && x.gap > 0 ? '<s style="left:' + Math.min(100, x.est).toFixed(1) + '%;width:' + Math.min(100 - x.est, x.gap).toFixed(1) + '%" title="Gap to ' + (x.goal != null ? 'goal' : 'pass mark') + '"></s>' : '') +
-        '<em style="left:' + x.aim + '%" title="' + (x.goal != null ? 'Goal' : 'Pass mark') + '"></em></div>' +
-        '<div class="gscale" aria-hidden="true"><span style="left:0">0</span><span style="left:' + PASS + '%">pass 50%</span>' + (x.aim !== PASS && Math.abs(x.aim - PASS) > 12 && x.aim < 88 ? '<span style="left:' + x.aim + '%">goal</span>' : '') + '<span style="left:100%">100%</span></div>';
+      var bar = goalBar(x);
       var res = x.results.slice(-3).map(function (t) { return '<span>' + esc(t.examType) + ' ' + fmt(t.date, { day: 'numeric', month: 'short' }) + ' <b>' + hrs(t.score) + '/' + hrs(t.outOf) + '</b> · ' + Math.round(pctOf(t)) + '%</span>'; }).join('') +
-        x.missing.slice(0, 2).map(function (t) { return '<button type="button" class="btn-sm accent" data-act="add-result" data-id="' + esc(t.id) + '">+ Result ' + esc(t.examType.toLowerCase()) + ' ' + fmt(t.date, { day: 'numeric', month: 'short' }) + '</button>'; }).join('');
+        x.missing.slice(0, 2).map(function (t) { return '<button type="button" class="btn-sm accent" data-act="add-result" data-id="' + esc(t.id) + '">+ Result ' + esc(t.examType.toLowerCase()) + ' ' + fmt(t.date, { day: 'numeric', month: 'short' }) + '</button>'; }).join('') +
+        '<button type="button" class="btn-sm" data-act="open-results" data-s="' + esc(x.sub) + '"><svg class="ico" aria-hidden="true"><use href="#i-grade"/></svg>Results' + (x.results.length ? ' (' + x.results.length + ')' : '') + '</button>';
       var hours = '';
       if (r) {
         var plPct = Math.min(1 - r.pct, x.planned / r.goal);
@@ -1603,12 +1712,13 @@ input[type="range"] { flex: 1; height: 44px; margin: 0; accent-color: var(--cc);
   }
 
   /* ---------- the + sheet ---------- */
-  var TITLES = { menu: 'Add', test: 'New test', session: 'Log a study session', material: 'Add study material', tags: 'Tags', plan: 'Plan a study block', auto: 'Plan for me', goal: 'Subject goal', result: 'Test result' };
+  var TITLES = { results: 'Results', menu: 'Add', test: 'New test', session: 'Log a study session', material: 'Add study material', tags: 'Tags', plan: 'Plan a study block', auto: 'Plan for me', goal: 'Subject goal', result: 'Test result' };
   function openSheet(stage, preset) {
     ui.f = freshForms();
     ui.pending = { test: [], session: [], material: [] };
     ui.newTag = { name: '', color: SWATCHES[4], open: null };
-    ['t-date', 't-goal', 't-notes', 't-newsub', 's-hours', 's-topics', 'm-newsub', 'p-hours', 'p-topic', 'g-target', 'x-score'].forEach(function (id) { $(id).value = ''; });
+    ['t-date', 't-goal', 't-notes', 't-newsub', 's-hours', 's-topics', 'm-newsub', 'p-hours', 'p-topic', 'g-target', 'x-score', 'rs-newsub', 'rs-score', 'rs-note'].forEach(function (id) { $(id).value = ''; });
+    $('rs-date').value = today(); $('rs-out').value = 20;
     $('s-date').value = today(); $('s-conf').value = 5; setConf(5); $('p-date').value = today(); $('x-out').value = 20;
     clearErrors();
     if (preset) Object.keys(preset).forEach(function (k) { if (ui.f[k]) Object.assign(ui.f[k], preset[k]); });
@@ -1627,8 +1737,8 @@ input[type="range"] { flex: 1; height: 44px; margin: 0; accent-color: var(--cc);
   }
   function setStage(stage) {
     ui.stage = stage;
-    ['menu', 'test', 'session', 'material', 'tags', 'plan', 'auto', 'goal', 'result'].forEach(function (s) { $('pane-' + s).hidden = s !== stage; });
-    $('sheet-back').setAttribute('data-to', stage === 'auto' ? 'plan' : 'menu');
+    ['menu', 'test', 'session', 'material', 'tags', 'plan', 'auto', 'goal', 'result', 'results'].forEach(function (s) { $('pane-' + s).hidden = s !== stage; });
+    $('sheet-back').setAttribute('data-to', stage === 'auto' ? 'plan' : stage === 'result' && ui.f.result.from ? ui.f.result.from : 'menu');
     $('sheet-title').textContent = TITLES[stage];
     $('sheet-back').hidden = stage === 'menu';
     renderSheet();
@@ -1705,6 +1815,8 @@ input[type="range"] { flex: 1; height: 44px; margin: 0; accent-color: var(--cc);
       $('p-tests').innerHTML = !fp.subject ? '<div class="none-yet">Pick a subject first.</div>' : up.length ? up.map(function (t) {
         return '<button type="button" class="chip" style="--c:' + colorOf(t.subject) + '" data-act="pick-ptest" data-v="' + esc(t.id) + '" aria-pressed="' + (fp.testId === t.id) + '">' + esc(t.examType) + ' · ' + fmt(t.date, { day: 'numeric', month: 'short' }) + '</button>';
       }).join('') : '<div class="none-yet">No upcoming test for this subject.</div>';
+    } else if (st === 'results') {
+      renderResults();
     } else if (st === 'auto') {
       renderAuto();
     } else if (st === 'goal') {
@@ -2273,6 +2385,7 @@ input[type="range"] { flex: 1; height: 44px; margin: 0; accent-color: var(--cc);
         if (form === 'material') ui.f.material.testId = null;
         if (form === 'plan') { ui.f.plan.testId = null; ui.f.plan.testTouched = false; }
         if (form === 'goal') { $('g-target').value = S.targets[v] || ''; setErr('g-target-err', '', $('g-target')); }
+        if (form === 'results') { setErr('rs-sub-err', '', $('rs-newsub')); if (v === NEW) setTimeout(function () { $('rs-newsub').focus(); }, 0); }
         setErr(form.charAt(0) + '-sub-err', '', $(form.charAt(0) + '-newsub'));
         renderSheet();
         if (v === NEW && $(form.charAt(0) + '-newsub')) $(form.charAt(0) + '-newsub').focus();
@@ -2369,11 +2482,21 @@ input[type="range"] { flex: 1; height: 44px; margin: 0; accent-color: var(--cc);
         saveSettings(); closeSheet(); render(); toast('Goal for ' + gs + ' removed');
         break;
       case 'add-result': openSheet('result', { result: { testId: b.getAttribute('data-id') } }); break;
-      case 'out-quick': $('x-out').value = v; setErr('x-out-err', '', $('x-out')); updatePct(); break;
+      case 'open-results': openSheet('results', { results: { subject: b.getAttribute('data-s') } }); break;
+      case 'rs-type': ui.f.results.type = v; setErr('rs-type-err', ''); renderSheet(); break;
+      case 'rs-open':
+        var ro = find(S.tests, b.getAttribute('data-id'));
+        if (!ro) break;
+        ui.f.result = { testId: ro.id, from: 'results' };
+        clearErrors();
+        $('x-score').value = ro.score != null ? ro.score : ''; $('x-out').value = ro.score != null ? ro.outOf : 20;
+        setStage('result');
+        break;
+      case 'out-quick': var oq = b.getAttribute('data-t') || 'x-out'; $(oq).value = v; setErr(oq + '-err', '', $(oq)); if (oq === 'rs-out') updateRsPct(); else updatePct(); break;
       case 'result-clear':
         var rc = find(S.tests, ui.f.result.testId);
         if (!rc) break;
-        patchDoc('test', rc.id, { score: null }).then(function () { toast('Result removed'); closeSheet(); }, function () { toast('That did not save. Try again.', { bad: true }); });
+        patchDoc('test', rc.id, { score: null }).then(function () { toast('Result removed'); backFromResult(); }, function () { toast('That did not save. Try again.', { bad: true }); });
         break;
       case 'cal-move': moveMonth(+b.getAttribute('data-dir')); break;
       case 'cal-now': ui.calMonth = null; ui.calSel = null; render(); break;
@@ -2410,6 +2533,8 @@ input[type="range"] { flex: 1; height: 44px; margin: 0; accent-color: var(--cc);
     else if (id === 't-goal') { ui.f.test.goalTouched = e.target.value !== ''; setErr('t-goal-err', '', e.target); }
     else if (id === 's-conf') setConf(e.target.value);
     else if (id === 'x-score' || id === 'x-out') { setErr(id + '-err', '', e.target); updatePct(); }
+    else if (id === 'rs-score' || id === 'rs-out') { setErr('rs-score-err', '', $('rs-score')); updateRsPct(); }
+    else if (id === 'rs-newsub') setErr('rs-sub-err', '', e.target);
     else if ($(id + '-err')) setErr(id + '-err', '', e.target);
     else if (id === 't-newsub' || id === 'm-newsub') setErr(id.charAt(0) + '-sub-err', '', e.target);
   });
@@ -2563,7 +2688,40 @@ input[type="range"] { flex: 1; height: 44px; margin: 0; accent-color: var(--cc);
       var pct = sc / out * 100, goal = S.targets[t.subject];
       burst(btn, colorOf(t.subject));
       toast('Result saved: ' + hrs(sc) + '/' + hrs(out) + ' (' + Math.round(pct) + '%)' + (goal ? (pct >= goal ? ', goal reached' : ', ' + Math.round(goal - pct) + '% under your goal') : ''));
-      closeSheet();
+      backFromResult();
+    }, function () { toast('That did not save. Check your connection and try again.', { bad: true }); }).then(function () { btn.disabled = false; });
+  });
+
+  function backFromResult() {
+    if (ui.f.result.from === 'results') { var t = find(S.tests, ui.f.result.testId); if (t) ui.f.results.subject = t.subject; ui.f.result = { testId: null, from: null }; setStage('results'); }
+    else closeSheet();
+  }
+
+  $('rs-form').addEventListener('submit', function (e) {
+    e.preventDefault();
+    var f = ui.f.results, first = null, dI = $('rs-date'), sI = $('rs-score'), oI = $('rs-out'), nI = $('rs-newsub');
+    var subject = resolveSubject('results', 'rs-newsub');
+    if (!subject) { setErr('rs-sub-err', f.subject === NEW ? 'Type the subject name.' : 'Pick a subject first.', nI); first = f.subject === NEW ? nI : $('rs-subjects'); }
+    if (TYPES.indexOf(f.type) < 0) { setErr('rs-type-err', 'Pick midterm, final or quiz.'); first = first || $('rs-types'); }
+    var de = dateErr(dI); if (!de && dI.value > today()) de = 'A result needs a date of today or earlier. Add future tests with + → Test.';
+    setErr('rs-date-err', de, dI); if (de) first = first || dI;
+    var sc = Number(sI.value), out = Number(oI.value), se = '';
+    if (!(out > 0)) se = 'Enter the maximum score, like 20.';
+    else if (sI.value === '' || !(sc >= 0)) se = 'Enter your score.';
+    else if (sc > out) se = 'Your score can be at most ' + hrs(out) + '.';
+    setErr('rs-score-err', se, sI); if (se) first = first || sI;
+    if (first) { focusFirst(first); return; }
+    var t = { id: uid(), date: dI.value, subject: subject, examType: f.type, priority: 'med', tags: [], notes: $('rs-note').value.trim(), goalHours: null, score: sc, outOf: out, createdAt: Date.now() };
+    var btn = this.querySelector('.submit');
+    ensureColor(subject);
+    btn.disabled = true;
+    saveDoc('test', t).then(function () {
+      var pct = sc / out * 100, goal = S.targets[subject];
+      burst(btn, colorOf(subject));
+      toast(subject + ' ' + t.examType.toLowerCase() + ': ' + hrs(sc) + '/' + hrs(out) + ' (' + Math.round(pct) + '%)' + (goal ? (pct >= goal ? ', goal reached' : ', ' + Math.round(goal - pct) + '% under your goal') : ''));
+      f.subject = subject; f.type = '';
+      nI.value = ''; sI.value = ''; $('rs-note').value = '';
+      renderSheet();
     }, function () { toast('That did not save. Check your connection and try again.', { bad: true }); }).then(function () { btn.disabled = false; });
   });
 

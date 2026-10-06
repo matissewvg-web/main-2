@@ -15,7 +15,8 @@ Your claude.ai login is the sign-in: every device with the same account sees the
 
 ## What's in it
 
-- **One + button** opens Test, Study session, Study material, Study plan, Subject goal and Tags.
+- **One + button** opens Test, Study session, Results, Study material, Study plan, Subject goal and Tags.
+- **Results**: pick a subject to see all its past tests with score and percentage (green at or above your goal, red under it), the average against your goal, and *+ Score* for tests without one. *Add a result* adds a test that is not in Studyover yet together with its score in one step (type, date of today or earlier, score out of 10/20/50/100, optional note). Each subject card has a *Results* button that opens this for that subject.
 - **Study plan**: a week view with study blocks per day (subject, hours, what to study, which test). *Done, log it* turns a block into a study session; missed blocks can move to today. *Plan for me* spreads the hours each test still needs (its study goal minus hours done and already planned) over the 4 weeks before it, in blocks of 1 to 3 hours, within the hours you can study per weekday. Running it again only adds what is still missing.
 - **Which subjects need work**: per subject your results (score out of 10, 20, 50 or 100) against the percentage you want (your goal, or the 50% pass mark), an estimate from your confidence when there are no results yet, and hours done + planned for the next test. Subjects are ranked: *Needs work* first, then *Watch*, *On target*. Past tests without a result get an *+ Result* button.
 - **Calendar**: a month grid with each test on its due date in its subject colour (high priority glows red) and a dot on days you studied. Tap a day for what's due and to add a test on that date; with no day picked it lists everything due that month. Swipe or use the arrows to change month.
