@@ -4,3 +4,4 @@ release/
 .data/
 *.log
 .ci-data/
+__pycache__/
