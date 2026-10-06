@@ -162,12 +162,15 @@ button { cursor: pointer; background: none; border: 0; padding: 0; touch-action:
 .ev.p-high { box-shadow: 0 0 0 1.5px var(--late), 0 0 10px rgba(255, 84, 104, .55); }
 .cd.past .ev { opacity: .45; box-shadow: none; }
 .cd-more { font-size: 10px; color: var(--muted); font-weight: 600; padding-left: 2px; }
-.st { position: absolute; top: 7px; right: 6px; width: 6px; height: 6px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 6px var(--accent); }
+.cd-dots { position: absolute; top: 7px; right: 6px; display: flex; gap: 3px; }
+.st { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 6px var(--accent); }
+.pdot { width: 6px; height: 6px; border-radius: 50%; border: 1.5px solid var(--violet); }
 @media (max-width: 600px) {
   .cal { padding: 12px 10px 14px; }
   .cd { min-height: 56px; padding: 5px 3px 4px; }
   .ev { height: 6px; padding: 0; font-size: 0; border-radius: 3px; }
-  .st { top: 6px; right: 4px; width: 5px; height: 5px; }
+  .cd-dots { top: 6px; right: 4px; }
+  .st, .pdot { width: 5px; height: 5px; }
 }
 .cal-detail { margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--line); display: grid; gap: 10px; }
 .cal-detail-h { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 4px 10px; }
@@ -189,6 +192,85 @@ button { cursor: pointer; background: none; border: 0; padding: 0; touch-action:
 .due-mats { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 8px; }
 @keyframes calin { from { opacity: 0; transform: translateX(var(--dx, 0)); } to { opacity: 1; transform: none; } }
 .cal-grid.slide { animation: calin .28s cubic-bezier(.2, .9, .3, 1); }
+
+/* study plan */
+.plan { padding: 14px 14px 12px; }
+.plan-top { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+.plan-top h3 { flex: 1; margin: 0; font: 700 20px/1.1 var(--display); letter-spacing: -.02em; }
+.plan-top h3 span { display: block; margin-top: 4px; font: 500 12.5px var(--body); color: var(--muted); letter-spacing: 0; }
+.pd { display: grid; grid-template-columns: 44px minmax(0, 1fr) auto; gap: 10px; align-items: start; padding: 10px 0; border-top: 1px solid var(--line); }
+.pd.first { border-top: 0; }
+.pd-date { text-align: center; padding-top: 4px; }
+.pd-date b { display: block; font: 700 19px/1 var(--display); font-variant-numeric: tabular-nums; }
+.pd-date span { display: block; font-size: 10.5px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); font-weight: 600; margin-top: 3px; }
+.pd.today .pd-date b, .pd.today .pd-date span { color: var(--accent); }
+.pd.past .pd-date, .pd.past .pd-empty { opacity: .5; }
+.pd-body { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.pd-empty { color: var(--faint); font-size: 13px; padding-top: 12px; }
+.pd-exam { align-self: flex-start; display: inline-flex; align-items: center; font-size: 12px; font-weight: 700; padding: 4px 10px; border-radius: 99px; background: var(--c); color: var(--ink); box-shadow: 0 0 12px color-mix(in srgb, var(--c) 45%, transparent); max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pb { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 10px; align-items: center; width: 100%; min-height: 48px; padding: 7px 12px 7px 10px; border-radius: 14px; text-align: left; background: linear-gradient(100deg, color-mix(in srgb, var(--c) 20%, transparent), var(--glass) 72%); border: 1px solid color-mix(in srgb, var(--c) 32%, var(--line)); }
+.pb .ck { width: 22px; height: 22px; border-radius: 50%; border: 2px solid var(--c); display: grid; place-items: center; color: transparent; }
+.pb .ck svg { width: 12px; height: 12px; }
+.pb.done .ck { background: var(--c); color: var(--ink); }
+.pb.done b { text-decoration: line-through; color: var(--muted); }
+.pb.missed { border-style: dashed; }
+.pb b { display: block; font-weight: 600; font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pb small { display: block; color: var(--muted); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pd-acts { display: flex; flex-wrap: wrap; gap: 6px; }
+.pd-side { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
+.pd-h { font-size: 11.5px; color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; padding-top: 4px; }
+.pd-h.over { color: var(--warn); font-weight: 600; }
+.pd-add { width: 44px; height: 44px; border-radius: 12px; display: grid; place-items: center; border: 1px dashed var(--line); color: var(--accent); }
+.pd-add svg { width: 16px; height: 16px; }
+.plan-foot { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 8px; padding-top: 12px; border-top: 1px solid var(--line); }
+.plan-foot .sum { flex: 1; min-width: 150px; color: var(--muted); font-size: 13px; }
+.plan-foot .sum b { color: var(--fg); }
+.plan-foot .btn-sm.accent { background: var(--accent); color: var(--accent-ink); border-color: transparent; box-shadow: 0 6px 20px rgba(46, 230, 197, .25); }
+
+/* subject goals */
+.sg { padding: 16px 0; border-bottom: 1px solid var(--line); display: grid; gap: 10px; }
+.sg:last-child { border-bottom: 0; }
+.sg-row { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; }
+.sg-now b { font: 700 32px/1 var(--display); letter-spacing: -.03em; font-variant-numeric: tabular-nums; }
+.sg-now b.est { color: var(--muted); }
+.sg-now small { display: block; margin-top: 5px; font-size: 12px; color: var(--muted); }
+.sg-goal { min-height: 48px; padding: 6px 14px; border-radius: 14px; border: 1px solid var(--line); background: var(--glass); text-align: right; flex: none; }
+.sg-goal small { display: block; font-size: 10.5px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+.sg-goal b { font: 700 19px/1.15 var(--display); font-variant-numeric: tabular-nums; }
+.sg-goal.unset b { color: var(--accent); font-size: 14px; }
+.gbar { position: relative; height: 14px; border-radius: 14px; background: var(--track); }
+.gbar i { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 14px; background: var(--c); box-shadow: 0 0 14px color-mix(in srgb, var(--c) 55%, transparent); }
+.gbar i.est { background: repeating-linear-gradient(135deg, var(--c) 0 6px, color-mix(in srgb, var(--c) 40%, transparent) 6px 12px); box-shadow: none; }
+.gbar s { position: absolute; top: 0; bottom: 0; background: rgba(255, 84, 104, .32); border-radius: 0 14px 14px 0; text-decoration: none; }
+.gbar u { position: absolute; top: 2px; bottom: 2px; width: 0; border-left: 1px dashed rgba(255, 255, 255, .4); }
+.gbar em { position: absolute; top: -5px; bottom: -5px; width: 3px; margin-left: -1.5px; border-radius: 3px; background: var(--fg); box-shadow: 0 0 8px rgba(255, 255, 255, .6); }
+.gscale { position: relative; height: 14px; font-size: 11px; color: var(--faint); margin-top: -4px; }
+.gscale span { position: absolute; top: 0; transform: translateX(-50%); white-space: nowrap; }
+.gscale span:first-child { transform: none; }
+.gscale span:last-child { transform: translateX(-100%); }
+.res { display: flex; flex-wrap: wrap; gap: 6px; }
+.res > span { font-size: 12px; color: var(--muted); padding: 5px 10px; border-radius: 99px; background: rgba(0, 0, 0, .25); border: 1px solid var(--line); }
+.res > span b { color: var(--fg); }
+.why { margin: 0; padding: 0; list-style: none; display: grid; gap: 4px; font-size: 13px; color: var(--muted); }
+.why li::before { content: ""; display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: currentColor; margin: 0 8px 2px 0; opacity: .7; }
+.why li.bad { color: #ff8a98; }
+.meter b.pl { position: absolute; top: 0; bottom: 0; background: repeating-linear-gradient(135deg, color-mix(in srgb, var(--c) 75%, transparent) 0 4px, transparent 4px 8px); border-radius: 0 10px 10px 0; }
+
+/* plan for me */
+.avail { display: grid; gap: 6px; }
+.av { display: grid; grid-template-columns: 52px 44px minmax(0, 1fr) 44px; align-items: center; gap: 8px; }
+.av b { font-weight: 600; }
+.av output { position: relative; height: 32px; border-radius: 10px; background: var(--track); overflow: hidden; display: grid; place-items: center; font: 700 14px var(--display); font-variant-numeric: tabular-nums; }
+.av output i { position: absolute; left: 0; top: 0; bottom: 0; background: color-mix(in srgb, var(--accent) 35%, transparent); }
+.av output span { position: relative; }
+.preview { display: grid; gap: 8px; }
+.pv { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 10px; align-items: center; padding: 10px 12px; border-radius: 14px; border: 1px solid color-mix(in srgb, var(--c) 30%, var(--line)); background: linear-gradient(100deg, color-mix(in srgb, var(--c) 16%, transparent), transparent 72%); font-size: 13.5px; }
+.pv b { font-weight: 600; }
+.pv small { display: block; color: var(--muted); font-size: 12px; }
+.pv .n { font: 700 16px var(--display); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.pv.short { border-color: rgba(255, 84, 104, .45); }
+.pv .warn-line { grid-column: 1 / -1; color: #ff8a98; font-size: 12.5px; }
+.pctlive { font: 700 28px/1 var(--display); color: var(--accent); font-variant-numeric: tabular-nums; }
 
 /* timeline */
 .chart { padding: 14px 12px 10px; }
@@ -269,6 +351,7 @@ dialog::backdrop { background: rgba(0, 0, 0, .62); backdrop-filter: blur(6px); -
 .icon-btn svg { width: 16px; height: 16px; }
 .pane { padding: 18px 18px calc(env(safe-area-inset-bottom, 0px) + 22px); }
 .menu { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+@media (min-width: 620px) { .menu { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 .tilebtn { position: relative; overflow: hidden; display: flex; flex-direction: column; align-items: flex-start; gap: 6px; min-height: 128px; padding: 16px; text-align: left; border-radius: 22px; border: 1px solid color-mix(in srgb, var(--c) 40%, var(--line)); background: linear-gradient(140deg, color-mix(in srgb, var(--c) 24%, transparent), var(--glass) 70%); transition: transform .12s; }
 .tilebtn:active { transform: scale(.97); }
 .tilebtn .ti { width: 40px; height: 40px; border-radius: 13px; display: grid; place-items: center; background: var(--c); color: var(--ink); box-shadow: 0 0 18px color-mix(in srgb, var(--c) 55%, transparent); }
@@ -438,6 +521,9 @@ input[type="range"] { flex: 1; height: 44px; margin: 0; accent-color: var(--cc);
   <symbol id="i-minus" viewBox="0 0 20 20"><path d="M4 10h12" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></symbol>
   <symbol id="i-save" viewBox="0 0 20 20"><path d="M10 3v9m0 0l-3.5-3.5M10 12l3.5-3.5M4 14.5V16a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1v-1.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
   <symbol id="i-trash" viewBox="0 0 20 20"><path d="M4 6h12M8 6V4h4v2M6 6l.8 10.2a1 1 0 0 0 1 .8h4.4a1 1 0 0 0 1-.8L14 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-check" viewBox="0 0 16 16"><path d="M3.5 8.5l3 3 6-7" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-plan" viewBox="0 0 20 20"><rect x="3" y="3.5" width="14" height="13" rx="2.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M6.5 8l1.5 1.5L11 6.5M6.5 13h7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-target" viewBox="0 0 20 20"><circle cx="10" cy="10" r="7" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="10" cy="10" r="3.5" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="10" cy="10" r="1" fill="currentColor"/></symbol>
   <symbol id="i-x" viewBox="0 0 16 16"><path d="M3 3l10 10M13 3L3 13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
   <symbol id="i-back" viewBox="0 0 16 16"><path d="M10 3L5 8l5 5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
   <symbol id="i-clip" viewBox="0 0 16 16"><path d="M10.5 4.5l-5 5a1.6 1.6 0 0 0 2.3 2.3l5.4-5.4a3 3 0 0 0-4.3-4.3L3.4 7.6a4.4 4.4 0 0 0 6.2 6.2l4-4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></symbol>
@@ -481,6 +567,8 @@ input[type="range"] { flex: 1; height: 44px; margin: 0; accent-color: var(--cc);
       <button type="button" class="tilebtn" style="--c:#9a6bff" data-act="stage" data-stage="test"><span class="ti"><svg aria-hidden="true"><use href="#i-cal"/></svg></span><b>Test</b><span>Midterm, final or quiz with a date, priority and goal</span></button>
       <button type="button" class="tilebtn" style="--c:#2ee6c5" data-act="stage" data-stage="session"><span class="ti"><svg aria-hidden="true"><use href="#i-clock"/></svg></span><b>Study session</b><span>Hours you studied and how confident you feel</span></button>
       <button type="button" class="tilebtn" style="--c:#ff7a3d" data-act="stage" data-stage="material"><span class="ti"><svg aria-hidden="true"><use href="#i-file"/></svg></span><b>Study material</b><span>Word, PowerPoint, Excel, PDF and photos to read here</span></button>
+      <button type="button" class="tilebtn" style="--c:#3d8bff" data-act="stage" data-stage="plan"><span class="ti"><svg aria-hidden="true"><use href="#i-plan"/></svg></span><b>Study plan</b><span>Plan a study block, or let Studyover plan your week</span></button>
+      <button type="button" class="tilebtn" style="--c:#ff4fa3" data-act="stage" data-stage="goal"><span class="ti"><svg aria-hidden="true"><use href="#i-target"/></svg></span><b>Subject goal</b><span>The percentage you want to score on a subject</span></button>
       <button type="button" class="tilebtn" style="--c:#ffc53d" data-act="stage" data-stage="tags"><span class="ti"><svg aria-hidden="true"><use href="#i-tag"/></svg></span><b>Tags</b><span>Your own labels with a colour, like Chapter 3 or Retake</span></button>
     </div>
   </div>
@@ -603,6 +691,99 @@ input[type="range"] { flex: 1; height: 44px; margin: 0; accent-color: var(--cc);
     <button type="submit" class="submit">Add study material</button>
   </form>
 
+  <form class="pane" id="pane-plan" novalidate hidden>
+    <div class="fgrid">
+      <div class="field">
+        <label for="p-date">Day</label>
+        <input class="inp" type="date" id="p-date" aria-describedby="p-date-err">
+        <p class="err" id="p-date-err"></p>
+      </div>
+      <div class="field">
+        <label for="p-hours">Hours</label>
+        <input class="inp" type="number" id="p-hours" min="0.25" max="12" step="0.25" inputmode="decimal" placeholder="1.5" aria-describedby="p-hours-err">
+        <div class="quick" aria-label="Quick hours">
+          <button type="button" data-act="qh" data-t="p-hours" data-h="0.5">0.5</button><button type="button" data-act="qh" data-t="p-hours" data-h="1">1</button><button type="button" data-act="qh" data-t="p-hours" data-h="1.5">1.5</button><button type="button" data-act="qh" data-t="p-hours" data-h="2">2</button><button type="button" data-act="qh" data-t="p-hours" data-h="3">3</button>
+        </div>
+        <p class="err" id="p-hours-err"></p>
+      </div>
+      <div class="field span2">
+        <span class="lbl" id="p-sub-lbl">Subject</span>
+        <div class="chips" id="p-subjects" role="group" aria-labelledby="p-sub-lbl"></div>
+        <p class="err" id="p-sub-err"></p>
+      </div>
+      <div class="field span2">
+        <span class="lbl" id="p-test-lbl">For test <em>(optional)</em></span>
+        <div class="chips" id="p-tests" role="group" aria-labelledby="p-test-lbl"></div>
+      </div>
+      <div class="field span2">
+        <label for="p-topic">What to study <em>(optional)</em></label>
+        <input class="inp" id="p-topic" maxlength="120" autocomplete="off" placeholder="Chapter 3 exercises, past exam 2025">
+      </div>
+    </div>
+    <button type="submit" class="submit">Add to plan</button>
+    <button type="button" class="btn-sm accent" data-act="stage" data-stage="auto" style="justify-self:center">Or let Studyover plan for you</button>
+  </form>
+
+  <div class="pane" id="pane-auto" hidden>
+    <div class="stack">
+      <p class="cal-note">Studyover spreads the hours you still need for each test (its study goal minus what you did and already planned) over the 4 weeks before it, in blocks of 1 to 3 hours. Small portions spread out stick better than cramming.</p>
+      <div class="field">
+        <span class="lbl">Hours you can study per day</span>
+        <div class="avail" id="a-days"></div>
+      </div>
+      <div class="field">
+        <span class="lbl">What it will plan</span>
+        <div class="preview" id="a-preview"></div>
+      </div>
+      <button type="button" class="submit" id="a-apply" data-act="auto-apply">Add study blocks</button>
+    </div>
+  </div>
+
+  <form class="pane" id="pane-goal" novalidate hidden>
+    <div class="stack">
+      <div class="field">
+        <span class="lbl" id="g-sub-lbl">Subject</span>
+        <div class="chips" id="g-subjects" role="group" aria-labelledby="g-sub-lbl"></div>
+        <p class="err" id="g-sub-err"></p>
+      </div>
+      <div class="field">
+        <label for="g-target">Goal <em>(percentage you want to score)</em></label>
+        <input class="inp" type="number" id="g-target" min="1" max="100" step="1" inputmode="numeric" placeholder="70" aria-describedby="g-ctx g-target-err">
+        <div class="quick" aria-label="Quick goals">
+          <button type="button" data-act="goal-quick" data-v="50">50%</button><button type="button" data-act="goal-quick" data-v="60">60%</button><button type="button" data-act="goal-quick" data-v="65">65%</button><button type="button" data-act="goal-quick" data-v="70">70%</button><button type="button" data-act="goal-quick" data-v="75">75%</button><button type="button" data-act="goal-quick" data-v="80">80%</button><button type="button" data-act="goal-quick" data-v="90">90%</button>
+        </div>
+        <span class="hint" id="g-ctx"></span>
+        <p class="err" id="g-target-err"></p>
+      </div>
+    </div>
+    <button type="submit" class="submit">Save goal</button>
+    <button type="button" class="btn-sm danger" data-act="goal-clear" id="g-clear" style="justify-self:center" hidden>Remove goal</button>
+  </form>
+
+  <form class="pane" id="pane-result" novalidate hidden>
+    <div class="stack">
+      <div class="due" id="x-test"></div>
+      <div class="fgrid">
+        <div class="field">
+          <label for="x-score">Your score</label>
+          <input class="inp" type="number" id="x-score" min="0" step="0.5" inputmode="decimal" placeholder="14" aria-describedby="x-score-err">
+          <p class="err" id="x-score-err"></p>
+        </div>
+        <div class="field">
+          <label for="x-out">Out of</label>
+          <input class="inp" type="number" id="x-out" min="1" step="1" inputmode="numeric" value="20" aria-describedby="x-out-err">
+          <div class="quick" aria-label="Common maximums">
+            <button type="button" data-act="out-quick" data-v="10">/10</button><button type="button" data-act="out-quick" data-v="20">/20</button><button type="button" data-act="out-quick" data-v="50">/50</button><button type="button" data-act="out-quick" data-v="100">/100</button>
+          </div>
+          <p class="err" id="x-out-err"></p>
+        </div>
+      </div>
+      <div class="field"><span class="lbl">Percentage</span><span class="pctlive" id="x-pct">–</span><span class="hint" id="x-ctx"></span></div>
+    </div>
+    <button type="submit" class="submit">Save result</button>
+    <button type="button" class="btn-sm danger" data-act="result-clear" id="x-clear" style="justify-self:center" hidden>Remove result</button>
+  </form>
+
   <div class="pane" id="pane-tags" hidden>
     <div class="stack">
       <div class="field">
@@ -645,10 +826,14 @@ input[type="range"] { flex: 1; height: 44px; margin: 0; accent-color: var(--cc);
   var GOAL = { Midterm: 12, Final: 25, Quiz: 4 };
   var PREP = 28, PAST = 14, FUTURE = 28;
   var NEW = '__new__';
-  var KEYS = { test: 'dashboard_tests', session: 'dashboard_sessions', material: 'studyover_materials', tag: 'studyover_tags' };
+  var KEYS = { test: 'dashboard_tests', session: 'dashboard_sessions', material: 'studyover_materials', tag: 'studyover_tags', plan: 'studyover_plans' };
   var K_C = 'dashboard_colors';
-  var PREFIX = { test: 't_', session: 's_', material: 'm_', tag: 'g_' };
-  var LIST = { test: 'tests', session: 'sessions', material: 'materials', tag: 'tags' };
+  var K_SET = 'studyover_settings';
+  var DEFAULT_AVAIL = { 0: 1, 1: 2, 2: 2, 3: 2, 4: 2, 5: 2, 6: 3 };
+  var DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  var PASS = 50;
+  var PREFIX = { test: 't_', session: 's_', material: 'm_', tag: 'g_', plan: 'p_' };
+  var LIST = { test: 'tests', session: 'sessions', material: 'materials', tag: 'tags', plan: 'plans' };
 
   /* study material: what opens in the reader, and how it is stored */
   var FILE_TYPES = {
@@ -681,16 +866,17 @@ input[type="range"] { flex: 1; height: 44px; margin: 0; accent-color: var(--cc);
     xlsx: [CDN + 'xlsx@0.18.5/dist/xlsx.full.min.js']
   };
 
-  var S = { mode: 'loading', tests: [], sessions: [], materials: [], tags: [], colors: {}, db: null, base: null, assets: null, downloads: null, loaded: false, syncError: false };
+  var S = { mode: 'loading', tests: [], sessions: [], materials: [], tags: [], plans: [], colors: {}, targets: {}, avail: Object.assign({}, DEFAULT_AVAIL), db: null, base: null, assets: null, downloads: null, loaded: false, syncError: false };
   var ui = {
     stage: 'menu', filter: 'all', mfilter: 'all', open: null, armed: null, limit: 20, mlimit: 8, enterId: null, enterAt: 0, animUntil: 0,
-    calMonth: null, calSel: null, calSlide: 0,
+    calMonth: null, calSel: null, calSlide: 0, planWeek: null, planOpen: null, availDraft: null, autoResult: null,
     f: null, pending: { test: [], session: [], material: [] }, pickFor: null, newTag: { name: '', color: SWATCHES[4], open: null },
     reader: null, blobs: {}
   };
   var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   function freshForms() {
-    return { test: { subject: '', type: '', prio: 'med', tags: [], goalTouched: false }, session: { subject: '', tags: [], materialIds: [] }, material: { subject: '', testId: null, sessionId: null } };
+    return { test: { subject: '', type: '', prio: 'med', tags: [], goalTouched: false }, session: { subject: '', tags: [], materialIds: [], planId: null }, material: { subject: '', testId: null, sessionId: null },
+      plan: { subject: '', testId: null }, goal: { subject: '' }, result: { testId: null } };
   }
   ui.f = freshForms();
 
@@ -731,8 +917,22 @@ input[type="range"] { flex: 1; height: 44px; margin: 0; accent-color: var(--cc);
     var i = 0; while (used[i] && i < PALETTE.length) i++;
     if (i >= PALETTE.length) i = Object.keys(S.colors).length % PALETTE.length;
     S.colors = Object.assign({}, S.colors); S.colors[sub] = i;
-    if (S.mode === 'db') S.db.collection(S.base).doc('settings').set({ colors: S.colors }).catch(function () {});
-    else lsSave();
+    saveSettings();
+  }
+  function normAvail(v) {
+    var out = {};
+    for (var d = 0; d < 7; d++) { var h = v && typeof v === 'object' ? +v[d] : NaN; out[d] = h >= 0 && h <= 16 ? h : DEFAULT_AVAIL[d]; }
+    return out;
+  }
+  function normTargets(v) {
+    var out = {};
+    if (v && typeof v === 'object') Object.keys(v).forEach(function (k) { var n = +v[k]; if (n >= 1 && n <= 100) out[k] = Math.round(n); });
+    return out;
+  }
+  function saveSettings() {
+    if (S.mode === 'db') return S.db.collection(S.base).doc('settings').set({ colors: S.colors, targets: S.targets, avail: S.avail }).catch(function () {});
+    lsSave();
+    return Promise.resolve();
   }
   function confColor(n) { return n >= 7 ? 'var(--good)' : n >= 4 ? 'var(--warn)' : 'var(--late)'; }
   function tagsHtml(ids) {
@@ -751,7 +951,8 @@ input[type="range"] { flex: 1; height: 44px; margin: 0; accent-color: var(--cc);
       if (!v || !isDate(v.date) || typeof v.subject !== 'string' || !v.subject.trim()) return null;
       return { id: String(v.id || uid()), date: v.date, subject: v.subject.trim(), examType: TYPES.indexOf(v.examType) >= 0 ? v.examType : 'Midterm',
         priority: PRIOS[v.priority] !== undefined ? v.priority : 'med', tags: strList(v.tags),
-        notes: typeof v.notes === 'string' ? v.notes : '', goalHours: +v.goalHours > 0 ? +v.goalHours : null, createdAt: +v.createdAt || 0 };
+        notes: typeof v.notes === 'string' ? v.notes : '', goalHours: +v.goalHours > 0 ? +v.goalHours : null,
+        score: v.score === null || v.score === undefined || v.score === '' || !isFinite(+v.score) ? null : +v.score, outOf: +v.outOf > 0 ? +v.outOf : 20, createdAt: +v.createdAt || 0 };
     },
     session: function (v) {
       if (!v || !isDate(v.date) || typeof v.subject !== 'string' || !v.subject.trim()) return null;
@@ -763,6 +964,11 @@ input[type="range"] { flex: 1; height: 44px; margin: 0; accent-color: var(--cc);
       if (!v || typeof v.name !== 'string' || typeof v.subject !== 'string' || !v.subject.trim()) return null;
       return { id: String(v.id), name: v.name, ext: typeof v.ext === 'string' ? v.ext : extOf(v.name), size: +v.size || 0, store: v.store === 'raw' || v.store === 'b64' ? v.store : 'idb',
         parts: strList(v.parts), subject: v.subject.trim(), testId: typeof v.testId === 'string' ? v.testId : null, createdAt: +v.createdAt || 0 };
+    },
+    plan: function (v) {
+      if (!v || !isDate(v.date) || typeof v.subject !== 'string' || !v.subject.trim() || !(+v.hours > 0)) return null;
+      return { id: String(v.id), date: v.date, subject: v.subject.trim(), hours: +v.hours, topic: typeof v.topic === 'string' ? v.topic : '', testId: typeof v.testId === 'string' ? v.testId : null,
+        done: v.done === true, auto: v.auto === true, createdAt: +v.createdAt || 0 };
     },
     tag: function (v) {
       if (!v || typeof v.name !== 'string' || !v.name.trim()) return null;
@@ -778,11 +984,13 @@ input[type="range"] { flex: 1; height: 44px; margin: 0; accent-color: var(--cc);
       S[LIST[kind]] = Array.isArray(v) ? v.map(NORM[kind]).filter(Boolean) : [];
     });
     var c = readLS(K_C, {}); S.colors = c && typeof c === 'object' ? c : {};
+    var st = readLS(K_SET, {}); S.targets = normTargets(st && st.targets); S.avail = normAvail(st && st.avail);
   }
   function lsSave() {
     try {
       Object.keys(KEYS).forEach(function (kind) { localStorage.setItem(KEYS[kind], JSON.stringify(S[LIST[kind]])); });
       localStorage.setItem(K_C, JSON.stringify(S.colors));
+      localStorage.setItem(K_SET, JSON.stringify({ targets: S.targets, avail: S.avail }));
       return true;
     } catch (e) { return false; }
   }
@@ -790,6 +998,15 @@ input[type="range"] { flex: 1; height: 44px; margin: 0; accent-color: var(--cc);
     if (S.mode === 'db') return S.db.collection(S.base).doc(PREFIX[kind] + item.id).set(Object.assign({ kind: kind }, item));
     var key = LIST[kind], prev = S[key];
     S[key] = prev.filter(function (x) { return x.id !== item.id; }).concat([item]);
+    if (!lsSave()) { S[key] = prev; return Promise.reject({ code: 'storage' }); }
+    render();
+    return Promise.resolve();
+  }
+  function saveDocs(kind, items) {
+    if (!items.length) return Promise.resolve();
+    if (S.mode === 'db') return items.reduce(function (p, it) { return p.then(function () { return S.db.collection(S.base).doc(PREFIX[kind] + it.id).set(Object.assign({ kind: kind }, it)); }); }, Promise.resolve());
+    var key = LIST[kind], prev = S[key];
+    S[key] = prev.concat(items);
     if (!lsSave()) { S[key] = prev; return Promise.reject({ code: 'storage' }); }
     render();
     return Promise.resolve();
@@ -906,15 +1123,16 @@ input[type="range"] { flex: 1; height: 44px; margin: 0; accent-color: var(--cc);
         S.db = db; S.base = 'data/users/' + id; S.mode = 'db'; S.assets = r[2]; S.downloads = r[3];
         render();
         db.collection(S.base).onSnapshot(function (snap) {
-          var next = { tests: [], sessions: [], materials: [], tags: [] }, colors = S.colors;
+          var next = { tests: [], sessions: [], materials: [], tags: [], plans: [] }, colors = S.colors, settings = {};
           snap.docs.forEach(function (d) {
             var v = d.data() || {};
-            if (d.id === 'settings') { if (v.colors && typeof v.colors === 'object') colors = Object.assign({}, v.colors, S.colors); return; }
+            if (d.id === 'settings') { if (v.colors && typeof v.colors === 'object') colors = Object.assign({}, v.colors, S.colors); settings = v; return; }
             if (!NORM[v.kind]) return;
             var x = NORM[v.kind](v);
             if (x) next[LIST[v.kind]].push(x);
           });
-          S.tests = next.tests; S.sessions = next.sessions; S.materials = next.materials; S.tags = next.tags; S.colors = colors;
+          S.tests = next.tests; S.sessions = next.sessions; S.materials = next.materials; S.tags = next.tags; S.plans = next.plans; S.colors = colors;
+          S.targets = normTargets(settings.targets); S.avail = normAvail(settings.avail);
           if (!S.loaded) ui.animUntil = Date.now() + 1400;
           S.loaded = true; S.syncError = false;
           render();
@@ -961,7 +1179,7 @@ input[type="range"] { flex: 1; height: 44px; margin: 0; accent-color: var(--cc);
     $('layout').classList.toggle('anim', !reduce && Date.now() < ui.animUntil);
     $('glance').innerHTML = hero(now) + calendar(now) + tiles(now) + timeline(now) + subjects(now);
     ui.calSlide = 0;
-    $('lists').innerHTML = upcoming(now) + materials() + history();
+    $('lists').innerHTML = planner(now) + upcoming(now) + materials() + history();
     if ($('sheet').open) renderSheet();
   }
 
@@ -986,7 +1204,7 @@ input[type="range"] { flex: 1; height: 44px; margin: 0; accent-color: var(--cc);
       '<div class="rn"><b>' + Math.round(r.pct * 100) + '%</b><span>' + hrs(Math.round(r.hours * 10) / 10) + ' / ' + r.goal + ' h</span></div></div>' +
       '<div class="then"><span class="pill ' + r.st.k + '">' + esc(r.st.label) + '</span>' +
       (d > 0 && r.hours < r.goal ? '<span>' + (Math.round(r.perDay * 10) / 10) + ' h a day reaches the goal</span>' : '') + then + '</div>' +
-      '<div class="hero-mats">' + mats.slice(0, 4).map(matButton).join('') +
+      '<div class="hero-mats">' + (todayPlan(now) ? '<button type="button" class="btn-sm" data-act="go-plan"><svg class="ico" aria-hidden="true"><use href="#i-plan"/></svg>Today: ' + hrs(todayPlan(now)) + ' h planned</button>' : '') + mats.slice(0, 4).map(matButton).join('') +
       '<button type="button" class="btn-sm accent" data-act="add-mat" data-test="' + esc(t.id) + '">+ Study material</button></div></section>';
   }
   function matButton(m) {
@@ -998,13 +1216,14 @@ input[type="range"] { flex: 1; height: 44px; margin: 0; accent-color: var(--cc);
   function monthName(ym, withYear) { return parse(ym + '-01').toLocaleDateString('en-GB', withYear ? { month: 'long', year: 'numeric' } : { month: 'long' }); }
   function dueRow(t, now) {
     var d = between(now, t.date), mats = testMaterials(t);
-    var left = d < 0 ? 'Done<small>' + (d === -1 ? 'yesterday' : -d + ' days ago') + '</small>' : d === 0 ? 'Today<small>due</small>' : d === 1 ? 'Tomorrow<small>due</small>' : d + '<small>days left</small>';
+    var left = t.score != null ? Math.round(pctOf(t)) + '%<small>' + hrs(t.score) + ' / ' + hrs(t.outOf) + '</small>' : d < 0 ? 'Done<small>' + (d === -1 ? 'yesterday' : -d + ' days ago') + '</small>' : d === 0 ? 'Today<small>due</small>' : d === 1 ? 'Tomorrow<small>due</small>' : d + '<small>days left</small>';
+    var resBtn = d <= 0 ? '<button type="button" class="btn-sm accent" data-act="add-result" data-id="' + esc(t.id) + '">' + (t.score != null ? 'Edit result' : '+ Result') + '</button>' : '';
     return '<div class="due' + (d < 0 ? ' done' : '') + '" style="--c:' + colorOf(t.subject) + '">' +
       '<div class="due-date" aria-hidden="true"><b>' + parse(t.date).getDate() + '</b><span>' + fmt(t.date, { weekday: 'short' }) + '</span></div>' +
       '<div class="due-main"><b>' + esc(t.subject) + ' · ' + esc(t.examType) + '</b><div class="rmeta"><span>' + fmt(t.date, { weekday: 'long', day: 'numeric', month: 'long' }) + '</span><span class="prio p-' + t.priority + '"><i></i>' + PRIO_NAME[t.priority] + '</span>' + clipHtml(mats.length) + '</div>' +
       (t.notes ? '<div class="rnote">' + esc(t.notes) + '</div>' : '') + tagsHtml(t.tags) + '</div>' +
       '<div class="due-left">' + left + '</div>' +
-      (mats.length ? '<div class="due-mats">' + mats.slice(0, 3).map(matButton).join('') + '</div>' : '') + '</div>';
+      (mats.length || resBtn ? '<div class="due-mats">' + resBtn + mats.slice(0, 3).map(matButton).join('') + '</div>' : '') + '</div>';
   }
   function calendar(now) {
     if (!S.loaded) return '';
@@ -1015,16 +1234,18 @@ input[type="range"] { flex: 1; height: 44px; margin: 0; accent-color: var(--cc);
     var byDay = {}, studied = {};
     S.tests.slice().sort(byDate).forEach(function (t) { (byDay[t.date] = byDay[t.date] || []).push(t); });
     S.sessions.forEach(function (s) { studied[s.date] = (studied[s.date] || 0) + s.hours; });
+    var planned = {};
+    S.plans.forEach(function (p) { if (!p.done) planned[p.date] = (planned[p.date] || 0) + p.hours; });
     var grid = '';
     for (var i = 0; i < cells; i++) {
       var day = addDays(start, i), list = byDay[day] || [], out = day.slice(0, 7) !== ym;
-      var label = fmt(day, { weekday: 'long', day: 'numeric', month: 'long' }) + (list.length ? ': ' + list.map(function (t) { return t.subject + ' ' + t.examType.toLowerCase(); }).join(', ') : '') + (studied[day] ? ', studied ' + hrs(studied[day]) + ' h' : '');
+      var label = fmt(day, { weekday: 'long', day: 'numeric', month: 'long' }) + (list.length ? ': ' + list.map(function (t) { return t.subject + ' ' + t.examType.toLowerCase(); }).join(', ') : '') + (studied[day] ? ', studied ' + hrs(studied[day]) + ' h' : '') + (planned[day] ? ', ' + hrs(planned[day]) + ' h planned' : '');
       grid += '<button type="button" class="cd' + (out ? ' out' : '') + (day < now ? ' past' : '') + (day === now ? ' today' : '') + (list.length ? ' has' : '') + '"' +
         (list.length ? ' style="--c:' + colorOf(list[0].subject) + '"' : '') + ' data-act="cal-day" data-d="' + day + '" aria-pressed="' + (ui.calSel === day) + '" aria-label="' + esc(label) + '">' +
         '<span class="cd-n">' + parse(day).getDate() + '</span>' +
         list.slice(0, 2).map(function (t) { return '<span class="ev p-' + t.priority + '" style="--c:' + colorOf(t.subject) + '">' + esc(t.subject) + ' · ' + t.examType.charAt(0) + '</span>'; }).join('') +
         (list.length > 2 ? '<span class="cd-more">+' + (list.length - 2) + '</span>' : '') +
-        (studied[day] ? '<em class="st" aria-hidden="true"></em>' : '') + '</button>';
+        (studied[day] || planned[day] ? '<span class="cd-dots" aria-hidden="true">' + (studied[day] ? '<em class="st"></em>' : '') + (planned[day] ? '<em class="pdot"></em>' : '') + '</span>' : '') + '</button>';
     }
     var wd = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(function (d) { return '<span>' + d + '</span>'; }).join('');
     var inMonth = S.tests.filter(function (t) { return t.date.slice(0, 7) === ym; }).sort(byDate);
@@ -1034,6 +1255,7 @@ input[type="range"] { flex: 1; height: 44px; margin: 0; accent-color: var(--cc);
       detail = '<div class="cal-detail-h"><b>' + fmt(sel, { weekday: 'long', day: 'numeric', month: 'long' }) + '</b><span>' + (d === 0 ? 'today' : rel(d)) + '</span></div>' +
         (due.length ? due.map(function (t) { return dueRow(t, now); }).join('') : '<p class="cal-note">No tests due this day.</p>') +
         (ses.length ? '<p class="cal-note">Studied <b>' + hrs(sum(ses, function (s) { return s.hours; })) + ' h</b> · ' + uniq(ses.map(function (s) { return s.subject; })).map(esc).join(', ') + '</p>' : '') +
+        (planned[sel] ? '<p class="cal-note">Planned <b>' + hrs(planned[sel]) + ' h</b> · ' + uniq(S.plans.filter(function (p) { return p.date === sel && !p.done; }).map(function (p) { return p.subject; })).map(esc).join(', ') + '</p>' : '') +
         (sel >= now ? '<div><button type="button" class="btn-sm accent" data-act="cal-add">+ Test on ' + fmt(sel, { day: 'numeric', month: 'short' }) + '</button></div>' : '');
     } else {
       var next = S.tests.filter(function (t) { return t.date >= now; }).sort(byDate)[0];
@@ -1080,6 +1302,9 @@ input[type="range"] { flex: 1; height: 44px; margin: 0; accent-color: var(--cc);
     var perDay = {}, maxH = 0;
     S.sessions.forEach(function (s) { if (s.date >= start && s.date <= now) (perDay[s.date] = perDay[s.date] || []).push(s); });
     Object.keys(perDay).forEach(function (k) { maxH = Math.max(maxH, sum(perDay[k], function (s) { return s.hours; })); });
+    var planDay = {}, endP = addDays(now, FUTURE);
+    S.plans.forEach(function (p) { if (!p.done && p.date > now && p.date <= endP) (planDay[p.date] = planDay[p.date] || []).push(p); });
+    Object.keys(planDay).forEach(function (k) { maxH = Math.max(maxH, sum(planDay[k], function (p) { return p.hours; })); });
     var scaleMax = Math.max(4, Math.ceil(maxH)), unit = (BASE - TOP) / scaleMax;
     var x = function (i) { return X0 + i * CW; };
     var todayX = x(PAST - 1) + CW / 2;
@@ -1102,6 +1327,15 @@ input[type="range"] { flex: 1; height: 44px; margin: 0; accent-color: var(--cc);
         });
         di++;
       }
+      if (planDay[day]) {
+        var py = BASE, pg = {};
+        planDay[day].forEach(function (p) { pg[p.subject] = (pg[p.subject] || 0) + p.hours; });
+        Object.keys(pg).forEach(function (sub) {
+          var ph = Math.max(2, pg[sub] * unit);
+          py -= ph;
+          g += '<rect x="' + (bx + .75) + '" y="' + (py + .75).toFixed(1) + '" width="5.5" height="' + Math.max(.5, ph - 1.5).toFixed(1) + '" rx="1.5" style="fill:' + colorOf(sub) + ';fill-opacity:.18;stroke:' + colorOf(sub) + '" stroke-width="1.5" stroke-dasharray="2 1.5"><title>' + esc(sub) + ': ' + hrs(pg[sub]) + ' h planned on ' + fmt(day) + '</title></rect>';
+        });
+      }
       if (parse(day).getDay() === 1) g += '<line x1="' + x(i) + '" x2="' + x(i) + '" y1="' + BASE + '" y2="' + (BASE + 5) + '" style="stroke:var(--faint)"/><text x="' + x(i) + '" y="' + (BASE + 18) + '">' + fmt(day, { day: 'numeric', month: 'short' }) + '</text>';
     }
     g += '<line x1="' + todayX + '" x2="' + todayX + '" y1="' + (TOP - 14) + '" y2="' + BASE + '" style="stroke:var(--accent)" stroke-width="1.5" stroke-dasharray="3 3"/><text class="today" x="' + todayX + '" y="' + (TOP - 18) + '" text-anchor="middle">Today</text>';
@@ -1115,29 +1349,181 @@ input[type="range"] { flex: 1; height: 44px; margin: 0; accent-color: var(--cc);
         '<circle cx="' + ex + '" cy="' + cy + '" r="6" style="fill:' + c + ';filter:drop-shadow(0 0 5px ' + c + ')"/>' +
         '<text x="' + ex + '" y="' + (cy + 3.5) + '" text-anchor="middle" style="fill:var(--ink);font-size:8px;font-weight:700">' + t.examType.charAt(0) + '</text></g>';
     });
-    var legend = '<span>Bars: hours studied per day</span>' + allSubjects().map(function (s) { return '<span><i class="dot" style="--c:' + colorOf(s) + '"></i>' + esc(s) + '</span>'; }).join('') +
+    var legend = '<span>Bars: hours studied per day' + (Object.keys(planDay).length ? '; outlined: planned' : '') + '</span>' + allSubjects().map(function (s) { return '<span><i class="dot" style="--c:' + colorOf(s) + '"></i>' + esc(s) + '</span>'; }).join('') +
       (exams.length ? '<span><i class="ex"></i>M · F · Q = midterm, final, quiz</span>' : '');
     return '<section aria-label="Timeline"><div class="sec-h"><span>At a glance</span><b>' + fmt(start, { day: 'numeric', month: 'short' }) + ' – ' + fmt(end, { day: 'numeric', month: 'short' }) + '</b></div>' +
       '<div class="chart card"><svg class="tl" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Study hours per day for the last two weeks and exams in the next four weeks">' + g + '</svg>' +
       '<div class="legend">' + legend + '</div></div></section>';
   }
 
+  function pctOf(t) { return t.score / t.outOf * 100; }
+  function todayPlan(now) { return sum(S.plans.filter(function (p) { return p.date === now && !p.done; }), function (p) { return p.hours; }); }
+  // Per subject: results vs goal, an estimate from confidence when there are no results, and hours toward the next exam.
+  function subjectStats(sub, now) {
+    var results = S.tests.filter(function (t) { return t.subject === sub && t.score != null; }).sort(byDate);
+    var avg = results.length ? sum(results, pctOf) / results.length : null;
+    var goal = typeof S.targets[sub] === 'number' ? S.targets[sub] : null, aim = goal != null ? goal : PASS;
+    var recent = S.sessions.filter(function (s) { return s.subject === sub; }).sort(byDate).slice(-3);
+    var conf = recent.length ? sum(recent, function (s) { return s.confidenceLevel; }) / recent.length : null;
+    var est = avg != null ? avg : conf != null ? conf * 10 : null;
+    var next = S.tests.filter(function (t) { return t.subject === sub && t.date >= now; }).sort(byDate)[0] || null;
+    var r = next ? readiness(next, now) : null;
+    var planned = sum(S.plans.filter(function (p) { return p.subject === sub && !p.done && p.date >= now && (!next || p.date < next.date); }), function (p) { return p.hours; });
+    var missing = S.tests.filter(function (t) { return t.subject === sub && t.date < now && t.score == null; }).sort(byDate);
+    var gap = est != null ? aim - est : null, score = 0, why = [], aimName = goal != null ? 'your goal' : 'the pass mark';
+    if (avg != null) {
+      score += gap;
+      why.push({ bad: gap > 0, text: 'Results average ' + Math.round(avg) + '%, ' + (Math.abs(Math.round(gap)) === 0 ? 'right at ' + aimName : Math.abs(Math.round(gap)) + '% ' + (gap > 0 ? 'under ' : 'above ') + aimName) });
+    } else if (conf != null) {
+      score += gap * 0.6;
+      why.push({ bad: gap > 0, text: 'No results yet; your confidence (' + (Math.round(conf * 10) / 10) + '/10) points to about ' + Math.round(conf * 10) + '%' });
+    }
+    if (r) {
+      if (r.st.k === 'late') { score += 15; why.push({ bad: true, text: 'Way behind on study hours for the ' + next.examType.toLowerCase() + ': ' + hrs(Math.round(r.hours * 10) / 10) + ' of ' + r.goal + ' h' }); }
+      else if (r.st.k === 'warn') { score += 8; why.push({ bad: true, text: 'Behind on study hours for the ' + next.examType.toLowerCase() + ': ' + hrs(Math.round(r.hours * 10) / 10) + ' of ' + r.goal + ' h' }); }
+      if (r.left <= 7) score += 5;
+    }
+    if (goal == null) why.push({ bad: false, text: 'No goal set, so the pass mark (50%) is used' });
+    var bad = (gap != null && gap > 5) || (r && r.st.k === 'late');
+    var watch = (gap != null && gap > -5) || (r && r.st.k === 'warn');
+    var st = bad ? { k: 'late', label: 'Needs work', rank: 0 } : watch ? { k: 'warn', label: 'Watch', rank: 1 } :
+      est != null ? { k: 'good', label: 'On target', rank: 3 } : { k: '', label: 'No results yet', rank: 2 };
+    return { sub: sub, results: results, avg: avg, est: est, fromConf: avg == null && est != null, goal: goal, aim: aim, gap: gap, next: next, r: r, planned: planned, missing: missing, why: why, st: st, score: score };
+  }
   function subjects(now) {
     if (!S.loaded) return '';
-    var next = {};
-    S.tests.filter(function (t) { return t.date >= now; }).sort(byDate).forEach(function (t) { if (!next[t.subject]) next[t.subject] = t; });
-    var list = Object.keys(next).map(function (k) { return next[k]; }).sort(byDate);
-    var body = list.length ? '<ul class="subjects card">' + list.map(function (t) {
+    var list = allSubjects().map(function (sub) { return subjectStats(sub, now); })
+      .sort(function (a, b) { return a.st.rank - b.st.rank || b.score - a.score; });
+    var focus = list.filter(function (x) { return x.st.rank === 0; }).map(function (x) { return x.sub; });
+    var body = list.length ? '<ul class="subjects card">' + list.map(function (x) {
+      var c = colorOf(x.sub), r = x.r;
+      var nowTxt = x.avg != null ? '<b>' + Math.round(x.avg) + '%</b><small>average of ' + x.results.length + ' ' + (x.results.length === 1 ? 'result' : 'results') + '</small>' :
+        x.est != null ? '<b class="est">~' + Math.round(x.est) + '%</b><small>estimate from your confidence</small>' : '<b class="est">–</b><small>no results yet</small>';
+      var bar = '<div class="gbar" role="img" aria-label="' + (x.est != null ? Math.round(x.est) + '% now, ' : '') + 'goal ' + x.aim + '%">' +
+        '<u style="left:' + PASS + '%" title="Pass mark"></u>' +
+        (x.est != null ? '<i class="' + (x.fromConf ? 'est' : '') + '" style="width:' + Math.max(1, Math.min(100, x.est)).toFixed(1) + '%"></i>' : '') +
+        (x.est != null && x.gap > 0 ? '<s style="left:' + Math.min(100, x.est).toFixed(1) + '%;width:' + Math.min(100 - x.est, x.gap).toFixed(1) + '%" title="Gap to ' + (x.goal != null ? 'goal' : 'pass mark') + '"></s>' : '') +
+        '<em style="left:' + x.aim + '%" title="' + (x.goal != null ? 'Goal' : 'Pass mark') + '"></em></div>' +
+        '<div class="gscale" aria-hidden="true"><span style="left:0">0</span><span style="left:' + PASS + '%">pass 50%</span>' + (x.aim !== PASS && Math.abs(x.aim - PASS) > 12 && x.aim < 88 ? '<span style="left:' + x.aim + '%">goal</span>' : '') + '<span style="left:100%">100%</span></div>';
+      var res = x.results.slice(-3).map(function (t) { return '<span>' + esc(t.examType) + ' ' + fmt(t.date, { day: 'numeric', month: 'short' }) + ' <b>' + hrs(t.score) + '/' + hrs(t.outOf) + '</b> · ' + Math.round(pctOf(t)) + '%</span>'; }).join('') +
+        x.missing.slice(0, 2).map(function (t) { return '<button type="button" class="btn-sm accent" data-act="add-result" data-id="' + esc(t.id) + '">+ Result ' + esc(t.examType.toLowerCase()) + ' ' + fmt(t.date, { day: 'numeric', month: 'short' }) + '</button>'; }).join('');
+      var hours = '';
+      if (r) {
+        var plPct = Math.min(1 - r.pct, x.planned / r.goal);
+        hours = '<div class="subj-meta">Next: ' + esc(x.next.examType) + ' · ' + fmt(x.next.date) + ' · ' + rel(r.left) + '</div>' +
+          '<div class="meter" role="img" aria-label="' + hrs(r.hours) + ' of ' + r.goal + ' hours done, ' + hrs(x.planned) + ' planned"><i style="width:' + (r.pct * 100).toFixed(1) + '%"></i>' +
+          (plPct > 0 ? '<b class="pl" style="left:' + (r.pct * 100).toFixed(1) + '%;width:' + (plPct * 100).toFixed(1) + '%"></b>' : '') +
+          (r.expPct > 0 && r.expPct < 1 && r.hours < r.goal ? '<em style="left:' + (r.expPct * 100).toFixed(1) + '%" title="Where you should be by today"></em>' : '') + '</div>' +
+          '<div class="subj-nums"><span><b>' + hrs(Math.round(r.hours * 10) / 10) + '</b> done' + (x.planned ? ' + <b>' + hrs(x.planned) + '</b> planned' : '') + ' / ' + r.goal + ' h</span>' +
+          (r.left > 0 && r.hours + x.planned < r.goal ? '<span><b>' + (Math.round(Math.max(0, r.goal - r.hours - x.planned) * 10) / 10) + ' h</b> not planned yet</span>' : '') + '</div>';
+      }
+      return '<li class="sg" style="--c:' + c + '"><div class="subj-top"><i class="dot"></i><b>' + esc(x.sub) + '</b><span class="pill ' + x.st.k + '">' + x.st.label + '</span></div>' +
+        '<div class="sg-row"><div class="sg-now">' + nowTxt + '</div>' +
+        '<button type="button" class="sg-goal' + (x.goal == null ? ' unset' : '') + '" data-act="set-goal" data-s="' + esc(x.sub) + '"><small>Goal</small><b>' + (x.goal != null ? x.goal + '%' : 'Set goal') + '</b></button></div>' +
+        bar + (res ? '<div class="res">' + res + '</div>' : '') + hours +
+        (x.why.length ? '<ul class="why">' + x.why.map(function (w) { return '<li' + (w.bad ? ' class="bad"' : '') + '>' + esc(w.text) + '</li>'; }).join('') + '</ul>' : '') + '</li>';
+    }).join('') + '</ul>' : '<div class="card empty"><strong>No subjects yet</strong>Add a test and each subject gets a card here: your results against the percentage you want, and the hours you still need.</div>';
+    return '<section aria-label="Subjects"><div class="sec-h"><span>Which subjects need work</span><b>' + (focus.length ? 'focus: ' + focus.map(esc).join(', ') : list.length + ' ' + (list.length === 1 ? 'subject' : 'subjects')) + '</b></div>' + body + '</section>';
+  }
+
+  /* ---------- study plan: blocks per day, and a planner that fills them in ---------- */
+  function mondayOf(d) { return addDays(d, -((parse(d).getDay() + 6) % 7)); }
+  function availFor(d, av) { return (av || S.avail)[parse(d).getDay()] || 0; }
+  function planBlock(p, now) {
+    var key = 'p:' + p.id, open = ui.planOpen === p.id, t = p.testId ? find(S.tests, p.testId) : null;
+    var sub = p.topic || (t ? 'For the ' + t.examType.toLowerCase() + ' on ' + fmt(t.date, { day: 'numeric', month: 'short' }) : 'Study block');
+    return '<button type="button" class="pb' + (p.done ? ' done' : p.date < now ? ' missed' : '') + '" style="--c:' + colorOf(p.subject) + '" data-act="plan-open" data-id="' + esc(p.id) + '" aria-expanded="' + open + '">' +
+      '<span class="ck"><svg aria-hidden="true"><use href="#i-check"/></svg></span><span style="min-width:0"><b>' + esc(p.subject) + ' · ' + hrs(p.hours) + ' h</b><small>' + esc(sub) + (!p.done && p.date < now ? ' · missed' : '') + '</small></span></button>' +
+      (open ? '<div class="pd-acts">' + (p.done ? '<span class="hsum" style="margin:0;align-self:center">Logged as a study session</span>' :
+        '<button type="button" class="btn-sm accent" data-act="plan-done" data-id="' + esc(p.id) + '"><svg class="ico" aria-hidden="true"><use href="#i-check"/></svg>Done, log it</button>' +
+        '<button type="button" class="btn-sm" data-act="plan-move" data-id="' + esc(p.id) + '">' + (p.date < now ? 'Move to today' : 'Move to tomorrow') + '</button>') +
+        '<button type="button" class="btn-sm danger' + (ui.armed === key ? ' armed' : '') + '" data-act="plan-del" data-id="' + esc(p.id) + '">' + (ui.armed === key ? 'Tap again to delete' : 'Delete') + '</button></div>' : '');
+  }
+  function planner(now) {
+    if (!S.loaded) return '';
+    var mon = mondayOf(now), wk = ui.planWeek || mon, end = addDays(wk, 6);
+    var label = wk === mon ? 'This week' : wk === addDays(mon, 7) ? 'Next week' : wk === addDays(mon, -7) ? 'Last week' : 'Week of ' + fmt(wk, { day: 'numeric', month: 'short' });
+    var rows = '', open = 0, done = 0;
+    for (var i = 0; i < 7; i++) {
+      var d = addDays(wk, i);
+      var blocks = S.plans.filter(function (p) { return p.date === d; }).sort(byCreated);
+      var exams = S.tests.filter(function (t) { return t.date === d; }).sort(byDate);
+      var ph = sum(blocks, function (p) { return p.hours; }), cap = availFor(d);
+      open += sum(blocks.filter(function (p) { return !p.done; }), function (p) { return p.hours; });
+      done += sum(blocks.filter(function (p) { return p.done; }), function (p) { return p.hours; });
+      rows += '<div class="pd' + (i === 0 ? ' first' : '') + (d === now ? ' today' : '') + (d < now ? ' past' : '') + '">' +
+        '<div class="pd-date"><b>' + parse(d).getDate() + '</b><span>' + fmt(d, { weekday: 'short' }) + '</span></div>' +
+        '<div class="pd-body">' + exams.map(function (t) { return '<span class="pd-exam" style="--c:' + colorOf(t.subject) + '">' + esc(t.subject) + ' ' + esc(t.examType.toLowerCase()) + '</span>'; }).join('') +
+        blocks.map(function (p) { return planBlock(p, now); }).join('') +
+        (!blocks.length && !exams.length ? '<span class="pd-empty">' + (d < now ? 'Nothing planned' : cap ? 'Free · ' + hrs(cap) + ' h available' : 'Day off') + '</span>' : '') + '</div>' +
+        '<div class="pd-side">' + (blocks.length ? '<span class="pd-h' + (ph > cap ? ' over' : '') + '">' + hrs(ph) + ' / ' + hrs(cap) + ' h</span>' : '') +
+        (d >= now ? '<button type="button" class="pd-add" data-act="plan-add" data-d="' + d + '" aria-label="Plan a study block on ' + fmt(d, { weekday: 'long', day: 'numeric', month: 'long' }) + '"><svg aria-hidden="true"><use href="#i-plus"/></svg></button>' : '') + '</div></div>';
+    }
+    return '<section aria-label="Study plan" id="plan-sec"><div class="sec-h"><span>Study plan</span><b>tap + to plan a day</b></div><div class="plan card">' +
+      '<div class="plan-top"><h3>' + label + '<span>' + fmt(wk, { day: 'numeric', month: 'short' }) + ' – ' + fmt(end, { day: 'numeric', month: 'short' }) + '</span></h3>' +
+      (wk !== mon ? '<button type="button" class="cal-today" data-act="plan-now">Today</button>' : '') +
+      '<button type="button" class="cal-nav" data-act="plan-week" data-dir="-1" aria-label="Previous week"><svg aria-hidden="true"><use href="#i-back"/></svg></button>' +
+      '<button type="button" class="cal-nav next" data-act="plan-week" data-dir="1" aria-label="Next week"><svg aria-hidden="true"><use href="#i-back"/></svg></button></div>' +
+      rows + '<div class="plan-foot"><span class="sum"><b>' + hrs(open) + ' h</b> to do · <b>' + hrs(done) + ' h</b> done this week</span>' +
+      '<button type="button" class="btn-sm" data-act="plan-add" data-d="' + (now >= wk && now <= end ? now : wk > now ? wk : now) + '">+ Block</button>' +
+      '<button type="button" class="btn-sm accent" data-act="auto-open">Plan for me</button></div></div></section>';
+  }
+  // Spread what each upcoming test still needs over the 4 weeks before it, within the hours available per day.
+  function autoPlan(now, av) {
+    var horizon = addDays(now, 42), exams = S.tests.filter(function (t) { return t.date > now && t.date <= horizon; }).sort(byDate);
+    var load = {};
+    S.plans.forEach(function (p) { if (!p.done && p.date >= now) load[p.date] = (load[p.date] || 0) + p.hours; });
+    load[now] = (load[now] || 0) + sum(S.sessions.filter(function (s) { return s.date === now; }), function (s) { return s.hours; });
+    var cap = function (d) { return Math.max(0, availFor(d, av) - (load[d] || 0)); };
+    var blocks = [], rows = [];
+    exams.forEach(function (t) {
       var r = readiness(t, now);
-      return '<li class="subj" style="--c:' + colorOf(t.subject) + '"><div class="subj-top"><i class="dot"></i><b>' + esc(t.subject) + '</b><span class="pill ' + r.st.k + '">' + esc(r.st.label) + '</span></div>' +
-        '<div class="subj-meta">' + esc(t.examType) + ' · ' + fmt(t.date) + ' · ' + rel(r.left) + '</div>' +
-        '<div class="meter" role="img" aria-label="' + hrs(r.hours) + ' of ' + r.goal + ' hours"><i style="width:' + (r.pct * 100).toFixed(1) + '%"></i>' +
-        (r.expPct > 0 && r.expPct < 1 && r.hours < r.goal ? '<em style="left:' + (r.expPct * 100).toFixed(1) + '%" title="Where you should be by today"></em>' : '') + '</div>' +
-        '<div class="subj-nums"><span><b>' + hrs(Math.round(r.hours * 10) / 10) + '</b> / ' + r.goal + ' h</span>' +
-        (r.left > 0 && r.hours < r.goal ? '<span><b>' + (Math.round(r.perDay * 10) / 10) + '</b> h/day to goal</span>' : '') +
-        (r.conf != null ? '<span>confidence <b style="color:' + confColor(r.conf) + '">' + (Math.round(r.conf * 10) / 10) + '</b>/10</span>' : '<span>no sessions yet</span>') + '</div></li>';
-    }).join('') + '</ul>' : '<div class="card empty"><strong>No subjects yet</strong>Each subject with an upcoming exam gets a progress bar here: hours done, the hours you should have by today, and what is left per day.</div>';
-    return '<section aria-label="Subjects"><div class="sec-h"><span>Are you on track?</span><b>' + list.length + ' ' + (list.length === 1 ? 'subject' : 'subjects') + '</b></div>' + body + '</section>';
+      var already = sum(S.plans.filter(function (p) { return !p.done && p.subject === t.subject && p.date >= now && p.date < t.date; }), function (p) { return p.hours; }) +
+        sum(blocks.filter(function (b) { return b.subject === t.subject && b.date < t.date; }), function (b) { return b.hours; });
+      var need = Math.ceil(Math.max(0, r.goal - r.hours - already) * 2) / 2;
+      var row = { t: t, goal: r.goal, done: r.hours, already: already, need: need, placed: 0, count: 0, short: 0 };
+      rows.push(row);
+      if (need <= 0) return;
+      var from = addDays(t.date, -(PREP - 1)); if (from < now) from = now;
+      var days = [];
+      for (var d = from; d < t.date; d = addDays(d, 1)) if (cap(d) >= 0.5) days.push(d);
+      var left = need;
+      var place = function (d, want) {
+        var h = Math.min(want, left, Math.floor(cap(d) * 2) / 2);
+        if (h <= 0) return;
+        var b = blocks.filter(function (x) { return x.date === d && x.testId === t.id; })[0];
+        if (b) b.hours += h; else { blocks.push({ id: uid() + blocks.length, date: d, subject: t.subject, hours: h, topic: '', testId: t.id, done: false, auto: true, createdAt: Date.now() + blocks.length }); row.count++; }
+        load[d] = (load[d] || 0) + h; left -= h; row.placed += h;
+      };
+      if (days.length) {
+        var per = Math.min(3, Math.max(1, Math.ceil(need / days.length * 2) / 2));
+        var m = Math.min(Math.ceil(need / per), days.length);
+        for (var j = 0; j < m && left > 0; j++) place(days[Math.floor(j * days.length / m)], per);
+        for (var k = 0; k < days.length && left > 0; k++) place(days[k], Math.min(3, left));
+      }
+      row.short = Math.max(0, left);
+    });
+    return { blocks: blocks, rows: rows };
+  }
+  function renderAuto() {
+    var av = ui.availDraft, order = [1, 2, 3, 4, 5, 6, 0];
+    $('a-days').innerHTML = order.map(function (d) {
+      return '<div class="av"><b>' + DAYS[d] + '</b><button type="button" class="icon-btn" data-act="avail" data-d="' + d + '" data-v="-0.5" aria-label="Less time on ' + DAYS[d] + '"><svg aria-hidden="true"><use href="#i-minus"/></svg></button>' +
+        '<output aria-live="polite"><i style="width:' + Math.min(100, av[d] / 8 * 100).toFixed(1) + '%"></i><span>' + hrs(av[d]) + ' h</span></output>' +
+        '<button type="button" class="icon-btn" data-act="avail" data-d="' + d + '" data-v="0.5" aria-label="More time on ' + DAYS[d] + '"><svg aria-hidden="true"><use href="#i-plus"/></svg></button></div>';
+    }).join('');
+    var res = autoPlan(today(), av), total = sum(res.blocks, function (b) { return b.hours; });
+    ui.autoResult = res;
+    $('a-preview').innerHTML = res.rows.length ? res.rows.map(function (row) {
+      var t = row.t;
+      var head = '<span style="min-width:0"><b>' + esc(t.subject) + ' · ' + esc(t.examType.toLowerCase()) + '</b><small>' + fmt(t.date) + ' · goal ' + row.goal + ' h · ' + hrs(Math.round(row.done * 10) / 10) + ' done' + (row.already ? ' · ' + hrs(row.already) + ' already planned' : '') + '</small></span>';
+      var n = row.need <= 0 ? '<span class="n" style="color:var(--good)">covered</span>' : '<span class="n">+' + hrs(row.placed) + ' h</span>';
+      return '<div class="pv' + (row.short ? ' short' : '') + '" style="--c:' + colorOf(t.subject) + '">' + head + n +
+        (row.short ? '<span class="warn-line">' + hrs(row.short) + ' h does not fit before this test. Add hours per day or lower its study goal.</span>' : '') + '</div>';
+    }).join('') : '<div class="none-yet">No tests in the next 6 weeks to plan for. Add a test first.</div>';
+    var btn = $('a-apply');
+    btn.disabled = !res.blocks.length;
+    btn.textContent = res.blocks.length ? 'Add ' + res.blocks.length + ' study ' + (res.blocks.length === 1 ? 'block' : 'blocks') + ' (' + hrs(total) + ' h)' : 'Nothing to add';
   }
 
   function rowWrap(key, c, inner, acts) {
@@ -1157,7 +1543,7 @@ input[type="range"] { flex: 1; height: 44px; margin: 0; accent-color: var(--cc);
       var inner = '<div><div class="rmeta"><span class="tag">' + esc(t.subject) + '</span><span>' + fmt(t.date) + '</span><span class="prio p-' + t.priority + '"><i></i>' + PRIO_NAME[t.priority] + '</span>' + clipHtml(mats.length) + '</div>' +
         '<div class="rtitle">' + esc(t.examType) + '</div>' + (t.notes ? '<div class="rnote">' + esc(t.notes) + '</div>' : '') + tagsHtml(t.tags) + '</div>' +
         '<div class="rside"><span class="big">' + (d === 0 ? 'Today' : d + '<small>' + (d === 1 ? 'day' : 'days') + '</small>') + '</span><span class="pill ' + r.st.k + '">' + hrs(Math.round(r.hours * 10) / 10) + ' / ' + r.goal + ' h</span></div>';
-      return rowWrap('t:' + t.id, colorOf(t.subject), inner, mats.map(matButton).join('') + '<button type="button" class="btn-sm accent" data-act="add-mat" data-test="' + esc(t.id) + '">+ Study material</button>');
+      return rowWrap('t:' + t.id, colorOf(t.subject), inner, (d === 0 ? '<button type="button" class="btn-sm accent" data-act="add-result" data-id="' + esc(t.id) + '">' + (t.score != null ? 'Edit result' : '+ Result') + '</button>' : '') + mats.map(matButton).join('') + '<button type="button" class="btn-sm accent" data-act="add-mat" data-test="' + esc(t.id) + '">+ Study material</button>');
     }).join('') + '</ul>' : '<div class="card empty"><strong>No tests in the next 4 weeks</strong>Tests you add show up here with a countdown, priority and their study material.<br><button type="button" class="btn-go" data-act="open" data-stage="test">Add a test</button></div>';
     return '<section aria-label="Upcoming tests"><div class="sec-h"><span>Upcoming tests</span><b>next 4 weeks</b></div>' + body +
       (later ? '<p class="later">' + later + (later === 1 ? ' more test is' : ' more tests are') + ' scheduled after ' + fmt(end, { day: 'numeric', month: 'long' }) + '.</p>' : '') + '</section>';
@@ -1217,24 +1603,32 @@ input[type="range"] { flex: 1; height: 44px; margin: 0; accent-color: var(--cc);
   }
 
   /* ---------- the + sheet ---------- */
-  var TITLES = { menu: 'Add', test: 'New test', session: 'Log a study session', material: 'Add study material', tags: 'Tags' };
+  var TITLES = { menu: 'Add', test: 'New test', session: 'Log a study session', material: 'Add study material', tags: 'Tags', plan: 'Plan a study block', auto: 'Plan for me', goal: 'Subject goal', result: 'Test result' };
   function openSheet(stage, preset) {
     ui.f = freshForms();
     ui.pending = { test: [], session: [], material: [] };
     ui.newTag = { name: '', color: SWATCHES[4], open: null };
-    ['t-date', 't-goal', 't-notes', 't-newsub', 's-hours', 's-topics', 'm-newsub'].forEach(function (id) { $(id).value = ''; });
-    $('s-date').value = today(); $('s-conf').value = 5; setConf(5);
+    ['t-date', 't-goal', 't-notes', 't-newsub', 's-hours', 's-topics', 'm-newsub', 'p-hours', 'p-topic', 'g-target', 'x-score'].forEach(function (id) { $(id).value = ''; });
+    $('s-date').value = today(); $('s-conf').value = 5; setConf(5); $('p-date').value = today(); $('x-out').value = 20;
     clearErrors();
     if (preset) Object.keys(preset).forEach(function (k) { if (ui.f[k]) Object.assign(ui.f[k], preset[k]); });
     if (preset && preset.sessionHours) $('s-hours').value = preset.sessionHours;
     if (preset && preset.testDate) $('t-date').value = preset.testDate;
+    if (preset && preset.sessionDate) $('s-date').value = preset.sessionDate;
+    if (preset && preset.sessionTopic) $('s-topics').value = preset.sessionTopic;
+    if (preset && preset.planDate) $('p-date').value = preset.planDate;
+    if (ui.f.goal.subject && S.targets[ui.f.goal.subject]) $('g-target').value = S.targets[ui.f.goal.subject];
+    var rt = ui.f.result.testId && find(S.tests, ui.f.result.testId);
+    if (rt && rt.score != null) { $('x-score').value = rt.score; $('x-out').value = rt.outOf; }
+    ui.availDraft = Object.assign({}, S.avail);
     setStage(stage || 'menu');
     var d = $('sheet');
     if (!d.open) { try { d.showModal(); } catch (e) { d.setAttribute('open', ''); } }
   }
   function setStage(stage) {
     ui.stage = stage;
-    ['menu', 'test', 'session', 'material', 'tags'].forEach(function (s) { $('pane-' + s).hidden = s !== stage; });
+    ['menu', 'test', 'session', 'material', 'tags', 'plan', 'auto', 'goal', 'result'].forEach(function (s) { $('pane-' + s).hidden = s !== stage; });
+    $('sheet-back').setAttribute('data-to', stage === 'auto' ? 'plan' : 'menu');
     $('sheet-title').textContent = TITLES[stage];
     $('sheet-back').hidden = stage === 'menu';
     renderSheet();
@@ -1300,6 +1694,30 @@ input[type="range"] { flex: 1; height: 44px; margin: 0; accent-color: var(--cc);
         tests.length ? tests.map(function (t) { return '<button type="button" class="chip" style="--c:' + colorOf(t.subject) + '" data-act="pick-test" data-v="' + esc(t.id) + '" aria-pressed="' + (fm.testId === t.id) + '">' + esc(t.examType) + ' · ' + fmt(t.date, { day: 'numeric', month: 'short' }) + '</button>'; }).join('') :
         '<div class="none-yet">No tests for this subject yet. The files stay under the subject.</div>';
       $('m-files').innerHTML = pendingFiles('material');
+    } else if (st === 'plan') {
+      var fp = ui.f.plan, ts2 = testSubjects();
+      if (fp.subject && ts2.indexOf(fp.subject) < 0) fp.subject = '';
+      if (!fp.subject && ts2.length === 1) fp.subject = ts2[0];
+      $('p-subjects').innerHTML = ts2.length ? subjectChips('plan', ts2, false) : '<div class="none-yet">Add a test first; study blocks belong to a subject with a test.</div>';
+      var up = S.tests.filter(function (t) { return t.subject === fp.subject && t.date >= today(); }).sort(byDate);
+      if (fp.testId && !up.some(function (t) { return t.id === fp.testId; })) fp.testId = null;
+      if (fp.testId === null && up.length && !fp.testTouched) fp.testId = up[0].id;
+      $('p-tests').innerHTML = !fp.subject ? '<div class="none-yet">Pick a subject first.</div>' : up.length ? up.map(function (t) {
+        return '<button type="button" class="chip" style="--c:' + colorOf(t.subject) + '" data-act="pick-ptest" data-v="' + esc(t.id) + '" aria-pressed="' + (fp.testId === t.id) + '">' + esc(t.examType) + ' · ' + fmt(t.date, { day: 'numeric', month: 'short' }) + '</button>';
+      }).join('') : '<div class="none-yet">No upcoming test for this subject.</div>';
+    } else if (st === 'auto') {
+      renderAuto();
+    } else if (st === 'goal') {
+      var fg = ui.f.goal, subs2 = allSubjects();
+      $('g-subjects').innerHTML = subs2.length ? subjectChips('goal', subs2, false) : '<div class="none-yet">Add a test first, then set a goal for its subject.</div>';
+      var stx = fg.subject ? subjectStats(fg.subject, today()) : null;
+      $('g-ctx').textContent = !stx ? 'Pick a subject.' : stx.avg != null ? 'Your results so far: ' + Math.round(stx.avg) + '% average over ' + stx.results.length + ' ' + (stx.results.length === 1 ? 'test' : 'tests') + '. The pass mark is 50%.' : 'No results yet for this subject. The pass mark is 50%.';
+      $('g-clear').hidden = !(fg.subject && S.targets[fg.subject]);
+    } else if (st === 'result') {
+      var tr = find(S.tests, ui.f.result.testId);
+      $('x-test').outerHTML = tr ? dueRow(tr, today()).replace('class="due', 'id="x-test" class="due').replace(/<div class="due-mats">[\s\S]*?<\/div><\/div>$/, '</div>') : '<div class="due" id="x-test"></div>';
+      $('x-clear').hidden = !(tr && tr.score != null);
+      updatePct();
     } else if (st === 'tags') {
       if (ui.newTag.open !== 'manager') ui.newTag.open = 'manager';
       $('g-new').innerHTML = newTagBox('manager');
@@ -1348,6 +1766,13 @@ input[type="range"] { flex: 1; height: 44px; margin: 0; accent-color: var(--cc);
     if (!inp.value) return 'Pick a date.';
     if (!isDate(inp.value)) return 'Enter a valid date.';
     return '';
+  }
+  function updatePct() {
+    var sc = Number($('x-score').value), out = Number($('x-out').value), tr = find(S.tests, ui.f.result.testId);
+    var ok = $('x-score').value !== '' && out > 0 && sc >= 0 && sc <= out;
+    $('x-pct').textContent = ok ? Math.round(sc / out * 1000) / 10 + '%' : '–';
+    var goal = tr && S.targets[tr.subject];
+    $('x-ctx').textContent = ok && tr ? (goal ? (sc / out * 100 >= goal ? 'At or above your ' + goal + '% goal for ' + tr.subject + '.' : Math.round(goal - sc / out * 100) + '% under your ' + goal + '% goal for ' + tr.subject + '.') : (sc / out * 100 >= PASS ? 'A pass.' : 'Under the pass mark.')) : '';
   }
   function setConf(v) { $('s-conf-out').textContent = v; $('conf-field').style.setProperty('--cc', confColor(+v)); }
   function focusFirst(el) { if (!el) return; if (el.focus) el.focus(); if (el.scrollIntoView) el.scrollIntoView({ block: 'center' }); }
@@ -1836,7 +2261,7 @@ input[type="range"] { flex: 1; height: 44px; margin: 0; accent-color: var(--cc);
       case 'plus': openSheet('menu'); break;
       case 'open': openSheet(b.getAttribute('data-stage')); break;
       case 'stage': ui.armed = null; setStage(b.getAttribute('data-stage')); break;
-      case 'sheet-back': clearErrors(); setStage('menu'); break;
+      case 'sheet-back': clearErrors(); setStage(b.getAttribute('data-to') || 'menu'); break;
       case 'sheet-close': closeSheet(); break;
       case 'pick-type':
         ui.f.test.type = v;
@@ -1846,6 +2271,8 @@ input[type="range"] { flex: 1; height: 44px; margin: 0; accent-color: var(--cc);
       case 'pick-sub':
         ui.f[form].subject = v;
         if (form === 'material') ui.f.material.testId = null;
+        if (form === 'plan') { ui.f.plan.testId = null; ui.f.plan.testTouched = false; }
+        if (form === 'goal') { $('g-target').value = S.targets[v] || ''; setErr('g-target-err', '', $('g-target')); }
         setErr(form.charAt(0) + '-sub-err', '', $(form.charAt(0) + '-newsub'));
         renderSheet();
         if (v === NEW && $(form.charAt(0) + '-newsub')) $(form.charAt(0) + '-newsub').focus();
@@ -1866,7 +2293,7 @@ input[type="range"] { flex: 1; height: 44px; margin: 0; accent-color: var(--cc);
         break;
       case 'pick-files': ui.pickFor = form; $('file-input').value = ''; $('file-input').click(); break;
       case 'unpick-file': ui.pending[form].splice(+b.getAttribute('data-i'), 1); renderSheet(); break;
-      case 'qh': $('s-hours').value = b.getAttribute('data-h'); setErr('s-hours-err', '', $('s-hours')); break;
+      case 'qh': var qt = b.getAttribute('data-t') || 's-hours'; $(qt).value = b.getAttribute('data-h'); setErr(qt + '-err', '', $(qt)); break;
       case 'filter': ui.filter = b.getAttribute('data-f'); ui.limit = 20; render(); break;
       case 'mfilter': ui.mfilter = b.getAttribute('data-f'); ui.mlimit = 8; render(); break;
       case 'more': ui.limit += 20; render(); break;
@@ -1895,6 +2322,59 @@ input[type="range"] { flex: 1; height: 44px; margin: 0; accent-color: var(--cc);
       case 'deck-thumb': showSlide(+b.getAttribute('data-i')); break;
       case 'deck-present': presentDeck(); break;
       case 'doc-zoom': zoomDoc(v); break;
+      case 'pick-ptest': ui.f.plan.testId = ui.f.plan.testId === v ? null : v; ui.f.plan.testTouched = true; renderSheet(); break;
+      case 'plan-add': openSheet('plan', { planDate: b.getAttribute('data-d') || today() }); break;
+      case 'plan-week': ui.planWeek = addDays(ui.planWeek || mondayOf(today()), 7 * +b.getAttribute('data-dir')); ui.planOpen = null; render(); break;
+      case 'plan-now': ui.planWeek = null; ui.planOpen = null; render(); break;
+      case 'plan-open': var po = b.getAttribute('data-id'); ui.planOpen = ui.planOpen === po ? null : po; ui.armed = null; render(); break;
+      case 'plan-done':
+        var pd = find(S.plans, b.getAttribute('data-id')), now0 = today();
+        if (pd) openSheet('session', { session: { subject: testSubjects().indexOf(pd.subject) >= 0 ? pd.subject : '', planId: pd.id }, sessionHours: pd.hours, sessionDate: pd.date <= now0 ? pd.date : now0, sessionTopic: pd.topic });
+        break;
+      case 'plan-move':
+        var pm = find(S.plans, b.getAttribute('data-id'));
+        if (pm) { var to = pm.date < today() ? today() : addDays(pm.date, 1); ui.planOpen = null; patchDoc('plan', pm.id, { date: to }).then(function () { toast('Moved to ' + fmt(to)); }, function () { toast('That did not save. Try again.', { bad: true }); }); }
+        break;
+      case 'plan-del':
+        var pk = 'p:' + b.getAttribute('data-id');
+        if (ui.armed !== pk) { ui.armed = pk; render(); break; }
+        ui.armed = null; ui.planOpen = null;
+        removeDoc('plan', pk.slice(2)).then(function () { toast('Study block deleted'); }, function () { toast('That did not delete. Try again.', { bad: true }); });
+        break;
+      case 'auto-open': openSheet('auto'); break;
+      case 'avail':
+        var ad = +b.getAttribute('data-d');
+        ui.availDraft[ad] = Math.max(0, Math.min(12, (ui.availDraft[ad] || 0) + Number(b.getAttribute('data-v'))));
+        renderAuto(); break;
+      case 'auto-apply':
+        var res = ui.autoResult;
+        if (!res || !res.blocks.length) break;
+        S.avail = Object.assign({}, ui.availDraft);
+        saveSettings();
+        b.disabled = true;
+        saveDocs('plan', res.blocks).then(function () {
+          burst(b, '#3d8bff');
+          toast('Added ' + res.blocks.length + ' study ' + (res.blocks.length === 1 ? 'block' : 'blocks') + ' to your plan');
+          closeSheet(); ui.planWeek = null; render();
+          var ps = $('plan-sec'); if (ps) ps.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'start' });
+        }, function () { toast('That did not save. Check your connection and try again.', { bad: true }); b.disabled = false; });
+        break;
+      case 'go-plan': ui.planWeek = null; var gp = $('plan-sec'); if (gp) gp.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'start' }); break;
+      case 'set-goal': openSheet('goal', { goal: { subject: b.getAttribute('data-s') } }); break;
+      case 'goal-quick': $('g-target').value = v; setErr('g-target-err', '', $('g-target')); break;
+      case 'goal-clear':
+        var gs = ui.f.goal.subject;
+        if (!gs) break;
+        S.targets = Object.assign({}, S.targets); delete S.targets[gs];
+        saveSettings(); closeSheet(); render(); toast('Goal for ' + gs + ' removed');
+        break;
+      case 'add-result': openSheet('result', { result: { testId: b.getAttribute('data-id') } }); break;
+      case 'out-quick': $('x-out').value = v; setErr('x-out-err', '', $('x-out')); updatePct(); break;
+      case 'result-clear':
+        var rc = find(S.tests, ui.f.result.testId);
+        if (!rc) break;
+        patchDoc('test', rc.id, { score: null }).then(function () { toast('Result removed'); closeSheet(); }, function () { toast('That did not save. Try again.', { bad: true }); });
+        break;
       case 'cal-move': moveMonth(+b.getAttribute('data-dir')); break;
       case 'cal-now': ui.calMonth = null; ui.calSel = null; render(); break;
       case 'cal-day':
@@ -1929,6 +2409,7 @@ input[type="range"] { flex: 1; height: 44px; margin: 0; accent-color: var(--cc);
     if (id.indexOf('newtag-') === 0) { ui.newTag.name = e.target.value; setErr('newtag-err-' + id.slice(7), ''); }
     else if (id === 't-goal') { ui.f.test.goalTouched = e.target.value !== ''; setErr('t-goal-err', '', e.target); }
     else if (id === 's-conf') setConf(e.target.value);
+    else if (id === 'x-score' || id === 'x-out') { setErr(id + '-err', '', e.target); updatePct(); }
     else if ($(id + '-err')) setErr(id + '-err', '', e.target);
     else if (id === 't-newsub' || id === 'm-newsub') setErr(id.charAt(0) + '-sub-err', '', e.target);
   });
@@ -2020,13 +2501,69 @@ input[type="range"] { flex: 1; height: 44px; margin: 0; accent-color: var(--cc);
     var files = ui.pending.session.slice(), btn = this.querySelector('.submit');
     ui.enterId = 's:' + s.id; ui.enterAt = Date.now();
     btn.disabled = true;
+    var planId = f.planId;
     saveDoc('session', s).then(function () {
+      if (planId && find(S.plans, planId)) patchDoc('plan', planId, { done: true }).catch(function () {});
+      ui.planOpen = null;
       burst(btn, colorOf(s.subject));
       toast('Logged ' + hrs(s.hours) + ' h of ' + s.subject);
       closeSheet();
       return uploadFiles(files, { subject: s.subject }).then(function (ids) {
         if (ids.length) return patchDoc('session', s.id, { materialIds: s.materialIds.concat(ids) });
       });
+    }, function () { toast('That did not save. Check your connection and try again.', { bad: true }); }).then(function () { btn.disabled = false; });
+  });
+
+  $('pane-plan').addEventListener('submit', function (e) {
+    e.preventDefault();
+    var f = ui.f.plan, first = null, dI = $('p-date'), hI = $('p-hours');
+    var de = dateErr(dI); setErr('p-date-err', de, dI); if (de) first = first || dI;
+    var h = Number(hI.value), he = '';
+    if (hI.validity && hI.validity.badInput) he = 'Enter a number, like 1.5.';
+    else if (hI.value === '') he = 'How long? Tap a quick value or type one.';
+    else if (!(h > 0)) he = 'Hours must be more than 0.';
+    else if (h > 12) he = 'Plan at most 12 hours in one block.';
+    setErr('p-hours-err', he, hI); if (he) first = first || hI;
+    if (testSubjects().indexOf(f.subject) < 0) { setErr('p-sub-err', testSubjects().length ? 'Pick a subject.' : 'Add a test first.'); first = first || $('p-subjects'); }
+    if (first) { focusFirst(first); return; }
+    var blk = { id: uid(), date: dI.value, subject: f.subject, hours: Math.round(h * 100) / 100, topic: $('p-topic').value.trim(), testId: f.testId || null, done: false, auto: false, createdAt: Date.now() };
+    var btn = this.querySelector('.submit');
+    btn.disabled = true;
+    saveDoc('plan', blk).then(function () {
+      burst(btn, colorOf(blk.subject));
+      toast('Planned ' + hrs(blk.hours) + ' h of ' + blk.subject + ' on ' + fmt(blk.date));
+      ui.planWeek = mondayOf(blk.date) === mondayOf(today()) ? null : mondayOf(blk.date);
+      closeSheet(); render();
+    }, function () { toast('That did not save. Check your connection and try again.', { bad: true }); }).then(function () { btn.disabled = false; });
+  });
+
+  $('pane-goal').addEventListener('submit', function (e) {
+    e.preventDefault();
+    var sub = ui.f.goal.subject, gI = $('g-target'), v = Number(gI.value), first = null;
+    if (allSubjects().indexOf(sub) < 0) { setErr('g-sub-err', 'Pick a subject.'); first = $('g-subjects'); }
+    if (gI.value === '' || !(v >= 1 && v <= 100)) { setErr('g-target-err', 'Enter a goal between 1 and 100%.', gI); first = first || gI; }
+    if (first) { focusFirst(first); return; }
+    S.targets = Object.assign({}, S.targets); S.targets[sub] = Math.round(v);
+    saveSettings(); closeSheet(); render();
+    var stg = subjectStats(sub, today());
+    toast('Goal for ' + sub + ': ' + Math.round(v) + '%' + (stg.avg != null ? (stg.avg >= v ? '. Your results are already there.' : '. Your results are ' + Math.round(v - stg.avg) + '% under it.') : ''));
+  });
+
+  $('pane-result').addEventListener('submit', function (e) {
+    e.preventDefault();
+    var t = find(S.tests, ui.f.result.testId), sI = $('x-score'), oI = $('x-out'), sc = Number(sI.value), out = Number(oI.value), first = null;
+    if (!t) { closeSheet(); return; }
+    if (!(out > 0)) { setErr('x-out-err', 'Enter the maximum score, like 20.', oI); first = oI; }
+    if (sI.value === '' || !(sc >= 0)) { setErr('x-score-err', 'Enter your score.', sI); first = sI; }
+    else if (out > 0 && sc > out) { setErr('x-score-err', 'Your score can be at most ' + hrs(out) + '.', sI); first = sI; }
+    if (first) { focusFirst(first); return; }
+    var btn = this.querySelector('.submit');
+    btn.disabled = true;
+    patchDoc('test', t.id, { score: sc, outOf: out }).then(function () {
+      var pct = sc / out * 100, goal = S.targets[t.subject];
+      burst(btn, colorOf(t.subject));
+      toast('Result saved: ' + hrs(sc) + '/' + hrs(out) + ' (' + Math.round(pct) + '%)' + (goal ? (pct >= goal ? ', goal reached' : ', ' + Math.round(goal - pct) + '% under your goal') : ''));
+      closeSheet();
     }, function () { toast('That did not save. Check your connection and try again.', { bad: true }); }).then(function () { btn.disabled = false; });
   });
 
