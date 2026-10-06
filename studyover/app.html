@@ -981,13 +981,13 @@ input[type="range"] { flex: 1; height: 44px; margin: 0; accent-color: var(--cc);
   function byCreated(a, b) { return a.createdAt - b.createdAt; }
   function testSubjects() { return uniq(S.tests.slice().sort(byCreated).map(function (t) { return t.subject; })); }
   function allSubjects() { return uniq(testSubjects().concat(S.sessions.map(function (s) { return s.subject; }), S.materials.map(function (m) { return m.subject; }))); }
-  function ensureColor(sub) {
+  function ensureColor(sub, noSave) {
     if (typeof S.colors[sub] === 'number') return;
     var used = {}; Object.keys(S.colors).forEach(function (k) { used[S.colors[k]] = 1; });
     var i = 0; while (used[i] && i < PALETTE.length) i++;
     if (i >= PALETTE.length) i = Object.keys(S.colors).length % PALETTE.length;
     S.colors = Object.assign({}, S.colors); S.colors[sub] = i;
-    saveSettings();
+    if (!noSave) saveSettings();
   }
   function normAvail(v) {
     var out = {};
@@ -1190,6 +1190,7 @@ input[type="range"] { flex: 1; height: 44px; margin: 0; accent-color: var(--cc);
       if (!db || !user) { startLocal(); return; }
       return user.id().then(function (id) {
         if (!id) { startLocal(); return; }
+        var imported = false;
         S.db = db; S.base = 'data/users/' + id; S.mode = 'db'; S.assets = r[2]; S.downloads = r[3];
         render();
         db.collection(S.base).onSnapshot(function (snap) {
@@ -1206,9 +1207,40 @@ input[type="range"] { flex: 1; height: 44px; margin: 0; accent-color: var(--cc);
           if (!S.loaded) ui.animUntil = Date.now() + 1400;
           S.loaded = true; S.syncError = false;
           render();
+          // Once the account's data is definitive, move anything Claude left in the inbox into it.
+          if (!imported && !(snap.metadata && snap.metadata.fromCache)) { imported = true; importInbox(db, user); }
         }, function () { S.syncError = true; render(); });
       });
     }).catch(startLocal);
+  }
+
+  // Items Claude adds for you land in a shared "inbox" collection (your own data is private even from Claude).
+  // The owner's page copies them into the private subtree under their own ids, so a second device importing
+  // the same item just rewrites the same document, then removes them from the inbox.
+  function importInbox(db, user) {
+    var kinds = { test: 1, session: 1, plan: 1, tag: 1 };
+    return Promise.resolve().then(function () { return typeof user.isOwner === 'function' ? user.isOwner() : false; }).then(function (own) {
+      if (!own) return;
+      return db.collection('inbox').get().then(function (snap) {
+        var items = [];
+        snap.docs.forEach(function (d) {
+          if (!d.exists) return;
+          var v = d.data() || {}, x = kinds[v.kind] && NORM[v.kind](v);
+          items.push({ docId: d.id, kind: v.kind, item: x || null });
+        });
+        if (!items.length) return;
+        items.forEach(function (it) { if (it.item && it.item.subject) ensureColor(it.item.subject, true); });
+        var n = 0;
+        return saveSettings().then(function () {
+          return items.reduce(function (p, it) {
+            return p.then(function () {
+              return (it.item ? saveDoc(it.kind, it.item).then(function () { n++; }) : Promise.resolve())
+                .then(function () { return db.collection('inbox').doc(it.docId).delete(); });
+            });
+          }, Promise.resolve());
+        }).then(function () { if (n) toast('Added ' + n + ' ' + (n === 1 ? 'item' : 'items') + ' that Claude put in for you'); });
+      });
+    }).catch(function () { /* the inbox is retried on the next open */ });
   }
 
   /* ---------- readiness: hours logged in the 4 weeks before an exam vs its goal ---------- */
