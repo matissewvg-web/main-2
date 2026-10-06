@@ -12,11 +12,13 @@ Open the `.html` on any device. To read on a phone, send yourself the file (AirD
 
 ## How chapters are found
 
-- **.docx**: Word's *Heading 1/2/3* styles (Dutch *Kop 1/2/3* and other languages work too). *Title* and *Subtitle* styles become the title page. If the document has no heading styles, short bold lines and lines like "Chapter 3", "Hoofdstuk 3", "IV" or ALL CAPS become chapters.
+- **.docx**: Word's *Heading 1/2/3* styles (Dutch *Kop 1/2/3* and other languages work too). *Title* and *Subtitle* styles (or custom ones like *BookTitle*/*BookSub*) become the title page. A typed contents list (TOC/Contents styles) is dropped and rebuilt, since page numbers mean nothing here. If the document has no heading styles, short bold lines and lines like "Chapter 3", "Hoofdstuk 3", "IV" or ALL CAPS become chapters.
 - **.md**: `#` headings. A lone `# Title` at the top becomes the book title.
 - **.txt**: the same guessing as unstyled Word files. Paragraphs are separated by blank lines. Hard-wrapped lines are re-joined, while blocks of short lines (verse, addresses) keep their line breaks.
 
-"Chapter 1" followed by a short title line is merged into one heading. `* * *`, `***` or `---` on its own line becomes a scene break.
+"Chapter 1" followed by a short title line (or `CHAPTER 1⏎Title` and `Part One: Title` inside one heading) becomes a small label above the title. ALL CAPS headings are set in title case. If every top-level heading is a "Part …" or "Book …", those get their own part page and the level below them becomes the chapters.
+
+A quote styled *Quote*, *Block Text* or *Epigraph* right after a chapter heading becomes an epigraph, with "— Source" split off as its attribution. `* * *`, `***` or `---` on its own line becomes a scene break, and lines like "END OF CHAPTER ONE" become a small end ornament.
 
 ## Known limits
 

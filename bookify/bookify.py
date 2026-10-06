@@ -37,7 +37,9 @@ CHAPTER_WORDS = (
 CHAPTER_RE = re.compile(rf"^({CHAPTER_WORDS})\b[\s.:\-–—]*([\w.]*)", re.I)
 ROMAN_RE = re.compile(r"^[IVXLC]{1,7}\.?$")
 NUMBER_RE = re.compile(r"^\d{1,3}\.?$")
-SCENE_BREAK_RE = re.compile(r"^\s*([*#~•·]\s*){1,5}$|^\s*(-\s*){3,}$|^\s*(_\s*){3,}$")
+SCENE_BREAK_RE = re.compile(r"^\s*([*#~•·⁂❦]\s*){1,5}$|^\s*(-\s*){3,}$|^\s*(_\s*){3,}$")
+CHAPTER_END_RE = re.compile(r"^\s*(the\s+)?end\s+of\s+(chapter|part|book)\b.{0,30}$|^\s*einde\s+(van\s+)?hoofdstuk\b.{0,30}$", re.I)
+PART_RE = re.compile(r"^(part|deel|book|boek|volume)\b", re.I)
 
 
 def looks_like_heading(text):
@@ -65,10 +67,51 @@ def is_bare_label(text):
     return bool(ROMAN_RE.match(s) or NUMBER_RE.match(s))
 
 
+SMALL_WORDS = {"a", "an", "and", "as", "at", "but", "by", "for", "from", "in", "into", "nor", "of",
+               "on", "or", "the", "to", "with", "without", "de", "het", "een", "en", "van", "op"}
+
+
+def tame_caps(s):
+    """'THE KNIFE ON THE TABLE' -> 'The Knife on the Table'. Leaves mixed-case text alone."""
+    letters = [c for c in strip_tags(s) if c.isalpha()]
+    if len(letters) < 4 or not all(c.isupper() for c in letters):
+        return s
+    first = [True]
+
+    def word(m):
+        w = m.group(0)
+        if re.fullmatch(r"[IVXLC]{2,}", w):
+            out = w
+        elif not first[0] and w.lower() in SMALL_WORDS:
+            out = w.lower()
+        else:
+            out = "-".join(x[:1] + x[1:].lower() for x in w.split("-"))
+        first[0] = False
+        return out
+
+    parts = re.split(r"(<[^>]+>)", s)
+    return "".join(p if p.startswith("<") else re.sub(r"[^\W\d_][\w’'-]*", word, p) for p in parts)
+
+
+def split_heading(b):
+    """'CHAPTER 2<br>What the Gate Hid' or 'PART ONE: THE MEASURE' -> kicker + title."""
+    if b.get("kicker"):
+        return b
+    s = b["html"].strip()
+    m = re.match(r"^(.*?)\s*<br>\s*(.+)$", s)
+    if m and is_bare_label(strip_tags(m.group(1))):
+        return {**b, "kicker": m.group(1), "html": m.group(2)}
+    m = re.match(r"^(.{1,40}?)\s*[:.—–]\s+(.+)$", s)
+    if m and CHAPTER_RE.match(strip_tags(m.group(1))) and is_bare_label(strip_tags(m.group(1))):
+        return {**b, "kicker": m.group(1), "html": m.group(2)}
+    return b
+
+
 def merge_label_titles(blocks):
     """'Chapter 1' followed by a short title line -> one heading with a kicker."""
     out = []
     i = 0
+    blocks = [split_heading(b) if b["t"] == "h" else b for b in blocks]
     while i < len(blocks):
         b = blocks[i]
         nxt = blocks[i + 1] if i + 1 < len(blocks) else None
@@ -163,6 +206,9 @@ def parse_text(raw, markdown=False):
                 blocks.append({"t": "img", "src": img.group(2), "alt": img.group(1)})
                 continue
 
+        if len(lines) == 1 and CHAPTER_END_RE.match(first):
+            blocks.append({"t": "end"})
+            continue
         if len(lines) == 1 and looks_like_heading(first):
             blocks.append({"t": "h", "level": 1, "html": fmt(first)})
             continue
@@ -202,16 +248,26 @@ def docx_heading_level(p):
     return 0
 
 
-def docx_is_title(p):
+def docx_style_names(p):
     style = p.style
-    names = f"{style.name or ''} {style.style_id or ''}".lower() if style is not None else ""
-    return re.search(r"\b(title|titel)\b", names) is not None
+    return f"{style.name or ''} {style.style_id or ''}".lower() if style is not None else ""
 
 
 def docx_is_subtitle(p):
-    style = p.style
-    names = f"{style.name or ''} {style.style_id or ''}".lower() if style is not None else ""
-    return "subtitle" in names or "ondertitel" in names
+    names = docx_style_names(p)
+    return "subtitle" in names or "ondertitel" in names or ("sub" in names and "book" in names)
+
+
+def docx_is_title(p):
+    """'Title', 'Titel', or custom title-page styles such as 'BookTitle'."""
+    names = docx_style_names(p)
+    return re.search(r"titl|titel", names) is not None and not docx_is_subtitle(p) and not docx_is_toc(p)
+
+
+def docx_is_toc(p):
+    """A typed or generated contents list - page numbers mean nothing in HTML, so it is rebuilt."""
+    names = docx_style_names(p)
+    return names.startswith("toc") or re.search(r"\b(toc\s*\d|contents|inhoud)", names) is not None
 
 
 def docx_run_html(run, doc):
@@ -314,7 +370,6 @@ def parse_docx(path):
 
     blocks = []
     styled_headings = False
-    pending = []  # (html, fully_bold, plain) for paragraphs that might be headings
 
     for item in doc.iter_inner_content():
         if isinstance(item, Table):
@@ -336,11 +391,25 @@ def parse_docx(path):
         if not plain:
             continue
 
-        if docx_is_title(p) and "title" not in meta and not blocks:
-            meta["title"] = plain
+        if not blocks:  # title page
+            if docx_is_toc(p):
+                continue
+            if docx_is_title(p):
+                # Keep the document-properties title if it is the same words (usually nicer casing).
+                if meta.get("title", "").lower() != plain.lower():
+                    meta["title"] = strip_tags(tame_caps(esc(plain, quote=False)))
+                continue
+            if docx_is_subtitle(p):
+                if "subtitle" in meta:
+                    meta.setdefault("epigraphs", []).append(plain)
+                else:
+                    meta["subtitle"] = plain
+                continue
+        if docx_is_toc(p) and not docx_heading_level(p):
             continue
-        if docx_is_subtitle(p) and not blocks:
-            meta.setdefault("subtitle", plain)
+
+        if CHAPTER_END_RE.match(plain) or "chapterend" in docx_style_names(p).replace(" ", ""):
+            blocks.append({"t": "end"})
             continue
 
         level = docx_heading_level(p)
@@ -363,7 +432,7 @@ def parse_docx(path):
             continue
 
         style_name = (p.style.name or "").lower() if p.style is not None else ""
-        if "quote" in style_name or "citaat" in style_name:
+        if any(k in style_name for k in ("quote", "citaat", "block text", "epigraph", "motto")):
             blocks.append({"t": "quote", "html": s})
             continue
 
@@ -386,13 +455,27 @@ def parse_docx(path):
 
 # ---------------------------------------------------------------- normalise
 def normalise_levels(blocks):
-    """Map whatever heading levels the source used onto h2 (chapter) / h3 / h4."""
+    """Give every heading a role: part / chap / sec / sub.
+
+    If every top-level heading is a "Part ..." / "Book ...", those become part pages
+    and the next level down are the chapters.
+    """
     levels = sorted({b["level"] for b in blocks if b["t"] == "h"})
-    mapping = {lvl: min(i, 2) for i, lvl in enumerate(levels)}
+    tops = [b for b in blocks if b["t"] == "h" and levels and b["level"] == levels[0]]
+    has_parts = len(levels) > 1 and all(
+        PART_RE.match(strip_tags(b.get("kicker") or b["html"]).strip()) for b in tops
+    )
+    roles = (["part"] if has_parts else []) + ["chap", "sec", "sub"]
+    mapping = {lvl: roles[min(i, len(roles) - 1)] for i, lvl in enumerate(levels)}
     for b in blocks:
         if b["t"] == "h":
-            b["depth"] = mapping[b["level"]]  # 0 chapter, 1 section, 2 subsection
-    return blocks
+            b["role"] = mapping[b["level"]]
+            b["html"] = tame_caps(b["html"])
+            if b.get("kicker"):
+                b["kicker"] = re.sub(r"[.:]\s*$", "", tame_caps(b["kicker"]))
+            elif is_bare_label(strip_tags(b["html"])):
+                b["html"] = re.sub(r"[.:]\s*$", "", b["html"])
+    return blocks, has_parts
 
 
 def detect_lang(blocks):
@@ -450,87 +533,115 @@ def slugify(text, used):
 
 
 # ---------------------------------------------------------------- render
-def render_body(blocks, lang):
+ATTRIBUTION_RE = re.compile(r"^(.*\S)\s+[—–]\s*([^—–]{2,80})$")
+
+
+def render_body(blocks, lang, has_parts):
     out, toc, used = [], [], set()
+    tags = {"part": "h2", "chap": "h3" if has_parts else "h2", "sec": "h4" if has_parts else "h3", "sub": "h5" if has_parts else "h4"}
     after_heading = True
+    opening = False
     open_chapter = False
 
-    for b in blocks:
+    def close_chapter():
+        nonlocal open_chapter
+        if open_chapter:
+            out.append("</section>")
+            open_chapter = False
+
+    for i, b in enumerate(blocks):
         t = b["t"]
+        prev = blocks[i - 1]["t"] if i else None
         if t == "h":
-            depth = b["depth"]
+            role = b["role"]
             text_html = smarten(b["html"], lang)
             kicker = smarten(b["kicker"], lang) if b.get("kicker") else ""
             plain = strip_tags(text_html)
             toc_label = f"{strip_tags(kicker)} · {plain}" if kicker else plain
             slug = slugify(strip_tags(kicker) + " " + plain if kicker else plain, used)
-            toc.append((depth, slug, toc_label))
-            if depth == 0:
-                if open_chapter:
-                    out.append("</section>")
-                out.append('<section class="chapter">')
-                open_chapter = True
-            tag = f"h{depth + 2}"
+            toc.append((role, slug, toc_label))
             kick = f'<span class="kicker">{kicker}</span>' if kicker else ""
-            out.append(f'<{tag} id="{slug}">{kick}{text_html}</{tag}>')
+            heading = f'<{tags[role]} id="{slug}" class="{role}-title">{kick}{text_html}</{tags[role]}>'
+            if role == "part":
+                close_chapter()
+                out.append(f'<section class="part">{heading}</section>')
+            elif role == "chap":
+                close_chapter()
+                out.append('<section class="chapter">')
+                out.append(heading)
+                open_chapter = True
+            else:
+                out.append(heading)
             after_heading = True
+            opening = role == "chap"
             continue
 
         if t == "p":
-            cls = ' class="first"' if after_heading else ""
-            out.append(f"<p{cls}>{smarten(b['html'], lang)}</p>")
-            after_heading = False
+            cls = "first opening" if opening else "first" if after_heading else ""
+            attr = f' class="{cls}"' if cls else ""
+            out.append(f"<p{attr}>{smarten(b['html'], lang)}</p>")
+            after_heading = opening = False
         elif t == "quote":
-            out.append(f"<blockquote><p>{smarten(b['html'], lang)}</p></blockquote>")
+            text = smarten(b["html"], lang)
+            if prev == "h":
+                m = ATTRIBUTION_RE.match(text)
+                cite = f"<cite>{m.group(2)}</cite>" if m else ""
+                out.append(f'<blockquote class="epigraph"><p>{m.group(1) if m else text}</p>{cite}</blockquote>')
+            else:
+                out.append(f"<blockquote><p>{text}</p></blockquote>")
+                opening = False
             after_heading = True
         elif t == "list":
             tag = "ol" if b["ordered"] else "ul"
             items = "".join(f"<li>{smarten(i, lang)}</li>" for i in b["items"])
             out.append(f"<{tag}>{items}</{tag}>")
-            after_heading = True
+            after_heading, opening = True, False
         elif t == "table":
             rows = []
-            for i, row in enumerate(b["rows"]):
-                cell = "th" if i == 0 and len(b["rows"]) > 1 else "td"
+            for r, row in enumerate(b["rows"]):
+                cell = "th" if r == 0 and len(b["rows"]) > 1 else "td"
                 rows.append("<tr>" + "".join(f"<{cell}>{smarten(c, lang)}</{cell}>" for c in row) + "</tr>")
             out.append('<div class="table-wrap"><table>' + "".join(rows) + "</table></div>")
-            after_heading = True
+            after_heading, opening = True, False
         elif t == "img":
             out.append(f'<figure><img src="{esc(b["src"])}" alt="{esc(b["alt"])}" loading="lazy"></figure>')
-            after_heading = True
+            after_heading, opening = True, False
         elif t == "break":
             out.append('<hr class="scene">')
-            after_heading = True
+            after_heading, opening = True, False
+        elif t == "end":
+            out.append('<hr class="chapter-end">')
+            after_heading, opening = True, False
 
-    if open_chapter:
-        out.append("</section>")
+    close_chapter()
     return "\n".join(out), toc
 
 
-def render_toc(toc):
-    if not toc:
-        return ""
-    items = []
-    for depth, slug, label in toc:
-        items.append(f'<li class="d{depth}"><a href="#{slug}">{esc(label, quote=False)}</a></li>')
-    return "<ol>" + "".join(items) + "</ol>"
+def render_toc(toc, roles=("part", "chap", "sec", "sub")):
+    items = [
+        f'<li class="r-{role}"><a href="#{slug}">{esc(label, quote=False)}</a></li>'
+        for role, slug, label in toc
+        if role in roles
+    ]
+    return "<ol>" + "".join(items) + "</ol>" if items else ""
 
 
 def build_html(blocks, meta, lang):
-    blocks = normalise_levels(merge_label_titles(blocks))
-    body, toc = render_body(blocks, lang)
+    blocks, has_parts = normalise_levels(merge_label_titles(blocks))
+    body, toc = render_body(blocks, lang, has_parts)
     title = meta.get("title") or "Untitled"
     words = len(re.findall(r"\w+", strip_tags(body)))
     minutes = max(1, round(words / 230))
     toc_html = render_toc(toc)
     book_id = hashlib.sha1((title + str(words)).encode()).hexdigest()[:10]
 
-    subtitle = f'<p class="subtitle">{esc(meta["subtitle"])}</p>' if meta.get("subtitle") else ""
+    subtitle = f'<p class="subtitle">{smarten(esc(meta["subtitle"], quote=False), lang)}</p>' if meta.get("subtitle") else ""
+    subtitle += "".join(f'<p class="title-epigraph">{smarten(esc(e, quote=False), lang)}</p>' for e in meta.get("epigraphs", []))
     author = f'<p class="author">{esc(meta["author"])}</p>' if meta.get("author") else ""
-    show_toc_inline = sum(1 for d, _, _ in toc if d == 0) >= 2
+    chapters = sum(1 for r, _, _ in toc if r == "chap")
     inline_toc = (
-        f'<nav class="toc-inline" aria-label="Contents"><h2 class="toc-title">Contents</h2>{toc_html}</nav>'
-        if show_toc_inline
+        f'<nav class="toc-inline" aria-label="Contents"><h2 class="toc-title">Contents</h2>{render_toc(toc, ("part", "chap"))}</nav>'
+        if chapters >= 2
         else ""
     )
     hours = f"{minutes // 60} h {minutes % 60} min" if minutes >= 60 else f"{minutes} min"
@@ -643,24 +754,40 @@ TEMPLATE = r"""<!doctype html>
 
   /* body text */
   .chapter { padding-top: 3rem; }
-  .chapter + .chapter { margin-top: 3rem; }
-  h2, h3, h4 { font-weight: 600; line-height: 1.25; text-wrap: balance; }
-  h2 { font-size: 1.6em; text-align: center; margin: 0 0 2em; }
-  h2::after {
+  .chapter + .chapter, .part + .chapter { margin-top: 3rem; }
+  h2, h3, h4, h5 { font-weight: 600; line-height: 1.25; text-wrap: balance; }
+  .part { text-align: center; padding: 22vh 0 14vh; }
+  .part-title { font-size: 1.9em; margin: 0; }
+  .part-title .kicker { font-size: .45em; margin-bottom: 1em; }
+  .part-title::after { content: "❦"; display: block; margin-top: 1em; color: var(--accent); font-size: .6em; font-weight: 400; }
+  .chap-title { font-size: 1.6em; text-align: center; margin: 0 0 2em; }
+  .chap-title::after {
     content: ""; display: block; width: 2.5rem; height: 1px;
     background: var(--accent); margin: .9em auto 0; opacity: .7;
   }
-  h3 { font-size: 1.2em; margin: 2.2em 0 .8em; }
-  h4 { font-size: 1em; font-style: italic; font-weight: 400; margin: 1.8em 0 .6em; }
+  .sec-title { font-size: 1.2em; margin: 2.2em 0 .8em; }
+  .sub-title { font-size: 1em; font-style: italic; font-weight: 400; margin: 1.8em 0 .6em; }
   .kicker {
     display: block; font-weight: 400; font-size: .55em; color: var(--muted);
     font-variant: small-caps; letter-spacing: .14em; margin-bottom: .6em;
   }
-  h3 .kicker, h4 .kicker { font-size: .7em; }
+  .sec-title .kicker, .sub-title .kicker { font-size: .7em; }
+  .chap-title + .epigraph { margin-top: -.8em; }
+  .epigraph {
+    margin: 0 auto 2.4em; max-width: 26em; padding: 0; border: 0;
+    text-align: center; font-style: italic; font-size: .92em; color: var(--muted);
+  }
+  .epigraph p { hyphens: manual; }
+  .epigraph cite {
+    display: block; margin-top: .5em; font-style: normal; font-size: .85em;
+    font-variant: small-caps; letter-spacing: .06em;
+  }
+  .epigraph cite::before { content: "— "; }
+  .title-epigraph { font-style: italic; color: var(--muted); max-width: 22em; margin: 0 auto 2em; font-size: .95em; }
 
   p { margin: 0; text-indent: 1.4em; hyphens: auto; -webkit-hyphens: auto; }
   p.first, blockquote p, li p, td p { text-indent: 0; }
-  .chapter > h2 + p.first::first-line { font-variant: small-caps; letter-spacing: .04em; }
+  p.opening::first-line { font-variant: small-caps; letter-spacing: .04em; }
 
   a { color: var(--accent); text-underline-offset: .15em; }
   blockquote {
@@ -671,6 +798,8 @@ TEMPLATE = r"""<!doctype html>
   li { margin: .25em 0; }
   hr.scene { border: 0; margin: 2em 0; text-align: center; height: 1.6em; }
   hr.scene::before { content: "⁂"; color: var(--accent); font-size: 1.1em; }
+  hr.chapter-end { border: 0; margin: 2.5em 0 0; text-align: center; height: 1.6em; }
+  hr.chapter-end::before { content: "❦"; color: var(--accent); opacity: .8; }
   figure { margin: 2em 0; text-align: center; }
   figure img { max-width: 100%; height: auto; border-radius: 3px; }
   .table-wrap { overflow-x: auto; margin: 1.5em 0; }
@@ -688,8 +817,13 @@ TEMPLATE = r"""<!doctype html>
     text-decoration: none; border-bottom: 1px solid var(--rule); line-height: 1.35;
   }
   nav a:hover, #toc a:hover, #toc a.current { color: var(--accent); }
-  .d1 a { padding-left: 1.4em; font-size: .92em; }
-  .d2 a { padding-left: 2.6em; font-size: .85em; color: var(--muted); }
+  .r-part a {
+    border: 0; margin-top: 1.2em; padding-bottom: .2em; font-size: .78em; color: var(--muted);
+    font-variant: small-caps; letter-spacing: .12em;
+  }
+  .r-part:first-child a { margin-top: 0; }
+  .r-sec a { padding-left: 1.4em; font-size: .92em; }
+  .r-sub a { padding-left: 2.6em; font-size: .85em; color: var(--muted); }
 
   /* reading tools */
   #progress {
@@ -735,13 +869,14 @@ TEMPLATE = r"""<!doctype html>
   @media (max-width: 480px) {
     body { font-size: calc(1.0625rem * var(--scale)); line-height: 1.6; }
     .titlepage h1 { font-size: 1.9em; }
-    h2 { font-size: 1.4em; }
+    .chap-title { font-size: 1.4em; }
+    .part-title { font-size: 1.6em; }
   }
   @media print {
     #bar, #progress, #toc { display: none !important; }
     body { background: #fff; color: #000; font-size: 11pt; }
     main { padding: 0; max-width: none; }
-    .chapter { break-before: page; }
+    .chapter, .part { break-before: page; }
     a { color: inherit; text-decoration: none; }
   }
   @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
@@ -829,7 +964,7 @@ TEMPLATE = r"""<!doctype html>
     if (e.target === toc || e.target.closest("a")) { toc.close ? toc.close() : toc.removeAttribute("open"); }
   });
 
-  var heads = Array.prototype.slice.call(document.querySelectorAll("article h2, article h3, article h4"));
+  var heads = Array.prototype.slice.call(document.querySelectorAll("article [id]"));
   function markCurrent() {
     var current = null;
     for (var i = 0; i < heads.length; i++) {
