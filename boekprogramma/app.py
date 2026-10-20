@@ -146,13 +146,20 @@ def _eigen_woorden(boek_id):
 @app.post("/api/boeken/<boek_id>/spelling")
 def spellingscontrole(boek_id):
     tekst = str(_json().get("tekst", ""))
-    return jsonify(fouten=spelling.controleer(tekst, _eigen_woorden(boek_id)))
+    return jsonify(fouten=spelling.controleer(tekst, _eigen_woorden(boek_id),
+                                              opslag.lees_boek(boek_id)["taal"]))
 
 
-@app.get("/api/spelling/suggesties")
-def spelling_suggesties():
+@app.get("/api/boeken/<boek_id>/spelling/suggesties")
+def spelling_suggesties(boek_id):
     woord = request.args.get("woord", "").strip()[:80]
-    return jsonify(suggesties=spelling.suggesties(woord) if woord else [])
+    taal_ = opslag.lees_boek(boek_id)["taal"]
+    return jsonify(suggesties=spelling.suggesties(woord, taal_) if woord else [])
+
+
+@app.get("/api/talen")
+def talen():
+    return jsonify(spelling.TALEN)
 
 
 @app.post("/api/boeken/<boek_id>/woordenlijst")
@@ -166,7 +173,8 @@ def herhalingen(boek_id):
     for c in opslag.lijst_characters(boek_id):
         for naam in [c["naam"], *c.get("bijnamen", [])]:
             namen.update(naam.split())
-    return jsonify(herhalingen=taal.herhalingen(str(_json().get("tekst", "")), namen))
+    return jsonify(herhalingen=taal.herhalingen(str(_json().get("tekst", "")), namen,
+                                                opslag.lees_boek(boek_id)["taal"]))
 
 
 # -------------------------------------------------------- characters
@@ -318,13 +326,16 @@ def claude_herschrijf():
     zin = str(data.get("zin", "")).strip()
     if not zin:
         raise opslag.OngeldigeInvoer("Selecteer eerst een zin")
-    return _claude(claude.herschrijf_zin, zin[:2000], str(data.get("context", ""))[:4000])
+    boek_id = data.get("boek")
+    taal_ = opslag.lees_boek(boek_id)["taal"] if boek_id else spelling.STANDAARDTAAL
+    return _claude(claude.herschrijf_zin, zin[:2000], str(data.get("context", ""))[:4000], taal_)
 
 
 @app.post("/api/boeken/<boek_id>/hoofdstukken/<hoofdstuk_id>/chat")
 def claude_chat(boek_id, hoofdstuk_id):
     gesprek = _json().get("gesprek", [])
-    return _claude(claude.chat, opslag.lees_hoofdstuk(boek_id, hoofdstuk_id), gesprek)
+    return _claude(claude.chat, opslag.lees_hoofdstuk(boek_id, hoofdstuk_id), gesprek,
+                   opslag.lees_boek(boek_id)["taal"])
 
 
 def main():

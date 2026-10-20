@@ -144,7 +144,7 @@ def maak_html(boek_id: str, lettermap_url: str, map_url, voor_browser: bool = Fa
     if e["inhoudsopgave"] and hoofdstukken:
         regels = "".join(f'<li><a href="#h-{h["id"]}">{html.escape(h["titel"])}</a></li>'
                          for h in hoofdstukken)
-        delen.append(f'<section class="inhoudsopgave"><h2>Inhoud</h2><ol>{regels}</ol></section>')
+        delen.append(f'<section class="inhoudsopgave"><h2>{"Inhoud" if boek["taal"] == "nl" else "Contents"}</h2><ol>{regels}</ol></section>')
 
     geplaatst = set()
     for h in hoofdstukken:
@@ -156,7 +156,7 @@ def maak_html(boek_id: str, lettermap_url: str, map_url, voor_browser: bool = Fa
         delen.append(f'<section class="hoofdstuk" id="h-{h["id"]}"><h2>{html.escape(h["titel"])}</h2>'
                      f'{tekst_naar_html(h["tekst"])}</section>')
 
-    return (f'<!doctype html><html lang="nl"><head><meta charset="utf-8">'
+    return (f'<!doctype html><html lang="{boek["taal"].replace("_", "-")}"><head><meta charset="utf-8">'
             f'<title>{html.escape(boek["titel"])}</title><style>{css(e, lettermap_url)}</style></head>'
             f'<body>{"".join(delen)}</body></html>')
 

@@ -84,6 +84,7 @@ async function openBoek(id) {
   await bewaar.nu();
   staat.boekId = id;
   staat.boek = await api("GET", boekUrl());
+  $("#boektaal").value = staat.boek.taal;
   staat.huidig = null;
   await laadHoofdstuklijst();
   if (staat.hoofdstukken.length) await openHoofdstuk(staat.hoofdstukken[0].id);
@@ -393,7 +394,7 @@ document.addEventListener("mousedown", (e) => { if (!popup.contains(e.target) &&
 async function spellingPopup(fout, x, y) {
   toonPopup(`<div class="sub">Suggesties laden…</div>`, x, y);
   let suggesties = [];
-  try { ({ suggesties } = await api("GET", `/api/spelling/suggesties?woord=${encodeURIComponent(fout.woord)}`)); } catch { }
+  try { ({ suggesties } = await api("GET", boekUrl(`/spelling/suggesties?woord=${encodeURIComponent(fout.woord)}`))); } catch { }
   if (tekst.value.slice(fout.start, fout.eind) !== fout.woord) return verbergPopup();
   toonPopup(
     (suggesties.length ? suggesties.map((s) => `<button data-s="${esc(s)}">${esc(s)}</button>`).join("") : `<div class="sub">Geen suggesties</div>`) +
@@ -409,6 +410,15 @@ async function spellingPopup(fout, x, y) {
     tekenAchtergrond(); tekenSpellinglijst();
   };
 }
+
+$("#boektaal").addEventListener("change", async (e) => {
+  staat.boek = await api("PATCH", boekUrl(), { taal: e.target.value });
+  staat.fouten = [];
+  tekenAchtergrond();
+  $("#spellinglijst").innerHTML = `<li class="sub">Woordenboek laden…</li>`;
+  controleerSpelling.nu();
+  zoekHerhalingen.nu();
+});
 
 // --------------------------------------------------------- herhalingen
 
@@ -485,7 +495,7 @@ $("#herschrijf").addEventListener("click", async () => {
   if (!sel.zin.trim()) { $("#voorstellen").innerHTML = `<p class="uitleg">Zet de cursor in een zin of selecteer tekst.</p>`; return; }
   $("#voorstellen").innerHTML = `<p class="uitleg">Claude denkt na over: “${esc(sel.zin)}”</p>`;
   try {
-    const r = await api("POST", "/api/claude/herschrijf", { zin: sel.zin, context: sel.context });
+    const r = await api("POST", "/api/claude/herschrijf", { zin: sel.zin, context: sel.context, boek: staat.boekId });
     telKosten(r.gebruik);
     $("#voorstellen").innerHTML = `<p class="uitleg">Klik om “${esc(sel.zin.slice(0, 60))}${sel.zin.length > 60 ? "…" : ""}” te vervangen:</p>` +
       r.voorstellen.map((v) => `<div class="voorstel">${esc(v)}</div>`).join("");

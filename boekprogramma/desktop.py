@@ -179,12 +179,15 @@ def zelftest(logpad):
         regels.append(f"WEASYPRINT_DLL_DIRECTORIES={os.environ.get('WEASYPRINT_DLL_DIRECTORIES')}")
         from boek import export, opslag, spelling, taal
         boek = opslag.maak_boek("Zelftest", "CI")
-        opslag.maak_hoofdstuk(boek["id"], "Een", "Ik kocht een fiets bij de winkle.\n***\nHij keek. Ze keek. Wij keken.")
+        opslag.maak_hoofdstuk(boek["id"], "One", "I bought a bike at the stroe.\n***\nHe looked. She looked. We looked.")
         opslag.maak_hoofdstuk(boek["id"], "Twee", "Het einde.")
-        fouten = [f["woord"] for f in spelling.controleer("Ik kocht een fiets bij de winkle.")]
-        assert fouten == ["winkle"], fouten
-        assert "winkel" in spelling.suggesties("winkle")
-        assert any(h["woord"] == "keek" for h in taal.herhalingen("Hij keek. Ze keek. Wij keek."))
+        fouten = [f["woord"] for f in spelling.controleer("I bought a bike at the stroe.")]
+        assert fouten == ["stroe"], fouten
+        assert "store" in spelling.suggesties("stroe")
+        assert spelling.controleer("The colour grey", taal="en_GB") == []
+        assert [f["woord"] for f in spelling.controleer("bij de winkle", taal="nl")] == ["winkle"]
+        assert any(h["woord"] == "looked" for h in taal.herhalingen("He looked. She looked. We looked."))
+        assert any(h["woord"] == "keek" for h in taal.herhalingen("Hij keek. Ze keek. Wij keek.", taal="nl"))
         regels.append("spelling en herhalingen: OK")
 
         pdf, paginas = export.maak_pdf(boek["id"])

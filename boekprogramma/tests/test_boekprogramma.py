@@ -109,29 +109,58 @@ def test_andere_websites_worden_geweigerd(client):
 # Stap 4 -----------------------------------------------------------------
 
 def test_stap4_opzettelijke_fouten_worden_aangewezen():
-    tekst = ("De kat zat op de mat. Gisteren heb ik een fiets gekocht bij de winkle. "
-             "Het was een moie dag en de zon scheen op het straatje. Ze aten ideeën en café-taart.")
+    tekst = ("The cat sat on the mat. Yesterday I bought a bike at the stroe. "
+             "It was a beatiful day and the sun didn't stop shining on the well-known street.")
     fouten = spelling.controleer(tekst)
-    assert [f["woord"] for f in fouten] == ["winkle", "moie"]
+    assert [f["woord"] for f in fouten] == ["stroe", "beatiful"]
     for f in fouten:
         assert tekst[f["start"]:f["eind"]] == f["woord"]
-    assert "winkel" in spelling.suggesties("winkle")
-    assert "mooie" in spelling.suggesties("moie")
+    assert "store" in spelling.suggesties("stroe")
+    assert "beautiful" in spelling.suggesties("beatiful")
+
+
+def test_amerikaans_en_brits_engels():
+    assert [f["woord"] for f in spelling.controleer("The colour grey", taal="en_US")] == ["colour", "grey"]
+    assert spelling.controleer("The colour grey", taal="en_GB") == []
+    assert [f["woord"] for f in spelling.controleer("The color", taal="en_GB")] == ["color"]
+
+
+def test_nederlands_blijft_mogelijk():
+    tekst = ("De kat zat op de mat. Gisteren heb ik een fiets gekocht bij de winkle. "
+             "Het was een moie dag en de zon scheen op het straatje. Ze aten ideeën en café-taart.")
+    assert [f["woord"] for f in spelling.controleer(tekst, taal="nl")] == ["winkle", "moie"]
+    assert "winkel" in spelling.suggesties("winkle", "nl")
 
 
 def test_eigen_woorden_en_posities_na_emoji():
-    tekst = "😀 Tharion liep naar Valdoria en zag een draak."
+    tekst = "😀 Tharion walked to Valdoria and saw a dragon."
     assert [f["woord"] for f in spelling.controleer(tekst)] == ["Tharion", "Valdoria"]
     assert spelling.controleer(tekst, {"tharion", "Valdoria"}) == []
     eerste = spelling.controleer(tekst)[0]
     assert eerste["start"] == 3  # emoji telt in JavaScript als 2 tekens
 
 
+def test_taal_per_boek(client):
+    boek_id = client.post("/api/boeken", json={"titel": "Taal"}).get_json()["id"]
+    assert client.get(f"/api/boeken/{boek_id}").get_json()["taal"] == "en_US"
+    url = f"/api/boeken/{boek_id}/spelling"
+    assert [f["woord"] for f in client.post(url, json={"tekst": "colour"}).get_json()["fouten"]] == ["colour"]
+    assert client.patch(f"/api/boeken/{boek_id}", json={"taal": "en_GB"}).get_json()["taal"] == "en_GB"
+    assert client.post(url, json={"tekst": "colour"}).get_json()["fouten"] == []
+    sugg = client.get(f"/api/boeken/{boek_id}/spelling/suggesties?woord=recieve").get_json()["suggesties"]
+    assert "receive" in sugg
+    assert client.patch(f"/api/boeken/{boek_id}", json={"taal": "klingon"}).status_code == 400
+    html = client.get(f"/api/boeken/{boek_id}/voorbeeld").get_data(as_text=True)
+    assert '<html lang="en-GB">' in html and "<h2>Contents</h2>" in html
+    client.patch(f"/api/boeken/{boek_id}", json={"taal": "nl"})
+    assert "<h2>Inhoud</h2>" in client.get(f"/api/boeken/{boek_id}/voorbeeld").get_data(as_text=True)
+
+
 def test_character_namen_tellen_als_goed_gespeld(client):
     boek_id = client.post("/api/boeken", json={"titel": "Namen"}).get_json()["id"]
     client.post(f"/api/boeken/{boek_id}/characters", json={"naam": "Tharion Vel", "bijnamen": "Tharo"})
     fouten = client.post(f"/api/boeken/{boek_id}/spelling",
-                         json={"tekst": "Tharion en Tharo en Vel gingen weg."}).get_json()["fouten"]
+                         json={"tekst": "Tharion and Tharo and Vel went away."}).get_json()["fouten"]
     assert fouten == []
     client.post(f"/api/boeken/{boek_id}/woordenlijst", json={"woord": "grumpel"})
     assert client.post(f"/api/boeken/{boek_id}/spelling", json={"tekst": "grumpel"}).get_json()["fouten"] == []
@@ -140,9 +169,21 @@ def test_character_namen_tellen_als_goed_gespeld(client):
 # Stap 5 -----------------------------------------------------------------
 
 def test_stap5_herhaald_woord_met_alternatieven():
+    tekst = ("He looked at the door. Then he looked at the window. She looked back.\n"
+             "It was a quiet evening in the city.")
+    resultaat = taal.herhalingen(tekst)
+    looked = next(h for h in resultaat if h["woord"] == "looked")
+    assert looked["aantal"] == 3 and looked["dichtbij"] == 3
+    assert "glanced" in looked["alternatieven"]
+    assert resultaat[0]["woord"] == "looked"
+    assert all(tekst[p["start"]:p["eind"]].lower() == "looked" for p in looked["posities"])
+    assert not any(h["woord"] in ("the", "he", "she", "was") for h in resultaat)
+
+
+def test_herhalingen_nederlands():
     tekst = ("Hij keek naar de deur. Toen keek hij naar het raam. Ze keek terug.\n"
              "Het was een mooie avond in de stad.")
-    resultaat = taal.herhalingen(tekst)
+    resultaat = taal.herhalingen(tekst, taal="nl")
     keek = next(h for h in resultaat if h["woord"] == "keek")
     assert keek["aantal"] == 3 and keek["dichtbij"] == 3
     assert "staarde" in keek["alternatieven"]
@@ -152,7 +193,7 @@ def test_stap5_herhaald_woord_met_alternatieven():
 
 
 def test_namen_niet_als_herhaling():
-    tekst = "Anna liep. Anna lachte. Anna zong."
+    tekst = "Anna walked. Anna laughed. Anna sang."
     assert taal.herhalingen(tekst, {"Anna"}) == []
 
 
@@ -322,9 +363,9 @@ def test_stap9_testboek_drie_hoofdstukken_character_en_map(client):
     boek_id = client.post("/api/boeken", json={"titel": "Eindtest", "auteur": "Test"}).get_json()["id"]
     eerste = client.get(f"/api/boeken/{boek_id}/hoofdstukken").get_json()[0]["id"]
     client.put(f"/api/boeken/{boek_id}/hoofdstukken/{eerste}",
-               json={"titel": "Aankomst", "tekst": "Lena stapte uit de trein. Het station was leeg.\n" * 30})
-    client.post(f"/api/boeken/{boek_id}/hoofdstukken", json={"titel": "De stad", "tekst": "Lena liep door de stad. Er was een fuot.\n" * 30})
-    client.post(f"/api/boeken/{boek_id}/hoofdstukken", json={"titel": "Vertrek", "tekst": "Ze ging weer weg."})
+               json={"titel": "Aankomst", "tekst": "Lena stepped off the train. The station was empty.\n" * 30})
+    client.post(f"/api/boeken/{boek_id}/hoofdstukken", json={"titel": "De stad", "tekst": "Lena walked through the city. There was a mistkae.\n" * 30})
+    client.post(f"/api/boeken/{boek_id}/hoofdstukken", json={"titel": "Vertrek", "tekst": "She left again."})
     client.post(f"/api/boeken/{boek_id}/characters", json={"naam": "Lena"})
     k = client.post(f"/api/boeken/{boek_id}/maps", data={"bestand": (io.BytesIO(_png()), "stad.png")},
                     content_type="multipart/form-data").get_json()
@@ -336,7 +377,7 @@ def test_stap9_testboek_drie_hoofdstukken_character_en_map(client):
 
     tweede = client.get(f"/api/boeken/{boek_id}/hoofdstukken/{lijst[1]['id']}").get_json()
     fouten = client.post(f"/api/boeken/{boek_id}/spelling", json={"tekst": tweede["tekst"]}).get_json()["fouten"]
-    assert {f["woord"] for f in fouten} == {"fuot"}
+    assert {f["woord"] for f in fouten} == {"mistkae"}
 
     r = client.get(f"/api/boeken/{boek_id}/pdf")
     assert r.status_code == 200 and r.mimetype == "application/pdf"

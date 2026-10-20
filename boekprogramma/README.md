@@ -1,6 +1,6 @@
 # Boekschrijfprogramma
 
-Een lokale webapp om in het Nederlands een boek te schrijven en te exporteren naar een nette A5-PDF. Draait op je eigen computer (Windows of Mac) in de browser. Er gaat niets naar internet, behalve als je zelf de Claude-functies aanzet.
+Een lokale webapp om een boek te schrijven (Engels of Nederlands) en te exporteren naar een nette A5-PDF. Draait op je eigen computer (Windows of Mac) in de browser. Er gaat niets naar internet, behalve als je zelf de Claude-functies aanzet.
 
 ## Windows: de .exe
 
@@ -45,7 +45,7 @@ Werkt dat (nog) niet, dan blijft de rest van het programma gewoon werken. Gebrui
 | Onderdeel | |
 |---|---|
 | **Schrijven** | Hoofdstukken links (slepen of ▲▼ om te ordenen), tekst in het midden, slaat automatisch op terwijl je typt. |
-| **Spelling** | Nederlands woordenboek van OpenTaal. Onbekende woorden worden rood onderstreept; klik erop voor suggesties of om het woord aan de woordenlijst van je boek toe te voegen. Namen van je characters tellen automatisch als goed. |
+| **Spelling** | Engels (VS of VK) of Nederlands, te kiezen per boek bovenaan het Spelling-paneel. Nieuwe boeken staan op Engels (VS). Onbekende woorden worden rood onderstreept; klik erop voor suggesties of om het woord aan de woordenlijst van je boek toe te voegen. Namen van je characters tellen automatisch als goed. |
 | **Herhalingen** | Woorden die je vaak of kort na elkaar gebruikt, met alternatieven. Klik op een woord in de lijst om het in de tekst aan te wijzen, en op een gemarkeerd woord in de tekst om het te vervangen. |
 | **Characters** | Naam, bijnamen, leeftijd, rol, uiterlijk, beschrijving, relaties en tijdlijn. In de hoofdstuklijst zie je wie er in welk hoofdstuk voorkomt (gezocht op naam en bijnaam). |
 | **Wereld & maps** | Vrije notities over de wereld. Maps: importeer een afbeelding (bijvoorbeeld een screenshot), koppel hem aan hoofdstukken en zet hem eventueel op een eigen pagina in de PDF. |
@@ -86,8 +86,8 @@ Het zijn gewone bestanden: je kunt ze openen, kopiëren en in een back-up meenem
 
 ## Eerlijke grenzen
 
-- **Spelling** vindt woorden die niet bestaan. Het vindt geen fouten met bestaande woorden (*word/wordt*, *hun/hen*, *als/dan*), geen zinsbouw en geen stijl.
-- **Herhalingen** kijkt naar letterlijk hetzelfde woord: *keek* en *kijkt* tellen apart. De alternatieven komen uit `boek/synoniemen.json` (ongeveer 100 veelgebruikte woorden). Die lijst kun je zelf uitbreiden. Niet elk alternatief past in elke zin.
+- **Spelling** vindt woorden die niet bestaan. Het vindt geen fouten met bestaande woorden (*their/there*, *its/it's*, *then/than*), geen zinsbouw en geen stijl. Engels (VK) volgt de *-ise*-spelling (*realise*).
+- **Herhalingen** kijkt naar letterlijk hetzelfde woord: *looked* en *looks* tellen apart. De alternatieven komen uit `boek/synoniemen-en.json` en `boek/synoniemen.json` (elk ongeveer 100 veelgebruikte woorden). Die lijst kun je zelf uitbreiden. Niet elk alternatief past in elke zin.
 - **Paginaschatting** in de hoofdstuklijst (250 woorden per pagina) is grof. Het echte aantal staat na het maken van de PDF.
 - **Drukwerk:** een drukkerij vraagt vaak afloop (*bleed*) en een omslag apart. Dat maakt dit programma niet. Vraag bij de drukker na welke binnenmarge ze bij jouw paginadikte adviseren.
 
@@ -110,5 +110,6 @@ Elke "afgerond als"-controle uit `SPEC.md` heeft een eigen test in `tests/test_b
 
 ## Bronnen en licenties
 
-- Woordenboek: [OpenTaal](https://github.com/OpenTaal/opentaal-hunspell), BSD/CC BY 3.0, zie `woordenboek/LICENSE.txt`.
+- Engelse woordenboeken: [SCOWL](http://wordlist.aspell.net) via [wooorm/dictionaries](https://github.com/wooorm/dictionaries), zie `woordenboek/LICENSE-en.txt`.
+- Nederlands woordenboek: [OpenTaal](https://github.com/OpenTaal/opentaal-hunspell), BSD/CC BY 3.0, zie `woordenboek/LICENSE.txt`.
 - Lettertype: [Literata](https://github.com/googlefonts/literata), SIL Open Font License, zie `lettertype/OFL.txt`.

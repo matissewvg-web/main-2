@@ -14,12 +14,17 @@ PRIJS_UITVOER = 20.00 / 1_000_000
 PRIJS_CACHE_LEZEN = 0.20 / 1_000_000
 PRIJS_CACHE_SCHRIJVEN = PRIJS_INVOER * 1.25
 
-BASIS = (
-    "Je helpt een schrijver met een Nederlandstalig boek. De schrijver schrijft zelf; "
-    "jij geeft feedback en voorstellen, je schrijft geen hele passages over. "
-    "Antwoord altijd in het Nederlands, kort en concreet. Respecteer de stijl en stem "
-    "van de schrijver."
-)
+TAALNAAM = {"en_US": "Amerikaans-Engels", "en_GB": "Brits-Engels", "nl": "Nederlands"}
+
+
+def basis(taal):
+    return (
+        f"Je helpt een schrijver met een boek in het {TAALNAAM.get(taal, 'Engels')}. "
+        "De schrijver schrijft zelf; jij geeft feedback en voorstellen, je schrijft geen hele "
+        "passages over. Leg uit en antwoord in het Nederlands, kort en concreet; voorbeeldzinnen "
+        "en herschreven zinnen staan in de taal van het boek. Respecteer de stijl en stem van "
+        "de schrijver."
+    )
 
 
 class GeenSleutel(Exception):
@@ -65,19 +70,20 @@ def _vraag(system, messages, max_tokens, effort):
                    "kosten_dollar": round(kosten, 4)}
 
 
-def herschrijf_zin(zin: str, context: str = "") -> dict:
+def herschrijf_zin(zin: str, context: str = "", taal: str = "en_US") -> dict:
     vraag = (f"Context (de alinea eromheen):\n{context}\n\n" if context else "") + (
-        f"Geef drie alternatieven voor deze zin, elk op een eigen regel, zonder nummering "
-        f"of uitleg. Houd de betekenis gelijk en maak de taal levendiger of preciezer.\n\n"
+        f"Geef drie alternatieven voor deze zin in het {TAALNAAM.get(taal, 'Engels')}, elk op een "
+        f"eigen regel, zonder nummering of uitleg. Houd de betekenis gelijk en maak de taal "
+        f"levendiger of preciezer.\n\n"
         f"Zin: {zin}")
-    tekst, gebruik = _vraag(BASIS, [{"role": "user", "content": vraag}], 1000, "low")
+    tekst, gebruik = _vraag(basis(taal), [{"role": "user", "content": vraag}], 1000, "low")
     voorstellen = [r.strip(" -•\t") for r in tekst.splitlines() if r.strip(" -•\t")][:3]
     return {"voorstellen": voorstellen, "gebruik": gebruik}
 
 
-def chat(hoofdstuk: dict, gesprek: list) -> dict:
+def chat(hoofdstuk: dict, gesprek: list, taal: str = "en_US") -> dict:
     system = [
-        {"type": "text", "text": BASIS},
+        {"type": "text", "text": basis(taal)},
         {"type": "text",
          "text": f"Het hoofdstuk dat open staat heet \"{hoofdstuk['titel']}\":\n\n{hoofdstuk['tekst']}",
          # Het hoofdstuk blijft gelijk tijdens een gesprek; zo betaal je het maar één keer vol.

@@ -22,6 +22,8 @@ import unicodedata
 import uuid
 from pathlib import Path
 
+from .spelling import STANDAARDTAAL, TALEN
+
 ID_PATROON = re.compile(r"^[a-z0-9][a-z0-9-]{0,80}$")
 AFBEELDING_EXTENSIES = {".png", ".jpg", ".jpeg", ".webp", ".gif"}
 
@@ -114,6 +116,8 @@ def lees_boek(boek_id: str) -> dict:
     data["id"] = boek_id
     data.setdefault("hoofdstukken", [])
     data.setdefault("maps", [])
+    if data.get("taal") not in TALEN:
+        data["taal"] = STANDAARDTAAL
     data["export"] = {**STANDAARD_EXPORT, **data.get("export", {})}
     return data
 
@@ -153,6 +157,10 @@ def werk_boek_bij(boek_id: str, wijzigingen: dict) -> dict:
         for sleutel in ("titel", "auteur"):
             if sleutel in wijzigingen:
                 data[sleutel] = str(wijzigingen[sleutel]).strip()
+        if "taal" in wijzigingen:
+            if wijzigingen["taal"] not in TALEN:
+                raise OngeldigeInvoer("Onbekende taal")
+            data["taal"] = wijzigingen["taal"]
         if "export" in wijzigingen:
             export = data["export"]
             for sleutel, waarde in wijzigingen["export"].items():

@@ -54,7 +54,14 @@
         <button data-paneel="claude">Claude</button>
       </nav>
       <div id="paneel-spelling" class="paneel actief">
-        <p class="uitleg">Rood onderstreept = staat niet in het Nederlandse woordenboek. Klik op een woord in de tekst voor suggesties. Zinsbouw en stijl worden <b>niet</b> gecontroleerd.</p>
+        <label class="taalkeuze">Taal van het boek
+          <select id="boektaal">
+            <option value="en_US">Engels (VS)</option>
+            <option value="en_GB">Engels (VK)</option>
+            <option value="nl">Nederlands</option>
+          </select>
+        </label>
+        <p class="uitleg">Rood onderstreept = staat niet in het woordenboek. Klik op een woord in de tekst voor suggesties. Zinsbouw en stijl worden <b>niet</b> gecontroleerd.</p>
         <ul id="spellinglijst" class="lijst"></ul>
       </div>
       <div id="paneel-herhalingen" class="paneel">
@@ -156,7 +163,7 @@
           <label>Buitenmarge (mm) <input name="marge_buiten" type="number" min="5" max="40"></label>
         </div>
         <label class="vink"><input type="checkbox" name="uitvullen"> Tekst uitvullen</label>
-        <label class="vink"><input type="checkbox" name="afbreken"> Woorden afbreken (Nederlandse regels)</label>
+        <label class="vink"><input type="checkbox" name="afbreken"> Woorden afbreken (volgens de taal van het boek)</label>
         <label class="vink"><input type="checkbox" name="titelpagina"> Titelpagina</label>
         <label class="vink"><input type="checkbox" name="inhoudsopgave"> Inhoudsopgave</label>
         <label class="vink"><input type="checkbox" name="paginanummers"> Paginanummers</label>

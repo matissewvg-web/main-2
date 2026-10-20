@@ -48,6 +48,7 @@ def main():
         "--add-data", f"lettertype{sep}lettertype",
         "--add-data", f"woordenboek{sep}woordenboek",
         "--add-data", f"boek/synoniemen.json{sep}boek",
+        "--add-data", f"boek/synoniemen-en.json{sep}boek",
         "--collect-data", "weasyprint",
         "--collect-data", "pyphen",
         "--collect-submodules", "spylls",
