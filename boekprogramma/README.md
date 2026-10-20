@@ -2,7 +2,19 @@
 
 Een lokale webapp om in het Nederlands een boek te schrijven en te exporteren naar een nette A5-PDF. Draait op je eigen computer (Windows of Mac) in de browser. Er gaat niets naar internet, behalve als je zelf de Claude-functies aanzet.
 
-## Starten
+## Windows: de .exe
+
+### **[Download Boekschrijfprogramma.exe](https://github.com/matissewvg-web/main-2/releases/download/boekprogramma/Boekschrijfprogramma.exe)**
+
+Eén bestand, niet installeren: zet het waar je wilt (bijvoorbeeld op het bureaublad) en dubbelklik. Het opent in een eigen venster. Python en Pango zitten erin, dus de PDF-export werkt meteen.
+
+- Windows waarschuwt *"Windows heeft uw pc beschermd"* omdat het programma niet ondertekend is: klik *Meer informatie* → *Toch uitvoeren*. Een virusscanner kan zo'n onondertekende .exe soms ten onrechte tegenhouden.
+- Starten duurt een paar seconden: de .exe pakt zichzelf eerst uit.
+- *PDF opslaan…* vraagt waar je het bestand wilt bewaren. *Afdrukvoorbeeld* opent in je gewone browser.
+- Elke wijziging in `boekprogramma/` wordt door GitHub Actions op Windows opnieuw gebouwd en getest (`.github/workflows/boekprogramma-windows.yml`); de link hierboven geeft altijd de nieuwste versie. Je boeken blijven bij een update gewoon staan.
+- Zelf bouwen op Windows: `pip install -r requirements.txt -r requirements-exe.txt` en `python bouw_exe.py`.
+
+## Starten zonder .exe
 
 **Windows:** dubbelklik `start-windows.bat`.
 **Mac:** dubbelklik `start-mac.command` (de eerste keer: rechtsklik → *Open*, omdat macOS onbekende scripts blokkeert).

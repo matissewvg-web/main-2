@@ -227,6 +227,16 @@ window.addEventListener("pagehide", opslaanBijSluiten);
 document.addEventListener("visibilitychange", () => { if (document.visibilityState === "hidden") opslaanBijSluiten(); });
 window.addEventListener("beforeunload", opslaanBijSluiten);
 
+// Voor het .exe-venster: geeft tekst terug die nog niet is opgeslagen, zodat het
+// programma die bij het sluiten zelf kan bewaren.
+function wijzigingVoorSluiten() {
+  const h = staat.huidig;
+  if (!h || !h.vuil) return null;
+  h.vuil = false;
+  return { boek: staat.boekId, id: h.id, titel: h.titel, tekst: h.tekst };
+}
+const inVenster = () => Boolean(window.pywebview && window.pywebview.api);
+
 $("#titel").addEventListener("input", (e) => {
   if (!staat.huidig) return;
   staat.huidig.titel = e.target.value;
@@ -709,7 +719,14 @@ $("#exportform").addEventListener("submit", async (e) => {
     const r = await fetch(boekUrl("/pdf"));
     if (!r.ok) throw new Error((await r.json()).fout);
     const url = URL.createObjectURL(await r.blob());
-    status.innerHTML = `Klaar: ${r.headers.get("X-Paginas")} pagina's A5. <a href="${boekUrl("/pdf?download=1")}">PDF downloaden</a>`;
+    status.innerHTML = `Klaar: ${r.headers.get("X-Paginas")} pagina's A5. ` + (inVenster()
+      ? `<button type="button" class="klein" id="pdf-opslaan">PDF opslaan…</button>`
+      : `<a href="${boekUrl("/pdf?download=1")}">PDF downloaden</a>`);
+    $("#pdf-opslaan")?.addEventListener("click", async () => {
+      const r2 = await window.pywebview.api.pdf_opslaan(staat.boekId);
+      if (r2.fout) alert(r2.fout);
+      else if (r2.pad) meld(`PDF opgeslagen: ${r2.pad}`);
+    });
     $("#pdfvoorbeeld").hidden = false;
     $("#pdfvoorbeeld").src = url;
   } catch (err) {
@@ -720,7 +737,8 @@ $("#exportform").addEventListener("submit", async (e) => {
 $("#voorbeeld").addEventListener("click", async () => {
   await bewaar.nu();
   await bewaarExport();
-  window.open(boekUrl("/voorbeeld"), "_blank");
+  if (inVenster()) window.pywebview.api.open_in_browser(boekUrl("/voorbeeld"));
+  else window.open(boekUrl("/voorbeeld"), "_blank");
 });
 
 // --------------------------------------------------------- instellingen

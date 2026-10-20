@@ -3,10 +3,12 @@ name: Build Windows app
 on:
   push:
     branches: ['**']
-    # Studyover has its own build (studyover-windows.yml).
+    # Studyover and the Boekschrijfprogramma have their own builds.
     paths-ignore:
       - 'studyover/**'
       - '.github/workflows/studyover-windows.yml'
+      - 'boekprogramma/**'
+      - '.github/workflows/boekprogramma-windows.yml'
   workflow_dispatch:
 
 jobs:
