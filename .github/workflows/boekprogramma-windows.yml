@@ -68,6 +68,45 @@ jobs:
           if ($p.ExitCode -ne 0) { throw "Zelftest mislukt (exit $($p.ExitCode))" }
           Write-Host ("Grootte: {0:N0} MB" -f ((Get-Item dist\Boekschrijfprogramma.exe).Length / 1MB))
 
+      # Start the .exe the way a user does (double-click, no arguments) and check that it
+      # stays up, the server answers and the window loaded the page.
+      - name: Start test .exe
+        shell: pwsh
+        run: |
+          $env:BOEKEN_MAP = "$env:RUNNER_TEMP\boeken-start"
+          $p = Start-Process dist\Boekschrijfprogramma.exe -PassThru
+          $pagina = $false
+          for ($i = 0; $i -lt 60 -and -not $p.HasExited; $i++) {
+            Start-Sleep -Seconds 1
+            $log = Get-Content "$env:BOEKEN_MAP\boekprogramma.log" -Raw -ErrorAction SilentlyContinue
+            if ($log -match 'GET /static/app.js' -and $log -match 'GET /api/boeken/') { $pagina = $true; break }
+          }
+          Start-Sleep -Seconds 5
+          $levend = -not $p.HasExited
+          try { $antwoord = Invoke-RestMethod http://127.0.0.1:5123/api/boeken; $server = $true } catch { $server = $false }
+          Add-Type -AssemblyName System.Windows.Forms, System.Drawing
+          $scherm = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
+          $bmp = New-Object System.Drawing.Bitmap $scherm.Width, $scherm.Height
+          [System.Drawing.Graphics]::FromImage($bmp).CopyFromScreen($scherm.Location, [System.Drawing.Point]::Empty, $scherm.Size)
+          $bmp.Save("$env:RUNNER_TEMP\starttest.png")
+          Get-Process Boekschrijfprogramma -ErrorAction SilentlyContinue | Select-Object Id, MainWindowTitle | Format-Table | Out-String | Write-Host
+          Write-Host "---- boekprogramma.log ----"
+          Get-Content "$env:BOEKEN_MAP\boekprogramma.log" -ErrorAction SilentlyContinue
+          Copy-Item "$env:BOEKEN_MAP\boekprogramma.log" $env:RUNNER_TEMP -ErrorAction SilentlyContinue
+          Get-Process Boekschrijfprogramma -ErrorAction SilentlyContinue | Stop-Process -Force
+          Write-Host "levend=$levend server=$server pagina=$pagina"
+          if (-not ($levend -and $server -and $pagina)) { throw "Starttest mislukt" }
+
+      - name: Upload start test evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: starttest
+          path: |
+            ${{ runner.temp }}/starttest.png
+            ${{ runner.temp }}/boekprogramma.log
+          if-no-files-found: ignore
+
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
         with:

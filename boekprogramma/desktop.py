@@ -24,8 +24,9 @@ def _bereid_pango_voor():
     gtk = BASIS / "gtk"
     if gtk.is_dir():
         os.environ["WEASYPRINT_DLL_DIRECTORIES"] = str(gtk)
-        # Ook de afhankelijkheden van Pango moeten in deze map gevonden worden.
-        os.environ["PATH"] = str(gtk) + os.pathsep + os.environ.get("PATH", "")
+        # Ook de afhankelijkheden van Pango moeten in deze map gevonden worden. Achteraan in
+        # PATH, zodat andere onderdelen (venster, .NET) nooit een MSYS2-DLL oppikken.
+        os.environ["PATH"] = os.environ.get("PATH", "") + os.pathsep + str(gtk)
         if hasattr(os, "add_dll_directory"):
             os.add_dll_directory(str(gtk))
     fonts = BASIS / "fonts"
@@ -34,13 +35,37 @@ def _bereid_pango_voor():
         os.environ["FONTCONFIG_FILE"] = str(fonts / "fonts.conf")
 
 
+def _logpad():
+    return Path(os.environ.get("BOEKEN_MAP") or Path.home() / "Boeken") / "boekprogramma.log"
+
+
 def _logbestand():
-    """Een .exe zonder consolevenster heeft geen stdout; schrijf naar een logbestand."""
+    """Een .exe zonder consolevenster heeft geen stdout; schrijf naar een logbestand.
+    faulthandler schrijft daar ook naartoe als het programma hard vastloopt."""
     if sys.stdout is None or sys.stderr is None:
-        map_ = Path(os.environ.get("BOEKEN_MAP") or Path.home() / "Boeken")
-        map_.mkdir(parents=True, exist_ok=True)
-        log = open(map_ / "boekprogramma.log", "a", encoding="utf-8", buffering=1)
+        _logpad().parent.mkdir(parents=True, exist_ok=True)
+        log = open(_logpad(), "a", encoding="utf-8", buffering=1)
         sys.stdout = sys.stderr = log
+        import faulthandler
+        faulthandler.enable(log)
+    import datetime
+    print(f"\n--- start {datetime.datetime.now():%Y-%m-%d %H:%M:%S}, {sys.platform}, "
+          f"Python {sys.version.split()[0]}", flush=True)
+
+
+def _meld_fout(tekst):
+    """Laat een foutmelding zien in plaats van stil te verdwijnen."""
+    print(tekst, flush=True)
+    bericht = (f"Het boekschrijfprogramma kon niet starten.\n\n{tekst[-1500:]}\n\n"
+               f"Details staan in:\n{_logpad()}")
+    try:
+        if sys.platform == "win32":
+            import ctypes
+            ctypes.windll.user32.MessageBoxW(None, bericht, "Boekschrijfprogramma", 0x10)
+        else:
+            print(bericht, file=sys.__stderr__ or sys.stderr)
+    except Exception:
+        pass
 
 
 def _is_ons_programma(poort):
@@ -74,9 +99,11 @@ def _kies_poort():
 class Api:
     """Functies die de pagina via window.pywebview.api kan aanroepen."""
 
+    # Alleen methodes zijn voor de pagina; pywebview slaat attributen met _ over.
+    # (Een venster als gewoon attribuut zou pywebview helemaal doorlopen.)
     def __init__(self, poort):
-        self.poort = poort
-        self.venster = None
+        self._poort = poort
+        self._venster = None
 
     def pdf_opslaan(self, boek_id):
         import webview
@@ -87,7 +114,7 @@ class Api:
             return {"fout": str(fout)}
         naam = f"{opslag.maak_id(opslag.lees_boek(boek_id)['titel'], set())}.pdf"
         soort = getattr(getattr(webview, "FileDialog", None), "SAVE", None) or webview.SAVE_DIALOG
-        keuze = self.venster.create_file_dialog(soort, save_filename=naam,
+        keuze = self._venster.create_file_dialog(soort, save_filename=naam,
                                                 file_types=("PDF (*.pdf)",))
         if not keuze:
             return {"geannuleerd": True}
@@ -99,7 +126,7 @@ class Api:
 
     def open_in_browser(self, pad):
         if isinstance(pad, str) and pad.startswith("/api/"):
-            webbrowser.open(f"http://127.0.0.1:{self.poort}{pad}")
+            webbrowser.open(f"http://127.0.0.1:{self._poort}{pad}")
 
 
 def _start_server(poort):
@@ -131,7 +158,7 @@ def _met_venster(url, api):
         webview.settings["ALLOW_DOWNLOADS"] = True
     venster = webview.create_window("Boekschrijfprogramma", url, js_api=api,
                                     width=1400, height=900, min_size=(900, 600))
-    api.venster = venster
+    api._venster = venster
     klaar = threading.Event()
 
     def bij_sluiten():
@@ -229,18 +256,28 @@ def main():
         sys.exit(zelftest(logpad))
 
     _logbestand()
-    _bereid_pango_voor()
-    poort, draait_al = _kies_poort()
-    server = None if draait_al else _start_server(poort)
+    try:
+        _bereid_pango_voor()
+        poort, draait_al = _kies_poort()
+        server = None if draait_al else _start_server(poort)
+        print(f"server op poort {poort}{' (draaide al)' if draait_al else ''}", flush=True)
+    except Exception:
+        _meld_fout(traceback.format_exc())
+        sys.exit(1)
     url = f"http://127.0.0.1:{poort}/"
     try:
-        _met_venster(url, Api(poort))
+        try:
+            _met_venster(url, Api(poort))
+        except Exception:
+            print("venster werkt niet, terugval naar de browser:", flush=True)
+            traceback.print_exc()
+            _zonder_venster(url)
     except Exception:
-        traceback.print_exc()
-        _zonder_venster(url)
+        _meld_fout(traceback.format_exc())
     finally:
         if server:
             server.shutdown()
+        print("--- gestopt", flush=True)
 
 
 if __name__ == "__main__":
