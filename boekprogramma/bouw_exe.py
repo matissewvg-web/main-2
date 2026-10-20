@@ -56,7 +56,8 @@ def main():
     ]
     for map_ in ("gtk", "fonts"):
         if (HIER / map_).is_dir():
-            args += ["--add-binary" if map_ == "gtk" else "--add-data", f"{map_}{sep}{map_}"]
+            # Als data, zodat PyInstaller de DLL's niet verplaatst of weglaat.
+            args += ["--add-data", f"{map_}{sep}{map_}"]
         elif sys.platform == "win32":
             print(f"Let op: map {map_}/ ontbreekt; de PDF-export werkt dan alleen met een eigen Pango-installatie.")
     icoon = HIER / "build" / "icoon.ico"

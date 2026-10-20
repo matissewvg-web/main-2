@@ -24,6 +24,10 @@ def _bereid_pango_voor():
     gtk = BASIS / "gtk"
     if gtk.is_dir():
         os.environ["WEASYPRINT_DLL_DIRECTORIES"] = str(gtk)
+        # Ook de afhankelijkheden van Pango moeten in deze map gevonden worden.
+        os.environ["PATH"] = str(gtk) + os.pathsep + os.environ.get("PATH", "")
+        if hasattr(os, "add_dll_directory"):
+            os.add_dll_directory(str(gtk))
     fonts = BASIS / "fonts"
     if (fonts / "fonts.conf").is_file():
         os.environ["FONTCONFIG_PATH"] = str(fonts)
