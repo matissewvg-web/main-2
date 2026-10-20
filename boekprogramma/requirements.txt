@@ -1,0 +1,5 @@
+flask>=3.0
+weasyprint>=62
+spylls>=0.1.7
+anthropic>=1.15
+pytest>=8

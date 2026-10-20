@@ -1,0 +1,4 @@
+*.bat text eol=crlf
+*.command text eol=lf
+*.dic -diff
+*.ttf binary

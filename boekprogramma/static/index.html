@@ -1,0 +1,191 @@
+<!doctype html>
+<html lang="nl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Boekschrijfprogramma</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <header class="balk">
+    <select id="boekkeuze" title="Kies een boek"></select>
+    <nav id="tabs">
+      <button data-tab="schrijven" class="actief">Schrijven</button>
+      <button data-tab="characters">Characters</button>
+      <button data-tab="wereld">Wereld &amp; maps</button>
+      <button data-tab="export">Export</button>
+      <button data-tab="instellingen">Instellingen</button>
+    </nav>
+    <span id="opslagstatus"></span>
+  </header>
+
+  <!-- Schrijven -->
+  <main id="tab-schrijven" class="tab actief">
+    <aside class="links">
+      <div class="kop"><h2>Hoofdstukken</h2><button id="nieuw-hoofdstuk" title="Nieuw hoofdstuk">+</button></div>
+      <ol id="hoofdstuklijst"></ol>
+      <p class="totaal" id="totaal"></p>
+    </aside>
+
+    <section class="midden">
+      <input id="titel" placeholder="Titel van het hoofdstuk" autocomplete="off">
+      <div class="editor-wrap">
+        <div id="achtergrond" aria-hidden="true"></div>
+        <textarea id="tekst" spellcheck="false" placeholder="Begin met schrijven…"></textarea>
+      </div>
+      <div class="onderbalk">
+        <span id="woorden"></span>
+        <span class="hulp">Elke regel is een alinea · <code>***</code> scènewissel · <code>*cursief*</code> · <code>**vet**</code> · <code>## tussenkop</code></span>
+        <button id="hoofdstuk-verwijderen" class="klein gevaar">Hoofdstuk verwijderen</button>
+      </div>
+    </section>
+
+    <aside class="rechts">
+      <nav class="subtabs">
+        <button data-paneel="spelling" class="actief">Spelling</button>
+        <button data-paneel="herhalingen">Herhalingen</button>
+        <button data-paneel="claude">Claude</button>
+      </nav>
+      <div id="paneel-spelling" class="paneel actief">
+        <p class="uitleg">Rood onderstreept = staat niet in het Nederlandse woordenboek. Klik op een woord in de tekst voor suggesties. Zinsbouw en stijl worden <b>niet</b> gecontroleerd.</p>
+        <ul id="spellinglijst" class="lijst"></ul>
+      </div>
+      <div id="paneel-herhalingen" class="paneel">
+        <p class="uitleg">Woorden die vaak of kort na elkaar terugkomen. Klik om ze in de tekst aan te wijzen. Namen van characters worden overgeslagen.</p>
+        <ul id="herhalinglijst" class="lijst"></ul>
+      </div>
+      <div id="paneel-claude" class="paneel">
+        <div id="claude-uit" class="uitleg">Claude staat uit. Vul onder <b>Instellingen</b> een API-sleutel in om zinsuggesties en het chatpaneel te gebruiken. Elk verzoek kost een paar cent.</div>
+        <div id="claude-aan" hidden>
+          <button id="herschrijf">Herschrijf geselecteerde zin</button>
+          <div id="voorstellen"></div>
+          <div id="chat"></div>
+          <form id="chatform">
+            <textarea id="chatvraag" rows="3" placeholder="Vraag iets over dit hoofdstuk…"></textarea>
+            <div class="rij"><button type="submit">Vraag</button><button type="button" id="chat-wissen" class="klein">Nieuw gesprek</button></div>
+          </form>
+          <p class="uitleg" id="kosten"></p>
+        </div>
+      </div>
+    </aside>
+  </main>
+
+  <!-- Characters -->
+  <main id="tab-characters" class="tab">
+    <aside class="links">
+      <div class="kop"><h2>Characters</h2><button id="nieuw-character" title="Nieuw character">+</button></div>
+      <ul id="characterlijst" class="lijst klikbaar"></ul>
+    </aside>
+    <section class="formulier" id="characterform-wrap">
+      <form id="characterform" hidden>
+        <label>Naam <input name="naam" required></label>
+        <label>Bijnamen <small>(gescheiden door komma's)</small> <input name="bijnamen"></label>
+        <div class="rij">
+          <label>Leeftijd <input name="leeftijd"></label>
+          <label>Rol <input name="rol" placeholder="hoofdpersoon, tegenspeler…"></label>
+        </div>
+        <label>Uiterlijk <textarea name="uiterlijk" rows="2"></textarea></label>
+        <label>Beschrijving <textarea name="beschrijving" rows="5"></textarea></label>
+        <fieldset><legend>Relaties</legend><div id="relaties"></div><button type="button" class="klein" id="relatie-erbij">+ relatie</button></fieldset>
+        <fieldset><legend>Tijdlijn</legend><div id="tijdlijn"></div><button type="button" class="klein" id="tijdlijn-erbij">+ gebeurtenis</button></fieldset>
+        <p class="uitleg" id="character-hoofdstukken"></p>
+        <div class="rij"><button type="submit">Opslaan</button><button type="button" id="character-verwijderen" class="klein gevaar">Verwijderen</button></div>
+      </form>
+      <p id="character-leeg" class="uitleg">Kies of maak een character. Characters worden in de hoofdstuklijst getoond zodra hun naam (of bijnaam) in een hoofdstuk staat.</p>
+    </section>
+  </main>
+
+  <!-- Wereld & maps -->
+  <main id="tab-wereld" class="tab">
+    <aside class="links">
+      <div class="kop"><h2>Notities</h2><button id="nieuwe-notitie" title="Nieuwe notitie">+</button></div>
+      <ul id="notitielijst" class="lijst klikbaar"></ul>
+      <div class="kop"><h2>Maps</h2></div>
+      <form id="mapform">
+        <input type="file" name="bestand" accept="image/*" required>
+        <input name="titel" placeholder="Naam van de map">
+        <button type="submit">Importeren</button>
+      </form>
+      <ul id="maplijst" class="lijst klikbaar"></ul>
+    </aside>
+    <section class="formulier">
+      <form id="notitieform" hidden>
+        <label>Titel <input name="titel" required></label>
+        <label>Notitie <textarea name="tekst" rows="18" placeholder="Plaatsen, geschiedenis, regels van de wereld…"></textarea></label>
+        <div class="rij"><button type="submit">Opslaan</button><button type="button" id="notitie-verwijderen" class="klein gevaar">Verwijderen</button></div>
+      </form>
+      <div id="mapdetail" hidden>
+        <label>Naam <input id="map-titel"></label>
+        <img id="map-afbeelding" alt="">
+        <fieldset><legend>Hoort bij hoofdstuk</legend><div id="map-hoofdstukken"></div></fieldset>
+        <label class="vink"><input type="checkbox" id="map-in-pdf"> Op een eigen pagina in de PDF zetten, vóór het eerste gekoppelde hoofdstuk</label>
+        <div class="rij"><button id="map-opslaan">Opslaan</button><button id="map-verwijderen" class="klein gevaar">Verwijderen</button></div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Export -->
+  <main id="tab-export" class="tab">
+    <section class="formulier">
+      <h2>A5-PDF</h2>
+      <form id="exportform">
+        <div class="rij">
+          <label>Titel van het boek <input name="titel"></label>
+          <label>Auteur <input name="auteur"></label>
+        </div>
+        <div class="rij">
+          <label>Lettertype
+            <select name="lettertype">
+              <option>Literata</option><option>Georgia</option><option>Times New Roman</option><option>Palatino</option><option>Garamond</option>
+            </select>
+          </label>
+          <label>Korps (pt) <input name="korps" type="number" step="0.5" min="7" max="16"></label>
+          <label>Regelafstand <input name="regelafstand" type="number" step="0.05" min="1" max="2.5"></label>
+        </div>
+        <div class="rij">
+          <label>Marge boven (mm) <input name="marge_boven" type="number" min="5" max="40"></label>
+          <label>Marge onder (mm) <input name="marge_onder" type="number" min="5" max="40"></label>
+          <label>Binnenmarge, rugkant (mm) <input name="marge_binnen" type="number" min="5" max="40"></label>
+          <label>Buitenmarge (mm) <input name="marge_buiten" type="number" min="5" max="40"></label>
+        </div>
+        <label class="vink"><input type="checkbox" name="uitvullen"> Tekst uitvullen</label>
+        <label class="vink"><input type="checkbox" name="afbreken"> Woorden afbreken (Nederlandse regels)</label>
+        <label class="vink"><input type="checkbox" name="titelpagina"> Titelpagina</label>
+        <label class="vink"><input type="checkbox" name="inhoudsopgave"> Inhoudsopgave</label>
+        <label class="vink"><input type="checkbox" name="paginanummers"> Paginanummers</label>
+        <label class="vink"><input type="checkbox" name="hoofdstuk_rechts"> Hoofdstuk altijd op een rechterpagina (voor drukwerk; voegt lege pagina's toe)</label>
+        <div class="rij">
+          <button type="submit">Opslaan en PDF maken</button>
+          <button type="button" id="voorbeeld" class="klein">Afdrukvoorbeeld in de browser</button>
+        </div>
+      </form>
+      <p id="exportstatus" class="uitleg"></p>
+      <iframe id="pdfvoorbeeld" hidden title="PDF"></iframe>
+    </section>
+  </main>
+
+  <!-- Instellingen -->
+  <main id="tab-instellingen" class="tab">
+    <section class="formulier">
+      <h2>Boeken</h2>
+      <p class="uitleg">Je boeken staan als gewone bestanden in <code id="boekenmap"></code>. Maak daar regelmatig een kopie van (USB-stick, OneDrive, iCloud).</p>
+      <form id="nieuwboekform" class="rij">
+        <input name="titel" placeholder="Titel van een nieuw boek" required>
+        <input name="auteur" placeholder="Auteur">
+        <button type="submit">Nieuw boek</button>
+      </form>
+      <h2>Claude (optioneel)</h2>
+      <p class="uitleg">Voor zinsuggesties en het chatpaneel. Je hebt een eigen API-sleutel nodig van <code>console.anthropic.com</code>; daar betaal je per gebruik. Een vraag over een hoofdstuk van 5000 woorden kost grofweg 4 à 8 dollarcent. De sleutel wordt alleen op deze computer bewaard, in <code>instellingen.json</code> in de boekenmap.</p>
+      <p id="sleutelstatus" class="uitleg"></p>
+      <form id="sleutelform" class="rij">
+        <input name="sleutel" type="password" placeholder="sk-ant-…" autocomplete="off">
+        <button type="submit">Opslaan</button>
+        <button type="button" id="sleutel-wissen" class="klein">Sleutel wissen</button>
+      </form>
+    </section>
+  </main>
+
+  <div id="popup" hidden></div>
+  <script src="/static/app.js"></script>
+</body>
+</html>
