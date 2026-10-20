@@ -75,18 +75,78 @@ h2 { font-size: 13px; text-transform: uppercase; letter-spacing: 0.05em; color: 
 #hoofdstuklijst .pijlen button { background: transparent; color: var(--zacht); padding: 0 4px; }
 .totaal { color: var(--zacht); font-size: 12px; margin-top: 12px; }
 
-.midden { flex: 1; display: flex; flex-direction: column; min-width: 0; padding: 16px 24px 8px; }
-#titel { font: 600 24px/1.3 var(--schrift); border: 0; background: transparent; max-width: 760px; width: 100%; margin: 0 auto 8px; display: block; padding: 4px 18px; }
-.editor-wrap { position: relative; flex: 1; max-width: 760px; width: 100%; margin: 0 auto; min-height: 0; }
+/* ---- Schrijven: een A5-blad op een houten tafel ---- */
+.midden { flex: 1; display: flex; flex-direction: column; min-width: 0; padding: 0; }
+.bureau {
+  /* Houtnerf: uitgerekte ruis, gekleurd als eiken, met brede banen eroverheen. */
+  background-color: #8a5a36;
+  background-image:
+    radial-gradient(ellipse at 50% 40%, rgba(255, 220, 170, 0.18), transparent 70%),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='900' height='900'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9 0.012' numOctaves='3' seed='4'/%3E%3CfeColorMatrix values='0 0 0 0 0.22  0 0 0 0 0.11  0 0 0 0 0.04  0 0 0 1.6 -0.55'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='900' height='900'%3E%3Cfilter id='h'%3E%3CfeTurbulence type='turbulence' baseFrequency='0.12 0.004' numOctaves='3' seed='7'/%3E%3CfeColorMatrix values='0 0 0 0 0.30  0 0 0 0 0.16  0 0 0 0 0.07  0 0 0 1.1 -0.1'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23h)'/%3E%3C/svg%3E"),
+    repeating-linear-gradient(90deg, rgba(40, 18, 5, 0) 0 237px, rgba(40, 18, 5, 0.35) 237px 239px, rgba(255, 220, 180, 0.06) 239px 241px, rgba(40, 18, 5, 0) 241px 238px);
+  background-size: auto, 900px 900px, 900px 900px, auto;
+  box-shadow: inset 0 0 120px rgba(30, 15, 5, 0.45);
+}
+.bladplek { flex: 1; min-height: 0; container-type: size; display: flex; align-items: center; justify-content: center; }
+.blad {
+  --papier: #fbf8f0;
+  position: relative;
+  height: min(92cqh, calc(92cqw * 210 / 148));
+  aspect-ratio: 148 / 210;
+  container-type: size;
+  color: #2b2620;
+  background-color: var(--papier);
+  background-image:
+    radial-gradient(ellipse at 50% 45%, rgba(255, 255, 255, 0.55), rgba(255, 255, 255, 0) 65%),
+    linear-gradient(to right, rgba(140, 110, 60, 0.07), rgba(140, 110, 60, 0) 6%, rgba(140, 110, 60, 0) 94%, rgba(140, 110, 60, 0.06)),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='p'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' seed='3'/%3E%3CfeColorMatrix values='0 0 0 0 0.45  0 0 0 0 0.38  0 0 0 0 0.25  0 0 0 0.07 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23p)'/%3E%3C/svg%3E");
+  border-radius: 1.5px;
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.7),
+    inset 0 0 30px rgba(150, 115, 60, 0.10),
+    0 1px 1px rgba(40, 20, 5, 0.25),
+    0 6px 12px rgba(40, 20, 5, 0.28),
+    0 22px 40px -8px rgba(30, 15, 5, 0.45);
+}
+/* Twee vellen eronder, iets scheef, zodat het een stapeltje papier is. */
+.blad::before, .blad::after {
+  content: ""; position: absolute; inset: 0; z-index: -1; border-radius: 1.5px;
+  background: #f4efe3;
+  box-shadow: 0 1px 2px rgba(40, 20, 5, 0.3), 0 8px 18px rgba(30, 15, 5, 0.3);
+}
+.blad::before { transform: rotate(-1.4deg) translate(-4px, 3px); }
+.blad::after { transform: rotate(0.9deg) translate(5px, 5px); background: #f7f3e8; }
+.bladplek { isolation: isolate; }
+/* Marges zoals op een boekpagina, gemeten aan het blad zelf. */
+.bladinhoud { position: absolute; inset: 0; display: flex; flex-direction: column; padding: 11cqw 12cqw 10cqw; }
+
+#titel {
+  font: 500 5.4cqw/1.25 var(--schrift); text-align: center; color: inherit;
+  border: 0; background: transparent; width: 100%; padding: 0; margin: 0 0 6cqw; outline: none;
+}
+#titel::placeholder, #tekst::placeholder { color: rgba(60, 50, 40, 0.35); }
+.editor-wrap {
+  position: relative; flex: 1; min-height: 0;
+  /* Tekst vervaagt aan de randen van het schrijfvlak in plaats van hard af te breken. */
+  -webkit-mask-image: linear-gradient(transparent, #000 2.5cqw, #000 calc(100% - 4cqw), transparent);
+          mask-image: linear-gradient(transparent, #000 2.5cqw, #000 calc(100% - 4cqw), transparent);
+}
 #achtergrond, #tekst {
-  position: absolute; inset: 0; margin: 0; padding: 12px 18px 40vh;
-  font: 18px/1.65 var(--schrift); letter-spacing: normal; tab-size: 4;
+  position: absolute; inset: 0; margin: 0; padding: 2cqw 0 40cqh;
+  font: 3.1cqw/1.6 var(--schrift); letter-spacing: normal; tab-size: 4;
   white-space: pre-wrap; overflow-wrap: break-word; word-break: normal;
   overflow-y: scroll; border: 0; border-radius: 0;
+  scrollbar-width: none;
 }
-#achtergrond { color: transparent; pointer-events: none; scrollbar-width: none; }
-#achtergrond::-webkit-scrollbar { display: none; }
-#tekst { background: transparent; resize: none; outline: none; caret-color: var(--accent); }
+#achtergrond::-webkit-scrollbar, #tekst::-webkit-scrollbar { display: none; }
+#achtergrond { color: transparent; pointer-events: none; }
+#tekst { background: transparent; color: inherit; resize: none; outline: none; caret-color: #8a4b2a; }
+#tekst:disabled { cursor: default; }
+.bladnummer { position: absolute; left: 0; right: 0; bottom: 4.5cqw; text-align: center; font: 2.6cqw var(--schrift); color: rgba(60, 50, 40, 0.55); }
+.bureau .onderbalk { color: rgba(255, 240, 220, 0.85); padding: 6px 16px 8px; margin: 0 auto; max-width: none; justify-content: center; }
+.bureau .onderbalk code { background: rgba(0, 0, 0, 0.25); color: #fff3e6; }
+.bureau .onderbalk button.klein { background: rgba(255, 250, 240, 0.9); border-color: transparent; }
 #achtergrond mark { color: transparent; background: none; border-radius: 2px; }
 #achtergrond mark.fout { text-decoration: underline wavy var(--fout); text-decoration-skip-ink: none; text-underline-offset: 4px; }
 #achtergrond mark.herhaling { background: var(--herhaling); }

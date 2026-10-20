@@ -286,7 +286,18 @@ function verschuifMarkeringen(oud, nieuw) {
 // ------------------------------------------------- tekst met markeringen
 
 const tekst = $("#tekst"), achtergrond = $("#achtergrond");
-tekst.addEventListener("scroll", () => { achtergrond.scrollTop = tekst.scrollTop; });
+tekst.addEventListener("scroll", () => { achtergrond.scrollTop = tekst.scrollTop; tekenBladnummer(); });
+window.addEventListener("resize", () => tekenBladnummer());
+
+// Welk blad van het schrijfblok je ziet, zoals een paginanummer onderaan papier.
+function tekenBladnummer() {
+  const hoogte = tekst.clientHeight;
+  if (!hoogte || !staat.huidig) { $("#bladnummer").textContent = ""; return; }
+  const inhoud = tekst.scrollHeight - parseFloat(getComputedStyle(tekst).paddingBottom);
+  const totaal = Math.max(1, Math.ceil(inhoud / hoogte));
+  const blad = Math.min(totaal, Math.floor((tekst.scrollTop + hoogte / 3) / hoogte) + 1);
+  $("#bladnummer").textContent = totaal > 1 ? `${blad} / ${totaal}` : "";
+}
 
 function tekenAchtergrond() {
   const t = tekst.value;
@@ -302,6 +313,7 @@ function tekenAchtergrond() {
   }
   achtergrond.innerHTML = html + esc(t.slice(pos)) + "\n​";
   achtergrond.scrollTop = tekst.scrollTop;
+  tekenBladnummer();
 }
 
 function scrollNaar(start) {
