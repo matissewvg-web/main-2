@@ -1,6 +1,6 @@
 # Chrome Ledger
 
-Beurtgebaseerde cyberpunk-corpo-simulatie in Nova Antwerpa, 2002+. Privé hobbyproject. Het volledige plan staat in [CHROME_LEDGER_PLAN.md](CHROME_LEDGER_PLAN.md); dit is Mijlpaal 1.
+Beurtgebaseerde cyberpunk-corpo-simulatie in Nova Antwerpa, 2002+. Privé hobbyproject. Het volledige plan staat in [CHROME_LEDGER_PLAN.md](CHROME_LEDGER_PLAN.md); Mijlpaal 1 (kern) en 2 (kaart, districten, gebouwen) zijn gebouwd.
 
 ## Spelen
 
@@ -15,7 +15,7 @@ Het spel bewaart automatisch in de browser (localStorage). Met *Exporteer save* 
 
 ## Balans aanpassen
 
-Alle getallen staan in `data/`. De economie (lonen, inkomen per vestiging, heat-afkoeling, eventkans, ...) staat in `data/balans.json`, de acties in `data/actions.json`, de events in `data/events/`. Pas één getal per testronde aan.
+Alle getallen staan in `data/`. De economie (lonen, marktinkomen, heat-afkoeling, eventkans, ...) staat in `data/balans.json`, de acties in `data/actions.json`, de gebouwen in `data/buildings.json`, de districttypes (naampool, startwaarden, plaatsing op de kaart) in `data/districts.json` en de events in `data/events/`. Pas één getal per testronde aan.
 
 Check daarna met de simulator of geen enkele actie dominant is geworden:
 

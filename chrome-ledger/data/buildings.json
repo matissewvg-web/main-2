@@ -1,0 +1,112 @@
+[
+  {
+    "id": "kantoor", "naam": "Kantoor",
+    "beschrijving": "Een verdieping vol bureaus en koffie. Doet wat het moet doen.",
+    "kost": 15000, "onderhoud": 1500, "personeel": 3, "inkomen": 9000,
+    "type_bonus": { "zakenkwartier": 0.3 }
+  },
+  {
+    "id": "fabriek", "naam": "Fabriek",
+    "beschrijving": "Veel omzet en veel werk voor de buurt. De rook valt op.",
+    "kost": 26000, "onderhoud": 2500, "personeel": 6, "inkomen": 17000, "heat": 0.8,
+    "type_bonus": { "industriezone": 0.4, "haven": 0.2 },
+    "per_beurt": [{ "district": "hier", "stat": "loyaliteit", "op": "add", "waarde": 0.5 }]
+  },
+  {
+    "id": "labo", "naam": "Labo",
+    "beschrijving": "Weinig omzet, maar levert elke beurt tech op.",
+    "kost": 22000, "onderhoud": 2000, "personeel": 4, "inkomen": 4000,
+    "type_bonus": { "universiteitswijk": 0.5 },
+    "per_beurt": [{ "stat": "tech", "op": "add", "waarde": 1 }]
+  },
+  {
+    "id": "datacenter", "naam": "Datacenter",
+    "beschrijving": "Rekenkracht die je concurrenten niet hebben. Drukt elke beurt de marktdruk.",
+    "kost": 30000, "onderhoud": 3000, "personeel": 2, "inkomen": 8000,
+    "type_bonus": { "dataring": 0.5 },
+    "per_beurt": [{ "stat": "druk", "op": "add", "waarde": -1 }]
+  },
+  {
+    "id": "winkelcentrum", "naam": "Winkelcentrum",
+    "beschrijving": "Neon, roltrappen en dure schoenen. Werkt best waar mensen geld hebben.",
+    "kost": 24000, "onderhoud": 2500, "personeel": 5, "inkomen": 13000,
+    "type_bonus": { "villawijk": 0.3, "zakenkwartier": 0.2 },
+    "per_beurt": [{ "district": "hier", "stat": "loyaliteit", "op": "add", "waarde": 0.5 }]
+  },
+  {
+    "id": "smokkelpakhuis", "naam": "Smokkelpakhuis",
+    "beschrijving": "Wat erin gaat, staat op geen enkele vrachtbrief. Goed geld, slechte buurt.",
+    "kost": 14000, "onderhoud": 1000, "personeel": 3, "inkomen": 12000, "heat": 1.2,
+    "type_bonus": { "haven": 0.4, "zwarte_markt": 0.4 },
+    "per_beurt": [{ "district": "hier", "stat": "criminaliteit", "op": "add", "waarde": 1 }]
+  },
+  {
+    "id": "buurthuis", "naam": "Buurthuis",
+    "beschrijving": "Gratis soep en wifi. De buurt vergeet niet wie dat betaalde.",
+    "kost": 9000, "onderhoud": 1000, "personeel": 2, "inkomen": 0, "heat": 0,
+    "per_beurt": [
+      { "district": "hier", "stat": "loyaliteit", "op": "add", "waarde": 2 },
+      { "district": "hier", "stat": "criminaliteit", "op": "add", "waarde": -1 }
+    ]
+  },
+  {
+    "id": "beveiligingspost", "naam": "Beveiligingspost",
+    "beschrijving": "Jouw mensen in uniform op de hoek. Minder misdaad, meer greep op de wijk.",
+    "kost": 12000, "onderhoud": 1500, "personeel": 4, "inkomen": 0, "heat": 0,
+    "per_beurt": [
+      { "district": "hier", "stat": "criminaliteit", "op": "add", "waarde": -2 },
+      { "district": "hier", "stat": "invloed", "op": "add", "waarde": 0.5 }
+    ]
+  },
+  {
+    "id": "mediastudio", "naam": "Mediastudio",
+    "beschrijving": "Een eigen talkshow. Levert elke beurt invloed op.",
+    "kost": 20000, "onderhoud": 2000, "personeel": 3, "inkomen": 6000,
+    "type_bonus": { "mediakwartier": 0.5 },
+    "per_beurt": [{ "stat": "invloed", "op": "add", "waarde": 1 }]
+  },
+  {
+    "id": "kliniek", "naam": "Straatkliniek",
+    "beschrijving": "Goedkope implantaten en hechtingen zonder vragen. De buurt houdt van je.",
+    "kost": 16000, "onderhoud": 1500, "personeel": 4, "inkomen": 5000, "heat": 0,
+    "type_bonus": { "slums": 0.4 },
+    "per_beurt": [{ "district": "hier", "stat": "loyaliteit", "op": "add", "waarde": 1.5 }]
+  },
+  {
+    "id": "nachtclub", "naam": "Nachtclub",
+    "beschrijving": "Bas tot vier uur 's nachts en een achterkamer voor zaken.",
+    "kost": 18000, "onderhoud": 1500, "personeel": 4, "inkomen": 11000, "heat": 0.6,
+    "type_bonus": { "oude_stad": 0.3, "zwarte_markt": 0.3 },
+    "per_beurt": [{ "district": "hier", "stat": "criminaliteit", "op": "add", "waarde": 0.5 }]
+  },
+  {
+    "id": "zendmast", "naam": "Zendmast",
+    "beschrijving": "Jouw reclame op elk scherm in de wijk. Verhoogt elke beurt je invloed in dit district.",
+    "kost": 12000, "onderhoud": 800, "personeel": 1, "inkomen": 2000,
+    "per_beurt": [{ "district": "hier", "stat": "invloed", "op": "add", "waarde": 1.5 }]
+  },
+  {
+    "id": "advocatenkantoor", "naam": "Advocatenkantoor",
+    "beschrijving": "Laat elke beurt wat heat verdwijnen in procedures. Eén per district.",
+    "kost": 25000, "onderhoud": 2500, "personeel": 3, "inkomen": 3000, "heat": 0,
+    "max_per_district": 1,
+    "type_bonus": { "zakenkwartier": 0.3 },
+    "per_beurt": [{ "stat": "heat", "op": "add", "waarde": -1 }]
+  },
+  {
+    "id": "vrachtterminal", "naam": "Vrachtterminal",
+    "beschrijving": "Containers, kranen en douanepapieren. Groot, duur en winstgevend.",
+    "kost": 32000, "onderhoud": 3000, "personeel": 7, "inkomen": 20000, "heat": 0.6,
+    "type_bonus": { "haven": 0.3, "luchthaven": 0.5 }
+  },
+  {
+    "id": "woontoren", "naam": "Woontoren",
+    "beschrijving": "Tachtig verdiepingen capsulewoningen. Meer bewoners, meer klanten.",
+    "kost": 20000, "onderhoud": 1500, "personeel": 2, "inkomen": 6000,
+    "type_bonus": { "slums": 0.2, "grensstrook": 0.2 },
+    "per_beurt": [
+      { "district": "hier", "stat": "bevolking", "op": "add", "waarde": 0.5 },
+      { "district": "hier", "stat": "loyaliteit", "op": "add", "waarde": 0.5 }
+    ]
+  }
+]

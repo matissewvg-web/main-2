@@ -5,28 +5,33 @@ import { h, geld, getal, modChips, effectChips, fmtStat } from './dom.js';
 import { logoSvg } from './logo.js';
 import { berekenMods, bronnen, vind } from '../effects.js';
 import { maakStaat } from '../state.js';
-import { willekeurigeSeed } from '../rng.js';
+import { kaartCanvas, typeKleur } from './kaart.js';
 
 const STAPPEN = ['identiteit', 'oprichter', 'sector', 'cultuur', 'perks', 'overzicht'];
 const TOON_STATS = ['geld', 'invloed', 'tech', 'heat', 'personeel'];
 
-export function toonCreator(root, data, { opStart, opTerug }) {
-  const c = {
+export function nieuwConcept(data, kaart) {
+  const startHq = kaart.districten.find((d) => d.type === 'oude_stad') ?? kaart.districten[0];
+  return {
     naam: '',
     slogan: '',
     kleur: '#ff2a6d',
     accent: '#05d9e8',
     logo: { vorm: data.logos.vormen[2].id, symbool: data.logos.symbolen[0] },
-    hq: data.districts.types[0].id,
+    hq: startHq.id,
     oprichter: data.archetypes[0].id,
     sector: data.sectors[0].id,
     cultuur: Object.fromEntries(data.culture.map((a) => [a.id, 0])),
     perks: [],
     gebreken: [],
   };
+}
+
+// c: het concept uit nieuwConcept(); blijft bewaard als je terug naar de wereld-opties gaat.
+export function toonCreator(root, data, kaart, c, { opStart, opTerug }) {
   let stap = 0;
-  let seed = '';
   let voetEl;
+  let hqKaart = null;
   let voorbeeldEl;
 
   const punten = () => data.balans.perkpunten
@@ -51,6 +56,7 @@ export function toonCreator(root, data, { opStart, opTerug }) {
   }
 
   function render() {
+    hqKaart = null;
     root.replaceChildren(h('div', { class: 'creator' },
       h('header', { class: 'creator-kop' },
         h('h1', {}, t('creator.titel')),
@@ -62,6 +68,7 @@ export function toonCreator(root, data, { opStart, opTerug }) {
           }, `${i + 1}. ${t(`creator.stap.${s}`)}`))))),
       h('section', { class: 'creator-inhoud' }, RENDER[STAPPEN[stap]]()),
       (voetEl = voet())));
+    hqKaart?.();
   }
 
   function ververs() {
@@ -89,7 +96,20 @@ export function toonCreator(root, data, { opStart, opTerug }) {
 
   function start() {
     if (eersteFout(STAPPEN.length) >= 0) return;
-    opStart(structuredClone({ ...c, naam: c.naam.trim(), slogan: c.slogan.trim() }), seed.trim() || willekeurigeSeed());
+    opStart(structuredClone({ ...c, naam: c.naam.trim(), slogan: c.slogan.trim() }));
+  }
+
+  // Kleine kaart om het hoofdkwartier aan te klikken.
+  function hqKiezer() {
+    const [canvas, teken] = kaartCanvas(kaart, {
+      kleur: (d) => (d.id === c.hq ? c.kleur : typeKleur(data, d.type)),
+      geselecteerd: c.hq,
+      hq: c.hq,
+      opKlik: (id) => { c.hq = id; render(); },
+      label: t('kaart.label'),
+    });
+    hqKaart = teken;
+    return canvas;
   }
 
   function voorbeeld() {
@@ -104,7 +124,7 @@ export function toonCreator(root, data, { opStart, opTerug }) {
     return h('label', { class: 'veld' }, h('span', {}, label), invoer);
   }
 
-  function kaart(gekozen, onclick, ...inhoud) {
+  function keuzeKaart(gekozen, onclick, ...inhoud) {
     return h('button', { type: 'button', class: `kaart${gekozen ? ' gekozen' : ''}`, 'aria-pressed': String(gekozen), onclick }, ...inhoud);
   }
 
@@ -124,9 +144,11 @@ export function toonCreator(root, data, { opStart, opTerug }) {
           h('div', { class: 'kleuren' },
             veld(t('creator.kleur'), h('input', { type: 'color', value: c.kleur, oninput: (e) => { c.kleur = e.target.value; ververs(); } })),
             veld(t('creator.accent'), h('input', { type: 'color', value: c.accent, oninput: (e) => { c.accent = e.target.value; ververs(); } }))),
-          veld(t('creator.hq'), h('select', { onchange: (e) => { c.hq = e.target.value; } },
-            data.districts.types.map((d) => h('option', { value: d.id, selected: d.id === c.hq }, d.naam)))),
-          h('p', { class: 'hint' }, t('creator.hq_hint'))),
+          veld(t('creator.hq'), h('select', { id: 'hq', onchange: (e) => { c.hq = Number(e.target.value); render(); } },
+            kaart.districten.map((d) => h('option', { value: d.id, selected: d.id === c.hq },
+              `${d.naam} (${vind(data.districts.types, d.type)?.naam})`)))),
+          hqKiezer(),
+          h('p', { class: 'hint' }, t('creator.hq_hint', { pct: data.balans.hq_invloed }))),
         h('div', { class: 'logo-kiezer' },
           voorbeeldEl,
           h('h3', {}, t('creator.vorm')),
@@ -143,7 +165,7 @@ export function toonCreator(root, data, { opStart, opTerug }) {
 
     oprichter() {
       voorbeeldEl = null;
-      return h('div', { class: 'kaarten' }, data.archetypes.map((a) => kaart(c.oprichter === a.id, () => { c.oprichter = a.id; render(); },
+      return h('div', { class: 'kaarten' }, data.archetypes.map((a) => keuzeKaart(c.oprichter === a.id, () => { c.oprichter = a.id; render(); },
         h('h3', {}, a.naam),
         h('p', {}, a.beschrijving),
         h('div', { class: 'chips' }, effectChips(a.start), modChips(a.mods, data)))));
@@ -151,7 +173,7 @@ export function toonCreator(root, data, { opStart, opTerug }) {
 
     sector() {
       voorbeeldEl = null;
-      return h('div', { class: 'kaarten' }, data.sectors.map((s) => kaart(c.sector === s.id, () => { c.sector = s.id; render(); },
+      return h('div', { class: 'kaarten' }, data.sectors.map((s) => keuzeKaart(c.sector === s.id, () => { c.sector = s.id; render(); },
         h('h3', {}, s.naam),
         h('p', {}, s.beschrijving),
         h('p', { class: 'klein' }, t('creator.basisinkomen', { waarde: geld(s.basisinkomen) })),
@@ -195,12 +217,12 @@ export function toonCreator(root, data, { opStart, opTerug }) {
       return h('div', { class: 'stap-perks' },
         h('p', { class: `punten${p < 0 ? ' slecht' : ''}` }, t('creator.punten', { punten: p, totaal: data.balans.perkpunten })),
         h('h3', {}, t('creator.perks')),
-        h('div', { class: 'kaarten klein' }, data.perks.map((pk) => kaart(c.perks.includes(pk.id), () => wissel(c.perks, pk.id),
+        h('div', { class: 'kaarten klein' }, data.perks.map((pk) => keuzeKaart(c.perks.includes(pk.id), () => wissel(c.perks, pk.id),
           h('h4', {}, pk.naam, h('span', { class: 'prijs slecht' }, t('creator.kost_pt', { pt: pk.kost }))),
           h('p', {}, pk.beschrijving),
           h('div', { class: 'chips' }, effectChips(pk.start), modChips(pk.mods, data))))),
         h('h3', {}, t('creator.gebreken')),
-        h('div', { class: 'kaarten klein' }, data.flaws.map((g) => kaart(c.gebreken.includes(g.id), () => wissel(c.gebreken, g.id),
+        h('div', { class: 'kaarten klein' }, data.flaws.map((g) => keuzeKaart(c.gebreken.includes(g.id), () => wissel(c.gebreken, g.id),
           h('h4', {}, g.naam, h('span', { class: 'prijs goed' }, t('creator.geeft_pt', { pt: g.punten }))),
           h('p', {}, g.beschrijving),
           h('div', { class: 'chips' }, effectChips(g.start),
@@ -210,7 +232,7 @@ export function toonCreator(root, data, { opStart, opTerug }) {
 
     overzicht() {
       voorbeeldEl = voorbeeld();
-      const proef = maakStaat(c, data, 'voorbeeld');
+      const proef = maakStaat(c, data, kaart);
       const mods = berekenMods(c, data);
       const vast = bronnen(c, data).filter((b) => b.per_beurt?.length);
       const naam = (lijst, id) => vind(lijst, id)?.naam;
@@ -219,7 +241,7 @@ export function toonCreator(root, data, { opStart, opTerug }) {
         h('dl', { class: 'samenvatting' },
           h('dt', {}, t('creator.stap.oprichter')), h('dd', {}, naam(data.archetypes, c.oprichter)),
           h('dt', {}, t('creator.stap.sector')), h('dd', {}, naam(data.sectors, c.sector)),
-          h('dt', {}, t('creator.hq')), h('dd', {}, naam(data.districts.types, c.hq)),
+          h('dt', {}, t('creator.hq')), h('dd', {}, kaart.districten[c.hq]?.naam),
           h('dt', {}, t('creator.stap.cultuur')), h('dd', {}, data.culture.map((a) => {
             const v = c.cultuur[a.id];
             return h('div', {}, v === 0 ? t('creator.as_neutraal', { links: a.links, rechts: a.rechts })
@@ -237,11 +259,7 @@ export function toonCreator(root, data, { opStart, opTerug }) {
           vast.map((b) => [h('span', { class: 'klein' }, `${b.naam}:`), effectChips(b.per_beurt)]))] : null,
         h('h3', {}, t('creator.doel')),
         h('p', {}, data.winconditions.filter((w) => w.actief).map((w) => w.beschrijving).join(' ')),
-        h('p', { class: 'klein' }, t('creator.verlies', { heat: getal(data.balans.heat_max), beurten: data.balans.schuld_beurten })),
-        veld(t('creator.seed'), h('input', {
-          type: 'text', maxlength: 32, value: seed, placeholder: t('creator.seed_leeg'),
-          oninput: (e) => { seed = e.target.value; },
-        })));
+        h('p', { class: 'klein' }, t('creator.verlies', { heat: getal(data.balans.heat_max), beurten: data.balans.schuld_beurten })));
     },
   };
 

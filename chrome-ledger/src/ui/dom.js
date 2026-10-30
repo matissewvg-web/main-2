@@ -24,7 +24,7 @@ export const fmtStat = (stat, v) => (stat === 'geld' ? geld(v) : getal(v));
 export const datumLabel = (jaar, deel) => t('datum', { jaar, deel });
 
 // Voor deze stats is omhoog slecht.
-const SLECHT_OMHOOG = new Set(['heat', 'druk']);
+const SLECHT_OMHOOG = new Set(['heat', 'druk', 'criminaliteit', 'politie']);
 const toon = (stat, delta) => ((delta > 0) !== SLECHT_OMHOOG.has(stat) ? 'goed' : 'slecht');
 
 export function wijzigingChips(wijzigingen = {}) {
@@ -32,6 +32,12 @@ export function wijzigingChips(wijzigingen = {}) {
     .filter(([, v]) => v)
     .map(([stat, v]) => h('span', { class: `chip ${toon(stat, v)}` },
       `${t(`stat.${stat}`)} ${metTeken(v, stat === 'geld' ? geld : getal)}`));
+}
+
+// Wijzigingen in districten: [{ naam, stat, delta }].
+export function districtChips(lijst = []) {
+  return lijst.map(({ naam, stat, delta }) => h('span', { class: `chip ${toon(stat, delta)}` },
+    `${naam}: ${t(`dstat.${stat}`)} ${metTeken(delta)}${stat === 'invloed' ? '%' : ''}`));
 }
 
 export function modChips(mods, data) {
@@ -53,7 +59,9 @@ export function effectChips(effecten = []) {
         e.anders?.length ? [' ', t('effect.anders'), ' ', effectChips(e.anders)] : null)];
     }
     if (!('stat' in e)) return [];
-    const label = t(`stat.${e.stat}`);
+    const ref = e.district ?? e.district_type;
+    const refNaam = t(`effect.district.${ref}`) === `effect.district.${ref}` ? ref : t(`effect.district.${ref}`);
+    const label = ref != null ? `${refNaam}: ${t(`dstat.${e.stat}`).toLowerCase()}` : t(`stat.${e.stat}`);
     const f = e.stat === 'geld' ? geld : getal;
     if ((e.op ?? 'add') === 'mul') return [h('span', { class: 'chip' }, `${label} ×${getal(e.waarde)}`)];
     if (e.op === 'set') return [h('span', { class: 'chip' }, `${label} = ${f(e.waarde)}`)];

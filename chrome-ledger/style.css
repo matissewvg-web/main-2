@@ -146,7 +146,7 @@ pre { background: var(--bg2); padding: .6em 1em; border-radius: var(--radius); }
 .datum .seed { font-size: .75rem; color: var(--gedempt); }
 .knoppen { display: flex; gap: .5rem; flex-wrap: wrap; }
 
-.bronnen { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: .5rem; margin-bottom: .8rem; }
+.bronnen { display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); gap: .5rem; margin-bottom: .8rem; }
 .bron { background: var(--paneel); border: 1px solid var(--rand); border-radius: var(--radius); padding: .45rem .7rem; display: flex; flex-direction: column; min-width: 0; }
 .bron-label { font-size: .72rem; text-transform: uppercase; color: var(--gedempt); }
 .bron strong { font-size: 1.15rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -156,7 +156,82 @@ pre { background: var(--bg2); padding: .6em 1em; border-radius: var(--radius); }
 .meter { display: block; height: 6px; margin-top: .35rem; background: var(--bg2); border-radius: 3px; overflow: hidden; }
 .meter span { display: block; height: 100%; background: linear-gradient(90deg, var(--let-op), var(--slecht)); }
 
-.raster { display: grid; grid-template-columns: minmax(250px, 1fr) minmax(360px, 1.6fr) minmax(250px, 1fr); gap: .8rem; align-items: start; }
+.raster {
+  display: grid;
+  grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr) minmax(0, 1fr);
+  grid-template-areas: "kaart kaart district" "acties rapport log";
+  gap: .8rem;
+  align-items: start;
+}
+.kaart-paneel { grid-area: kaart; }
+.district { grid-area: district; }
+.acties { grid-area: acties; }
+.rapport { grid-area: rapport; }
+.logboek { grid-area: log; }
+
+/* Kaart */
+.kaart-canvas { display: block; width: 100%; border-radius: 4px; border: 1px solid var(--rand); background: #0a2238; touch-action: manipulation; }
+.lagen { display: flex; flex-wrap: wrap; gap: .3rem; margin-bottom: .6rem; }
+.laag { font: inherit; font-size: .78rem; color: var(--gedempt); background: var(--bg2); border: 1px solid var(--rand); border-radius: 99px; padding: .2em .75em; cursor: pointer; }
+.laag:hover { color: var(--tekst); border-color: var(--neon2); }
+.laag.actief { color: #12000a; background: var(--neon2); border-color: var(--neon2); font-weight: 700; }
+.laag:focus-visible, .knopchip:focus-visible { outline: 2px solid var(--neon2); outline-offset: 2px; }
+.legenda { display: flex; flex-wrap: wrap; align-items: center; gap: .4rem 1rem; margin-top: .5rem; font-size: .75rem; color: var(--gedempt); }
+.legenda span { display: inline-flex; align-items: center; gap: .35rem; }
+.legenda i { display: inline-block; width: .9rem; height: .9rem; border-radius: 3px; border: 1px solid var(--rand); }
+.legenda i.neutraal { background: linear-gradient(135deg, #3b4d6a, #5a4a3a 50%, #4a3a5a); }
+.legenda i.verloop { width: 9rem; height: .6rem; }
+
+/* Districtpaneel */
+.district-kop { display: flex; align-items: center; gap: .5rem; flex-wrap: wrap; }
+.district-kop h2 { margin: 0; font-size: 1.1rem; color: var(--tekst); text-transform: none; }
+.type-label { font-size: .72rem; padding: .1em .55em; border-radius: 3px; background: var(--type, var(--rand)); color: var(--tekst); white-space: nowrap; }
+.district h3 { font-size: .78rem; text-transform: uppercase; color: var(--gedempt); margin: .9rem 0 .35rem; letter-spacing: .04em; }
+.status { font-size: .85rem; margin: .5rem 0 0; }
+.status-controle { color: var(--goed); }
+.status-buiten { color: var(--gedempt); }
+.invloedsbalk { position: relative; display: flex; height: 14px; border-radius: 3px; overflow: hidden; background: var(--bg2); border: 1px solid var(--rand); }
+.invloedsbalk .deel.vrij { background: repeating-linear-gradient(45deg, #23264a 0 6px, #1b1e3d 6px 12px); }
+.invloedsbalk .drempel { position: absolute; left: 50%; top: -2px; bottom: -2px; width: 2px; background: var(--tekst); opacity: .7; }
+.balk-labels { display: flex; justify-content: space-between; font-size: .75rem; color: var(--gedempt); margin-top: .25rem; }
+.dstats { display: grid; grid-template-columns: max-content 1fr; gap: .25rem .8rem; margin: .8rem 0 .5rem; font-size: .8rem; align-items: center; }
+.dstats dt { color: var(--gedempt); }
+.dstats dd { margin: 0; display: flex; align-items: center; gap: .5rem; }
+.dstats b { font-variant-numeric: tabular-nums; min-width: 2ch; text-align: right; }
+.mini { flex: 1; height: 6px; background: var(--bg2); border-radius: 3px; overflow: hidden; }
+.mini span { display: block; height: 100%; background: var(--gedempt); }
+.mini-rijkdom { background: #f2c14e !important; }
+.mini-criminaliteit { background: #ff4d5e !important; }
+.mini-loyaliteit { background: #3ef08a !important; }
+.mini-politie { background: #4d8bff !important; }
+.mini-techniveau { background: #05d9e8 !important; }
+.mini-heat { background: #ff8a3d !important; }
+.gebouwlijst { list-style: none; padding: 0; margin: 0; display: grid; gap: .25rem; font-size: .82rem; }
+.gebouwlijst li { display: flex; justify-content: space-between; gap: .5rem; background: var(--bg2); padding: .25rem .5rem; border-radius: 3px; }
+.knopchip { font: inherit; font-size: .75rem; color: var(--tekst); background: var(--bg2); cursor: pointer; }
+.knopchip:hover { border-color: var(--neon2); }
+
+/* Actie-doel */
+.doel { font-size: .8rem; color: var(--neon2); margin: .3em 0; }
+.gebouw-keuze { display: flex; align-items: center; gap: .5rem; font-size: .8rem; color: var(--gedempt); margin: .3em 0; }
+.gebouw-keuze select { font: inherit; color: var(--tekst); background: var(--paneel); border: 1px solid var(--rand); border-radius: var(--radius); padding: .3em .5em; min-width: 0; flex: 1; }
+
+/* Wereld-opties */
+.wereld-inhoud { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); gap: 1.5rem; align-items: start; }
+.wereld-opties { display: flex; flex-wrap: wrap; align-items: flex-end; gap: .5rem 1rem; margin-bottom: .8rem; }
+.wereld-opties .veld { margin-bottom: 0; }
+.segment { display: flex; }
+.segment .knop { border-radius: 0; }
+.segment .knop:first-child { border-radius: var(--radius) 0 0 var(--radius); }
+.segment .knop:last-child { border-radius: 0 var(--radius) var(--radius) 0; }
+.knop.actief { background: var(--neon2); border-color: var(--neon2); color: #00141a; font-weight: 700; }
+.namen ol { list-style: none; padding: 0; margin: 0; display: grid; gap: .35rem; max-height: 60vh; overflow-y: auto; }
+.namen li { display: grid; grid-template-columns: 9.5rem 1fr; align-items: center; gap: .5rem; padding: .15rem; border-radius: var(--radius); }
+.namen li.gekozen { background: rgba(5, 217, 232, .12); }
+.namen input { font: inherit; color: var(--tekst); background: var(--bg2); border: 1px solid var(--rand); border-radius: var(--radius); padding: .35em .55em; min-width: 0; }
+.namen input:focus { outline: none; border-color: var(--neon2); }
+.namen .type-label { overflow: hidden; text-overflow: ellipsis; }
+.stap-identiteit .kaart-canvas { margin: .2rem 0 .4rem; }
 .paneel { background: var(--paneel); border: 1px solid var(--rand); border-radius: var(--radius); padding: .9rem; min-width: 0; }
 
 .posten { width: 100%; border-collapse: collapse; margin-bottom: .5rem; font-size: .88rem; }
@@ -211,13 +286,17 @@ pre { background: var(--bg2); padding: .6em 1em; border-radius: var(--radius); }
 .einde .knoppen .knop { margin-top: 0; }
 
 @media (max-width: 1100px) {
-  .raster { grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr); }
-  .logboek { grid-column: 1 / -1; }
+  .raster {
+    grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+    grid-template-areas: "kaart kaart" "district acties" "rapport acties" "log log";
+  }
   .bronnen { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .wereld-inhoud { grid-template-columns: minmax(0, 1fr); }
 }
 @media (max-width: 720px) {
-  .raster { grid-template-columns: minmax(0, 1fr); }
+  .raster { grid-template-columns: minmax(0, 1fr); grid-template-areas: "kaart" "district" "acties" "rapport" "log"; }
   .bronnen { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .stap-identiteit { grid-template-columns: minmax(0, 1fr); }
   .stap-overzicht .samenvatting { grid-template-columns: minmax(0, 1fr); }
+  .namen li { grid-template-columns: minmax(0, 1fr); }
 }

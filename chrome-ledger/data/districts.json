@@ -1,16 +1,77 @@
 {
+  "stats": ["bevolking", "rijkdom", "criminaliteit", "loyaliteit", "politie", "techniveau"],
   "types": [
-    { "id": "haven", "naam": "Haven" },
-    { "id": "oude_stad", "naam": "Oude Stad" },
-    { "id": "zakenkwartier", "naam": "Zakenkwartier" },
-    { "id": "slums", "naam": "Slums" },
-    { "id": "dataring", "naam": "Dataring" },
-    { "id": "universiteitswijk", "naam": "Universiteitswijk" },
-    { "id": "industriezone", "naam": "Industriezone" },
-    { "id": "luchthaven", "naam": "Luchthaven" },
-    { "id": "villawijk", "naam": "Villawijk" },
-    { "id": "zwarte_markt", "naam": "Zwarte Markt" },
-    { "id": "mediakwartier", "naam": "Mediakwartier" },
-    { "id": "grensstrook", "naam": "Grensstrook" }
+    {
+      "id": "haven", "naam": "Haven", "kleur": "#2f6f8f", "herhaalbaar": false,
+      "plaatsing": { "water": 3 },
+      "waarden": { "bevolking": [40, 70], "rijkdom": [35, 60], "criminaliteit": [45, 75], "loyaliteit": [30, 55], "politie": [30, 50], "techniveau": [30, 55], "slots": [6, 9] },
+      "namen": ["Kaaien Noord", "Lillo-Dok", "Havenrand", "Zandvliet-Kade", "Kattendijk"]
+    },
+    {
+      "id": "zakenkwartier", "naam": "Zakenkwartier", "kleur": "#8a7a3a", "herhaalbaar": false,
+      "plaatsing": { "midden": 3, "water": -0.5 },
+      "waarden": { "bevolking": [40, 70], "rijkdom": [75, 95], "criminaliteit": [15, 35], "loyaliteit": [30, 50], "politie": [60, 85], "techniveau": [60, 85], "slots": [5, 8] },
+      "namen": ["Meir-Centrum", "De Kroon", "Chromeplein", "Diamantkwartier"]
+    },
+    {
+      "id": "slums", "naam": "Slums", "kleur": "#6b4a3a", "herhaalbaar": true,
+      "plaatsing": { "rand": 2, "midden": -1.5, "grootte": 0.3 },
+      "waarden": { "bevolking": [70, 100], "rijkdom": [5, 25], "criminaliteit": [65, 95], "loyaliteit": [35, 65], "politie": [10, 30], "techniveau": [10, 30], "slots": [6, 10] },
+      "namen": ["Luchtbal", "Kiel-Onder", "Seefhoek", "Borgerhout-Laag", "Rabotkelders"]
+    },
+    {
+      "id": "oude_stad", "naam": "Oude Stad", "kleur": "#7a5a6f", "herhaalbaar": false,
+      "plaatsing": { "midden": 1.5, "water": 1.5 },
+      "waarden": { "bevolking": [50, 80], "rijkdom": [45, 70], "criminaliteit": [35, 60], "loyaliteit": [40, 60], "politie": [45, 70], "techniveau": [30, 50], "slots": [4, 6] },
+      "namen": ["Het Steen", "Kathedraalwijk", "Oude Markt"]
+    },
+    {
+      "id": "industriezone", "naam": "Industriezone", "kleur": "#5a5f66", "herhaalbaar": true,
+      "plaatsing": { "water": 1, "rand": 0.5, "grootte": 0.5, "midden": -0.5 },
+      "waarden": { "bevolking": [25, 50], "rijkdom": [30, 50], "criminaliteit": [40, 65], "loyaliteit": [35, 55], "politie": [25, 45], "techniveau": [40, 65], "slots": [7, 10] },
+      "namen": ["Blauwhoef", "Petroleum-Zuid", "Hoboken-Oven", "Ekeren-Staal"]
+    },
+    {
+      "id": "dataring", "naam": "Dataring", "kleur": "#2f6f6a", "herhaalbaar": true,
+      "plaatsing": { "midden": 2, "rand": -0.5 },
+      "waarden": { "bevolking": [30, 55], "rijkdom": [55, 80], "criminaliteit": [25, 45], "loyaliteit": [30, 50], "politie": [40, 60], "techniveau": [80, 98], "slots": [5, 8] },
+      "namen": ["Glasvezelring", "Kabelwijk", "De Ring", "Serverpark Berchem"]
+    },
+    {
+      "id": "villawijk", "naam": "Villawijk", "kleur": "#4f7a4a", "herhaalbaar": true,
+      "plaatsing": { "oost": 1, "rand": 0.5, "water": -0.5 },
+      "waarden": { "bevolking": [15, 35], "rijkdom": [80, 100], "criminaliteit": [5, 20], "loyaliteit": [25, 45], "politie": [70, 90], "techniveau": [45, 70], "slots": [4, 6] },
+      "namen": ["Brasschaat-Hoog", "Zurenborg", "Groenenhoek", "Schoten-Park"]
+    },
+    {
+      "id": "zwarte_markt", "naam": "Zwarte Markt", "kleur": "#5a3a6a", "herhaalbaar": false,
+      "plaatsing": { "water": 0.8, "rand": 0.5, "midden": -0.3 },
+      "waarden": { "bevolking": [40, 70], "rijkdom": [25, 50], "criminaliteit": [75, 98], "loyaliteit": [45, 70], "politie": [5, 25], "techniveau": [40, 70], "slots": [5, 8] },
+      "namen": ["De Kelders", "Dok-Bazaar", "Falconmarkt"]
+    },
+    {
+      "id": "luchthaven", "naam": "Luchthaven", "kleur": "#4a5a7a", "herhaalbaar": false,
+      "plaatsing": { "grootte": 2, "oost": 1.5, "rand": 1 },
+      "waarden": { "bevolking": [10, 30], "rijkdom": [50, 75], "criminaliteit": [30, 55], "loyaliteit": [30, 50], "politie": [65, 90], "techniveau": [55, 80], "slots": [5, 8] },
+      "namen": ["Deurne-Veld", "Skyport Antwerpa"]
+    },
+    {
+      "id": "universiteitswijk", "naam": "Universiteitswijk", "kleur": "#3a5a8a", "herhaalbaar": false,
+      "plaatsing": { "midden": 1, "water": 0.5 },
+      "waarden": { "bevolking": [45, 70], "rijkdom": [40, 60], "criminaliteit": [20, 40], "loyaliteit": [45, 65], "politie": [40, 60], "techniveau": [70, 90], "slots": [5, 8] },
+      "namen": ["Campus Middelheim", "Stadscampus", "Prinsstraat"]
+    },
+    {
+      "id": "mediakwartier", "naam": "Mediakwartier", "kleur": "#7a3a5a", "herhaalbaar": false,
+      "plaatsing": { "midden": 1.5 },
+      "waarden": { "bevolking": [35, 60], "rijkdom": [55, 80], "criminaliteit": [20, 40], "loyaliteit": [40, 60], "politie": [45, 65], "techniveau": [60, 80], "slots": [5, 7] },
+      "namen": ["Mediatoren", "Zendmastwijk", "Studio Noord"]
+    },
+    {
+      "id": "grensstrook", "naam": "Grensstrook", "kleur": "#6a6a3a", "herhaalbaar": true,
+      "plaatsing": { "oost": 3, "rand": 1.5 },
+      "waarden": { "bevolking": [15, 40], "rijkdom": [15, 35], "criminaliteit": [55, 80], "loyaliteit": [35, 55], "politie": [40, 70], "techniveau": [20, 40], "slots": [6, 10] },
+      "namen": ["Grenspost Oost", "Het Niemandsland", "Wommelgem-Wal", "Ranst-Barrière"]
+    }
   ]
 }

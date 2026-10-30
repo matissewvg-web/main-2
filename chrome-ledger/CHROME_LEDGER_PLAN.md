@@ -177,6 +177,16 @@ Schatting = aantal sessies met Claude Code, plus jouw testtijd. Stop-regel per m
 6. Wereld-opties: kaartgrootte, seed, districtnamen-editor.
 
 **Succesmaatstaf:** dezelfde seed geeft altijd dezelfde kaart; je kan een district overnemen via buurlogica.
+
+**Status M2 (gebouwd):** stap 1 t/m 6 staan erin. Keuzes die de volgende sessie moet kennen:
+- Nieuwe code: `src/map.js` (generatie + canvas), `src/districts.js` (controle, bereik, inkomen, districtverwijzingen), `src/ui/kaart.js` (kaart, lagen, districtpaneel), `src/ui/wereld.js` (wereld-opties). Save-versie is 2; saves van M1 laden niet meer (nette melding in het menu).
+- `omvang`/Vestigingen uit M1 is weg. Inkomen = sectorbasis + **markt** (bevolking × rijkdom × jouw aandeel per district, +50% bij controle) + **gebouwen** (15 in `buildings.json`, inkomen geschaald met rijkdom en `type_bonus`). Personeel, onderhoud en heat komen per gebouw.
+- Acties: **Expanderen** mikt op een district waar je zit of dat eraan grenst (`doel: "bereikbaar"`); **Bouwen** is nieuw (`soort: "bouwen"`, `doel: "bouwplaats"`, min. 25% invloed en een vrije slot, kost stijgt per gebouw dat je hebt).
+- Districten leven: loyaliteit en criminaliteit zakken terug naar hun startwaarde, lokale heat koelt af, jouw invloed groeit bij loyaliteit > 50 en krimpt eronder. Politie remt nieuwe invloed af.
+- Er zijn nog geen rivalen: in de invloedsbalk staat naast jou alleen "vrij". `invloed` is per district een object `{factie: %}`, zodat M4 rivalen kan toevoegen zonder datamodelwijziging. Marktdruk blijft de placeholder-concurrentie.
+- Effecttaal: `district: "doel" | "hier" | "context" | "hq" | "alle" | "aanwezig" | "controle" | <type>`; voorwaarden `{district_type, controle}` en `{district: {type, controle, aanwezig, stat, min, max}}`. Events met een districtvoorwaarde krijgen dat district als context (`{district}` in de tekst). 4 nieuwe district-events, waaronder de havenstaking uit 2.5.
+- Wereld-opties: seed, 8/12/16 districten, namen-editor. Wereldtoon en startjaar staan nog niet in de UI.
+- Simulatie: een gemengde strategie wint (geld) rond beurt 85 in 82% van de spellen; een expansiestrategie controleert ~70% van de bevolking maar wint zelden op geld. Dat is de basis voor de "Stad"-winvoorwaarde in M5.
 **Stop als:** de kaart er rommelig uitziet of districten onleesbaar klein zijn. Dan eerst rastergrootte of districtaantal aanpassen.
 
 ### Mijlpaal 3: Personeel (1 sessie)

@@ -16,13 +16,29 @@
     "id": "expanderen",
     "naam": "Expanderen",
     "icoon": "⬈",
-    "beschrijving": "Open een nieuwe vestiging. Meer omzet, maar je hebt extra personeel nodig, het kost onderhoud en een groter bedrijf trekt meer aandacht.",
+    "beschrijving": "Koop invloed in het gekozen district: contracten, steekpenningen, gezichten op straat. Kan alleen in een district waar je al zit of dat eraan grenst. Veel politie remt je af.",
     "ap": 1,
+    "doel": "bereikbaar",
     "kost": { "geld": 12000, "invloed": 6 },
-    "schaal": { "omvang": { "geld": 0.3 } },
+    "schaal": { "districten": { "geld": 0.25 } },
     "effecten": [
-      { "stat": "omvang", "op": "add", "waarde": 1 },
-      { "stat": "heat", "op": "add", "waarde": 5 }
+      { "district": "doel", "stat": "invloed", "op": "add", "waarde": { "min": 10, "max": 16 } },
+      { "district": "doel", "stat": "heat", "op": "add", "waarde": 8 },
+      { "stat": "heat", "op": "add", "waarde": 4 }
+    ]
+  },
+  {
+    "id": "bouwen",
+    "naam": "Bouwen",
+    "icoon": "▦",
+    "soort": "bouwen",
+    "beschrijving": "Zet een gebouw op een vrije bouwplaats in het gekozen district. Je hebt er minstens 25% invloed nodig. Gebouwen leveren inkomen, kosten onderhoud en personeel.",
+    "ap": 1,
+    "doel": "bouwplaats",
+    "kost": {},
+    "schaal": { "gebouwen": { "geld": 0.25 } },
+    "effecten": [
+      { "district": "doel", "stat": "heat", "op": "add", "waarde": 3 }
     ]
   },
   {

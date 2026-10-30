@@ -14,15 +14,17 @@ export function bewaar(state) {
   }
 }
 
-export function laad() {
+// → { state, fout }: state is null als er geen bruikbare save is; fout zegt waarom.
+export function probeer() {
   try {
     const tekst = localStorage.getItem(SLEUTEL);
-    return tekst ? valideer(JSON.parse(tekst)) : null;
+    return { state: tekst ? valideer(JSON.parse(tekst)) : null, fout: null };
   } catch (e) {
-    console.warn('Laden mislukt', e);
-    return null;
+    return { state: null, fout: e };
   }
 }
+
+export const laad = () => probeer().state;
 
 export function wis() {
   try { localStorage.removeItem(SLEUTEL); } catch { /* niets */ }
@@ -32,7 +34,9 @@ function valideer(s) {
   if (!s || typeof s !== 'object' || !s.res || !s.corp || typeof s.rng !== 'number') {
     throw new Error('Geen geldige Chrome Ledger-save');
   }
-  if (s.versie !== VERSIE) throw new Error(`Save-versie ${s.versie} wordt niet ondersteund (verwacht ${VERSIE})`);
+  if (s.versie !== VERSIE) {
+    throw Object.assign(new Error(`Save-versie ${s.versie} wordt niet ondersteund (verwacht ${VERSIE})`), { versie: true });
+  }
   return s;
 }
 

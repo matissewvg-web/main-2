@@ -13,16 +13,20 @@ import { maakRng } from '../src/rng.js';
 import { voerUit, controleer } from '../src/actions.js';
 import { eindigBeurt, kiesKeuze, sluitEvent, personeelNodig } from '../src/turn.js';
 import { voldaan, vind } from '../src/effects.js';
+import { genereerKaart } from '../src/map.js';
+import { aandeel, controleert, bereikbaar, gebouwInkomen, afgeleid } from '../src/districts.js';
 
 const root = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const data = await laadData(async (p) => JSON.parse(await readFile(path.join(root, p), 'utf8')));
+const b = data.balans;
 
 const SPELLEN = Number(process.argv[2] || 300);
 const BEURTEN = Number(process.argv[3] || 40);
 
-function corpVoor(i, rng) {
+function corpVoor(i, rng, kaart) {
   return {
-    naam: `Sim ${i}`, slogan: '', kleur: '#f0f', accent: '#0ff', logo: { vorm: 'cirkel', symbool: '⚡' }, hq: 'haven',
+    naam: `Sim ${i}`, slogan: '', kleur: '#f0f', accent: '#0ff', logo: { vorm: 'cirkel', symbool: '⚡' },
+    hq: rng.int(0, kaart.districten.length - 1),
     oprichter: data.archetypes[rng.int(0, data.archetypes.length - 1)].id,
     sector: data.sectors[rng.int(0, data.sectors.length - 1)].id,
     cultuur: Object.fromEntries(data.culture.map((a) => [a.id, rng.int(-3, 3)])),
@@ -31,20 +35,54 @@ function corpVoor(i, rng) {
   };
 }
 
-const kan = (s, id) => controleer(s, data, vind(data.actions, id)).ok;
+const kan = (s, id, opties) => controleer(s, data, vind(data.actions, id), undefined, opties).ok;
+const waarde = (d) => d.stats.bevolking * d.stats.rijkdom;
+
+// Beste district om uit te breiden: waardevol, nog niet stevig in handen.
+function expandDoel(s) {
+  const kandidaten = s.kaart.districten
+    .filter((d) => bereikbaar(s.kaart, d) && aandeel(d) < 70)
+    .sort((a, c) => (waarde(c) * (aandeel(c) > 0 ? 1.5 : 1) * (100 - c.stats.politie)) - (waarde(a) * (aandeel(a) > 0 ? 1.5 : 1) * (100 - a.stats.politie)));
+  return kandidaten.find((d) => kan(s, 'expanderen', { district: d.id }))?.id;
+}
+
+// Beste gebouw (netto per beurt) op een bouwplaats die kan.
+function bouwKeuze(s) {
+  let beste = null;
+  for (const d of s.kaart.districten) {
+    for (const g of data.buildings) {
+      if (!kan(s, 'bouwen', { district: d.id, gebouw: g.id })) continue;
+      const netto = gebouwInkomen(g, d, b) - g.onderhoud - g.personeel * b.loon;
+      if (!beste || netto > beste.netto) beste = { netto, opties: { district: d.id, gebouw: g.id } };
+    }
+  }
+  return beste;
+}
+
+const metDoel = (id, s) => {
+  if (id === 'expanderen') {
+    const d = expandDoel(s);
+    return d == null ? null : [id, { district: d }];
+  }
+  if (id === 'bouwen') {
+    const k = bouwKeuze(s);
+    return k ? [id, k.opties] : null;
+  }
+  return kan(s, id) ? [id, {}] : null;
+};
 
 const STRATEGIEEN = {
-  ...Object.fromEntries(data.actions.map((a) => [`spam:${a.id}`, (s) => (kan(s, a.id) ? a.id : null)])),
+  ...Object.fromEntries(data.actions.map((a) => [`spam:${a.id}`, (s) => metDoel(a.id, s)])),
   willekeurig: (s, rng) => {
-    const opties = data.actions.filter((a) => kan(s, a.id));
-    return opties.length ? opties[rng.int(0, opties.length - 1)].id : null;
+    const opties = data.actions.map((a) => metDoel(a.id, s)).filter(Boolean);
+    return opties.length ? opties[rng.int(0, opties.length - 1)] : null;
   },
   // Elke actie om de beurt, zonder na te denken.
   rotatie: (s) => {
-    const volgorde = ['aanwerven', 'expanderen', 'onderzoek', 'lobbyen', 'sabotage'];
-    for (let i = 0; i < volgorde.length; i++) {
-      const id = volgorde[(s.beurt + (3 - s.ap) + i) % volgorde.length];
-      if (kan(s, id)) return id;
+    const ids = data.actions.map((a) => a.id);
+    for (let i = 0; i < ids.length; i++) {
+      const k = metDoel(ids[(s.beurt + (3 - s.ap) + i) % ids.length], s);
+      if (k) return k;
     }
     return null;
   },
@@ -55,20 +93,47 @@ const STRATEGIEEN = {
     if (r.personeel < personeelNodig(s, data)) wil.push('aanwerven');
     if (r.druk > 35 && r.heat < 45) wil.push('sabotage');
     if (r.invloed < 12) wil.push('lobbyen');
+    const bouw = bouwKeuze(s);
+    if (bouw && bouw.netto > 0 && r.geld > 30000) wil.push('bouwen');
     if (r.heat < 50) wil.push('expanderen');
     wil.push('onderzoek', 'lobbyen');
-    return wil.find((id) => kan(s, id)) ?? null;
+    for (const id of wil) {
+      const k = metDoel(id, s);
+      if (k) return k;
+    }
+    return null;
+  },
+  // Zelfde, maar eerst uitbreiden en pas daarna bouwen.
+  expansie: (s) => {
+    const r = s.res;
+    const wil = [];
+    if (r.heat > 55) wil.push('lobbyen');
+    if (r.personeel < personeelNodig(s, data)) wil.push('aanwerven');
+    if (r.invloed < 12) wil.push('lobbyen');
+    if (r.heat < 50) wil.push('expanderen');
+    const bouw = bouwKeuze(s);
+    if (bouw && bouw.netto > 0 && r.geld > 30000) wil.push('bouwen');
+    if (r.druk > 35 && r.heat < 45) wil.push('sabotage');
+    wil.push('onderzoek', 'lobbyen');
+    for (const id of wil) {
+      const k = metDoel(id, s);
+      if (k) return k;
+    }
+    return null;
   },
 };
 
 function speel(strategie, i) {
   const srng = maakRng({ rng: 1000 + i });
-  const s = maakStaat(corpVoor(i, srng), data, `sim-${i}`);
+  const kaart = genereerKaart(`sim-${i}`, [8, 12, 16][i % 3], data);
+  const s = maakStaat(corpVoor(i, srng, kaart), data, kaart);
   let netto20 = null;
   while (!s.einde && s.beurt <= BEURTEN) {
     if (s.fase === 'acties') {
-      let id;
-      while (s.ap > 0 && !s.einde && (id = strategie(s, srng))) voerUit(s, data, id);
+      let k;
+      while (s.ap > 0 && !s.einde && (k = strategie(s, srng))) {
+        if (!voerUit(s, data, k[0], k[1])) break;
+      }
       if (!s.einde) eindigBeurt(s, data);
     } else if (s.fase === 'event') {
       const ev = vind(data.events, s.event.id);
@@ -83,24 +148,27 @@ function speel(strategie, i) {
 }
 
 const pct = (n, d) => `${Math.round((100 * n) / d)}%`.padStart(5);
-const gem = (xs) => (xs.length ? Math.round(xs.reduce((a, b) => a + b, 0) / xs.length) : 0);
+const gem = (xs) => (xs.length ? Math.round(xs.reduce((a, c) => a + c, 0) / xs.length) : 0);
 const fmt = (n) => n.toLocaleString('nl-BE').padStart(11);
 
 console.log(`${SPELLEN} spellen × ${BEURTEN} beurten\n`);
-console.log('strategie            leeft  heat  faill. gewon. (beurt)   gem.geld   netto/b20  omvang  tech');
+console.log('strategie            leeft  heat  faill. gewon. (beurt)   gem.geld   netto/b20  gebouw distr. contr.  stad%');
 for (const [naam, strat] of Object.entries(STRATEGIEEN)) {
   const res = Array.from({ length: SPELLEN }, (_, i) => speel(strat, i));
   const levend = res.filter((r) => !r.s.einde || r.s.einde.soort === 'gewonnen');
   const heat = res.filter((r) => r.s.einde?.reden === 'heat').length;
   const faill = res.filter((r) => r.s.einde?.reden === 'faillissement').length;
   const winst = res.filter((r) => r.s.einde?.soort === 'gewonnen');
+  const af = levend.map((r) => afgeleid(r.s));
   console.log(
     naam.padEnd(20),
     pct(levend.length, SPELLEN), pct(heat, SPELLEN), pct(faill, SPELLEN),
     pct(winst.length, SPELLEN), `(${winst.length ? gem(winst.map((r) => r.s.einde.beurt)) : '-'})`.padStart(7),
     fmt(gem(levend.map((r) => r.s.res.geld))),
     fmt(gem(levend.map((r) => r.netto20 ?? 0))),
-    String(gem(levend.map((r) => r.s.res.omvang))).padStart(7),
-    String(gem(levend.map((r) => r.s.res.tech))).padStart(5),
+    String(gem(af.map((a) => a.gebouwen))).padStart(7),
+    String(gem(af.map((a) => a.districten))).padStart(6),
+    String(gem(af.map((a) => a.controle))).padStart(6),
+    String(gem(af.map((a) => a.stad))).padStart(6),
   );
 }

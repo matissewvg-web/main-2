@@ -5,7 +5,7 @@ import { stelGrenzenIn } from './effects.js';
 
 const BESTANDEN = [
   'balans', 'archetypes', 'sectors', 'culture', 'perks', 'flaws',
-  'actions', 'districts', 'winconditions', 'logos', 'mods',
+  'actions', 'buildings', 'districts', 'winconditions', 'logos', 'mods',
 ];
 
 async function haalJson(pad) {

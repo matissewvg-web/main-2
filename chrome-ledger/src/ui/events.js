@@ -1,8 +1,9 @@
 // Event-venster: keuze maken, daarna de gevolgen lezen.
 
 import { t } from '../i18n.js';
-import { h, wijzigingChips, getal, geld } from './dom.js';
+import { h, wijzigingChips, districtChips, getal, geld } from './dom.js';
 import { vind, voldaan, eersteOnvoldaan } from '../effects.js';
+import { vulIn } from '../turn.js';
 
 function waaromNiet(v) {
   if ('stat' in v && v.min != null) {
@@ -16,23 +17,27 @@ function waaromNiet(v) {
 
 export function eventVenster(s, data, ctl) {
   const ev = vind(data.events, s.event.id);
-  const inhoud = [h('h2', {}, ev.titel), h('p', { class: 'event-tekst' }, ev.tekst)];
+  const titel = vulIn(ev.titel, s);
+  const inhoud = [h('h2', {}, titel), h('p', { class: 'event-tekst' }, vulIn(ev.tekst, s))];
 
   if (s.fase === 'event') {
     inhoud.push(h('div', { class: 'keuzes' }, ev.keuzes.map((k, i) => {
       const kan = voldaan(s, k.vereist);
       return h('button', { type: 'button', class: 'knop keuze', disabled: !kan, onclick: () => ctl.kies(i) },
-        k.tekst,
+        vulIn(k.tekst, s),
         kan ? null : h('span', { class: 'reden' }, waaromNiet(eersteOnvoldaan(s, k.vereist))));
     })));
   } else {
     const r = s.event.resultaat;
+    const heeftGevolgen = Object.keys(r.wijzigingen).length || r.districten?.length;
     inhoud.push(
-      h('p', { class: 'gekozen-keuze' }, '› ', ev.keuzes[s.event.keuze].tekst),
+      h('p', { class: 'gekozen-keuze' }, '› ', vulIn(ev.keuzes[s.event.keuze].tekst, s)),
       r.teksten.map((tekst) => h('p', {}, tekst)),
-      h('div', { class: 'chips' }, Object.keys(r.wijzigingen).length ? wijzigingChips(r.wijzigingen) : t('event.geen_gevolgen')),
-      h('button', { type: 'button', class: 'knop primair', onclick: ctl.verder, autofocus: true }, t('knop.verder')));
+      h('div', { class: 'chips' }, heeftGevolgen
+        ? [wijzigingChips(r.wijzigingen), districtChips(r.districten)]
+        : t('event.geen_gevolgen')),
+      h('button', { type: 'button', class: 'knop primair', onclick: ctl.verder }, t('knop.verder')));
   }
   return h('div', { class: 'overlay' },
-    h('div', { class: 'venster event', role: 'dialog', 'aria-modal': 'true', 'aria-label': ev.titel }, inhoud));
+    h('div', { class: 'venster event', role: 'dialog', 'aria-modal': 'true', 'aria-label': titel }, inhoud));
 }

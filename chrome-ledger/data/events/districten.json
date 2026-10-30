@@ -1,0 +1,148 @@
+[
+  {
+    "id": "ev_havenstaking",
+    "titel": "Havenstaking",
+    "tekst": "De dokwerkers in {district} leggen het werk neer. Containers stapelen zich op en jouw naam staat op de spandoeken.",
+    "toon": ["grimmig", "serieus"],
+    "van": 2002, "tot": 2077,
+    "cooldown": 16,
+    "voorwaarde": [{ "district_type": "Haven", "controle": true }],
+    "keuzes": [
+      {
+        "tekst": "Betaal de vakbond (€8.000)",
+        "vereist": [{ "stat": "geld", "min": 8000 }],
+        "effecten": [
+          { "stat": "geld", "op": "add", "waarde": -8000 },
+          { "district": "Haven", "stat": "loyaliteit", "op": "add", "waarde": 10 }
+        ],
+        "resultaat": "De kranen draaien weer. De vakbondsleider schudt je hand en noemt je 'een redelijke man'."
+      },
+      {
+        "tekst": "Stuur beveiliging",
+        "effecten": [
+          { "stat": "heat", "op": "add", "waarde": 8 },
+          { "district": "Haven", "stat": "loyaliteit", "op": "add", "waarde": -15 }
+        ],
+        "resultaat": "Je mensen jagen de piketten weg. Er vallen gewonden, en er staan camera's.",
+        "volgt": "ev_havenstaking_escalatie"
+      },
+      {
+        "tekst": "Laat het uitzieken",
+        "effecten": [{ "district": "Haven", "stat": "invloed", "op": "add", "waarde": -8 }],
+        "resultaat": "Na drie weken gaan ze terug aan het werk. Maar ze werken nu liever voor iemand anders."
+      }
+    ]
+  },
+  {
+    "id": "ev_havenstaking_escalatie",
+    "titel": "De dokken branden",
+    "tekst": "Na je ingreep blokkeren honderden dokwerkers {district}. Iemand heeft een van je vrachtwagens in brand gestoken.",
+    "toon": ["grimmig", "serieus"],
+    "van": 2002, "tot": 2077,
+    "alleen_keten": true,
+    "keuzes": [
+      {
+        "tekst": "Geef alsnog toe (€15.000)",
+        "vereist": [{ "stat": "geld", "min": 15000 }],
+        "effecten": [
+          { "stat": "geld", "op": "add", "waarde": -15000 },
+          { "district": "context", "stat": "loyaliteit", "op": "add", "waarde": 8 }
+        ],
+        "resultaat": "Duurder dan de eerste keer, en iedereen weet dat je gezwicht bent."
+      },
+      {
+        "tekst": "Laat de politie ingrijpen",
+        "effecten": [
+          { "stat": "heat", "op": "add", "waarde": 10 },
+          { "district": "context", "stat": "politie", "op": "add", "waarde": 10 },
+          { "district": "context", "stat": "invloed", "op": "add", "waarde": -10 }
+        ],
+        "resultaat": "Waterkanonnen op de kaaien. De blokkade is weg, maar de politie blijft nu in de buurt."
+      },
+      {
+        "tekst": "Huur stakingsbrekers (€6.000)",
+        "vereist": [{ "stat": "geld", "min": 6000 }],
+        "effecten": [
+          { "stat": "geld", "op": "add", "waarde": -6000 },
+          {
+            "kans": 0.5,
+            "dan": [{ "district": "context", "stat": "loyaliteit", "op": "add", "waarde": -10 }],
+            "dan_tekst": "De staking is gebroken. De haven zal het je nooit vergeven.",
+            "anders": [
+              { "stat": "heat", "op": "add", "waarde": 15 },
+              { "district": "context", "stat": "criminaliteit", "op": "add", "waarde": 10 }
+            ],
+            "anders_tekst": "Je stakingsbrekers blijken een bende uit de Zwarte Markt. Nu heb je twee problemen."
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "ev_bendeoorlog",
+    "titel": "Bendeoorlog",
+    "tekst": "Twee bendes vechten om {district}. Jouw gebouwen staan midden in de vuurlinie.",
+    "toon": ["grimmig"],
+    "van": 2002, "tot": 2077,
+    "cooldown": 16,
+    "voorwaarde": [{ "district": { "stat": "criminaliteit", "min": 65, "aanwezig": true } }],
+    "keuzes": [
+      {
+        "tekst": "Betaal beide bendes (€10.000)",
+        "vereist": [{ "stat": "geld", "min": 10000 }],
+        "effecten": [{ "stat": "geld", "op": "add", "waarde": -10000 }],
+        "resultaat": "Ze laten je gebouwen met rust. Elkaar niet."
+      },
+      {
+        "tekst": "Kies een kant",
+        "effecten": [
+          { "district": "context", "stat": "criminaliteit", "op": "add", "waarde": -10 },
+          { "district": "context", "stat": "invloed", "op": "add", "waarde": 6 },
+          { "stat": "heat", "op": "add", "waarde": 6 }
+        ],
+        "resultaat": "Jouw bende wint. De straat weet nu wie hier de baas is, en de politie ook."
+      },
+      {
+        "tekst": "Trek je terug",
+        "effecten": [{ "district": "context", "stat": "invloed", "op": "add", "waarde": -10 }],
+        "resultaat": "Je sluit de luiken en wacht. Als de rook optrekt, is je plaats ingenomen."
+      }
+    ]
+  },
+  {
+    "id": "ev_buurtprotest",
+    "titel": "Buurtprotest",
+    "tekst": "Bewoners van {district} staan met borden voor je deur: 'Corpo's buiten'. De lokale zender filmt mee.",
+    "toon": ["serieus", "satirisch"],
+    "van": 2002, "tot": 2077,
+    "voorwaarde": [{ "district": { "stat": "loyaliteit", "max": 30, "aanwezig": true } }],
+    "keuzes": [
+      {
+        "tekst": "Geef een buurtfeest (€6.000)",
+        "vereist": [{ "stat": "geld", "min": 6000 }],
+        "effecten": [
+          { "stat": "geld", "op": "add", "waarde": -6000 },
+          { "district": "context", "stat": "loyaliteit", "op": "add", "waarde": 12 }
+        ],
+        "resultaat": "Gratis bier en een springkasteel. De borden liggen 's avonds in de container."
+      },
+      {
+        "tekst": "Negeer ze",
+        "effecten": [
+          { "district": "context", "stat": "invloed", "op": "add", "waarde": -6 },
+          { "stat": "heat", "op": "add", "waarde": 3 }
+        ],
+        "resultaat": "Het protest wordt elke week groter. Je klanten kiezen een andere winkel."
+      },
+      {
+        "tekst": "Media-offensief",
+        "vereist": [{ "stat": "invloed", "min": 8 }],
+        "effecten": [
+          { "stat": "invloed", "op": "add", "waarde": -8 },
+          { "district": "context", "stat": "loyaliteit", "op": "add", "waarde": 6 }
+        ],
+        "resultaat": "Een reportage over je 'banen voor de buurt'. Half gelogen, half geloofd."
+      }
+    ]
+  }
+]
