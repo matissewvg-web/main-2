@@ -1,35 +1,65 @@
 [
   {
-    "id": "maffiaschuld",
-    "naam": "Schuld bij de maffia",
-    "punten": 1,
+    "id": "maffiaschuld", "naam": "Schuld bij de maffia", "punten": 1,
     "beschrijving": "Het startkapitaal kwam niet van een bank. Elke beurt staat er iemand aan de deur.",
     "start": [],
     "per_beurt": [{ "stat": "geld", "op": "add", "waarde": -2000 }],
     "mods": {}
   },
   {
-    "id": "politiedossier",
-    "naam": "Politiedossier",
-    "punten": 2,
+    "id": "politiedossier", "naam": "Politiedossier", "punten": 2,
     "beschrijving": "Je naam staat al in een map bij de federale politie.",
     "start": [{ "stat": "heat", "op": "add", "waarde": 20 }],
     "mods": { "heat_gain": 0.1 }
   },
   {
-    "id": "oude_servers",
-    "naam": "Verouderde servers",
-    "punten": 1,
+    "id": "oude_servers", "naam": "Verouderde servers", "punten": 1,
     "beschrijving": "Je draait op hardware uit 1996. Elk onderzoek duurt dubbel zo lang.",
     "start": [],
     "mods": { "tech_gain": -0.3 }
   },
   {
-    "id": "slechte_pers",
-    "naam": "Slechte pers",
-    "punten": 2,
+    "id": "slechte_pers", "naam": "Slechte pers", "punten": 2,
     "beschrijving": "Een oud schandaal waar De Scheldepost elk jaar op terugkomt.",
     "start": [{ "stat": "invloed", "op": "add", "waarde": -5 }],
     "mods": { "invloed_gain": -0.25 }
+  },
+  {
+    "id": "verslaafd", "naam": "Verslaafde CEO", "punten": 1,
+    "beschrijving": "Synthetische dopamine, elke ochtend. Beslissingen kosten meer dan nodig.",
+    "start": [],
+    "mods": { "actie_kost": 0.08 }
+  },
+  {
+    "id": "erfenisruzie", "naam": "Erfenisruzie", "punten": 1,
+    "beschrijving": "Je zus wil haar deel en vertelt het aan iedereen die luistert.",
+    "start": [],
+    "per_beurt": [{ "stat": "invloed", "op": "add", "waarde": -0.5 }],
+    "mods": {}
+  },
+  {
+    "id": "paranoia", "naam": "Paranoia", "punten": 2,
+    "beschrijving": "Je laat elke medewerker elke maand screenen. Ze haten het.",
+    "start": [],
+    "mods": { "verloop": 0.4, "personeel_kost": 0.1 }
+  },
+  {
+    "id": "vendetta", "naam": "Vendetta", "punten": 2,
+    "beschrijving": "Een bende uit de Zwarte Markt wil je dood. Ze weten waar je werkt.",
+    "start": [{ "stat": "heat", "op": "add", "waarde": 10 }],
+    "mods": { "kans.sabotage": -0.15 }
+  },
+  {
+    "id": "dure_smaak", "naam": "Dure smaak", "punten": 1,
+    "beschrijving": "Een jacht, twee chauffeurs en kaviaar bij de vergaderingen.",
+    "start": [],
+    "per_beurt": [{ "stat": "geld", "op": "add", "waarde": -1500 }],
+    "mods": {}
+  },
+  {
+    "id": "krot", "naam": "Vervallen hoofdkwartier", "punten": 1,
+    "beschrijving": "Lekkende daken en een lift die het niet doet. Klanten haken af, aannemers rekenen extra.",
+    "start": [],
+    "mods": { "bouw_kost": 0.15, "markt_inkomen": -0.05 }
   }
 ]

@@ -2,9 +2,9 @@
   {
     "id": "exmilitair",
     "naam": "Ex-militair",
-    "beschrijving": "Twintig jaar NAVO-logistiek in Zeebrugge. Je weet hoe je een operatie stil houdt en hoe je mensen laat blijven.",
+    "beschrijving": "Twintig jaar NAVO-logistiek in Zeebrugge. Je weet hoe je een operatie stil houdt en hoe je mensen laat blijven. Politici vertrouwen je niet.",
     "start": [{ "stat": "personeel", "op": "add", "waarde": 4 }],
-    "mods": { "kans.sabotage": 0.15, "verloop": -0.3 }
+    "mods": { "kans.sabotage": 0.15, "verloop": -0.3, "invloed_gain": -0.1 }
   },
   {
     "id": "hacker",
@@ -22,5 +22,40 @@
       { "stat": "invloed", "op": "add", "waarde": 10 }
     ],
     "mods": { "personeel_kost": 0.1 }
+  },
+  {
+    "id": "smokkelaar",
+    "naam": "Smokkelaar",
+    "beschrijving": "Sigaretten in de jaren 90, chips in de jaren 2000. Je kent elke kade en elke douanier die een prijs heeft.",
+    "start": [{ "stat": "geld", "op": "add", "waarde": 20000 }],
+    "mods": { "gebouw_inkomen.smokkelpakhuis": 0.4, "kans.sabotage": 0.1, "heat_gain": 0.1 }
+  },
+  {
+    "id": "expoliticus",
+    "naam": "Ex-politicus",
+    "beschrijving": "Twee termijnen schepen van Economie. Je weet welke vergunning bij welke handdruk hoort. Van technologie snap je weinig.",
+    "start": [{ "stat": "invloed", "op": "add", "waarde": 20 }],
+    "mods": { "invloed_gain": 0.2, "expansie_kracht": 0.15, "tech_gain": -0.15 }
+  },
+  {
+    "id": "wetenschapper",
+    "naam": "Wetenschapper",
+    "beschrijving": "Ontslagen bij de universiteit na een experiment dat 'te ver ging'. Je labo's draaien als nergens anders, maar de pers vindt je eng.",
+    "start": [{ "stat": "tech", "op": "add", "waarde": 15 }],
+    "mods": { "tech_inkomen": 0.3, "gebouw_inkomen.labo": 0.5, "invloed_gain": -0.15 }
+  },
+  {
+    "id": "mediafiguur",
+    "naam": "Mediafiguur",
+    "beschrijving": "Ooit presentator van de populairste quiz op NA-1. Iedereen kent je gezicht, dus iedereen koopt wat je verkoopt. Dat geldt ook voor de roddelpers.",
+    "start": [{ "stat": "invloed", "op": "add", "waarde": 10 }],
+    "mods": { "invloed_gain": 0.15, "markt_inkomen": 0.1, "heat_gain": 0.1 }
+  },
+  {
+    "id": "havenbaas",
+    "naam": "Havenbaas",
+    "beschrijving": "Dertig jaar ploegbaas op de kaaien. De dokwerkers volgen je blind, de bureaucraten minder.",
+    "start": [{ "stat": "personeel", "op": "add", "waarde": 3 }],
+    "mods": { "gebouw_inkomen.vrachtterminal": 0.4, "gebouw_inkomen.smokkelpakhuis": 0.2, "markt_inkomen": 0.05, "actie_kost": 0.05 }
   }
 ]

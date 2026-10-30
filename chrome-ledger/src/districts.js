@@ -51,7 +51,9 @@ export function districtWaarde(d, stat) {
 export function filterDistricten(state, f) {
   const ds = state.kaart?.districten || [];
   return ds.filter((d) => {
+    if (f.id != null && d.id !== f.id) return false;
     if (f.type && !isType(d, f.type)) return false;
+    if (f.bereikbaar != null && bereikbaar(state.kaart, d) !== f.bereikbaar) return false;
     if (f.controle != null && controleert(d) !== f.controle) return false;
     if (f.aanwezig != null && aanwezig(d) !== f.aanwezig) return false;
     if (f.stat) {
@@ -113,18 +115,21 @@ export function* alleGebouwen(state, data) {
   }
 }
 
-// Bruto-inkomen van één gebouw in een district, vóór tech/druk/modifiers.
-export function gebouwInkomen(def, d, balans) {
+// Bruto-inkomen van één gebouw in een district, vóór tech/druk/algemene modifiers.
+// mods['gebouw_inkomen.<id>'] geeft een bonus per gebouwtype (oprichter, sector, bedrijfsvorm).
+export function gebouwInkomen(def, d, balans, mods = {}) {
   return def.inkomen
     * (balans.gebouw_rijkdom_basis + d.stats.rijkdom * balans.gebouw_rijkdom_factor)
-    * (1 + (def.type_bonus?.[d.type] || 0));
+    * (1 + (def.type_bonus?.[d.type] || 0))
+    * Math.max(0, 1 + (mods[`gebouw_inkomen.${def.id}`] || 0));
 }
 
 // Marktinkomen uit je aandeel in een district, vóór tech/druk/modifiers.
-export function marktInkomen(d, balans) {
+export function marktInkomen(d, balans, mods = {}) {
   const a = aandeel(d) / 100;
   if (!a) return 0;
-  const m = (d.stats.bevolking / 100) * (d.stats.rijkdom / 100) * balans.markt_factor * a;
+  const m = (d.stats.bevolking / 100) * (d.stats.rijkdom / 100) * balans.markt_factor * a
+    * Math.max(0, 1 + (mods.markt_inkomen || 0));
   return controleert(d) ? m * (1 + balans.controle_bonus) : m;
 }
 

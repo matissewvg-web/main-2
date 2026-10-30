@@ -1,0 +1,133 @@
+[
+  {
+    "id": "op_haven",
+    "titel": "Havenvergunning",
+    "opdrachtgever": "Havenbedrijf Nova Antwerpa",
+    "tekst": "Het havenbedrijf zoekt één partner om de kaaien te beheren. Wie de haven in handen heeft, krijgt het contract.",
+    "voorwaarde": [{ "district_type": "Haven", "controle": false }],
+    "doel": [{ "district_type": "Haven", "controle": true }],
+    "termijn": 10,
+    "beloning": [{ "stat": "geld", "op": "add", "waarde": 60000 }, { "stat": "invloed", "op": "add", "waarde": 10 }],
+    "straf": [{ "stat": "invloed", "op": "add", "waarde": -6 }]
+  },
+  {
+    "id": "op_buurt",
+    "titel": "Buurtproject",
+    "opdrachtgever": "Stadsdeelraad",
+    "tekst": "De stadsdeelraad van {district} wil zien dat je iets teruggeeft. Maak de buurt loyaal en ze steunen je.",
+    "context": { "aanwezig": true, "stat": "loyaliteit", "max": 50 },
+    "doel": [{ "district": { "context": true, "stat": "loyaliteit", "min": 60 } }],
+    "termijn": 6,
+    "beloning": [{ "stat": "invloed", "op": "add", "waarde": 10 }, { "district": "context", "stat": "invloed", "op": "add", "waarde": 8 }],
+    "straf": [{ "district": "context", "stat": "invloed", "op": "add", "waarde": -5 }]
+  },
+  {
+    "id": "op_data",
+    "titel": "Onderzoek op bestelling",
+    "opdrachtgever": "Anonieme klant uit Rotterdam",
+    "tekst": "Een klant betaalt goed voor een technologische doorbraak. Hoe je eraan komt, is jouw zaak.",
+    "doel": [{ "stat": "tech", "plus": 10 }],
+    "termijn": 6,
+    "beloning": [{ "stat": "geld", "op": "add", "waarde": 35000 }],
+    "straf": [{ "stat": "invloed", "op": "add", "waarde": -4 }]
+  },
+  {
+    "id": "op_levering",
+    "titel": "Leveringscontract",
+    "opdrachtgever": "Groothandel Scheldezicht",
+    "tekst": "Een groothandel zoekt een partner met capaciteit. Bouw uit en het contract is van jou.",
+    "doel": [{ "stat": "gebouwen", "plus": 3 }],
+    "termijn": 7,
+    "beloning": [{ "stat": "geld", "op": "add", "waarde": 45000 }],
+    "straf": []
+  },
+  {
+    "id": "op_stil",
+    "titel": "Stille periode",
+    "opdrachtgever": "Je advocaat",
+    "tekst": "Er loopt een onderzoek. Hou je een paar maanden koest, dan verdwijnt het dossier.",
+    "voorwaarde": [{ "stat": "heat", "min": 30 }],
+    "doel": [{ "stat": "heat", "max": 20 }],
+    "termijn": 5,
+    "beloning": [{ "stat": "invloed", "op": "add", "waarde": 12 }, { "stat": "heat", "op": "add", "waarde": -5 }],
+    "straf": [{ "stat": "heat", "op": "add", "waarde": 10 }]
+  },
+  {
+    "id": "op_expansie",
+    "titel": "Marktverkenning",
+    "opdrachtgever": "Een investeringsfonds",
+    "tekst": "Een fonds investeert in bedrijven die groeien. Neem een extra district over en het geld komt.",
+    "doel": [{ "stat": "controle", "plus": 1 }],
+    "termijn": 8,
+    "beloning": [{ "stat": "geld", "op": "add", "waarde": 55000 }],
+    "straf": []
+  },
+  {
+    "id": "op_werving",
+    "titel": "Wervingscampagne",
+    "opdrachtgever": "Stedelijke arbeidsdienst",
+    "tekst": "De stad betaalt een premie aan bedrijven die werklozen aannemen.",
+    "doel": [{ "stat": "personeel", "plus": 10 }],
+    "termijn": 5,
+    "beloning": [{ "stat": "geld", "op": "add", "waarde": 25000 }, { "stat": "invloed", "op": "add", "waarde": 5 }],
+    "straf": []
+  },
+  {
+    "id": "op_verkiezing",
+    "titel": "Verkiezingssteun",
+    "opdrachtgever": "Partij Nieuw Antwerpa",
+    "tekst": "Een partij zoekt sponsors met politiek gewicht. Bouw genoeg invloed op en je krijgt een plaats aan tafel.",
+    "voorwaarde": [{ "stat": "invloed", "max": 50 }],
+    "doel": [{ "stat": "invloed", "min": 60 }],
+    "termijn": 6,
+    "beloning": [{ "stat": "geld", "op": "add", "waarde": 30000 }, { "stat": "heat", "op": "add", "waarde": -10 }],
+    "straf": [{ "stat": "invloed", "op": "add", "waarde": -5 }]
+  },
+  {
+    "id": "op_marktaanval",
+    "titel": "Marktaanval",
+    "opdrachtgever": "Een bevriende bank",
+    "tekst": "De bank wil dat de concurrentie zwakker wordt voor ze in jou investeert.",
+    "voorwaarde": [{ "stat": "druk", "min": 25 }],
+    "doel": [{ "stat": "druk", "max": 15 }],
+    "termijn": 5,
+    "beloning": [{ "stat": "geld", "op": "add", "waarde": 30000 }, { "stat": "tech", "op": "add", "waarde": 4 }],
+    "straf": []
+  },
+  {
+    "id": "op_opruim",
+    "titel": "Opruimactie",
+    "opdrachtgever": "Bewonersvereniging",
+    "tekst": "De bewoners van {district} zijn de bendes beu. Maak de straten veilig en ze kiezen jouw kant.",
+    "context": { "aanwezig": true, "stat": "criminaliteit", "min": 55 },
+    "doel": [{ "district": { "context": true, "stat": "criminaliteit", "max": 40 } }],
+    "termijn": 8,
+    "beloning": [
+      { "stat": "geld", "op": "add", "waarde": 20000 },
+      { "district": "context", "stat": "loyaliteit", "op": "add", "waarde": 10 },
+      { "district": "context", "stat": "invloed", "op": "add", "waarde": 8 }
+    ],
+    "straf": [{ "district": "context", "stat": "loyaliteit", "op": "add", "waarde": -6 }]
+  },
+  {
+    "id": "op_buffer",
+    "titel": "Kapitaalbuffer",
+    "opdrachtgever": "Je bank",
+    "tekst": "De bank geeft je betere voorwaarden als je laat zien dat je kan sparen.",
+    "doel": [{ "stat": "geld", "plus": 150000 }],
+    "termijn": 8,
+    "beloning": [{ "stat": "invloed", "op": "add", "waarde": 10 }, { "stat": "druk", "op": "add", "waarde": -10 }],
+    "straf": []
+  },
+  {
+    "id": "op_voet",
+    "titel": "Voet aan de grond",
+    "opdrachtgever": "Een duistere klant",
+    "tekst": "Iemand wil dat jij aanwezig bent in {district}. Waarom, vertelt hij niet. Hij betaalt wel.",
+    "context": { "bereikbaar": true, "aanwezig": false },
+    "doel": [{ "district": { "context": true, "stat": "invloed", "min": 25 } }],
+    "termijn": 6,
+    "beloning": [{ "stat": "geld", "op": "add", "waarde": 45000 }, { "stat": "heat", "op": "add", "waarde": 6 }],
+    "straf": [{ "stat": "heat", "op": "add", "waarde": 5 }]
+  }
+]

@@ -9,6 +9,8 @@
 import { maakRng } from './rng.js';
 import { pasToe, voldaan, vind, zet, bronnen, eventDistrict } from './effects.js';
 import { modsVan } from './state.js';
+import { marktBeurt, nieuwsBeurt } from './markt.js';
+import { controleerOpdrachten, biedAan } from './opdrachten.js';
 import {
   alleGebouwen, gebouwInkomen, marktInkomen, controleert, aandeel, zetAandeel,
 } from './districts.js';
@@ -41,8 +43,8 @@ export function brutoInkomen(state, data, mods) {
   const bezetting = nodig > 0 ? Math.min(1, r.personeel / nodig) : 1;
   let markt = 0;
   let gebouwen = 0;
-  for (const d of state.kaart.districten) markt += marktInkomen(d, b);
-  for (const { d, def } of alleGebouwen(state, data)) gebouwen += gebouwInkomen(def, d, b);
+  for (const d of state.kaart.districten) markt += marktInkomen(d, b, mods);
+  for (const { d, def } of alleGebouwen(state, data)) gebouwen += gebouwInkomen(def, d, b, mods);
   const techF = 1 + r.tech * b.tech_inkomen * (1 + (mods.tech_inkomen || 0));
   const drukF = 1 - (r.druk * b.druk_inkomen) / 100;
   const modF = Math.max(0, 1 + (mods.inkomen || 0));
@@ -194,7 +196,7 @@ function kiesEvent(state, data, mods, rng) {
   }
   if (!rng.kans(b.eventkans)) return null;
 
-  const toon = state.toon; // wereldtoon is nog niet instelbaar; null = alle tonen
+  const toon = state.wereld.toon === 'alle' ? null : state.wereld.toon;
   const kandidaten = data.events.filter((ev) => {
     if (ev.alleen_keten) return false;
     if (state.jaar < (ev.van ?? -Infinity) || state.jaar > (ev.tot ?? Infinity)) return false;
@@ -259,7 +261,19 @@ export function sluitEvent(state, data) {
 function volgendeBeurt(state, data) {
   state.beurt++;
   Object.assign(state, datum(state.beurt, data.balans));
-  const rapport = economie(state, data, modsVan(state, data), maakRng(state));
+  const mods = modsVan(state, data);
+  const rng = maakRng(state);
+  const rapport = economie(state, data, mods, rng);
+
+  // De stad beweegt: marktcyclus, opdrachten, nieuws.
+  const nieuweFase = marktBeurt(state, data, rng);
+  if (nieuweFase) rapport.meldingen.unshift({ soort: nieuweFase.toon, sleutel: 'melding.markt', vars: { naam: nieuweFase.naam } });
+  for (const { x, gelukt, uit } of controleerOpdrachten(state, data, { mods, rng, balans: data.balans })) {
+    rapport.meldingen.push({ soort: gelukt ? 'goed' : 'slecht', sleutel: gelukt ? 'melding.opdracht_gelukt' : 'melding.opdracht_mislukt', vars: { titel: x.titel } });
+    log(state, { soort: 'opdracht', titel: x.titel, teksten: [], wijzigingen: uit.wijzigingen, districten: uit.districten, gelukt });
+  }
+  biedAan(state, data, rng);
+  nieuwsBeurt(state, data, rng, nieuweFase);
   state.rapport = { beurt: state.beurt, jaar: state.jaar, deel: state.deel, ...rapport };
   state.ap = data.balans.actiepunten;
   state.acties_deze_beurt = {};

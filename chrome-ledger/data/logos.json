@@ -1,10 +1,216 @@
 {
   "vormen": [
-    { "id": "cirkel", "naam": "Cirkel" },
-    { "id": "vierkant", "naam": "Vierkant" },
-    { "id": "zeshoek", "naam": "Zeshoek" },
-    { "id": "ruit", "naam": "Ruit" },
-    { "id": "schild", "naam": "Schild" }
+    {
+      "id": "cirkel",
+      "naam": "Cirkel"
+    },
+    {
+      "id": "vierkant",
+      "naam": "Vierkant"
+    },
+    {
+      "id": "zeshoek",
+      "naam": "Zeshoek"
+    },
+    {
+      "id": "ruit",
+      "naam": "Ruit"
+    },
+    {
+      "id": "schild",
+      "naam": "Schild"
+    },
+    {
+      "id": "driehoek",
+      "naam": "Driehoek"
+    },
+    {
+      "id": "achthoek",
+      "naam": "Achthoek"
+    },
+    {
+      "id": "ster",
+      "naam": "Ster"
+    },
+    {
+      "id": "ring",
+      "naam": "Ring"
+    },
+    {
+      "id": "kristal",
+      "naam": "Kristal"
+    },
+    {
+      "id": "tandwiel",
+      "naam": "Tandwiel"
+    },
+    {
+      "id": "chip",
+      "naam": "Chip"
+    }
   ],
-  "symbolen": ["⚡", "☠", "◆", "✦", "☢", "⚙", "✚", "◉", "▲", "♜", "⚓", "☯", "✪", "⌘", "Ω", "Σ", "Ψ", "∞", "¥", "☣"]
+  "symbolen": [
+    "⚡",
+    "☠",
+    "◆",
+    "✦",
+    "☢",
+    "⚙",
+    "✚",
+    "◉",
+    "▲",
+    "♜",
+    "⚓",
+    "☯",
+    "✪",
+    "⌘",
+    "Ω",
+    "Σ",
+    "Ψ",
+    "∞",
+    "¥",
+    "☣",
+    "♛",
+    "♞",
+    "✈",
+    "⚔",
+    "☂",
+    "☀",
+    "☾",
+    "✿",
+    "❖",
+    "⬢",
+    "⌬",
+    "⏻",
+    "⚖",
+    "⚛",
+    "✇",
+    "☤",
+    "♆",
+    "Δ",
+    "Λ",
+    "Ξ"
+  ],
+  "vullingen": [
+    {
+      "id": "effen",
+      "naam": "Effen"
+    },
+    {
+      "id": "verloop",
+      "naam": "Verloop"
+    },
+    {
+      "id": "strepen",
+      "naam": "Strepen"
+    },
+    {
+      "id": "gesplitst",
+      "naam": "Gesplitst"
+    },
+    {
+      "id": "raster",
+      "naam": "Raster"
+    },
+    {
+      "id": "leeg",
+      "naam": "Alleen rand"
+    }
+  ],
+  "randen": [
+    {
+      "id": "geen",
+      "naam": "Geen"
+    },
+    {
+      "id": "dun",
+      "naam": "Dun"
+    },
+    {
+      "id": "dik",
+      "naam": "Dik"
+    },
+    {
+      "id": "dubbel",
+      "naam": "Dubbel"
+    },
+    {
+      "id": "gloed",
+      "naam": "Neongloed"
+    }
+  ],
+  "symboolkleuren": [
+    {
+      "id": "accent",
+      "naam": "Accentkleur"
+    },
+    {
+      "id": "wit",
+      "naam": "Wit"
+    },
+    {
+      "id": "zwart",
+      "naam": "Zwart"
+    },
+    {
+      "id": "hoofd",
+      "naam": "Hoofdkleur"
+    }
+  ],
+  "groottes": [
+    {
+      "id": "klein",
+      "naam": "Klein"
+    },
+    {
+      "id": "normaal",
+      "naam": "Normaal"
+    },
+    {
+      "id": "groot",
+      "naam": "Groot"
+    }
+  ],
+  "paletten": [
+    {
+      "naam": "Neon",
+      "kleur": "#ff2a6d",
+      "accent": "#05d9e8"
+    },
+    {
+      "naam": "Chroom",
+      "kleur": "#9aa5b8",
+      "accent": "#3a7bfd"
+    },
+    {
+      "naam": "Gif",
+      "kleur": "#39ff14",
+      "accent": "#101418"
+    },
+    {
+      "naam": "Bloed",
+      "kleur": "#b3001b",
+      "accent": "#ffd166"
+    },
+    {
+      "naam": "Goud",
+      "kleur": "#d4a017",
+      "accent": "#1a1a2e"
+    },
+    {
+      "naam": "Violet",
+      "kleur": "#7b2ff7",
+      "accent": "#f5f5f5"
+    },
+    {
+      "naam": "Oceaan",
+      "kleur": "#0077b6",
+      "accent": "#90e0ef"
+    },
+    {
+      "naam": "Roest",
+      "kleur": "#c1440e",
+      "accent": "#f2e8cf"
+    }
+  ]
 }

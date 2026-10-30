@@ -300,3 +300,92 @@ pre { background: var(--bg2); padding: .6em 1em; border-radius: var(--radius); }
   .stap-overzicht .samenvatting { grid-template-columns: minmax(0, 1fr); }
   .namen li { grid-template-columns: minmax(0, 1fr); }
 }
+
+/* ---- Verdiepingsupdate ---- */
+.kolom { grid-area: rapport; display: flex; flex-direction: column; gap: .8rem; min-width: 0; }
+.groep-kop { font-size: .78rem; text-transform: uppercase; letter-spacing: .05em; color: var(--neon2); margin: 1rem 0 .4rem; padding-bottom: .25rem; border-bottom: 1px solid var(--rand); }
+.acties-kop + .groep-kop, .laatste + .groep-kop { margin-top: .4rem; }
+
+/* Voordelen / nadelen */
+.voor-nadeel { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: .5rem; margin-top: .5rem; }
+.vn { display: flex; flex-wrap: wrap; align-content: flex-start; gap: .25rem; padding: .4rem; border-radius: 4px; min-width: 0; }
+.vn .chip { white-space: normal; }
+.voordelen { background: rgba(62, 240, 138, .06); border: 1px solid rgba(62, 240, 138, .2); }
+.nadelen { background: rgba(255, 84, 104, .06); border: 1px solid rgba(255, 84, 104, .2); }
+.vn-kop { flex-basis: 100%; font-size: .7rem; text-transform: uppercase; letter-spacing: .05em; color: var(--gedempt); }
+.stap-uitleg { color: var(--gedempt); max-width: 70ch; }
+
+/* Identiteit en logo */
+.identiteit-rechts { display: flex; flex-direction: column; gap: .6rem; min-width: 0; }
+.paletten { display: flex; flex-wrap: wrap; gap: .35rem; margin-bottom: .9rem; }
+.palet { font: inherit; font-size: .75rem; color: var(--tekst); background: var(--bg2); border: 1px solid var(--rand); border-radius: 99px; padding: .2em .65em .2em .3em; cursor: pointer; display: inline-flex; align-items: center; gap: .2rem; }
+.palet:hover { border-color: var(--neon2); }
+.palet i { width: .8rem; height: .8rem; border-radius: 50%; display: inline-block; }
+.voorbeeld-tekst { display: flex; flex-direction: column; gap: .2rem; min-width: 0; }
+.voorbeeld-klein { display: flex; align-items: center; gap: .6rem; margin-top: .4rem; }
+.stap-logo { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.5fr); gap: 1.5rem; align-items: start; }
+.logo-links { display: flex; flex-direction: column; gap: .6rem; position: sticky; top: 1rem; }
+.logo-links input[type=range] { width: 100%; accent-color: var(--neon); }
+.logo-rij { margin-bottom: 1rem; }
+.logo-rij h3 { font-size: .8rem; text-transform: uppercase; color: var(--gedempt); letter-spacing: .04em; }
+.logo-rij.gedimd .symbolen { opacity: .35; }
+.opties { display: flex; flex-wrap: wrap; gap: .35rem; }
+.optie { font: inherit; font-size: .78rem; color: var(--tekst); background: var(--bg2); border: 1px solid var(--rand); border-radius: var(--radius); padding: .3rem .5rem; cursor: pointer; display: inline-flex; align-items: center; gap: .4rem; min-height: 2.6rem; }
+.optie:hover { border-color: var(--neon2); }
+.optie.gekozen, .symbool-knop.gekozen { border-color: var(--neon2); box-shadow: 0 0 8px rgba(5, 217, 232, .5); }
+.optie:focus-visible, .palet:focus-visible, .symbool-knop:focus-visible, .kaart:focus-visible { outline: 2px solid var(--neon2); outline-offset: 2px; }
+
+/* Wereld */
+.wereld-inhoud { grid-template-areas: "kaart namen" "instellingen namen"; }
+.wereld-kaart { grid-area: kaart; }
+.wereld-instellingen { grid-area: instellingen; }
+.namen { grid-area: namen; }
+
+/* Markt en nieuws */
+.markt { font-size: .75rem; padding: .15em .6em; border-radius: 99px; border: 1px solid var(--rand); white-space: nowrap; }
+.markt-goed { color: var(--goed); border-color: rgba(62, 240, 138, .5); }
+.markt-slecht { color: var(--slecht); border-color: rgba(255, 84, 104, .5); }
+.markt-let_op { color: var(--let-op); border-color: rgba(255, 209, 102, .5); }
+.nieuws { background: var(--bg2); border: 1px solid var(--rand); border-radius: 4px; padding: .5rem .7rem; margin-bottom: .7rem; font-size: .82rem; }
+.nieuws p { margin: .2rem 0 0; }
+.nieuws-kop { font-size: .7rem; text-transform: uppercase; letter-spacing: .06em; color: var(--neon); }
+.markt-nieuws { color: var(--let-op); }
+.meldingen li.goed { border-color: var(--goed); }
+.meldingen li.let_op { border-color: var(--let-op); }
+
+/* Opdrachten */
+.opdrachten h2 { display: flex; justify-content: space-between; align-items: baseline; }
+.teller { font-size: .8rem; color: var(--gedempt); }
+.opdrachten h3 { font-size: .78rem; text-transform: uppercase; color: var(--gedempt); margin: .9rem 0 .4rem; letter-spacing: .04em; }
+.opdracht { background: var(--bg2); border: 1px solid var(--rand); border-left: 3px solid var(--let-op); border-radius: 4px; padding: .55rem .7rem; margin-bottom: .5rem; font-size: .82rem; }
+.opdracht.bereikt { border-left-color: var(--goed); }
+.opdracht-kop { display: flex; justify-content: space-between; gap: .5rem; align-items: baseline; }
+.opdracht-kop h3 { margin: 0; font-size: .9rem; color: var(--tekst); text-transform: none; letter-spacing: 0; }
+.opdracht p { margin: .2rem 0; }
+.opdracht-tekst { color: var(--gedempt); }
+.doelen { margin: .3rem 0; padding-left: 1.1rem; }
+.opdracht-knoppen { display: flex; justify-content: flex-end; align-items: center; gap: .4rem; margin-top: .4rem; }
+.opdracht-knoppen > span { flex: 1; }
+
+@media (max-width: 1100px) {
+  .raster { grid-template-areas: "kaart kaart" "district acties" "rapport acties" "log log"; }
+  .wereld-inhoud { grid-template-areas: "kaart" "instellingen" "namen"; }
+  .stap-logo { grid-template-columns: minmax(0, 1fr); }
+  .logo-links { position: static; }
+}
+@media (max-width: 720px) {
+  .voor-nadeel { grid-template-columns: minmax(0, 1fr); }
+}
+/* Slogan altijd leesbaar, ook bij een donkere accentkleur. */
+.voorbeeld-slogan, .corp-slogan { color: var(--tekst); opacity: .8; }
+.kaart { display: flex; flex-direction: column; justify-content: flex-start; }
+.vn .chip { border-radius: 5px; }
+/* Acties krijgen twee derde van de breedte, kaarten in twee kolommen. */
+.raster { grid-template-areas: "kaart kaart district" "acties acties rapport" "acties acties log"; }
+.actie-lijst { grid-template-columns: repeat(auto-fill, minmax(min(100%, 290px), 1fr)); align-items: start; }
+@media (max-width: 1100px) {
+  .raster { grid-template-areas: "kaart kaart" "district rapport" "acties acties" "log log"; }
+}
+@media (max-width: 720px) {
+  .raster { grid-template-areas: "kaart" "district" "acties" "rapport" "log"; }
+}

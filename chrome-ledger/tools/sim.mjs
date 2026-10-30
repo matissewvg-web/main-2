@@ -14,7 +14,9 @@ import { voerUit, controleer } from '../src/actions.js';
 import { eindigBeurt, kiesKeuze, sluitEvent, personeelNodig } from '../src/turn.js';
 import { voldaan, vind } from '../src/effects.js';
 import { genereerKaart } from '../src/map.js';
-import { aandeel, controleert, bereikbaar, gebouwInkomen, afgeleid } from '../src/districts.js';
+import { aandeel, bereikbaar, gebouwInkomen, afgeleid } from '../src/districts.js';
+import { aanvaard } from '../src/opdrachten.js';
+import { modsVan } from '../src/state.js';
 
 const root = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const data = await laadData(async (p) => JSON.parse(await readFile(path.join(root, p), 'utf8')));
@@ -27,6 +29,7 @@ function corpVoor(i, rng, kaart) {
   return {
     naam: `Sim ${i}`, slogan: '', kleur: '#f0f', accent: '#0ff', logo: { vorm: 'cirkel', symbool: '⚡' },
     hq: rng.int(0, kaart.districten.length - 1),
+    vorm: data.bedrijfsvormen[rng.int(0, data.bedrijfsvormen.length - 1)].id,
     oprichter: data.archetypes[rng.int(0, data.archetypes.length - 1)].id,
     sector: data.sectors[rng.int(0, data.sectors.length - 1)].id,
     cultuur: Object.fromEntries(data.culture.map((a) => [a.id, rng.int(-3, 3)])),
@@ -46,13 +49,23 @@ function expandDoel(s) {
   return kandidaten.find((d) => kan(s, 'expanderen', { district: d.id }))?.id;
 }
 
+// Beste district voor een andere districtactie: waardevol waar je kan, of de minst loyale wijk waar je zit.
+function districtDoel(s, id) {
+  const actie = vind(data.actions, id);
+  const ds = [...s.kaart.districten];
+  if (actie.doel === 'aanwezig') ds.sort((a, c) => (id === 'orde' ? c.stats.criminaliteit - a.stats.criminaliteit : a.stats.loyaliteit - c.stats.loyaliteit));
+  else ds.sort((a, c) => waarde(c) - waarde(a));
+  return ds.find((d) => kan(s, id, { district: d.id }))?.id;
+}
+
 // Beste gebouw (netto per beurt) op een bouwplaats die kan.
 function bouwKeuze(s) {
   let beste = null;
+  const mods = modsVan(s, data);
   for (const d of s.kaart.districten) {
     for (const g of data.buildings) {
       if (!kan(s, 'bouwen', { district: d.id, gebouw: g.id })) continue;
-      const netto = gebouwInkomen(g, d, b) - g.onderhoud - g.personeel * b.loon;
+      const netto = gebouwInkomen(g, d, b, mods) - g.onderhoud - g.personeel * b.loon;
       if (!beste || netto > beste.netto) beste = { netto, opties: { district: d.id, gebouw: g.id } };
     }
   }
@@ -67,6 +80,11 @@ const metDoel = (id, s) => {
   if (id === 'bouwen') {
     const k = bouwKeuze(s);
     return k ? [id, k.opties] : null;
+  }
+  if (id === 'verkopen') return null;
+  if (vind(data.actions, id).doel) {
+    const d = districtDoel(s, id);
+    return d == null ? null : [id, { district: d }];
   }
   return kan(s, id) ? [id, {}] : null;
 };
@@ -89,7 +107,9 @@ const STRATEGIEEN = {
   gemengd: (s) => {
     const r = s.res;
     const wil = [];
+    if (r.heat > 70) wil.push('witwassen');
     if (r.heat > 55) wil.push('lobbyen');
+    if (s.kaart.districten.some((d) => aandeel(d) > 0 && d.stats.loyaliteit < 40)) wil.push('pr');
     if (r.personeel < personeelNodig(s, data)) wil.push('aanwerven');
     if (r.druk > 35 && r.heat < 45) wil.push('sabotage');
     if (r.invloed < 12) wil.push('lobbyen');
@@ -130,6 +150,7 @@ function speel(strategie, i) {
   let netto20 = null;
   while (!s.einde && s.beurt <= BEURTEN) {
     if (s.fase === 'acties') {
+      while (s.opdrachten.aangeboden.length && aanvaard(s, data, 0));
       let k;
       while (s.ap > 0 && !s.einde && (k = strategie(s, srng))) {
         if (!voerUit(s, data, k[0], k[1])) break;

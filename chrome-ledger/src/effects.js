@@ -6,6 +6,7 @@
 //   { "district": "doel" | "hier" | "context" | "hq" | "alle" | "aanwezig" | "controle" | "Haven",
 //     "stat": "loyaliteit" | "invloed" | ..., "op": ..., "waarde": ... }
 //       "invloed" in een district = jouw aandeel in procent.
+//   { "district": "context", "gebouw": "verwijder" }   (sloopt één willekeurig gebouw)
 //   { "kans": 0.6, "kans_mod": "kans.sabotage", "dan": [...], "anders": [...],
 //     "dan_tekst": "...", "anders_tekst": "..." }
 //   { "vlag": "naam", "op": "set" | "wis", "waarde": true }
@@ -16,7 +17,8 @@
 //   { "vlag": "naam", "is": true }   { "beurt_min": 4 }
 //   { "sector": "media" }   { "oprichter": "hacker" }   { "perk": "id" }   { "gebrek": "id" }
 //   { "district_type": "Haven", "controle": true }
-//   { "district": { "type": "slums", "controle": bool, "aanwezig": bool, "stat": "criminaliteit", "min": 60 } }
+//   { "district": { "type": "slums", "controle": bool, "aanwezig": bool, "bereikbaar": bool,
+//                   "stat": "criminaliteit", "min": 60 } }
 
 import {
   zoekDistricten, filterDistricten, alsDistrictFilter, districtWaarde, zetAandeel, statWaarde,
@@ -40,6 +42,7 @@ const r1 = (v) => Math.round(v * 10) / 10;
 // Alles wat een corpo bij creatie koos, als lijst bronnen met start/per_beurt/mods.
 export function bronnen(corp, data) {
   return [
+    vind(data.bedrijfsvormen, corp.vorm),
     vind(data.archetypes, corp.oprichter),
     vind(data.sectors, corp.sector),
     ...corp.perks.map((id) => vind(data.perks, id)),
@@ -86,7 +89,10 @@ function voer(state, lijst, ctx, uit) {
       if (tekst) uit.teksten.push(tekst);
       voer(state, (gelukt ? e.dan : e.anders) || [], ctx, uit);
     } else if ('district' in e || 'district_type' in e) {
-      for (const d of zoekDistricten(state, e.district ?? e.district_type, ctx.district)) wijzigDistrict(d, e, ctx, uit);
+      for (const d of zoekDistricten(state, e.district ?? e.district_type, ctx.district)) {
+        if (e.gebouw === 'verwijder') sloop(d, ctx, uit);
+        else wijzigDistrict(d, e, ctx, uit);
+      }
     } else if ('vlag' in e) {
       if (e.op === 'wis') delete state.vlaggen[e.vlag];
       else state.vlaggen[e.vlag] = e.waarde ?? true;
@@ -126,7 +132,19 @@ function wijzigStat(state, e, { mods, rng }, uit) {
   if (delta !== 0) uit.wijzigingen[e.stat] = r1((uit.wijzigingen[e.stat] || 0) + delta);
 }
 
-function wijzigDistrict(d, e, { rng, balans }, uit) {
+function registreer(uit, d, stat, delta) {
+  const bestaand = uit.districten.find((x) => x.id === d.id && x.stat === stat);
+  if (bestaand) bestaand.delta = r1(bestaand.delta + delta);
+  else uit.districten.push({ id: d.id, naam: d.naam, stat, delta });
+}
+
+function sloop(d, { rng }, uit) {
+  if (!d.gebouwen.length) return;
+  d.gebouwen.splice(rng.int(0, d.gebouwen.length - 1), 1);
+  registreer(uit, d, 'gebouwen', -1);
+}
+
+function wijzigDistrict(d, e, { rng, balans, mods }, uit) {
   if (e.stat !== 'invloed' && !(e.stat in d.stats)) {
     console.warn(`Onbekende districtstat: ${e.stat}`);
     return;
@@ -135,16 +153,15 @@ function wijzigDistrict(d, e, { rng, balans }, uit) {
   const oud = districtWaarde(d, e.stat);
   if (e.stat === 'invloed') {
     // Veel politie remt nieuwe invloed af.
-    if ((e.op ?? 'add') === 'add' && v > 0 && balans) v *= Math.max(0.2, 1 - d.stats.politie * balans.politie_weerstand);
+    if ((e.op ?? 'add') === 'add' && v > 0 && balans) {
+      v *= Math.max(0.2, 1 - d.stats.politie * balans.politie_weerstand) * Math.max(0, 1 + (mods.expansie_kracht || 0));
+    }
     zetAandeel(d, nieuweWaarde(oud, e, v));
   } else {
     d.stats[e.stat] = r1(klem(nieuweWaarde(oud, e, v), e.stat === 'bevolking' ? 1 : 0, 100));
   }
   const delta = r1(districtWaarde(d, e.stat) - oud);
-  if (!delta) return;
-  const bestaand = uit.districten.find((x) => x.id === d.id && x.stat === e.stat);
-  if (bestaand) bestaand.delta = r1(bestaand.delta + delta);
-  else uit.districten.push({ id: d.id, naam: d.naam, stat: e.stat, delta });
+  if (delta) registreer(uit, d, e.stat, delta);
 }
 
 export function voldaan(state, voorwaarden = []) {

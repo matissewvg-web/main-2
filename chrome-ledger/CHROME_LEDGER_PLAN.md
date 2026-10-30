@@ -189,6 +189,17 @@ Schatting = aantal sessies met Claude Code, plus jouw testtijd. Stop-regel per m
 - Simulatie: een gemengde strategie wint (geld) rond beurt 85 in 82% van de spellen; een expansiestrategie controleert ~70% van de bevolking maar wint zelden op geld. Dat is de basis voor de "Stad"-winvoorwaarde in M5.
 **Stop als:** de kaart er rommelig uitziet of districten onleesbaar klein zijn. Dan eerst rastergrootte of districtaantal aanpassen.
 
+**Status verdiepingsupdate (na M2, op vraag van de speler):** buiten de mijlpaalvolgorde toegevoegd:
+- Creatie: 8 stappen. Nieuwe stap **Logo** (12 vormen, 40 symbolen, monogram, 6 vullingen, 5 randen, symboolkleur/-grootte, draaiing, kleurpaletten, willekeurig) en nieuwe stap **Bedrijfsvorm** (`bedrijfsvormen.json`, 7 vormen). Alle 8 oprichters en 8 sectoren uit 2.1, 14 perks en 10 gebreken. Elke keuze toont voordelen en nadelen apart.
+- Wereld-opties: wereldtoon (2.2) en moeilijkheid (`moeilijkheid.json`, werkt via modifiers).
+- Nieuwe modifiers: `markt_inkomen`, `bouw_kost`, `expansie_kracht`, `gebouw_inkomen.<gebouw-id>`. `modsVan` telt corpo + moeilijkheid + marktfase op.
+- **Marktcyclus** (`markt.json`, `src/markt.js`): stabiel, hoogconjunctuur, zeepbel, recessie, crash; elke fase heeft modifiers en laat districten rijker/armer worden.
+- **Opdrachten** (`opdrachten.json`, `src/opdrachten.js`): doelen met deadline, beloning en straf, in de bestaande voorwaarde- en effecttaal (`plus` voor relatieve doelen, `context` voor een district).
+- **Stadsnieuws** (`nieuws.json`): één kop per beurt.
+- 7 nieuwe acties (Witwassen, Bende inhuren, Gebouw verkopen, PR-campagne, Ordehandhaving, Politie omkopen, Hacken), gegroepeerd in Bedrijf en District. Nieuwe doelregels `aanwezig` en `eigen_gebouw`.
+- 32 events (18 nieuw, met een keten van 3 en een lening die na 8 beurten terugkomt). Nieuw effect `{ "district": ..., "gebouw": "verwijder" }`.
+- Save-versie 3. Simulatie: gemengde strategie wint rond beurt 78 (77%).
+
 ### Mijlpaal 3: Personeel (1 sessie)
 1. Benoemde personages (naam uit pool, 3 eigenschappen, ambitie, loyaliteit).
 2. Sleutelrollen: CFO, Security, Netrunner, PR (elk met passief effect).

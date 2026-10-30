@@ -6,6 +6,7 @@ import { stelGrenzenIn } from './effects.js';
 const BESTANDEN = [
   'balans', 'archetypes', 'sectors', 'culture', 'perks', 'flaws',
   'actions', 'buildings', 'districts', 'winconditions', 'logos', 'mods',
+  'bedrijfsvormen', 'markt', 'moeilijkheid', 'opdrachten', 'nieuws',
 ];
 
 async function haalJson(pad) {

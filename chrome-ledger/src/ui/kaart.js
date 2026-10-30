@@ -1,7 +1,7 @@
 // Kaartweergave (plan 1.5): canvas met lagen, legenda en het districtpaneel.
 
 import { t } from '../i18n.js';
-import { h, geld, getal } from './dom.js';
+import { h, geld, getal, meng } from './dom.js';
 import { tekenKaart, districtOp } from '../map.js';
 import { vind } from '../effects.js';
 import {
@@ -21,11 +21,6 @@ const KLEUREN = {
   selectie: '#ffffff', tekst: '#f1f2ff', schaduw: '#05060c', leeg: '#191c38',
 };
 
-const rgb = (hex) => [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16));
-export function meng(a, b, f) {
-  const [x, y] = [rgb(a), rgb(b)];
-  return `#${x.map((v, i) => Math.round(v + (y[i] - v) * Math.min(1, Math.max(0, f))).toString(16).padStart(2, '0')).join('')}`;
-}
 
 export const typeKleur = (data, type) => meng(KLEUREN.leeg, vind(data.districts.types, type)?.kleur || '#555555', 0.75);
 

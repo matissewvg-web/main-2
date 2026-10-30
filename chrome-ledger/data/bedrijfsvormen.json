@@ -1,0 +1,56 @@
+[
+  {
+    "id": "familiebedrijf",
+    "naam": "Familiebedrijf",
+    "beschrijving": "Drie generaties, één achternaam. Mensen blijven, de buurt kent je. Maar vernieuwing gaat traag.",
+    "start": [{ "district": "hq", "stat": "loyaliteit", "op": "add", "waarde": 10 }],
+    "mods": { "verloop": -0.4, "tech_gain": -0.15, "inkomen": -0.05 }
+  },
+  {
+    "id": "beursgenoteerd",
+    "naam": "Beursgenoteerd",
+    "beschrijving": "Kapitaal van aandeelhouders en een notering in Brussel. Iedereen kijkt mee, en elk kwartaal willen ze dividend.",
+    "start": [{ "stat": "geld", "op": "add", "waarde": 60000 }],
+    "per_beurt": [{ "stat": "geld", "op": "add", "waarde": -1500 }],
+    "mods": { "inkomen": 0.1, "heat_gain": 0.15, "invloed_gain": -0.1 }
+  },
+  {
+    "id": "cooperatie",
+    "naam": "Coöperatie",
+    "beschrijving": "Van de werkers zelf. Niemand loopt weg en de politie laat je met rust, maar de winst wordt gedeeld.",
+    "start": [{ "stat": "personeel", "op": "add", "waarde": 4 }],
+    "mods": { "verloop": -0.3, "heat_gain": -0.15, "inkomen": -0.12 }
+  },
+  {
+    "id": "frontbedrijf",
+    "naam": "Frontbedrijf",
+    "beschrijving": "Op papier een wasserette. In werkelijkheid iets heel anders. Smokkel en nachtleven lopen vlot, de politie weet al half wat er speelt.",
+    "start": [{ "stat": "heat", "op": "add", "waarde": 15 }],
+    "mods": { "kans.sabotage": 0.15, "gebouw_inkomen.smokkelpakhuis": 0.5, "gebouw_inkomen.nachtclub": 0.3, "heat_gain": 0.1 }
+  },
+  {
+    "id": "startup",
+    "naam": "Startup",
+    "beschrijving": "Een garage, een idee en te veel energiedrank. Snel in onderzoek, maar het geld is krap en mensen springen weer weg.",
+    "start": [
+      { "stat": "tech", "op": "add", "waarde": 10 },
+      { "stat": "geld", "op": "add", "waarde": -20000 }
+    ],
+    "mods": { "tech_gain": 0.3, "verloop": 0.3 }
+  },
+  {
+    "id": "halfstaats",
+    "naam": "Halfstaatsbedrijf",
+    "beschrijving": "De stad is mede-eigenaar. Deuren gaan open en de politie kijkt weg, maar elke beslissing gaat langs drie comités.",
+    "start": [{ "stat": "invloed", "op": "add", "waarde": 20 }],
+    "mods": { "afkoeling": 1.5, "actie_kost": 0.15, "inkomen": -0.05 }
+  },
+  {
+    "id": "dochter",
+    "naam": "Dochter van een megacorp",
+    "beschrijving": "Een Japanse moederholding betaalt de start en houdt de concurrentie op afstand. Ze vraagt elk kwartaal royalty's en laat je weinig politieke ruimte.",
+    "start": [{ "stat": "geld", "op": "add", "waarde": 40000 }],
+    "per_beurt": [{ "stat": "geld", "op": "add", "waarde": -3000 }],
+    "mods": { "druk_groei": -0.3, "invloed_gain": -0.2 }
+  }
+]

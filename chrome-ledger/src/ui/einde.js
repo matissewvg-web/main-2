@@ -17,6 +17,7 @@ export function eindeVenster(s, ctl) {
       h('div', { class: 'startstats' }, STATS.map((k) => h('div', { class: 'stat' },
         h('span', {}, t(`stat.${k}`)),
         h('strong', {}, k === 'stad' ? `${statWaarde(s, k)}%` : fmtStat(k, statWaarde(s, k)))))),
+      h('p', { class: 'klein' }, t('einde.opdrachten', { gelukt: s.opdrachten.gelukt, mislukt: s.opdrachten.mislukt })),
       h('div', { class: 'knoppen' },
         h('button', { type: 'button', class: 'knop primair', onclick: ctl.nieuw }, t('menu.nieuw')),
         h('button', { type: 'button', class: 'knop', onclick: ctl.exporteer }, t('knop.exporteer')),

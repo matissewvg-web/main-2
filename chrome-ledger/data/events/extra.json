@@ -1,0 +1,600 @@
+[
+  {
+    "id": "ev_cyberpsycho",
+    "titel": "Cyberpsychose in {district}",
+    "tekst": "Een man met te veel implantaten en te weinig medicatie loopt amok in {district}. Hij draagt een jas met jouw logo.",
+    "toon": ["grimmig"],
+    "van": 2002, "tot": 2077,
+    "cooldown": 14,
+    "voorwaarde": [{ "district": { "aanwezig": true, "stat": "criminaliteit", "min": 50 } }],
+    "keuzes": [
+      {
+        "tekst": "Stuur je eigen beveiliging",
+        "effecten": [
+          { "stat": "heat", "op": "add", "waarde": 5 },
+          { "district": "context", "stat": "loyaliteit", "op": "add", "waarde": 6 }
+        ],
+        "resultaat": "Je mensen zijn er eerder dan de politie. De buurt ziet wie hen beschermt."
+      },
+      {
+        "tekst": "Betaal de speciale eenheid van de stad (€8.000)",
+        "vereist": [{ "stat": "geld", "min": 8000 }],
+        "effecten": [
+          { "stat": "geld", "op": "add", "waarde": -8000 },
+          { "district": "context", "stat": "politie", "op": "add", "waarde": 5 }
+        ],
+        "resultaat": "Zwaar bewapende agenten in de straten. Het probleem is weg, de agenten blijven."
+      },
+      {
+        "tekst": "Doe alsof je hem niet kent",
+        "effecten": [
+          { "district": "context", "stat": "loyaliteit", "op": "add", "waarde": -8 },
+          { "district": "context", "stat": "bevolking", "op": "add", "waarde": -2 }
+        ],
+        "resultaat": "Elf doden. Het journaal toont je logo op zijn jas, in close-up."
+      }
+    ]
+  },
+  {
+    "id": "ev_terugroep",
+    "titel": "Terugroepactie",
+    "tekst": "Een batch van je producten blijkt defect. Klanten in drie districten melden hoofdpijn, haaruitval en in één geval spontane Franse zinnen.",
+    "toon": ["satirisch", "serieus"],
+    "van": 2002, "tot": 2077,
+    "cooldown": 16,
+    "voorwaarde": [{ "beurt_min": 5 }],
+    "keuzes": [
+      {
+        "tekst": "Roep alles terug (€15.000)",
+        "vereist": [{ "stat": "geld", "min": 15000 }],
+        "effecten": [
+          { "stat": "geld", "op": "add", "waarde": -15000 },
+          { "stat": "invloed", "op": "add", "waarde": 5 }
+        ],
+        "resultaat": "Duur, maar de pers noemt je 'verantwoordelijk'. Dat woord hoor je niet vaak."
+      },
+      {
+        "tekst": "Ontken alles",
+        "effecten": [
+          {
+            "kans": 0.5,
+            "dan": [],
+            "dan_tekst": "Het verhaal sterft binnen een week. Niemand onthoudt iets.",
+            "anders": [
+              { "stat": "heat", "op": "add", "waarde": 10 },
+              { "stat": "druk", "op": "add", "waarde": 8 }
+            ],
+            "anders_tekst": "Een klokkenluider lekt de interne mails. Je ontkenning staat er letterlijk in."
+          }
+        ]
+      },
+      {
+        "tekst": "Wijs de leverancier aan",
+        "effecten": [{ "stat": "druk", "op": "add", "waarde": 6 }],
+        "resultaat": "De leverancier gaat failliet. Je nieuwe leverancier is duurder en trager."
+      }
+    ]
+  },
+  {
+    "id": "ev_stroomuitval",
+    "titel": "Stroomuitval",
+    "tekst": "Een storing in het net legt half Nova Antwerpa plat. Je servers draaien op batterijen, en die zijn niet eeuwig.",
+    "toon": ["serieus", "grimmig"],
+    "van": 2002, "tot": 2077,
+    "cooldown": 12,
+    "keuzes": [
+      {
+        "tekst": "Huur generatoren (€6.000)",
+        "vereist": [{ "stat": "geld", "min": 6000 }],
+        "effecten": [{ "stat": "geld", "op": "add", "waarde": -6000 }],
+        "resultaat": "Dieselgeur en lawaai, maar alles blijft draaien."
+      },
+      {
+        "tekst": "Wacht het uit",
+        "effecten": [
+          { "stat": "druk", "op": "add", "waarde": 6 },
+          { "stat": "tech", "op": "add", "waarde": -2 }
+        ],
+        "resultaat": "Twee dagen offline. Klanten gaan naar wie wel draait."
+      },
+      {
+        "tekst": "Tap stroom af van het ziekenhuis",
+        "effecten": [
+          { "stat": "heat", "op": "add", "waarde": 8 },
+          { "district": "hq", "stat": "loyaliteit", "op": "add", "waarde": -6 }
+        ],
+        "resultaat": "Je servers draaien. Op de spoed doen ze het bij kaarslicht."
+      }
+    ]
+  },
+  {
+    "id": "ev_journalist",
+    "titel": "Onderzoeksjournalist",
+    "tekst": "Een journalist van een onafhankelijke site stelt al weken vragen over je boekhouding. Ze heeft drie bronnen en een deadline.",
+    "toon": ["grimmig", "serieus"],
+    "van": 2002, "tot": 2077,
+    "cooldown": 12,
+    "voorwaarde": [{ "stat": "heat", "min": 30 }],
+    "keuzes": [
+      {
+        "tekst": "Geef een eerlijk interview",
+        "effecten": [
+          { "stat": "invloed", "op": "add", "waarde": -5 },
+          { "stat": "heat", "op": "add", "waarde": -8 }
+        ],
+        "resultaat": "Het artikel is kritisch maar eerlijk. Mensen respecteren dat je durfde."
+      },
+      {
+        "tekst": "Koop de site op (€20.000)",
+        "vereist": [{ "stat": "geld", "min": 20000 }],
+        "effecten": [
+          { "stat": "geld", "op": "add", "waarde": -20000 },
+          { "stat": "invloed", "op": "add", "waarde": 4 }
+        ],
+        "resultaat": "De site heeft een nieuwe eigenaar en een nieuwe redactielijn. Het artikel verschijnt nooit."
+      },
+      {
+        "tekst": "Laat haar intimideren",
+        "effecten": [
+          {
+            "kans": 0.5,
+            "dan": [{ "stat": "heat", "op": "add", "waarde": 3 }],
+            "dan_tekst": "Ze verhuist naar Gent. Het artikel blijft in een la liggen.",
+            "anders": [{ "stat": "heat", "op": "add", "waarde": 18 }],
+            "anders_tekst": "Ze filmde de bedreiging. Nu is het een veel groter verhaal."
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "ev_overnamebod",
+    "titel": "Overnamebod",
+    "tekst": "Een Japanse megacorp wil een deel van je bedrijf kopen. Hun vertegenwoordiger glimlacht te veel en knippert te weinig.",
+    "toon": ["serieus", "grimmig"],
+    "van": 2002, "tot": 2077,
+    "cooldown": 20,
+    "voorwaarde": [{ "stat": "gebouwen", "min": 5 }],
+    "keuzes": [
+      {
+        "tekst": "Verkoop een minderheidsbelang",
+        "effecten": [
+          { "stat": "geld", "op": "add", "waarde": 120000 },
+          { "stat": "druk", "op": "add", "waarde": 15 },
+          { "stat": "invloed", "op": "add", "waarde": -15 }
+        ],
+        "resultaat": "Een koffer vol geld en een nieuwe man in je raad van bestuur die alles noteert."
+      },
+      {
+        "tekst": "Onderhandel over een samenwerking",
+        "effecten": [
+          { "stat": "geld", "op": "add", "waarde": 40000 },
+          { "stat": "tech", "op": "add", "waarde": 5 }
+        ],
+        "resultaat": "Een gedeeld labo en een cheque. Ze willen ooit meer, maar vandaag niet."
+      },
+      {
+        "tekst": "Weiger",
+        "effecten": [{ "stat": "druk", "op": "add", "waarde": 10 }],
+        "resultaat": "Hij buigt en vertrekt. Volgende maand opent zijn bedrijf een vestiging naast de jouwe."
+      }
+    ]
+  },
+  {
+    "id": "ev_wonderkind",
+    "titel": "Wonderkind",
+    "tekst": "Een zestienjarige hackt je receptiesysteem om een sollicitatie te sturen. Haar cv is één regel: 'Ik ben al binnen.'",
+    "toon": ["satirisch", "serieus"],
+    "van": 2002, "tot": 2077,
+    "uniek": true,
+    "voorwaarde": [{ "beurt_min": 3 }],
+    "keuzes": [
+      {
+        "tekst": "Neem haar aan (€5.000)",
+        "vereist": [{ "stat": "geld", "min": 5000 }],
+        "effecten": [
+          { "stat": "geld", "op": "add", "waarde": -5000 },
+          { "stat": "tech", "op": "add", "waarde": 7 },
+          { "stat": "personeel", "op": "add", "waarde": 1 }
+        ],
+        "resultaat": "Op haar eerste dag herschrijft ze je hele netwerk. Op haar tweede dag vraagt ze opslag."
+      },
+      {
+        "tekst": "Geef haar door aan de politie",
+        "effecten": [
+          { "stat": "heat", "op": "add", "waarde": -5 },
+          { "stat": "druk", "op": "add", "waarde": 4 }
+        ],
+        "resultaat": "Ze krijgt een werkstraf. Een maand later werkt ze voor je concurrent."
+      }
+    ]
+  },
+  {
+    "id": "ev_brand",
+    "titel": "Brand in {district}",
+    "tekst": "Om drie uur 's nachts staat een van je gebouwen in {district} in brand. De brandweer staat nog vast in het verkeer.",
+    "toon": ["grimmig", "serieus"],
+    "van": 2002, "tot": 2077,
+    "cooldown": 14,
+    "voorwaarde": [{ "district": { "stat": "gebouwen", "min": 1 } }],
+    "keuzes": [
+      {
+        "tekst": "Betaal een privébrandweer (€7.000)",
+        "vereist": [{ "stat": "geld", "min": 7000 }],
+        "effecten": [{ "stat": "geld", "op": "add", "waarde": -7000 }],
+        "resultaat": "Binnen tien minuten is het geblust. Alleen de gevel is zwart."
+      },
+      {
+        "tekst": "Laat het branden en claim de verzekering",
+        "effecten": [
+          { "district": "context", "gebouw": "verwijder" },
+          {
+            "kans": 0.6,
+            "dan": [{ "stat": "geld", "op": "add", "waarde": 18000 }],
+            "dan_tekst": "De verzekeraar betaalt zonder vragen.",
+            "anders": [{ "stat": "heat", "op": "add", "waarde": 8 }],
+            "anders_tekst": "De verzekeraar stuurt een expert. Hij vindt de jerrycan."
+          }
+        ]
+      },
+      {
+        "tekst": "Zoek uit wie het deed",
+        "effecten": [
+          { "district": "context", "gebouw": "verwijder" },
+          {
+            "kans": 0.5,
+            "dan": [{ "stat": "druk", "op": "add", "waarde": -15 }],
+            "dan_tekst": "Het was de concurrentie. Je laat het hen weten, en ze worden voorzichtiger.",
+            "anders": [],
+            "anders_tekst": "Geen spoor. Het gebouw is weg."
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "ev_rellen",
+    "titel": "Rellen in {district}",
+    "tekst": "Na een politie-actie gaat {district} in vlammen op. Jongeren gooien stenen naar alles met een logo, ook het jouwe.",
+    "toon": ["grimmig"],
+    "van": 2002, "tot": 2077,
+    "cooldown": 14,
+    "voorwaarde": [{ "district": { "aanwezig": true, "stat": "loyaliteit", "max": 40 } }],
+    "keuzes": [
+      {
+        "tekst": "Deel eten en geld uit (€7.000)",
+        "vereist": [{ "stat": "geld", "min": 7000 }],
+        "effecten": [
+          { "stat": "geld", "op": "add", "waarde": -7000 },
+          { "district": "context", "stat": "loyaliteit", "op": "add", "waarde": 10 }
+        ],
+        "resultaat": "Je busjes worden niet aangevallen. De volgende dag staan er bedankjes op de muren."
+      },
+      {
+        "tekst": "Stuur je beveiliging",
+        "effecten": [
+          { "district": "context", "stat": "loyaliteit", "op": "add", "waarde": -8 },
+          { "district": "context", "stat": "criminaliteit", "op": "add", "waarde": -5 },
+          { "stat": "heat", "op": "add", "waarde": 6 }
+        ],
+        "resultaat": "De straat is leeg. De haat blijft."
+      },
+      {
+        "tekst": "Wacht af",
+        "effecten": [
+          {
+            "kans": 0.5,
+            "dan": [],
+            "dan_tekst": "Na drie nachten is het voorbij. Je gebouwen staan er nog.",
+            "anders": [{ "district": "context", "gebouw": "verwijder" }],
+            "anders_tekst": "In de derde nacht gaat een van je gebouwen in vlammen op."
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "ev_subsidie",
+    "titel": "Stadssubsidie",
+    "tekst": "De stad verdeelt een innovatiefonds. Op papier is het open voor iedereen. In de praktijk voor wie iemand kent.",
+    "toon": ["satirisch", "serieus"],
+    "van": 2002, "tot": 2077,
+    "cooldown": 12,
+    "voorwaarde": [{ "stat": "invloed", "min": 30 }],
+    "keuzes": [
+      {
+        "tekst": "Vraag de subsidie aan",
+        "effecten": [
+          { "stat": "geld", "op": "add", "waarde": 25000 },
+          { "stat": "heat", "op": "add", "waarde": 3 }
+        ],
+        "resultaat": "Je dossier wordt 'met voorrang' behandeld. Niemand vraagt waarom."
+      },
+      {
+        "tekst": "Laat het aan een startup die je wil helpen",
+        "effecten": [{ "stat": "invloed", "op": "add", "waarde": 6 }],
+        "resultaat": "De startup noemt je in elk interview. Goede reclame, en gratis."
+      }
+    ]
+  },
+  {
+    "id": "ev_ingenieur_1",
+    "titel": "De verdwenen ingenieur",
+    "tekst": "Je hoofdingenieur is niet komen opdagen. Zijn appartement is leeg, zijn badge werd om vier uur 's nachts nog gebruikt.",
+    "toon": ["grimmig", "serieus"],
+    "van": 2002, "tot": 2077,
+    "uniek": true,
+    "voorwaarde": [{ "beurt_min": 6 }, { "stat": "tech", "min": 20 }],
+    "keuzes": [
+      {
+        "tekst": "Huur een privédetective (€5.000)",
+        "vereist": [{ "stat": "geld", "min": 5000 }],
+        "effecten": [{ "stat": "geld", "op": "add", "waarde": -5000 }],
+        "resultaat": "De detective belt na twee dagen: 'Ik heb hem. Je gaat het niet graag horen.'",
+        "volgt": "ev_ingenieur_2"
+      },
+      {
+        "tekst": "Meld het aan de politie",
+        "effecten": [{ "stat": "heat", "op": "add", "waarde": 3 }],
+        "resultaat": "De politie neemt het op, en kijkt meteen ook naar jouw servers.",
+        "volgt": "ev_ingenieur_2"
+      },
+      {
+        "tekst": "Vervang hem",
+        "effecten": [{ "stat": "tech", "op": "add", "waarde": -5 }],
+        "resultaat": "Zijn opvolger is goed. Niet zo goed."
+      }
+    ]
+  },
+  {
+    "id": "ev_ingenieur_2",
+    "titel": "Overgelopen",
+    "tekst": "Je ingenieur werkt nu voor een concurrent in de Dataring, met al je plannen in zijn hoofd. Hij lijkt niet gelukkig.",
+    "toon": ["grimmig", "serieus"],
+    "van": 2002, "tot": 2077,
+    "alleen_keten": true,
+    "keuzes": [
+      {
+        "tekst": "Koop hem terug (€20.000)",
+        "vereist": [{ "stat": "geld", "min": 20000 }],
+        "effecten": [{ "stat": "geld", "op": "add", "waarde": -20000 }],
+        "resultaat": "Hij komt terug, met een prototype dat hij 'geleend' heeft.",
+        "volgt": "ev_ingenieur_3"
+      },
+      {
+        "tekst": "Laat hem 'ophalen'",
+        "effecten": [
+          {
+            "kans": 0.6,
+            "dan": [{ "stat": "heat", "op": "add", "waarde": 8 }],
+            "dan_tekst": "Hij zit de volgende ochtend weer aan zijn bureau. Hij zegt niets.",
+            "anders": [{ "stat": "heat", "op": "add", "waarde": 20 }],
+            "anders_tekst": "De ophaling gaat mis. Camera's, sirenes, en morgen een krantenkop."
+          }
+        ],
+        "volgt": "ev_ingenieur_3"
+      },
+      {
+        "tekst": "Laat hem gaan",
+        "effecten": [
+          { "stat": "druk", "op": "add", "waarde": 10 },
+          { "stat": "tech", "op": "add", "waarde": -3 }
+        ],
+        "resultaat": "Drie maanden later lanceert je concurrent jouw product."
+      }
+    ]
+  },
+  {
+    "id": "ev_ingenieur_3",
+    "titel": "Het prototype",
+    "tekst": "Je ingenieur toont wat hij meebracht: een implantaat dat een jaar voorloopt op alles in de stad. Wat doe je ermee?",
+    "toon": ["grimmig", "serieus"],
+    "van": 2002, "tot": 2077,
+    "alleen_keten": true,
+    "keuzes": [
+      {
+        "tekst": "Breng het op de markt",
+        "effecten": [
+          { "stat": "geld", "op": "add", "waarde": 40000 },
+          { "stat": "druk", "op": "add", "waarde": -15 }
+        ],
+        "resultaat": "Wachtrijen voor je winkels. De concurrent dient klacht in en verliest."
+      },
+      {
+        "tekst": "Hou het voor jezelf",
+        "effecten": [{ "stat": "tech", "op": "add", "waarde": 12 }],
+        "resultaat": "Het verdwijnt in je labo. Over twee jaar zal iedereen vragen hoe je zo snel ging."
+      },
+      {
+        "tekst": "Verkoop het aan de hoogste bieder",
+        "effecten": [
+          { "stat": "geld", "op": "add", "waarde": 75000 },
+          { "stat": "heat", "op": "add", "waarde": 8 },
+          { "stat": "druk", "op": "add", "waarde": 10 }
+        ],
+        "resultaat": "Een veiling in een parkeergarage. De winnaar betaalt in crypto en vraagt geen factuur."
+      }
+    ]
+  },
+  {
+    "id": "ev_smog",
+    "titel": "Smogalarm",
+    "tekst": "De luchtkwaliteit in de stad is 'gevaarlijk'. De milieu-inspectie wijst naar bedrijven met veel gebouwen. Naar jou dus.",
+    "toon": ["satirisch", "serieus"],
+    "van": 2002, "tot": 2077,
+    "cooldown": 16,
+    "voorwaarde": [{ "stat": "gebouwen", "min": 4 }],
+    "keuzes": [
+      {
+        "tekst": "Plaats filters (€10.000)",
+        "vereist": [{ "stat": "geld", "min": 10000 }],
+        "effecten": [
+          { "stat": "geld", "op": "add", "waarde": -10000 },
+          { "stat": "invloed", "op": "add", "waarde": 4 }
+        ],
+        "resultaat": "Je schoorstenen roken nu in een vriendelijkere kleur."
+      },
+      {
+        "tekst": "Lobby voor uitstel",
+        "vereist": [{ "stat": "invloed", "min": 6 }],
+        "effecten": [{ "stat": "invloed", "op": "add", "waarde": -6 }],
+        "resultaat": "De norm wordt 'herbekeken in 2030'."
+      },
+      {
+        "tekst": "Negeer het",
+        "effecten": [
+          { "stat": "heat", "op": "add", "waarde": 7 },
+          { "district": "aanwezig", "stat": "loyaliteit", "op": "add", "waarde": -2 }
+        ],
+        "resultaat": "Mensen hoesten. Ze weten wie het doet."
+      }
+    ]
+  },
+  {
+    "id": "ev_lening",
+    "titel": "Kredietaanbod",
+    "tekst": "Een bank biedt een snelle lening van €50.000. Over twee jaar wil ze €65.000 terug. De kleine lettertjes zijn erg klein.",
+    "toon": ["serieus", "satirisch"],
+    "van": 2002, "tot": 2077,
+    "cooldown": 20,
+    "voorwaarde": [{ "stat": "geld", "max": 40000 }, { "vlag": "lening", "is": false }],
+    "keuzes": [
+      {
+        "tekst": "Teken",
+        "effecten": [
+          { "stat": "geld", "op": "add", "waarde": 50000 },
+          { "vlag": "lening", "op": "set", "waarde": true }
+        ],
+        "resultaat": "Het geld staat er morgen. De bank heeft een agenda-afspraak over acht kwartalen.",
+        "volgt": "ev_lening_terug",
+        "volgt_na": 8
+      },
+      {
+        "tekst": "Bedankt, nee",
+        "effecten": [],
+        "resultaat": "De bankier knikt alsof hij dit antwoord al kende."
+      }
+    ]
+  },
+  {
+    "id": "ev_lening_terug",
+    "titel": "De bank belt",
+    "tekst": "Twee jaar zijn om. De bank wil €65.000 terug, vandaag nog.",
+    "toon": ["serieus", "satirisch"],
+    "van": 2002, "tot": 2077,
+    "alleen_keten": true,
+    "keuzes": [
+      {
+        "tekst": "Betaal terug (€65.000)",
+        "vereist": [{ "stat": "geld", "min": 65000 }],
+        "effecten": [
+          { "stat": "geld", "op": "add", "waarde": -65000 },
+          { "vlag": "lening", "op": "wis" }
+        ],
+        "resultaat": "Afgelost. De bank stuurt een kerstkaart."
+      },
+      {
+        "tekst": "Kan niet betalen",
+        "effecten": [
+          { "stat": "geld", "op": "mul", "waarde": 0.5 },
+          { "stat": "invloed", "op": "add", "waarde": -15 },
+          { "stat": "heat", "op": "add", "waarde": 10 },
+          { "vlag": "lening", "op": "wis" }
+        ],
+        "resultaat": "De deurwaarder neemt de helft van je kas en vertelt het aan de hele stad."
+      }
+    ]
+  },
+  {
+    "id": "ev_hittegolf",
+    "titel": "Hittegolf",
+    "tekst": "Veertig graden, drie weken lang. De airco's in de armere wijken vallen uit. Iedereen kijkt naar wie geld heeft.",
+    "toon": ["serieus", "grimmig"],
+    "van": 2002, "tot": 2077,
+    "cooldown": 16,
+    "keuzes": [
+      {
+        "tekst": "Open koelruimtes in je gebouwen (€8.000)",
+        "vereist": [{ "stat": "geld", "min": 8000 }],
+        "effecten": [
+          { "stat": "geld", "op": "add", "waarde": -8000 },
+          { "district": "aanwezig", "stat": "loyaliteit", "op": "add", "waarde": 4 }
+        ],
+        "resultaat": "Rijen mensen in je lobby's, met waterflessen met jouw logo."
+      },
+      {
+        "tekst": "Verkoop airco's aan woekerprijzen",
+        "effecten": [
+          { "stat": "geld", "op": "add", "waarde": 15000 },
+          { "district": "aanwezig", "stat": "loyaliteit", "op": "add", "waarde": -4 }
+        ],
+        "resultaat": "Goed kwartaal. Slecht karma."
+      },
+      {
+        "tekst": "Niets doen",
+        "effecten": [{ "district": "aanwezig", "stat": "loyaliteit", "op": "add", "waarde": -2 }],
+        "resultaat": "Het waait over, net als het geheugen van de mensen. Bijna."
+      }
+    ]
+  },
+  {
+    "id": "ev_failliet",
+    "titel": "Concurrent failliet",
+    "tekst": "Een middelgrote concurrent gaat over kop. De curator verkoopt alles: klanten, personeel, bureaustoelen.",
+    "toon": ["serieus", "satirisch"],
+    "van": 2002, "tot": 2077,
+    "cooldown": 14,
+    "voorwaarde": [{ "stat": "druk", "min": 20 }],
+    "keuzes": [
+      {
+        "tekst": "Koop de restanten (€20.000)",
+        "vereist": [{ "stat": "geld", "min": 20000 }],
+        "effecten": [
+          { "stat": "geld", "op": "add", "waarde": -20000 },
+          { "stat": "druk", "op": "add", "waarde": -15 },
+          { "stat": "personeel", "op": "add", "waarde": 4 }
+        ],
+        "resultaat": "Hun beste mensen en hun klantenbestand zijn nu van jou."
+      },
+      {
+        "tekst": "Steel hun klanten met een kortingsactie",
+        "effecten": [
+          { "stat": "druk", "op": "add", "waarde": -8 },
+          { "stat": "geld", "op": "add", "waarde": -5000 }
+        ],
+        "resultaat": "Een week lang half geld. Het werkt."
+      },
+      {
+        "tekst": "Laat het aan anderen",
+        "effecten": [],
+        "resultaat": "Een andere corpo slokt alles op. Ze worden groter."
+      }
+    ]
+  },
+  {
+    "id": "ev_kunstproject",
+    "titel": "Kunstproject",
+    "tekst": "Een bekende graffitikunstenaar wil een muur van 40 meter beschilderen in {district}. Met jouw logo, als je betaalt.",
+    "toon": ["satirisch"],
+    "van": 2002, "tot": 2077,
+    "cooldown": 16,
+    "voorwaarde": [{ "district": { "aanwezig": true } }],
+    "keuzes": [
+      {
+        "tekst": "Sponsor de muur (€4.000)",
+        "vereist": [{ "stat": "geld", "min": 4000 }],
+        "effecten": [
+          { "stat": "geld", "op": "add", "waarde": -4000 },
+          { "district": "context", "stat": "loyaliteit", "op": "add", "waarde": 6 },
+          { "district": "context", "stat": "invloed", "op": "add", "waarde": 3 }
+        ],
+        "resultaat": "Toeristen maken er selfies voor. Je logo staat op duizend foto's."
+      },
+      {
+        "tekst": "Nee, kunst is voor de armen",
+        "effecten": [{ "district": "context", "stat": "loyaliteit", "op": "add", "waarde": -2 }],
+        "resultaat": "Hij schildert de muur toch. Met jouw gezicht, als een rat."
+      }
+    ]
+  }
+]

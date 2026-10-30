@@ -1,14 +1,18 @@
 {
   "inkomen": { "soort": "pct", "goed": 1 },
+  "markt_inkomen": { "soort": "pct", "goed": 1 },
   "personeel_kost": { "soort": "pct", "goed": -1 },
   "heat_gain": { "soort": "pct", "goed": -1 },
   "invloed_gain": { "soort": "pct", "goed": 1 },
   "tech_gain": { "soort": "pct", "goed": 1 },
   "tech_inkomen": { "soort": "pct", "goed": 1 },
   "actie_kost": { "soort": "pct", "goed": -1 },
+  "bouw_kost": { "soort": "pct", "goed": -1 },
+  "expansie_kracht": { "soort": "pct", "goed": 1 },
   "verloop": { "soort": "pct", "goed": -1 },
   "afkoeling": { "soort": "abs", "goed": 1 },
   "druk_groei": { "soort": "pct", "goed": -1 },
   "kans.sabotage": { "soort": "pp", "goed": 1 },
-  "automatiseringsrisico": { "soort": "pct", "goed": -1 }
+  "automatiseringsrisico": { "soort": "pct", "goed": -1 },
+  "gebouw_inkomen.*": { "soort": "pct", "goed": 1 }
 }

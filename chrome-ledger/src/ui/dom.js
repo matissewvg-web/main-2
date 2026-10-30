@@ -16,6 +16,13 @@ export function h(tag, attrs = {}, ...kinderen) {
   return el;
 }
 
+// Mengt twee #rrggbb-kleuren: f = 0 geeft a, f = 1 geeft b.
+const rgb = (hex) => [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16));
+export function meng(a, b, f) {
+  const [x, y] = [rgb(a), rgb(b)];
+  return `#${x.map((v, i) => Math.round(v + (y[i] - v) * Math.min(1, Math.max(0, f))).toString(16).padStart(2, '0')).join('')}`;
+}
+
 const NF = new Intl.NumberFormat('nl-BE', { maximumFractionDigits: 1 });
 export const getal = (n) => NF.format(n);
 export const geld = (n) => `€ ${NF.format(Math.round(n))}`;
@@ -40,14 +47,40 @@ export function districtChips(lijst = []) {
     `${naam}: ${t(`dstat.${stat}`)} ${metTeken(delta)}${stat === 'invloed' ? '%' : ''}`));
 }
 
+const GEBOUW_MOD = 'gebouw_inkomen.';
+
+function modLabel(k, data) {
+  if (!k.startsWith(GEBOUW_MOD)) return t(`mod.${k}`);
+  const id = k.slice(GEBOUW_MOD.length);
+  return t('mod.gebouw_inkomen', { gebouw: data.buildings.find((b) => b.id === id)?.naam ?? id });
+}
+
 export function modChips(mods, data) {
   return Object.entries(mods).filter(([, v]) => v).map(([k, v]) => {
-    const meta = data.mods[k] || { soort: 'pct', goed: 1 };
+    const meta = data.mods[k] || (k.startsWith(GEBOUW_MOD) && data.mods[`${GEBOUW_MOD}*`]) || { soort: 'pct', goed: 1 };
     const tekst = meta.soort === 'abs' ? metTeken(v)
       : meta.soort === 'pp' ? t('mod.procentpunt', { waarde: metTeken(Math.round(v * 100)) })
       : `${metTeken(Math.round(v * 100))}%`;
-    return h('span', { class: `chip ${Math.sign(v) === meta.goed ? 'goed' : 'slecht'}` }, `${t(`mod.${k}`)} ${tekst}`);
+    return h('span', { class: `chip ${Math.sign(v) === meta.goed ? 'goed' : 'slecht'}` }, `${modLabel(k, data)} ${tekst}`);
   });
+}
+
+// Alle effecten van een keuze (oprichter, sector, perk, ...) gesplitst in voordelen en nadelen.
+export function voorNadeel(bron, data) {
+  const chips = [
+    ...effectChips(bron.start),
+    ...(bron.per_beurt?.length
+      ? effectChips(bron.per_beurt).map((c) => { c.prepend(`${t('vn.per_beurt')} `); return c; })
+      : []),
+    ...modChips(bron.mods || {}, data),
+  ];
+  const slecht = chips.filter((c) => c.classList.contains('slecht'));
+  const goed = chips.filter((c) => !c.classList.contains('slecht'));
+  return h('div', { class: 'voor-nadeel' },
+    h('div', { class: 'vn voordelen' }, h('span', { class: 'vn-kop' }, `✚ ${t('vn.voordelen')}`),
+      goed.length ? goed : h('span', { class: 'klein' }, t('vn.geen'))),
+    h('div', { class: 'vn nadelen' }, h('span', { class: 'vn-kop' }, `✖ ${t('vn.nadelen')}`),
+      slecht.length ? slecht : h('span', { class: 'klein' }, t('vn.geen'))));
 }
 
 // Leesbare voorvertoning van effecttaal (acties, startbonussen, vaste posten).

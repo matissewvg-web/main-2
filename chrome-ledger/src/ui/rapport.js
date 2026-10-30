@@ -3,6 +3,14 @@
 import { t } from '../i18n.js';
 import { h, geld, metTeken, wijzigingChips, datumLabel } from './dom.js';
 
+function nieuwsBlok(s) {
+  const nu = (s.nieuws || []).filter((n) => n.beurt === s.beurt);
+  if (!nu.length) return null;
+  return h('div', { class: 'nieuws' },
+    h('span', { class: 'nieuws-kop' }, t('rapport.nieuws')),
+    nu.map((n) => h('p', { class: n.markt ? 'markt-nieuws' : '' }, n.tekst)));
+}
+
 export function rapportPaneel(s, data) {
   const r = s.rapport;
   const titel = h('h2', {}, t('rapport.titel', { datum: datumLabel(r.jaar, r.deel) }));
@@ -15,6 +23,7 @@ export function rapportPaneel(s, data) {
   const overig = { ...r.wijzigingen };
   delete overig.geld;
   return h('section', { class: 'paneel rapport' }, titel,
+    nieuwsBlok(s),
     h('table', { class: 'posten' },
       h('tbody', {}, r.posten.map((p) => h('tr', {},
         h('td', {}, p.sleutel ? t(p.sleutel) : p.naam),

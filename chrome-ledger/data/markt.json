@@ -1,0 +1,45 @@
+{
+  "start": "stabiel",
+  "fasen": [
+    {
+      "id": "stabiel", "naam": "Stabiel", "toon": "neutraal",
+      "tekst": "De markt is rustig. Niemand wint veel, niemand verliest veel.",
+      "duur": [3, 7],
+      "mods": {},
+      "district": {},
+      "volgende": { "bloei": 0.4, "recessie": 0.35, "stabiel": 0.25 }
+    },
+    {
+      "id": "bloei", "naam": "Hoogconjunctuur", "toon": "goed",
+      "tekst": "Geld klotst door de stad. Klanten kopen alles, maar bouwgrond wordt duur.",
+      "duur": [3, 6],
+      "mods": { "inkomen": 0.15, "bouw_kost": 0.15, "druk_groei": -0.3 },
+      "district": { "rijkdom": 0.3 },
+      "volgende": { "stabiel": 0.5, "zeepbel": 0.5 }
+    },
+    {
+      "id": "zeepbel", "naam": "Zeepbel", "toon": "let_op",
+      "tekst": "Iedereen is rijk op papier. Iedereen weet dat dit niet blijft duren.",
+      "duur": [2, 3],
+      "mods": { "inkomen": 0.3, "bouw_kost": 0.3 },
+      "district": { "rijkdom": 0.5 },
+      "volgende": { "crash": 0.7, "stabiel": 0.3 }
+    },
+    {
+      "id": "recessie", "naam": "Recessie", "toon": "slecht",
+      "tekst": "Klanten houden de hand op de knip. Gebouwen en mensen zijn wel goedkoper dan ooit.",
+      "duur": [3, 6],
+      "mods": { "inkomen": -0.15, "bouw_kost": -0.2, "personeel_kost": -0.1, "druk_groei": 0.5 },
+      "district": { "rijkdom": -0.3, "criminaliteit": 0.3 },
+      "volgende": { "stabiel": 0.6, "crash": 0.15, "bloei": 0.25 }
+    },
+    {
+      "id": "crash", "naam": "Beurscrash", "toon": "slecht",
+      "tekst": "De beurs van Brussel ligt plat. Wie nu cash heeft, koopt de stad voor een prikje.",
+      "duur": [1, 3],
+      "mods": { "inkomen": -0.3, "bouw_kost": -0.35, "druk_groei": 1 },
+      "district": { "rijkdom": -0.8, "criminaliteit": 0.6, "loyaliteit": -0.3 },
+      "volgende": { "recessie": 0.7, "stabiel": 0.3 }
+    }
+  ]
+}

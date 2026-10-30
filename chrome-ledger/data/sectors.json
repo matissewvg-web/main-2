@@ -6,7 +6,7 @@
     "producten": ["Goedkope cyberdecks", "Implantaatchips"],
     "basisinkomen": 13000,
     "start": [{ "stat": "tech", "op": "add", "waarde": 5 }],
-    "mods": { "druk_groei": 0.25 }
+    "mods": { "gebouw_inkomen.fabriek": 0.2, "druk_groei": 0.25 }
   },
   {
     "id": "biotech",
@@ -15,7 +15,7 @@
     "producten": ["Groeiserums", "Gekweekte organen"],
     "basisinkomen": 10000,
     "start": [],
-    "mods": { "tech_inkomen": 0.6, "heat_gain": 0.1 }
+    "mods": { "tech_inkomen": 0.6, "gebouw_inkomen.kliniek": 0.4, "heat_gain": 0.1 }
   },
   {
     "id": "media",
@@ -24,6 +24,51 @@
     "producten": ["Nieuwszender NA-1", "Braindance-feeds"],
     "basisinkomen": 11000,
     "start": [{ "stat": "invloed", "op": "add", "waarde": 5 }],
-    "mods": { "invloed_gain": 0.25, "afkoeling": 1 }
+    "mods": { "invloed_gain": 0.25, "afkoeling": 1, "gebouw_inkomen.mediastudio": 0.5, "tech_gain": -0.1 }
+  },
+  {
+    "id": "beveiliging",
+    "naam": "Beveiliging",
+    "beschrijving": "Bewakers, camera's en 'conflictoplossing'. Je mensen zijn loyaal en weten hoe je onopvallend werkt. Gewone klanten vinden je eng.",
+    "producten": ["Privébewaking", "Camerabewaking"],
+    "basisinkomen": 11000,
+    "start": [{ "stat": "personeel", "op": "add", "waarde": 4 }],
+    "mods": { "afkoeling": 1, "kans.sabotage": 0.1, "verloop": -0.2, "markt_inkomen": -0.1 }
+  },
+  {
+    "id": "havenlogistiek",
+    "naam": "Havenlogistiek",
+    "beschrijving": "Containers, kranen en vrachtbrieven. Haventerminals renderen als nergens anders, maar je markt zit vol concurrenten.",
+    "producten": ["Containeropslag", "Douanebemiddeling"],
+    "basisinkomen": 12000,
+    "start": [],
+    "mods": { "gebouw_inkomen.vrachtterminal": 0.5, "gebouw_inkomen.smokkelpakhuis": 0.2, "druk_groei": 0.2 }
+  },
+  {
+    "id": "financien",
+    "naam": "Financiën",
+    "beschrijving": "Kredieten, beleggingen en offshore-constructies. Je verdient aan elke transactie in de stad. Het parket vindt je interessant.",
+    "producten": ["Microkrediet", "Offshore-fondsen"],
+    "basisinkomen": 15000,
+    "start": [],
+    "mods": { "markt_inkomen": 0.25, "heat_gain": 0.1, "tech_gain": -0.2 }
+  },
+  {
+    "id": "energie",
+    "naam": "Energie",
+    "beschrijving": "Stroom voor een stad die nooit slaapt. Zware industrie draait op jou, en de concurrentie heeft geen kabels. De milieulobby wel.",
+    "producten": ["Kernfusiecellen", "Stroomnet Noord"],
+    "basisinkomen": 14000,
+    "start": [],
+    "mods": { "gebouw_inkomen.fabriek": 0.4, "druk_groei": -0.2, "heat_gain": 0.1 }
+  },
+  {
+    "id": "informatiehandel",
+    "naam": "Informatiehandel",
+    "beschrijving": "Data, geheimen en profielen. Tech is je grondstof, invloed je product. Weinig directe omzet en elke inbraak is een risico.",
+    "producten": ["Profielen op maat", "Lekken-als-dienst"],
+    "basisinkomen": 9000,
+    "start": [{ "stat": "tech", "op": "add", "waarde": 5 }],
+    "mods": { "tech_inkomen": 0.4, "gebouw_inkomen.datacenter": 0.5, "invloed_gain": 0.1, "heat_gain": 0.15 }
   }
 ]

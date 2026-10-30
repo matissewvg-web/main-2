@@ -2,6 +2,7 @@
   {
     "id": "onderzoek",
     "naam": "Onderzoek",
+    "groep": "bedrijf",
     "icoon": "⌬",
     "beschrijving": "Zet je labo's aan het werk. Elk punt tech verhoogt je inkomen met 1% en drukt de concurrentie een beetje terug.",
     "ap": 1,
@@ -13,37 +14,34 @@
     ]
   },
   {
-    "id": "expanderen",
-    "naam": "Expanderen",
-    "icoon": "⬈",
-    "beschrijving": "Koop invloed in het gekozen district: contracten, steekpenningen, gezichten op straat. Kan alleen in een district waar je al zit of dat eraan grenst. Veel politie remt je af.",
+    "id": "lobbyen",
+    "naam": "Lobbyen",
+    "groep": "bedrijf",
+    "icoon": "☏",
+    "beschrijving": "Dineren met schepenen en commissarissen. Geeft invloed en laat de heat wat zakken.",
     "ap": 1,
-    "doel": "bereikbaar",
-    "kost": { "geld": 12000, "invloed": 6 },
-    "schaal": { "districten": { "geld": 0.25 } },
+    "kost": { "geld": 6000 },
     "effecten": [
-      { "district": "doel", "stat": "invloed", "op": "add", "waarde": { "min": 10, "max": 16 } },
-      { "district": "doel", "stat": "heat", "op": "add", "waarde": 8 },
-      { "stat": "heat", "op": "add", "waarde": 4 }
+      { "stat": "invloed", "op": "add", "waarde": { "min": 6, "max": 10 } },
+      { "stat": "heat", "op": "add", "waarde": -6 }
     ]
   },
   {
-    "id": "bouwen",
-    "naam": "Bouwen",
-    "icoon": "▦",
-    "soort": "bouwen",
-    "beschrijving": "Zet een gebouw op een vrije bouwplaats in het gekozen district. Je hebt er minstens 25% invloed nodig. Gebouwen leveren inkomen, kosten onderhoud en personeel.",
+    "id": "aanwerven",
+    "naam": "Aanwerven",
+    "groep": "bedrijf",
+    "icoon": "✚",
+    "beschrijving": "Haal nieuwe mensen binnen. Zonder genoeg personeel draaien je gebouwen op halve kracht, maar elk personeelslid kost loon per beurt.",
     "ap": 1,
-    "doel": "bouwplaats",
-    "kost": {},
-    "schaal": { "gebouwen": { "geld": 0.25 } },
+    "kost": { "geld": 3000 },
     "effecten": [
-      { "district": "doel", "stat": "heat", "op": "add", "waarde": 3 }
+      { "stat": "personeel", "op": "add", "waarde": { "min": 3, "max": 5 } }
     ]
   },
   {
     "id": "sabotage",
     "naam": "Sabotage",
+    "groep": "bedrijf",
     "icoon": "☠",
     "beschrijving": "Laat de concurrentie een slechte week hebben. Verlaagt de marktdruk sterk, maar als het misloopt weet de politie wie het was.",
     "ap": 1,
@@ -66,26 +64,150 @@
     ]
   },
   {
-    "id": "lobbyen",
-    "naam": "Lobbyen",
-    "icoon": "☏",
-    "beschrijving": "Dineren met schepenen en commissarissen. Geeft invloed en laat de heat wat zakken.",
+    "id": "witwassen",
+    "naam": "Witwassen",
+    "groep": "bedrijf",
+    "icoon": "♺",
+    "beschrijving": "Laat geld door een rij wasserettes en kunstgalerijen lopen. Sporen verdwijnen, de rekening blijft.",
     "ap": 1,
-    "kost": { "geld": 6000 },
+    "kost": { "geld": 12000 },
     "effecten": [
-      { "stat": "invloed", "op": "add", "waarde": { "min": 6, "max": 10 } },
-      { "stat": "heat", "op": "add", "waarde": -6 }
+      { "stat": "heat", "op": "add", "waarde": { "min": -16, "max": -10 } }
     ]
   },
   {
-    "id": "aanwerven",
-    "naam": "Aanwerven",
-    "icoon": "✚",
-    "beschrijving": "Haal nieuwe mensen binnen. Zonder genoeg personeel draaien je vestigingen op halve kracht, maar elk personeelslid kost loon per beurt.",
+    "id": "expanderen",
+    "naam": "Expanderen",
+    "groep": "district",
+    "icoon": "⬈",
+    "beschrijving": "Koop invloed in het district: contracten, steekpenningen, gezichten op straat. Kan alleen waar je al zit of in een buurdistrict. Veel politie remt je af.",
     "ap": 1,
-    "kost": { "geld": 3000 },
+    "doel": "bereikbaar",
+    "kost": { "geld": 12000, "invloed": 6 },
+    "schaal": { "districten": { "geld": 0.25 } },
     "effecten": [
-      { "stat": "personeel", "op": "add", "waarde": { "min": 3, "max": 5 } }
+      { "district": "doel", "stat": "invloed", "op": "add", "waarde": { "min": 10, "max": 16 } },
+      { "district": "doel", "stat": "heat", "op": "add", "waarde": 8 },
+      { "stat": "heat", "op": "add", "waarde": 4 }
+    ]
+  },
+  {
+    "id": "bende",
+    "naam": "Bende inhuren",
+    "groep": "district",
+    "icoon": "✊",
+    "beschrijving": "Een lokale bende zet jouw naam op de muren. Goedkope invloed zonder politiek kapitaal, maar de straat wordt er niet veiliger op.",
+    "ap": 1,
+    "doel": "bereikbaar",
+    "kost": { "geld": 6000 },
+    "effecten": [
+      { "district": "doel", "stat": "invloed", "op": "add", "waarde": { "min": 6, "max": 10 } },
+      { "district": "doel", "stat": "criminaliteit", "op": "add", "waarde": 8 },
+      { "district": "doel", "stat": "loyaliteit", "op": "add", "waarde": -3 },
+      { "stat": "heat", "op": "add", "waarde": 6 }
+    ]
+  },
+  {
+    "id": "bouwen",
+    "naam": "Bouwen",
+    "groep": "district",
+    "icoon": "▦",
+    "soort": "bouwen",
+    "beschrijving": "Zet een gebouw op een vrije bouwplaats in het district. Je hebt er minstens 25% invloed nodig. Gebouwen leveren inkomen, kosten onderhoud en personeel.",
+    "ap": 1,
+    "doel": "bouwplaats",
+    "kost": {},
+    "schaal": { "gebouwen": { "geld": 0.25 } },
+    "effecten": [
+      { "district": "doel", "stat": "heat", "op": "add", "waarde": 3 }
+    ]
+  },
+  {
+    "id": "verkopen",
+    "naam": "Gebouw verkopen",
+    "groep": "district",
+    "icoon": "⇄",
+    "soort": "verkopen",
+    "beschrijving": "Verkoop het gekozen gebouwtype in dit district voor de helft van de bouwprijs. Handig in een crisis of om plaats te maken.",
+    "ap": 1,
+    "doel": "eigen_gebouw",
+    "kost": {},
+    "effecten": []
+  },
+  {
+    "id": "pr",
+    "naam": "PR-campagne",
+    "groep": "district",
+    "icoon": "✺",
+    "beschrijving": "Affiches, gratis concerten en lachende gezichten op elk scherm. Maakt de wijk loyaal aan jou.",
+    "ap": 1,
+    "doel": "aanwezig",
+    "kost": { "geld": 5000, "invloed": 4 },
+    "effecten": [
+      { "district": "doel", "stat": "loyaliteit", "op": "add", "waarde": { "min": 8, "max": 12 } }
+    ]
+  },
+  {
+    "id": "orde",
+    "naam": "Ordehandhaving",
+    "groep": "district",
+    "icoon": "⛨",
+    "beschrijving": "Je beveiliging patrouilleert in de straten. Minder misdaad, iets meer sympathie, iets meer aandacht.",
+    "ap": 1,
+    "doel": "aanwezig",
+    "kost": { "geld": 6000 },
+    "effecten": [
+      { "district": "doel", "stat": "criminaliteit", "op": "add", "waarde": { "min": -15, "max": -10 } },
+      { "district": "doel", "stat": "loyaliteit", "op": "add", "waarde": 3 },
+      { "stat": "heat", "op": "add", "waarde": 2 }
+    ]
+  },
+  {
+    "id": "omkopen",
+    "naam": "Politie omkopen",
+    "groep": "district",
+    "icoon": "¤",
+    "beschrijving": "Een envelop voor de wijkcommissaris. Minder politie betekent makkelijker uitbreiden. Soms is de commissaris niet te koop.",
+    "ap": 1,
+    "doel": "bereikbaar",
+    "kost": { "geld": 9000 },
+    "effecten": [
+      {
+        "kans": 0.8,
+        "dan": [{ "district": "doel", "stat": "politie", "op": "add", "waarde": { "min": -12, "max": -8 } }],
+        "dan_tekst": "De patrouilles worden opvallend dunner.",
+        "anders": [
+          { "stat": "heat", "op": "add", "waarde": 12 },
+          { "district": "doel", "stat": "politie", "op": "add", "waarde": 5 }
+        ],
+        "anders_tekst": "De commissaris neemt de envelop aan en legt hem op het bureau van Interne Zaken."
+      }
+    ]
+  },
+  {
+    "id": "hacken",
+    "naam": "Hacken",
+    "groep": "district",
+    "icoon": "⌨",
+    "beschrijving": "Je netrunners breken in bij de bedrijven in dit district en stelen onderzoek. Als het misgaat, weet de politie het.",
+    "ap": 1,
+    "doel": "bereikbaar",
+    "kost": { "geld": 4000 },
+    "effecten": [
+      {
+        "kans": 0.65,
+        "kans_mod": "kans.sabotage",
+        "dan": [
+          { "stat": "tech", "op": "add", "waarde": { "min": 3, "max": 7 } },
+          { "stat": "druk", "op": "add", "waarde": -5 }
+        ],
+        "dan_tekst": "Terabytes aan onderzoek, gratis en voor niets.",
+        "anders": [
+          { "stat": "heat", "op": "add", "waarde": 10 },
+          { "district": "doel", "stat": "heat", "op": "add", "waarde": 15 }
+        ],
+        "anders_tekst": "Een tegenhack. Iemand weet nu je IP-adres."
+      }
     ]
   }
 ]

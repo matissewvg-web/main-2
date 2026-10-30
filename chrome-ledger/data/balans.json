@@ -19,7 +19,7 @@
 
   "markt_factor": 50000,
   "controle_bonus": 0.5,
-  "gebouw_rijkdom_basis": 0.4,
+  "gebouw_rijkdom_basis": 0.3,
   "gebouw_rijkdom_factor": 0.008,
   "heat_per_gebouw": 0.3,
   "druk_groei_per_gebouw": 0.25,
@@ -44,6 +44,12 @@
   "heat_max": 100,
   "schuld_beurten": 2,
   "heat_waarschuwing": 75,
+
+  "verkoop_factor": 0.5,
+  "opdrachten_aanbod": 2,
+  "opdrachten_max": 3,
+  "opdracht_kans": 0.35,
+  "opdracht_cooldown": 10,
 
   "eventkans": 0.65,
   "event_cooldown": 8

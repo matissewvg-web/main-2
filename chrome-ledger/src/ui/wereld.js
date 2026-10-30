@@ -1,16 +1,17 @@
-// Wereld-opties bij een nieuw spel (plan 2.2, deel Mijlpaal 2):
-// seed, kaartgrootte en districtnamen.
+// Wereld-opties bij een nieuw spel (plan 2.2):
+// seed, kaartgrootte, wereldtoon, moeilijkheid en districtnamen.
 
 import { t } from '../i18n.js';
-import { h } from './dom.js';
+import { h, voorNadeel } from './dom.js';
 import { kaartCanvas, typeKleur } from './kaart.js';
 import { genereerKaart } from '../map.js';
 import { willekeurigeSeed } from '../rng.js';
 import { vind } from '../effects.js';
 
 const GROOTTES = [8, 12, 16];
+const TONEN = ['alle', 'grimmig', 'satirisch', 'serieus'];
 
-// w: { seed, grootte, kaart } — wordt bijgewerkt en blijft bewaard als je terugkeert.
+// w: { seed, grootte, kaart, toon, moeilijkheid } — wordt bijgewerkt en blijft bewaard als je terugkeert.
 export function toonWereld(root, data, w, { opVerder, opTerug }) {
   if (!w.kaart) w.kaart = genereerKaart(w.seed, w.grootte, data);
   let geselecteerd = null;
@@ -66,6 +67,18 @@ export function toonWereld(root, data, w, { opVerder, opTerug }) {
                 onclick: () => { w.grootte = n; nieuw(); },
               }, String(n)))))),
           canvas),
+        h('div', { class: 'wereld-instellingen' },
+          h('div', { class: 'veld' }, h('span', {}, t('wereld.toon')),
+            h('div', { class: 'segment', role: 'group', 'aria-label': t('wereld.toon') }, TONEN.map((tn) => h('button', {
+              type: 'button', class: `knop${w.toon === tn ? ' actief' : ''}`, 'aria-pressed': String(w.toon === tn),
+              onclick: () => { w.toon = tn; render(); },
+            }, t(`toon.${tn}`)))),
+            h('p', { class: 'hint' }, t('wereld.toon_hint'))),
+          h('h3', {}, t('wereld.moeilijkheid')),
+          h('div', { class: 'kaarten klein' }, data.moeilijkheid.map((m) => h('button', {
+            type: 'button', class: `kaart${w.moeilijkheid === m.id ? ' gekozen' : ''}`, 'aria-pressed': String(w.moeilijkheid === m.id),
+            onclick: () => { w.moeilijkheid = m.id; render(); },
+          }, h('h4', {}, m.naam), h('p', {}, m.beschrijving), voorNadeel(m, data))))),
         h('div', { class: 'namen' },
           h('h3', {}, t('wereld.namen')),
           h('p', { class: 'hint' }, t('wereld.namen_hint')),

@@ -1,0 +1,29 @@
+[
+  {
+    "id": "makkelijk", "naam": "Makkelijk",
+    "beschrijving": "Meer startgeld, de politie kijkt minder en de concurrentie slaapt.",
+    "start": [{ "stat": "geld", "op": "add", "waarde": 40000 }],
+    "mods": { "heat_gain": -0.2, "druk_groei": -0.3, "inkomen": 0.1 }
+  },
+  {
+    "id": "normaal", "naam": "Normaal",
+    "beschrijving": "Zoals bedoeld.",
+    "start": [],
+    "mods": {}
+  },
+  {
+    "id": "hard", "naam": "Hard",
+    "beschrijving": "Minder startgeld, snellere heat, hardere concurrentie.",
+    "start": [{ "stat": "geld", "op": "add", "waarde": -20000 }],
+    "mods": { "heat_gain": 0.15, "druk_groei": 0.3, "inkomen": -0.05 }
+  },
+  {
+    "id": "brutaal", "naam": "Brutaal",
+    "beschrijving": "Nova Antwerpa wil je dood. Elke fout kost je het bedrijf.",
+    "start": [
+      { "stat": "geld", "op": "add", "waarde": -30000 },
+      { "stat": "heat", "op": "add", "waarde": 15 }
+    ],
+    "mods": { "heat_gain": 0.3, "druk_groei": 0.5, "inkomen": -0.1, "actie_kost": 0.1 }
+  }
+]

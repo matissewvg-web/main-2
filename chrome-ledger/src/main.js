@@ -11,11 +11,12 @@ import { toonMenu } from './ui/menu.js';
 import { toonWereld } from './ui/wereld.js';
 import { toonCreator, nieuwConcept } from './ui/creator.js';
 import { toonSpel } from './ui/hud.js';
+import { aanvaard, weiger } from './opdrachten.js';
 
 const root = document.getElementById('app');
 let data;
-// Schermkeuzes die niet in de save horen: geselecteerd district, kaartlaag, gekozen gebouw.
-const ui = { geselecteerd: null, laag: 'eigenaar', gebouw: null };
+// Schermkeuzes die niet in de save horen: geselecteerd district, kaartlaag, gekozen gebouwen.
+const ui = { geselecteerd: null, laag: 'eigenaar', gebouw: null, verkoop: null };
 
 function naarMenu(fout = null) {
   const { state: bewaard, fout: saveFout } = save.probeer();
@@ -41,7 +42,7 @@ function naarMenu(fout = null) {
 }
 
 function nieuwSpel() {
-  const wereld = { seed: willekeurigeSeed(), grootte: 12, kaart: null };
+  const wereld = { seed: willekeurigeSeed(), grootte: 12, kaart: null, toon: 'alle', moeilijkheid: 'normaal' };
   // Het corpo-concept blijft bewaard als je terug naar de wereld gaat; bij een
   // andere kaart kiest het opnieuw een standaard-HQ.
   let concept = null;
@@ -57,7 +58,7 @@ function nieuwSpel() {
     toonCreator(root, data, wereld.kaart, concept, {
       opTerug: naarWereld,
       opStart: (corp) => {
-        speel(maakStaat(corp, data, wereld.kaart));
+        speel(maakStaat(corp, data, wereld.kaart, wereld));
         save.bewaar(staat());
       },
     });
@@ -73,6 +74,9 @@ function speel(s) {
 }
 
 function render() {
+  // Het te verkopen gebouw volgt het geselecteerde district.
+  const d = staat().kaart.districten[ui.geselecteerd];
+  if (!d?.gebouwen.some((g) => g.type === ui.verkoop)) ui.verkoop = d?.gebouwen[0]?.type ?? null;
   toonSpel(root, data, staat(), ui, ctl);
 }
 
@@ -82,13 +86,19 @@ function na() {
 }
 
 const ctl = {
-  actie: (id) => { if (voerUit(staat(), data, id, { district: ui.geselecteerd, gebouw: ui.gebouw })) na(); },
+  actie: (id) => {
+    const gebouw = id === 'verkopen' ? ui.verkoop : ui.gebouw;
+    if (voerUit(staat(), data, id, { district: ui.geselecteerd, gebouw })) na();
+  },
   eindeBeurt: () => { eindigBeurt(staat(), data); na(); },
   kies: (i) => { kiesKeuze(staat(), data, i); na(); },
   verder: () => { sluitEvent(staat(), data); na(); },
   selecteer: (id) => { ui.geselecteerd = id; render(); },
   laag: (l) => { ui.laag = l; render(); },
   gebouw: (id) => { ui.gebouw = id; render(); },
+  verkoop: (id) => { ui.verkoop = id; render(); },
+  aanvaard: (i) => { if (aanvaard(staat(), data, i)) na(); },
+  weiger: (i) => { weiger(staat(), i); na(); },
   exporteer: () => save.exporteer(staat()),
   menu: () => naarMenu(),
   nieuw: nieuwSpel,
