@@ -1,0 +1,10 @@
+[
+  {
+    "id": "geld",
+    "naam": "Geld",
+    "beschrijving": "Bezit €10 miljoen eurodollars.",
+    "type": "geld",
+    "doel": 10000000,
+    "actief": true
+  }
+]

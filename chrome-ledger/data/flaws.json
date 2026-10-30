@@ -1,0 +1,35 @@
+[
+  {
+    "id": "maffiaschuld",
+    "naam": "Schuld bij de maffia",
+    "punten": 1,
+    "beschrijving": "Het startkapitaal kwam niet van een bank. Elke beurt staat er iemand aan de deur.",
+    "start": [],
+    "per_beurt": [{ "stat": "geld", "op": "add", "waarde": -2000 }],
+    "mods": {}
+  },
+  {
+    "id": "politiedossier",
+    "naam": "Politiedossier",
+    "punten": 2,
+    "beschrijving": "Je naam staat al in een map bij de federale politie.",
+    "start": [{ "stat": "heat", "op": "add", "waarde": 20 }],
+    "mods": { "heat_gain": 0.1 }
+  },
+  {
+    "id": "oude_servers",
+    "naam": "Verouderde servers",
+    "punten": 1,
+    "beschrijving": "Je draait op hardware uit 1996. Elk onderzoek duurt dubbel zo lang.",
+    "start": [],
+    "mods": { "tech_gain": -0.3 }
+  },
+  {
+    "id": "slechte_pers",
+    "naam": "Slechte pers",
+    "punten": 2,
+    "beschrijving": "Een oud schandaal waar De Scheldepost elk jaar op terugkomt.",
+    "start": [{ "stat": "invloed", "op": "add", "waarde": -5 }],
+    "mods": { "invloed_gain": -0.25 }
+  }
+]

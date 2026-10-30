@@ -1,0 +1,16 @@
+{
+  "types": [
+    { "id": "haven", "naam": "Haven" },
+    { "id": "oude_stad", "naam": "Oude Stad" },
+    { "id": "zakenkwartier", "naam": "Zakenkwartier" },
+    { "id": "slums", "naam": "Slums" },
+    { "id": "dataring", "naam": "Dataring" },
+    { "id": "universiteitswijk", "naam": "Universiteitswijk" },
+    { "id": "industriezone", "naam": "Industriezone" },
+    { "id": "luchthaven", "naam": "Luchthaven" },
+    { "id": "villawijk", "naam": "Villawijk" },
+    { "id": "zwarte_markt", "naam": "Zwarte Markt" },
+    { "id": "mediakwartier", "naam": "Mediakwartier" },
+    { "id": "grensstrook", "naam": "Grensstrook" }
+  ]
+}

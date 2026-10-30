@@ -1,0 +1,29 @@
+[
+  {
+    "id": "hardware",
+    "naam": "Hardware",
+    "beschrijving": "Chips, decks en implantaatcomponenten. Stabiel geld, maar elke Aziatische fabriek is je concurrent.",
+    "producten": ["Goedkope cyberdecks", "Implantaatchips"],
+    "basisinkomen": 13000,
+    "start": [{ "stat": "tech", "op": "add", "waarde": 5 }],
+    "mods": { "druk_groei": 0.25 }
+  },
+  {
+    "id": "biotech",
+    "naam": "Biotech",
+    "beschrijving": "Groeiserums en orgaankweek. Traag in het begin, maar elke doorbraak is goud waard. De inspectie kijkt mee.",
+    "producten": ["Groeiserums", "Gekweekte organen"],
+    "basisinkomen": 10000,
+    "start": [],
+    "mods": { "tech_inkomen": 0.6, "heat_gain": 0.1 }
+  },
+  {
+    "id": "media",
+    "naam": "Media",
+    "beschrijving": "Een nieuwszender en braindance-feeds. Minder cash, maar wie het nieuws maakt, maakt de stad.",
+    "producten": ["Nieuwszender NA-1", "Braindance-feeds"],
+    "basisinkomen": 11000,
+    "start": [{ "stat": "invloed", "op": "add", "waarde": 5 }],
+    "mods": { "invloed_gain": 0.25, "afkoeling": 1 }
+  }
+]

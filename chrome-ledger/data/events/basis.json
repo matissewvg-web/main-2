@@ -1,0 +1,389 @@
+[
+  {
+    "id": "ev_lek_1",
+    "titel": "Het dossier",
+    "tekst": "Een boekhouder van Vandersteen Holding wacht je op in een snackbar aan de Kaai. In zijn rugzak zit een harde schijf vol zwart geld, smeergeld en namen. Hij wil cash, vandaag nog.",
+    "toon": ["grimmig", "serieus"],
+    "van": 2002, "tot": 2077,
+    "uniek": true,
+    "voorwaarde": [{ "beurt_min": 4 }],
+    "keuzes": [
+      {
+        "tekst": "Koop de schijf (€15.000)",
+        "vereist": [{ "stat": "geld", "min": 15000 }],
+        "effecten": [
+          { "stat": "geld", "op": "add", "waarde": -15000 },
+          { "vlag": "dossier_vandersteen", "op": "set", "waarde": true }
+        ],
+        "resultaat": "De schijf is van jou. De boekhouder vertrekt met de nachttrein naar Rotterdam.",
+        "volgt": "ev_lek_2"
+      },
+      {
+        "tekst": "Stuur hem naar de politie",
+        "effecten": [
+          { "stat": "heat", "op": "add", "waarde": -8 },
+          { "stat": "invloed", "op": "add", "waarde": 3 },
+          { "stat": "druk", "op": "add", "waarde": 5 }
+        ],
+        "resultaat": "Inspecteur Claes bedankt je persoonlijk. Je hebt nu een vriend bij de politie, en een vijand bij Vandersteen."
+      },
+      {
+        "tekst": "Laat hem gaan",
+        "effecten": [],
+        "resultaat": "Hij loopt de regen in. Je hoort er nooit meer iets van. Denk je."
+      }
+    ]
+  },
+  {
+    "id": "ev_lek_2",
+    "titel": "De journalist",
+    "tekst": "Sanne Verbist van De Scheldepost belt. Ze weet dat jij de schijf van Vandersteen hebt. Ze wil een verhaal, en ze krijgt er een: met of zonder jou.",
+    "toon": ["grimmig", "serieus"],
+    "van": 2002, "tot": 2077,
+    "alleen_keten": true,
+    "keuzes": [
+      {
+        "tekst": "Geef haar het dossier",
+        "effecten": [
+          { "stat": "druk", "op": "add", "waarde": -25 },
+          { "stat": "invloed", "op": "add", "waarde": 8 },
+          { "stat": "heat", "op": "add", "waarde": 6 }
+        ],
+        "resultaat": "Voorpagina. Het aandeel Vandersteen zakt 40%. Jouw naam staat als bron in het artikel. Niet zo anoniem als beloofd.",
+        "volgt": "ev_lek_3"
+      },
+      {
+        "tekst": "Chanteer Vandersteen zelf",
+        "effecten": [
+          { "stat": "geld", "op": "add", "waarde": 45000 },
+          { "stat": "heat", "op": "add", "waarde": 12 }
+        ],
+        "resultaat": "Vandersteen betaalt zonder een woord te zeggen. Dat is te stil.",
+        "volgt": "ev_lek_3"
+      },
+      {
+        "tekst": "Vernietig de schijf",
+        "effecten": [
+          { "vlag": "dossier_vandersteen", "op": "wis" },
+          { "stat": "heat", "op": "add", "waarde": -4 }
+        ],
+        "resultaat": "Gesmolten in een vat zuur in de Industriezone. Sanne schrijft een vaag stuk zonder namen. Het verhaal sterft."
+      }
+    ]
+  },
+  {
+    "id": "ev_lek_3",
+    "titel": "Vandersteen slaat terug",
+    "tekst": "De advocaten van Vandersteen dagen je voor de rechtbank. Tegelijk staat er al drie nachten een zwarte bestelwagen voor je hoofdkantoor.",
+    "toon": ["grimmig", "serieus"],
+    "van": 2002, "tot": 2077,
+    "alleen_keten": true,
+    "keuzes": [
+      {
+        "tekst": "Vecht het aan in de rechtbank (€20.000)",
+        "vereist": [{ "stat": "geld", "min": 20000 }],
+        "effecten": [
+          { "stat": "geld", "op": "add", "waarde": -20000 },
+          {
+            "kans": 0.55,
+            "dan": [
+              { "stat": "invloed", "op": "add", "waarde": 15 },
+              { "stat": "druk", "op": "add", "waarde": -10 }
+            ],
+            "dan_tekst": "De rechter gooit de zaak buiten. Vandersteen verliest gezicht in de hele stad.",
+            "anders": [{ "stat": "heat", "op": "add", "waarde": 15 }],
+            "anders_tekst": "Verloren. Je advocaat vertrekt naar Dubai met je voorschot, en nu kijkt het parket ook mee."
+          }
+        ]
+      },
+      {
+        "tekst": "Schik buiten de rechtbank (€30.000)",
+        "vereist": [{ "stat": "geld", "min": 30000 }],
+        "effecten": [
+          { "stat": "geld", "op": "add", "waarde": -30000 },
+          { "vlag": "dossier_vandersteen", "op": "wis" }
+        ],
+        "resultaat": "Een handdruk, een NDA en een cheque. Niemand wint, niemand praat."
+      },
+      {
+        "tekst": "Laat een stroman de schuld nemen",
+        "vereist": [{ "stat": "personeel", "min": 6 }],
+        "effecten": [
+          { "stat": "personeel", "op": "add", "waarde": -3 },
+          { "stat": "heat", "op": "add", "waarde": 6 },
+          { "stat": "invloed", "op": "add", "waarde": -4 }
+        ],
+        "resultaat": "Drie medewerkers verklaren dat ze op eigen houtje handelden. De rest van je personeel heeft het gezien."
+      },
+      {
+        "tekst": "Negeer het en hoop dat het overwaait",
+        "effecten": [
+          { "stat": "heat", "op": "add", "waarde": 12 },
+          { "stat": "druk", "op": "add", "waarde": 10 }
+        ],
+        "resultaat": "Het waait niet over. Je verliest de zaak bij verstek en Vandersteen vertelt het aan iedereen."
+      }
+    ]
+  },
+  {
+    "id": "ev_belasting",
+    "titel": "Belastinginspectie",
+    "tekst": "Twee inspecteurs van de FOD Financiën in grijze regenjassen. Ze willen de boeken van de laatste drie jaar zien.",
+    "toon": ["grimmig", "serieus", "satirisch"],
+    "van": 2002, "tot": 2077,
+    "voorwaarde": [{ "stat": "geld", "min": 40000 }],
+    "keuzes": [
+      {
+        "tekst": "Werk mee en betaal de naheffing (10%)",
+        "effecten": [
+          { "stat": "geld", "op": "mul", "waarde": 0.9 },
+          { "stat": "heat", "op": "add", "waarde": -3 }
+        ],
+        "resultaat": "Pijnlijk, maar proper. De inspecteurs vertrekken tevreden."
+      },
+      {
+        "tekst": "Smeergeld (€8.000)",
+        "vereist": [{ "stat": "geld", "min": 8000 }],
+        "effecten": [
+          { "stat": "geld", "op": "add", "waarde": -8000 },
+          {
+            "kans": 0.65,
+            "dan": [{ "stat": "heat", "op": "add", "waarde": 2 }],
+            "dan_tekst": "Ze vinden niets. Natuurlijk niet.",
+            "anders": [
+              { "stat": "heat", "op": "add", "waarde": 18 },
+              { "stat": "geld", "op": "add", "waarde": -10000 }
+            ],
+            "anders_tekst": "Eén van de twee was niet te koop. Dubbele boete en een dossier bij het parket."
+          }
+        ]
+      },
+      {
+        "tekst": "Laat de boekhouding 'verloren gaan'",
+        "effecten": [
+          { "stat": "heat", "op": "add", "waarde": 10 },
+          { "stat": "tech", "op": "add", "waarde": -3 }
+        ],
+        "resultaat": "Een serverbrand. Heel tragisch. Niemand gelooft het."
+      }
+    ]
+  },
+  {
+    "id": "ev_headhunters",
+    "titel": "Headhunters",
+    "tekst": "Een bedrijf uit de Dataring biedt je beste mensen het dubbele loon. De helft van je kantoor zit vanmiddag op sollicitatiegesprek.",
+    "toon": ["grimmig", "serieus", "satirisch"],
+    "van": 2002, "tot": 2077,
+    "voorwaarde": [{ "stat": "personeel", "min": 8 }],
+    "keuzes": [
+      {
+        "tekst": "Opslag voor iedereen (€12.000)",
+        "vereist": [{ "stat": "geld", "min": 12000 }],
+        "effecten": [{ "stat": "geld", "op": "add", "waarde": -12000 }],
+        "resultaat": "Iedereen blijft. Voorlopig."
+      },
+      {
+        "tekst": "Laat ze gaan",
+        "effecten": [{ "stat": "personeel", "op": "add", "waarde": { "min": -5, "max": -3 } }],
+        "resultaat": "Een paar bureaus staan leeg. De koffiemachine is ook weg."
+      },
+      {
+        "tekst": "Steel er zelf een paar terug (€6.000)",
+        "vereist": [{ "stat": "geld", "min": 6000 }],
+        "effecten": [
+          { "stat": "geld", "op": "add", "waarde": -6000 },
+          { "stat": "personeel", "op": "add", "waarde": 3 },
+          { "stat": "druk", "op": "add", "waarde": -5 },
+          { "stat": "heat", "op": "add", "waarde": 4 }
+        ],
+        "resultaat": "Je pikt hun hoofd-ingenieur in. Ze klagen je aan, maar ze zijn ook trager geworden."
+      }
+    ]
+  },
+  {
+    "id": "ev_inval",
+    "titel": "Huiszoeking",
+    "tekst": "Zes uur 's ochtends. Het interventieteam van de federale politie staat in je lobby, met een bevel en een cameraploeg.",
+    "toon": ["grimmig", "serieus"],
+    "van": 2002, "tot": 2077,
+    "gewicht": 2,
+    "voorwaarde": [{ "stat": "heat", "min": 40 }],
+    "keuzes": [
+      {
+        "tekst": "Volledig meewerken (boete €15.000)",
+        "effecten": [
+          { "stat": "geld", "op": "add", "waarde": -15000 },
+          { "stat": "heat", "op": "add", "waarde": -12 }
+        ],
+        "resultaat": "Ze nemen dozen mee en vinden genoeg voor een boete, niet genoeg voor een proces."
+      },
+      {
+        "tekst": "Offer een manager op",
+        "vereist": [{ "stat": "personeel", "min": 4 }],
+        "effecten": [
+          { "stat": "personeel", "op": "add", "waarde": -2 },
+          { "stat": "heat", "op": "add", "waarde": -18 },
+          { "stat": "invloed", "op": "add", "waarde": -3 }
+        ],
+        "resultaat": "Twee managers worden geboeid afgevoerd. Ze kijken je niet aan."
+      },
+      {
+        "tekst": "Bel je contacten op het stadhuis",
+        "vereist": [{ "stat": "invloed", "min": 25 }],
+        "effecten": [
+          { "stat": "invloed", "op": "add", "waarde": -20 },
+          { "stat": "heat", "op": "add", "waarde": -20 }
+        ],
+        "resultaat": "Om acht uur gaat de telefoon van de commandant. Om kwart over acht zijn ze weg."
+      }
+    ]
+  },
+  {
+    "id": "ev_investeerder",
+    "titel": "De man uit Rotterdam",
+    "tekst": "Een investeerder in een te dure jas biedt kapitaal aan. Hij betaalt in contanten en vraagt niet wat je ermee doet. Jij moet ook niet vragen waar het vandaan komt.",
+    "toon": ["grimmig", "satirisch"],
+    "van": 2002, "tot": 2077,
+    "cooldown": 12,
+    "keuzes": [
+      {
+        "tekst": "Neem het geld",
+        "effecten": [
+          { "stat": "geld", "op": "add", "waarde": 60000 },
+          { "stat": "heat", "op": "add", "waarde": 12 }
+        ],
+        "resultaat": "Een sporttas vol briefjes van 500. Ze ruiken naar diesel."
+      },
+      {
+        "tekst": "Neem de helft, op papier",
+        "effecten": [
+          { "stat": "geld", "op": "add", "waarde": 25000 },
+          { "stat": "invloed", "op": "add", "waarde": -4 }
+        ],
+        "resultaat": "Een officiële lening met een rente die niemand zou tekenen. Jij tekent."
+      },
+      {
+        "tekst": "Weiger beleefd",
+        "effecten": [{ "stat": "invloed", "op": "add", "waarde": 4 }],
+        "resultaat": "Hij glimlacht en laat zijn kaartje achter. In de stad gaat het verhaal rond dat jij niet te koop bent."
+      }
+    ]
+  },
+  {
+    "id": "ev_systeemcrash",
+    "titel": "Systeemcrash",
+    "tekst": "Je geautomatiseerde planning slaat op hol en bestelt 40.000 ton koelvloeistof. De vrachtwagens staan al aan de poort.",
+    "toon": ["satirisch", "serieus"],
+    "van": 2002, "tot": 2077,
+    "gewicht": 0.6,
+    "gewicht_mod": "automatiseringsrisico",
+    "keuzes": [
+      {
+        "tekst": "Laat ingenieurs het oplossen (€10.000)",
+        "vereist": [{ "stat": "geld", "min": 10000 }],
+        "effecten": [{ "stat": "geld", "op": "add", "waarde": -10000 }],
+        "resultaat": "Drie nachten overuren. Het systeem draait weer, de bestelling is geannuleerd."
+      },
+      {
+        "tekst": "Schakel terug naar handwerk",
+        "effecten": [
+          { "stat": "tech", "op": "add", "waarde": -4 },
+          { "stat": "druk", "op": "add", "waarde": 6 }
+        ],
+        "resultaat": "Papieren formulieren en faxen, zoals in 1995. Het werkt, maar traag."
+      },
+      {
+        "tekst": "Verkoop de koelvloeistof door op de zwarte markt",
+        "effecten": [
+          { "stat": "geld", "op": "add", "waarde": 8000 },
+          { "stat": "heat", "op": "add", "waarde": 9 }
+        ],
+        "resultaat": "Elke koelkast in de Slums draait nu op jouw vloeistof. De douane wil weten hoe."
+      }
+    ]
+  },
+  {
+    "id": "ev_staking",
+    "titel": "Staking",
+    "tekst": "Je personeel legt het werk neer. Ze willen loonsverhoging, een vakbond en een excuus voor de vorige kerstborrel.",
+    "toon": ["grimmig", "serieus", "satirisch"],
+    "van": 2002, "tot": 2077,
+    "voorwaarde": [{ "stat": "personeel", "min": 12 }],
+    "keuzes": [
+      {
+        "tekst": "Geef toe (€14.000)",
+        "vereist": [{ "stat": "geld", "min": 14000 }],
+        "effecten": [
+          { "stat": "geld", "op": "add", "waarde": -14000 },
+          { "stat": "invloed", "op": "add", "waarde": 2 }
+        ],
+        "resultaat": "Applaus in de kantine. Je CFO kijkt je aan alsof je gek bent."
+      },
+      {
+        "tekst": "Ontsla de leiders",
+        "effecten": [
+          { "stat": "personeel", "op": "add", "waarde": -4 },
+          { "stat": "heat", "op": "add", "waarde": 6 }
+        ],
+        "resultaat": "De staking stopt. Het stil worden op de werkvloer is erger dan het lawaai."
+      },
+      {
+        "tekst": "Laat de pers het verhaal draaien",
+        "vereist": [{ "stat": "invloed", "min": 10 }],
+        "effecten": [
+          { "stat": "invloed", "op": "add", "waarde": -10 },
+          {
+            "kans": 0.6,
+            "dan": [],
+            "dan_tekst": "Het nieuws noemt de stakers 'luie saboteurs'. Ze gaan beschaamd weer aan het werk.",
+            "anders": [{ "stat": "personeel", "op": "add", "waarde": -3 }],
+            "anders_tekst": "Niemand gelooft je versie. Drie mensen nemen ontslag uit protest."
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "ev_verkiezingen",
+    "titel": "Gemeenteraadsverkiezingen",
+    "tekst": "Nova Antwerpa kiest een nieuwe gemeenteraad. Twee kandidaten bellen je dezelfde avond, allebei met hetzelfde voorstel.",
+    "toon": ["grimmig", "serieus", "satirisch"],
+    "van": 2002, "tot": 2077,
+    "cooldown": 16,
+    "voorwaarde": [{ "beurt_min": 6 }],
+    "keuzes": [
+      {
+        "tekst": "Steun de hervormer (€15.000)",
+        "vereist": [{ "stat": "geld", "min": 15000 }],
+        "effecten": [
+          { "stat": "geld", "op": "add", "waarde": -15000 },
+          {
+            "kans": 0.45,
+            "dan": [
+              { "stat": "invloed", "op": "add", "waarde": 22 },
+              { "stat": "heat", "op": "add", "waarde": -10 }
+            ],
+            "dan_tekst": "Ze wint met 300 stemmen verschil. Haar eerste telefoontje is naar jou.",
+            "anders": [{ "stat": "invloed", "op": "add", "waarde": -5 }],
+            "anders_tekst": "Ze verliest. De oude garde weet precies wie haar campagne betaalde."
+          }
+        ]
+      },
+      {
+        "tekst": "Steun de oude garde (€10.000)",
+        "vereist": [{ "stat": "geld", "min": 10000 }],
+        "effecten": [
+          { "stat": "geld", "op": "add", "waarde": -10000 },
+          { "stat": "invloed", "op": "add", "waarde": 10 },
+          { "stat": "heat", "op": "add", "waarde": 3 }
+        ],
+        "resultaat": "Ze winnen, zoals altijd. Je krijgt een plaats aan hun tafel, aan het uiteinde."
+      },
+      {
+        "tekst": "Blijf neutraal",
+        "effecten": [],
+        "resultaat": "Je kijkt de uitslag op tv. Allebei de kandidaten onthouden dat je niet belde."
+      }
+    ]
+  }
+]

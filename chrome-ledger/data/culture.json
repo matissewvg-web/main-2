@@ -1,0 +1,30 @@
+[
+  {
+    "id": "winst_ethiek",
+    "links": "Winst",
+    "rechts": "Ethiek",
+    "uitleg": "Winst brengt geld en aandacht van de politie. Ethiek kost inkomen maar maakt je geloofwaardig.",
+    "per_punt": { "inkomen": -0.02, "heat_gain": -0.03, "invloed_gain": 0.02 }
+  },
+  {
+    "id": "geheim_pr",
+    "links": "Geheimhouding",
+    "rechts": "PR",
+    "uitleg": "Geheimhouding houdt je uit het nieuws. PR geeft invloed, maar iedereen kijkt naar je.",
+    "per_punt": { "heat_gain": 0.03, "invloed_gain": 0.04 }
+  },
+  {
+    "id": "centraal_decentraal",
+    "links": "Centraal",
+    "rechts": "Decentraal",
+    "uitleg": "Centraal is goedkoop en snel, maar mensen lopen weg. Decentraal kost meer, maar personeel blijft.",
+    "per_punt": { "actie_kost": 0.02, "verloop": -0.08 }
+  },
+  {
+    "id": "mens_machine",
+    "links": "Mens",
+    "rechts": "Machine",
+    "uitleg": "Machines zijn goedkoper dan lonen. Tot ze crashen.",
+    "per_punt": { "personeel_kost": -0.04, "automatiseringsrisico": 0.2 }
+  }
+]

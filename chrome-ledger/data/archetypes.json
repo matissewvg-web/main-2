@@ -1,0 +1,26 @@
+[
+  {
+    "id": "exmilitair",
+    "naam": "Ex-militair",
+    "beschrijving": "Twintig jaar NAVO-logistiek in Zeebrugge. Je weet hoe je een operatie stil houdt en hoe je mensen laat blijven.",
+    "start": [{ "stat": "personeel", "op": "add", "waarde": 4 }],
+    "mods": { "kans.sabotage": 0.15, "verloop": -0.3 }
+  },
+  {
+    "id": "hacker",
+    "naam": "Hacker",
+    "beschrijving": "Je kraakte in 1999 de servers van de haven voor de lol. Nu doe je het voor geld, en de politie kent je bijnaam.",
+    "start": [{ "stat": "tech", "op": "add", "waarde": 10 }],
+    "mods": { "tech_gain": 0.25, "heat_gain": 0.1 }
+  },
+  {
+    "id": "erfgenaam",
+    "naam": "Erfgenaam",
+    "beschrijving": "Diamantgeld van grootvader, een villa in de Villawijk en een achternaam die deuren opent. Je personeel weet dat je nooit een dag gewerkt hebt.",
+    "start": [
+      { "stat": "geld", "op": "add", "waarde": 50000 },
+      { "stat": "invloed", "op": "add", "waarde": 10 }
+    ],
+    "mods": { "personeel_kost": 0.1 }
+  }
+]

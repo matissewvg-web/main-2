@@ -4,8 +4,10 @@ on:
   push:
     branches: ['**']
     # Studyover has its own build (studyover-windows.yml).
+    # Chrome Ledger is a separate browser game, not part of the app.
     paths-ignore:
       - 'studyover/**'
+      - 'chrome-ledger/**'
       - '.github/workflows/studyover-windows.yml'
   workflow_dispatch:
 

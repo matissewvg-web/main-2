@@ -1,0 +1,50 @@
+[
+  {
+    "id": "oude_connecties",
+    "naam": "Oude connecties",
+    "kost": 2,
+    "beschrijving": "Je oom zat dertig jaar in de gemeenteraad. Mensen nemen nog altijd de telefoon op.",
+    "start": [{ "stat": "invloed", "op": "add", "waarde": 15 }],
+    "mods": { "invloed_gain": 0.15 }
+  },
+  {
+    "id": "zwart_fonds",
+    "naam": "Zwart fonds",
+    "kost": 2,
+    "beschrijving": "Een rekening in Luxemburg waar niemand van weet.",
+    "start": [{ "stat": "geld", "op": "add", "waarde": 40000 }],
+    "mods": {}
+  },
+  {
+    "id": "advocaten",
+    "naam": "Huisadvocaten",
+    "kost": 2,
+    "beschrijving": "Een kantoor aan de Meir dat alles laat verdwijnen in procedures.",
+    "start": [],
+    "mods": { "heat_gain": -0.15 }
+  },
+  {
+    "id": "datakluis",
+    "naam": "Datakluis",
+    "kost": 1,
+    "beschrijving": "Een kelder vol gestolen onderzoek uit de jaren negentig.",
+    "start": [{ "stat": "tech", "op": "add", "waarde": 8 }],
+    "mods": {}
+  },
+  {
+    "id": "loyale_kern",
+    "naam": "Loyale kern",
+    "kost": 1,
+    "beschrijving": "Een handvol mensen dat met je meegaat, wat er ook gebeurt.",
+    "start": [{ "stat": "personeel", "op": "add", "waarde": 3 }],
+    "mods": { "verloop": -0.5 }
+  },
+  {
+    "id": "stille_partner",
+    "naam": "Stille partner",
+    "kost": 3,
+    "beschrijving": "Een investeerder die nooit vragen stelt en altijd klanten aanbrengt.",
+    "start": [],
+    "mods": { "inkomen": 0.12 }
+  }
+]

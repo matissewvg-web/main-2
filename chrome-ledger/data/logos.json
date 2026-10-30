@@ -1,0 +1,10 @@
+{
+  "vormen": [
+    { "id": "cirkel", "naam": "Cirkel" },
+    { "id": "vierkant", "naam": "Vierkant" },
+    { "id": "zeshoek", "naam": "Zeshoek" },
+    { "id": "ruit", "naam": "Ruit" },
+    { "id": "schild", "naam": "Schild" }
+  ],
+  "symbolen": ["⚡", "☠", "◆", "✦", "☢", "⚙", "✚", "◉", "▲", "♜", "⚓", "☯", "✪", "⌘", "Ω", "Σ", "Ψ", "∞", "¥", "☣"]
+}

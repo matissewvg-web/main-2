@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="nl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Chrome Ledger</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="app"><p class="laden">Laden…</p></div>
+  <script>
+    // ES-modules en fetch() werken niet via file://. Zeg dat meteen.
+    if (location.protocol === 'file:') {
+      document.getElementById('app').innerHTML =
+        '<div class="menu"><h1 class="titel">CHROME<span>LEDGER</span></h1>' +
+        '<p class="fout">Dit spel moet via een lokale server draaien, niet door index.html te dubbelklikken.</p>' +
+        '<p>Open een terminal in deze map en typ:</p><pre>python3 -m http.server</pre>' +
+        '<p>Open daarna <strong>http://localhost:8000</strong>.</p></div>';
+    }
+  </script>
+  <script type="module" src="src/main.js"></script>
+</body>
+</html>

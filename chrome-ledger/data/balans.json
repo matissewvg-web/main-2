@@ -1,0 +1,40 @@
+{
+  "start": { "geld": 60000, "invloed": 10, "tech": 5, "heat": 5, "personeel": 8, "omvang": 0, "druk": 10 },
+  "startjaar": 2002,
+  "beurten_per_jaar": 4,
+  "actiepunten": 3,
+  "perkpunten": 5,
+  "grenzen": {
+    "invloed": [0, 100],
+    "druk": [0, 100],
+    "tech": [0, 100],
+    "heat": [0, null],
+    "personeel": [0, null],
+    "omvang": [0, null],
+    "geld": [null, null]
+  },
+
+  "loon": 1000,
+  "inkomen_per_omvang": 9000,
+  "onderhoud_per_omvang": 1500,
+  "personeel_basis": 6,
+  "personeel_per_omvang": 3,
+  "tech_inkomen": 0.01,
+
+  "druk_groei": 2,
+  "druk_groei_per_omvang": 0.25,
+  "druk_inkomen": 0.5,
+
+  "heat_afkoeling": 3,
+  "heat_afkoeling_per_invloed": 0.04,
+  "heat_per_omvang": 0.4,
+  "invloed_verval": 1,
+  "verloop": 0.03,
+
+  "heat_max": 100,
+  "schuld_beurten": 2,
+  "heat_waarschuwing": 75,
+
+  "eventkans": 0.65,
+  "event_cooldown": 8
+}

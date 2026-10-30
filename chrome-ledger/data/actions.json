@@ -1,0 +1,75 @@
+[
+  {
+    "id": "onderzoek",
+    "naam": "Onderzoek",
+    "icoon": "⌬",
+    "beschrijving": "Zet je labo's aan het werk. Elk punt tech verhoogt je inkomen met 1% en drukt de concurrentie een beetje terug.",
+    "ap": 1,
+    "kost": { "geld": 5000 },
+    "schaal": { "tech": { "geld": 0.04 } },
+    "effecten": [
+      { "stat": "tech", "op": "add", "waarde": { "min": 3, "max": 6 } },
+      { "stat": "druk", "op": "add", "waarde": -3 }
+    ]
+  },
+  {
+    "id": "expanderen",
+    "naam": "Expanderen",
+    "icoon": "⬈",
+    "beschrijving": "Open een nieuwe vestiging. Meer omzet, maar je hebt extra personeel nodig, het kost onderhoud en een groter bedrijf trekt meer aandacht.",
+    "ap": 1,
+    "kost": { "geld": 12000, "invloed": 6 },
+    "schaal": { "omvang": { "geld": 0.3 } },
+    "effecten": [
+      { "stat": "omvang", "op": "add", "waarde": 1 },
+      { "stat": "heat", "op": "add", "waarde": 5 }
+    ]
+  },
+  {
+    "id": "sabotage",
+    "naam": "Sabotage",
+    "icoon": "☠",
+    "beschrijving": "Laat de concurrentie een slechte week hebben. Verlaagt de marktdruk sterk, maar als het misloopt weet de politie wie het was.",
+    "ap": 1,
+    "kost": { "geld": 7000 },
+    "effecten": [
+      {
+        "kans": 0.6,
+        "kans_mod": "kans.sabotage",
+        "dan": [
+          { "stat": "druk", "op": "add", "waarde": { "min": -25, "max": -15 } },
+          { "stat": "heat", "op": "add", "waarde": 5 }
+        ],
+        "dan_tekst": "Een brand in een magazijn van de concurrent. Niemand weet hoe het begon.",
+        "anders": [
+          { "stat": "heat", "op": "add", "waarde": { "min": 15, "max": 22 } },
+          { "stat": "invloed", "op": "add", "waarde": -5 }
+        ],
+        "anders_tekst": "Je mannetje is opgepakt met een jerrycan in zijn handen. Hij praat."
+      }
+    ]
+  },
+  {
+    "id": "lobbyen",
+    "naam": "Lobbyen",
+    "icoon": "☏",
+    "beschrijving": "Dineren met schepenen en commissarissen. Geeft invloed en laat de heat wat zakken.",
+    "ap": 1,
+    "kost": { "geld": 6000 },
+    "effecten": [
+      { "stat": "invloed", "op": "add", "waarde": { "min": 6, "max": 10 } },
+      { "stat": "heat", "op": "add", "waarde": -6 }
+    ]
+  },
+  {
+    "id": "aanwerven",
+    "naam": "Aanwerven",
+    "icoon": "✚",
+    "beschrijving": "Haal nieuwe mensen binnen. Zonder genoeg personeel draaien je vestigingen op halve kracht, maar elk personeelslid kost loon per beurt.",
+    "ap": 1,
+    "kost": { "geld": 3000 },
+    "effecten": [
+      { "stat": "personeel", "op": "add", "waarde": { "min": 3, "max": 5 } }
+    ]
+  }
+]
