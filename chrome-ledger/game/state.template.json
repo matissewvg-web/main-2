@@ -1,0 +1,52 @@
+{
+  "setup_done": false,
+  "status": "actief",
+  "date": {"year": 2004, "month": 1},
+  "player": {
+    "corp_name": "",
+    "title": "CEO",
+    "motto": "",
+    "background": "",
+    "doctrine": "",
+    "difficulty": "Realistisch",
+    "home_district": ""
+  },
+  "cash": 100,
+  "debt": 0,
+  "interest_rate": 0.08,
+  "heat": 5,
+  "reputation": 30,
+  "morale": 60,
+  "staff": {"count": 20, "avg_salary": 30},
+  "culture": {
+    "slogans": [],
+    "layoff_policy": "normal",
+    "bonus_cost": 0,
+    "morale_drift": 0,
+    "heat_decay": 2,
+    "ethics_rules": []
+  },
+  "divisions": [],
+  "projects": [],
+  "districts": [
+    {"id": "A", "name": "Haven", "control": "neutral", "income": 6, "upkeep": 2, "lore": ""},
+    {"id": "B", "name": "Staal", "control": "neutral", "income": 7, "upkeep": 3, "lore": ""},
+    {"id": "C", "name": "Glas", "control": "neutral", "income": 10, "upkeep": 6, "lore": ""},
+    {"id": "D", "name": "Oude Stad", "control": "neutral", "income": 5, "upkeep": 2, "lore": ""},
+    {"id": "E", "name": "De Kruising", "control": "neutral", "income": 8, "upkeep": 3, "lore": ""},
+    {"id": "F", "name": "Neon Mile", "control": "neutral", "income": 8, "upkeep": 4, "lore": ""},
+    {"id": "G", "name": "Roest", "control": "neutral", "income": 3, "upkeep": 1, "lore": ""},
+    {"id": "H", "name": "Campus", "control": "neutral", "income": 6, "upkeep": 3, "lore": ""}
+  ],
+  "rivals": [
+    {"name": "Okonkwo-Brandt Holdings", "ceo": "Adaeze Brandt", "cash": 400, "aggression": 0.4, "memory": [], "hq": "C", "sector": "Financieel"},
+    {"name": "Vanderhoeven Logistics", "ceo": "Pieter Vanderhoeven", "cash": 250, "aggression": 0.3, "memory": [], "hq": "A", "sector": "Logistiek"},
+    {"name": "Saito Neurosystems", "ceo": "Haruki Saito", "cash": 500, "aggression": 0.6, "memory": [], "hq": "H", "sector": "Cyberware"}
+  ],
+  "npcs": [
+    {"name": "Marta Delcourt", "role": "CFO", "loyalty": 70, "ambition": 55, "secret": "Houdt een tweede set boeken bij 'voor de zekerheid'."},
+    {"name": "Jorik Maes", "role": "Head of Security", "loyalty": 60, "ambition": 40, "secret": "Heeft een schuld bij de maffia van Roest."},
+    {"name": "Lien Verstraeten", "role": "PR", "loyalty": 50, "ambition": 75, "secret": "Lekt af en toe aan een journalist."}
+  ],
+  "flags": {}
+}
