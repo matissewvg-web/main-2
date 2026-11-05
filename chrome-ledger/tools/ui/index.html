@@ -2,8 +2,15 @@
 <html lang="nl">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Chrome Ledger</title>
+<meta name="theme-color" content="#06020e">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Chrome Ledger">
+<link rel="apple-touch-icon" href="/icon.png">
+<link rel="icon" href="/icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;800&family=Rajdhani:wght@500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
@@ -299,7 +306,15 @@ pre.rolls{font:13px/1.6 var(--mono);white-space:pre-wrap;color:var(--green);marg
   .back{display:inline-block;margin-bottom:10px}
   .mapwrap{grid-template-columns:1fr}
   .setup .hero{font-size:24px}
-  .toast{bottom:46px}
+  .toast{bottom:46px;right:12px;left:12px;max-width:none}
+  .toast div{font-size:13px}
+  .ticker .lbl{font-size:10px;padding:0 18px 0 10px;letter-spacing:.1em}
+}
+/* iPhone: notch en home-balk */
+@supports (padding:max(0px)){
+  .top{padding-top:max(10px,env(safe-area-inset-top));padding-left:max(18px,env(safe-area-inset-left));padding-right:max(18px,env(safe-area-inset-right))}
+  .ticker{height:calc(34px + env(safe-area-inset-bottom));padding-bottom:env(safe-area-inset-bottom)}
+  .app{height:calc(100dvh - 34px - env(safe-area-inset-bottom))}
 }
 @media (prefers-reduced-motion:reduce){
   *,*::before,*::after{animation:none!important;transition:none!important}

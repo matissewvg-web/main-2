@@ -7,6 +7,15 @@ Tekst-simulatie: je runt een corporatie in de cyberpunkstad Meridian Bay, maand 
 2. **Windows:** dubbelklik `Start Chrome Ledger.bat`. **Mac/Linux:** `./start.sh`. Of in een terminal: `python tools/ui.py`.
 3. Je browser opent het spel op `http://localhost:8765`. Het draait alleen op je eigen pc. Sluit het venster met de zwarte terminal om te stoppen.
 
+### Op je gsm (iPhone of Android)
+Het spel draait op je pc; je gsm is het scherm. Je pc en gsm moeten op **dezelfde wifi** zitten.
+1. Dubbelklik `Start voor gsm.bat` (Mac/Linux: `python3 tools/ui.py --gsm`).
+2. Het venster toont een link zoals `http://192.168.1.20:8765/?k=3fa91c`. Open die in Safari of Chrome op je gsm.
+3. iPhone: tik op de deel-knop en kies **Zet op beginscherm**. Dan heb je een app-icoon en speelt het schermvullend.
+4. Windows vraagt de eerste keer om netwerktoegang: kies **Privénetwerken**.
+
+De code in de link zorgt dat alleen jij kunt spelen, niet iemand anders op dezelfde wifi. Laat de pc aan en het venster open zolang je speelt.
+
 De eerste keer richt je je bedrijf op in het scherm. Daarna:
 - **Inbox**: lezen, archiveren, zoeken, en reageren op een mail. Een reactie gaat als opdracht naar de GM.
 - **Overzicht**: het laatste maandrapport en besluiten die op je wachten (Mara Vonk, het nomadenpact, een overnamebod).

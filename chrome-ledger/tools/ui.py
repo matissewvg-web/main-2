@@ -15,6 +15,8 @@ import world
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 INDEX = os.path.join(HERE, "ui", "index.html")
+ICON = os.path.join(HERE, "ui", "icon.png")
+LAN_KEY = None  # gezet in --gsm modus: alleen wie de link met code heeft, mag spelen
 ORDERS = os.path.join(sim.G, "opdrachten.json")
 LOCK = threading.Lock()
 
@@ -527,13 +529,33 @@ class Handler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(data)
 
+    def allowed(self, q=None):
+        if not LAN_KEY or self.client_address[0] in ("127.0.0.1", "::1"):
+            return True
+        if q and q.get("k") == LAN_KEY:
+            return True
+        return f"cl={LAN_KEY}" in (self.headers.get("Cookie") or "")
+
     def do_GET(self):
         u = urlparse(self.path)
         q = {k: v[0] for k, v in parse_qs(u.query).items()}
         try:
+            if u.path == "/icon.png" and os.path.exists(ICON):
+                with open(ICON, "rb") as f:
+                    return self.send(200, f.read(), "image/png")
+            if not self.allowed(q):
+                return self.send(403, "Geen toegang. Gebruik de link met code die op je pc staat.".encode("utf-8"), "text/plain; charset=utf-8")
             if u.path in ("/", "/index.html"):
                 with open(INDEX, "rb") as f:
-                    return self.send(200, f.read(), "text/html; charset=utf-8")
+                    data = f.read()
+                self.send_response(200)
+                self.send_header("Content-Type", "text/html; charset=utf-8")
+                self.send_header("Content-Length", str(len(data)))
+                self.send_header("Cache-Control", "no-store")
+                if LAN_KEY and q.get("k") == LAN_KEY:
+                    self.send_header("Set-Cookie", f"cl={LAN_KEY}; Max-Age=31536000; Path=/; SameSite=Strict")
+                self.end_headers()
+                return self.wfile.write(data)
             if u.path == "/api/state":
                 with LOCK:
                     return self.send(200, public_state())
@@ -551,6 +573,8 @@ class Handler(BaseHTTPRequestHandler):
         fn = POST.get(u.path)
         if not fn:
             return self.send(404, {"ok": False, "bericht": "Niet gevonden"})
+        if not self.allowed():
+            return self.send(403, {"ok": False, "bericht": "Geen toegang"})
         # alleen verzoeken van de eigen pagina (geen andere sites die je spel bewerken)
         origin = self.headers.get("Origin")
         if origin and urlparse(origin).netloc != self.headers.get("Host"):
@@ -566,9 +590,41 @@ class Handler(BaseHTTPRequestHandler):
             self.send(500, {"ok": False, "bericht": f"Fout: {ex}"})
 
 
+def lan_ip():
+    import socket
+    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    try:
+        s.connect(("10.255.255.255", 1))  # er wordt niets verstuurd; zo vind je het eigen netwerkadres
+        return s.getsockname()[0]
+    except Exception:
+        return None
+    finally:
+        s.close()
+
+
+def load_key():
+    """Vaste toegangscode per spelmap, zodat de link op je gsm blijft werken."""
+    path = os.path.join(sim.G, ".gsm_code")
+    try:
+        with open(path, encoding="utf-8") as f:
+            k = f.read().strip()
+            if k:
+                return k
+    except OSError:
+        pass
+    k = "%06x" % random.SystemRandom().getrandbits(24)
+    with open(path, "w", encoding="utf-8") as f:
+        f.write(k)
+    return k
+
+
 def main():
+    global LAN_KEY
     a = sys.argv[1:]
-    host = a[a.index("--host") + 1] if "--host" in a else "127.0.0.1"
+    gsm = "--gsm" in a
+    host = a[a.index("--host") + 1] if "--host" in a else ("0.0.0.0" if gsm else "127.0.0.1")
+    if gsm:
+        LAN_KEY = load_key()
     port = int(a[a.index("--port") + 1]) if "--port" in a else 8765
     if not os.path.exists(sim.STATE):
         run_cli(sim.nieuw)
@@ -583,6 +639,13 @@ def main():
         return
     url = f"http://{'localhost' if host in ('127.0.0.1', '0.0.0.0') else host}:{p}/"
     print(f"CHROME LEDGER draait op {url}  (stoppen: Ctrl+C)")
+    if gsm:
+        ip = lan_ip()
+        print("\n  OP JE GSM (zelfde wifi als deze pc), open in Safari of Chrome:\n")
+        print(f"     http://{ip or '<ip-van-deze-pc>'}:{p}/?k={LAN_KEY}\n")
+        print("  iPhone: deel-knop > 'Zet op beginscherm' voor een app-icoon.")
+        print("  Laat dit venster open en de pc aan zolang je speelt.")
+        print("  Windows vraagt misschien om toegang: kies 'Privénetwerken'.\n")
     if "--no-browser" not in a:
         threading.Timer(0.6, lambda: webbrowser.open(url)).start()
     try:
