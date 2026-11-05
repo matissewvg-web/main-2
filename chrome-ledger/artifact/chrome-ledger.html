@@ -466,7 +466,11 @@ function migrate(s){
   }
   for (const r of s.rivals){ r.sector ??= CH(SECTORS); r.memory ??= []; initRival(r); }
   s.defensie ??= 0; s.aanbiedingen ??= [];
-  for (const r of s.rivals){ const d = s.districts.find(x => x.id === r.hq); if (d && d.control === "neutral") d.control = r.name; }
+  for (const r of s.rivals){
+    let d = s.districts.find(x => x.id === r.hq);
+    if (d && d.control !== "neutral" && d.control !== r.name){ const alt = s.districts.filter(x => x.control === "neutral"); d = alt.length ? alt[Math.floor(R() * alt.length)] : null; r.hq = d ? d.id : null; }
+    if (d && d.control === "neutral") d.control = r.name;
+  }
   for (const n of s.npcs){ n.loyalty ??= 50; n.ambition ??= 50; }
   for (const i of s.invoices){ i.id ??= hex8(); i.auto_pay ??= true; i.overdue ??= 0; }
   return s;
