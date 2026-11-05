@@ -1,0 +1,1898 @@
+<title>Chrome Ledger</title>
+<meta name="theme-color" content="#06020e">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;800&family=Rajdhani:wght@500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<style>
+/* layout: één scherm-app; neon-HUD op diep violet, vaste nieuwsband onderaan */
+:root{
+  color-scheme:dark;
+  --bg:#06020e; --panel:rgba(17,9,34,.86); --panel2:#1b0f36; --panel3:#241449; --line:#2c1b52; --line2:#4b2d86;
+  --text:#ece6ff; --muted:#a297cc; --dim:#6d6299;
+  --cyan:#05d9e8; --cyan-d:rgba(5,217,232,.12); --mag:#ff2a6d; --mag-d:rgba(255,42,109,.13);
+  --amber:#ffb400; --amber-d:rgba(255,180,0,.10); --red:#ff2a6d; --red-d:rgba(255,42,109,.14);
+  --violet:#b967ff; --green:#2bff9a;
+  --mono:"Share Tech Mono",ui-monospace,"Cascadia Mono",Consolas,Menlo,monospace;
+  --sans:"Rajdhani","Segoe UI",system-ui,sans-serif;
+  --disp:"Orbitron","Rajdhani","Segoe UI",sans-serif;
+  --cut:12px; --r:0px;
+  --glow-c:0 0 6px rgba(5,217,232,.55),0 0 18px rgba(5,217,232,.25);
+  --glow-m:0 0 6px rgba(255,42,109,.6),0 0 20px rgba(255,42,109,.3);
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%}
+html{background:#06020e}
+body{color:var(--text);font:500 16px/1.45 var(--sans);letter-spacing:.01em;
+  background:
+    radial-gradient(ellipse 60% 50% at 8% -10%,rgba(255,42,109,.16),transparent 60%),
+    radial-gradient(ellipse 55% 45% at 105% 110%,rgba(5,217,232,.13),transparent 60%),
+    radial-gradient(ellipse 40% 30% at 70% 20%,rgba(185,103,255,.07),transparent 70%),
+    linear-gradient(rgba(124,77,255,.06) 1px,transparent 1px) 0 0/100% 34px,
+    linear-gradient(90deg,rgba(124,77,255,.06) 1px,transparent 1px) 0 0/34px 100%,
+    var(--bg);
+  background-attachment:fixed}
+::selection{background:var(--mag);color:#fff}
+button,input,select,textarea{font:inherit;color:inherit}
+a{color:var(--cyan)}
+.mono{font-family:var(--mono)}
+.muted{color:var(--muted)} .dim{color:var(--dim)}
+::-webkit-scrollbar{width:9px;height:9px} ::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--line2);border:2px solid var(--bg)} ::-webkit-scrollbar-thumb:hover{background:var(--violet)}
+
+/* ---- overlays: scanlines, vignette, ruis ---- */
+.fx{position:fixed;inset:0;pointer-events:none;z-index:90}
+.fx.scan{background:repeating-linear-gradient(0deg,rgba(0,0,0,.15) 0 1px,transparent 1px 3px);mix-blend-mode:multiply}
+.fx.vig{background:radial-gradient(ellipse at center,transparent 55%,rgba(0,0,0,.55) 100%)}
+.fx.roll{background:linear-gradient(180deg,transparent 0,rgba(5,217,232,.05) 48%,rgba(255,255,255,.06) 50%,transparent 52%);background-size:100% 260px;background-repeat:no-repeat;animation:roll 9s linear infinite;opacity:.6}
+@keyframes roll{from{background-position:0 -260px}to{background-position:0 calc(100vh + 260px)}}
+
+/* ---- afgeschuinde panelen ---- */
+.cut{clip-path:polygon(0 0,calc(100% - var(--cut)) 0,100% var(--cut),100% 100%,var(--cut) 100%,0 calc(100% - var(--cut)))}
+.card,.stat,.date,.btn,.opt,.inbox,.toast div,.modal .box,svg.map,.chip,input[type=text],input[type=number],select,textarea{
+  clip-path:polygon(0 0,calc(100% - var(--c,8px)) 0,100% var(--c,8px),100% 100%,var(--c,8px) 100%,0 calc(100% - var(--c,8px)))}
+.card,.inbox,svg.map,.modal .box{--c:var(--cut)}
+
+/* ---- layout ---- */
+.app{display:grid;grid-template-columns:220px minmax(0,1fr);grid-template-rows:auto 1fr;height:calc(100% - 34px)}
+.top{grid-column:1/-1;display:flex;align-items:center;gap:16px;padding:10px 18px;position:relative;
+  background:linear-gradient(180deg,rgba(27,15,54,.95),rgba(10,5,22,.92));border-bottom:1px solid var(--line2)}
+.top::after{content:"";position:absolute;left:0;right:0;bottom:-1px;height:1px;background:linear-gradient(90deg,var(--mag),transparent 30%,transparent 70%,var(--cyan));opacity:.9}
+.brand{font-family:var(--disp);font-weight:800;letter-spacing:.16em;color:#fff;font-size:15px;white-space:nowrap;line-height:1.1}
+.brand b{color:var(--mag);text-shadow:var(--glow-m);font-weight:800}
+.brand .neon{color:var(--cyan);text-shadow:var(--glow-c);animation:flicker 7s infinite}
+.brand small{display:block;color:var(--muted);letter-spacing:.12em;font:600 12px/1.4 var(--sans);text-transform:uppercase;margin-top:4px;max-width:230px;overflow:hidden;text-overflow:ellipsis}
+@keyframes flicker{0%,18%,22%,25%,53%,57%,100%{opacity:1}20%,24%,55%{opacity:.35}}
+.date{font-family:var(--mono);font-size:14px;padding:6px 12px;background:var(--panel2);color:var(--cyan);border-left:2px solid var(--cyan);white-space:nowrap;letter-spacing:.08em}
+.date::before{content:"// ";color:var(--dim)}
+.stats{display:flex;gap:8px;flex:1;min-width:0;overflow-x:auto;padding-bottom:2px}
+.stat{min-width:104px;padding:5px 10px 6px;background:rgba(27,15,54,.7);border-top:1px solid var(--line2)}
+.stat .k{font:700 11px/1.2 var(--sans);color:var(--muted);text-transform:uppercase;letter-spacing:.16em}
+.stat .v{font-family:var(--mono);font-size:17px;color:#fff;text-shadow:0 0 8px rgba(255,255,255,.15)}
+.bar{height:5px;margin-top:4px;background:repeating-linear-gradient(90deg,rgba(124,77,255,.22) 0 5px,transparent 5px 7px)}
+.bar i{display:block;height:100%;background:var(--cyan);box-shadow:var(--glow-c);
+  -webkit-mask:repeating-linear-gradient(90deg,#000 0 5px,transparent 5px 7px);mask:repeating-linear-gradient(90deg,#000 0 5px,transparent 5px 7px)}
+.bar.heat i{background:linear-gradient(90deg,var(--amber),var(--mag));box-shadow:var(--glow-m)}
+
+/* ---- knoppen ---- */
+.btn{position:relative;background:var(--panel2);border:0;box-shadow:inset 0 0 0 1px var(--line2);padding:7px 14px;cursor:pointer;
+  font-weight:700;letter-spacing:.06em;text-transform:uppercase;font-size:13.5px;transition:background .12s,box-shadow .12s,color .12s;white-space:nowrap}
+.btn:hover{box-shadow:inset 0 0 0 1px var(--cyan),0 0 14px rgba(5,217,232,.25);color:#fff;background:var(--panel3)}
+.btn:active{transform:translateY(1px)}
+.btn:disabled{opacity:.4;cursor:not-allowed;box-shadow:inset 0 0 0 1px var(--line)}
+.btn.primary{background:var(--cyan);color:#03141a;box-shadow:0 0 16px rgba(5,217,232,.35)}
+.btn.primary:hover{background:#5ff0fa;color:#03141a}
+.btn.warn{box-shadow:inset 0 0 0 1px var(--amber);color:var(--amber)}
+.btn.warn:hover{background:var(--amber);color:#1b1000}
+.btn.danger{box-shadow:inset 0 0 0 1px var(--mag);color:var(--mag)}
+.btn.danger:hover{background:var(--mag);color:#fff}
+.btn.sm{padding:4px 10px;font-size:12.5px}
+.btn.next{--c:10px;font-family:var(--disp);font-weight:800;letter-spacing:.14em;padding:11px 20px;font-size:14px;
+  background:var(--mag);color:#fff;box-shadow:0 0 22px rgba(255,42,109,.45);text-shadow:0 0 6px rgba(255,255,255,.5)}
+.btn.next:hover{background:#ff4f88;color:#fff;animation:jit .25s steps(2) 2}
+@keyframes jit{0%{transform:translate(0)}50%{transform:translate(-1px,1px)}100%{transform:translate(1px,0)}}
+
+/* ---- navigatie ---- */
+nav{border-right:1px solid var(--line);padding:14px 10px;display:flex;flex-direction:column;gap:3px;overflow-y:auto;background:rgba(8,3,18,.6)}
+nav button{display:flex;justify-content:space-between;align-items:center;width:100%;text-align:left;background:none;border:0;padding:9px 12px;
+  cursor:pointer;color:var(--muted);font-weight:700;letter-spacing:.12em;text-transform:uppercase;font-size:14px;position:relative}
+nav button .ix{font:12px var(--mono);color:var(--dim);margin-right:9px;letter-spacing:0}
+nav button:hover{color:#fff;background:linear-gradient(90deg,rgba(5,217,232,.10),transparent)}
+nav button.on{color:#fff;background:linear-gradient(90deg,rgba(255,42,109,.22),transparent 85%)}
+nav button.on::before{content:"";position:absolute;left:0;top:4px;bottom:4px;width:3px;background:var(--mag);box-shadow:var(--glow-m)}
+nav button.on .ix{color:var(--mag)}
+nav .sep{height:1px;background:linear-gradient(90deg,var(--line2),transparent);margin:10px 6px}
+nav .sys{margin-top:auto;padding:10px 12px 2px;font:12px/1.6 var(--mono);color:var(--dim)}
+nav .sys .on{color:var(--green)}
+nav .sys button{all:unset;cursor:pointer;color:var(--muted);text-decoration:underline dotted}
+.badge{font:700 12px/1.5 var(--mono);background:var(--cyan);color:#03141a;padding:0 7px;box-shadow:var(--glow-c);letter-spacing:0}
+.badge.amber{background:var(--amber);box-shadow:0 0 10px rgba(255,180,0,.5);color:#1b1000}
+
+main{overflow-y:auto;padding:22px 26px 40px;min-width:0}
+h1{font-family:var(--disp);font-weight:800;font-size:20px;letter-spacing:.2em;text-transform:uppercase;margin:0 0 18px;color:#fff;position:relative;display:inline-block}
+main h1::after{content:"";display:block;height:2px;width:60px;margin-top:8px;background:var(--mag);box-shadow:var(--glow-m)}
+h2{font:700 13px/1.3 var(--sans);text-transform:uppercase;letter-spacing:.22em;color:var(--cyan);margin:24px 0 10px;display:flex;align-items:center;gap:10px}
+h2::before{content:"▚";color:var(--mag);font-size:11px}
+h2::after{content:"";flex:1;height:1px;background:linear-gradient(90deg,var(--line2),transparent)}
+.glitch{position:relative}
+.glitch::before,.glitch::after{content:attr(data-text);position:absolute;left:0;top:0;width:100%;pointer-events:none;opacity:0}
+.glitch::before{color:var(--mag);animation:gl1 4.2s infinite steps(1)}
+.glitch::after{color:var(--cyan);animation:gl2 4.2s infinite steps(1)}
+@keyframes gl1{0%,90%,100%{opacity:0;transform:none;clip-path:inset(0 0 0 0)}91%{opacity:.9;transform:translate(3px,-1px);clip-path:inset(10% 0 55% 0)}93%{opacity:.9;transform:translate(-3px,1px);clip-path:inset(60% 0 5% 0)}95%{opacity:0}}
+@keyframes gl2{0%,90%,100%{opacity:0;transform:none;clip-path:inset(0 0 0 0)}92%{opacity:.85;transform:translate(-2px,1px);clip-path:inset(45% 0 25% 0)}94%{opacity:.85;transform:translate(2px,0);clip-path:inset(5% 0 70% 0)}96%{opacity:0}}
+
+.grid{display:grid;gap:14px}
+.g2{grid-template-columns:repeat(auto-fit,minmax(min(330px,100%),1fr))}
+.g3{grid-template-columns:repeat(auto-fit,minmax(min(240px,100%),1fr))}
+.card{position:relative;background:var(--panel);padding:15px 17px;box-shadow:inset 0 0 0 1px var(--line);backdrop-filter:blur(3px)}
+.card::before{content:"";position:absolute;top:0;right:0;width:var(--cut);height:var(--cut);background:linear-gradient(225deg,transparent 46%,var(--line2) 47% 53%,transparent 54%)}
+.card::after{content:"";position:absolute;left:0;top:0;width:28px;height:2px;background:var(--cyan);box-shadow:var(--glow-c)}
+.card h3{margin:0 0 6px;font-size:17px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#fff}
+.card.decision{box-shadow:inset 0 0 0 1px rgba(255,180,0,.55),0 0 30px rgba(255,180,0,.06);background:linear-gradient(160deg,rgba(255,180,0,.10),var(--panel) 55%)}
+.card.decision::after{background:var(--amber);box-shadow:0 0 10px var(--amber);animation:blink 1.4s infinite}
+.card.decision h3{color:var(--amber);text-shadow:0 0 10px rgba(255,180,0,.35)}
+.card.decision h3::before{content:"⚠ ";}
+@keyframes blink{50%{opacity:.2}}
+.opts{display:flex;flex-direction:column;gap:8px;margin-top:10px}
+.opt{display:flex;gap:10px;align-items:center;justify-content:space-between;padding:9px 11px;background:rgba(6,2,14,.6);box-shadow:inset 0 0 0 1px var(--line2)}
+.opt:hover{box-shadow:inset 0 0 0 1px var(--amber)}
+.opt .t{font-weight:700;letter-spacing:.04em}
+.opt .u{font-size:14px;color:var(--muted)}
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.spread{display:flex;justify-content:space-between;align-items:center;gap:10px}
+input[type=text],input[type=number],select,textarea{background:rgba(6,2,14,.85);border:0;box-shadow:inset 0 0 0 1px var(--line2);padding:8px 10px;min-width:0;font-family:var(--mono);font-size:14.5px;color:#fff}
+input:focus,select:focus,textarea:focus{outline:none;box-shadow:inset 0 0 0 1px var(--cyan),0 0 12px rgba(5,217,232,.2)}
+input::placeholder,textarea::placeholder{color:var(--dim)}
+textarea{width:100%;resize:vertical;min-height:88px;caret-color:var(--mag)}
+select option{background:#120a26}
+label.f{display:flex;flex-direction:column;gap:5px;font-size:13px;color:var(--muted);text-transform:uppercase;letter-spacing:.12em;font-weight:700}
+table{width:100%;border-collapse:collapse;font-size:15px}
+th,td{text-align:left;padding:7px 9px;border-bottom:1px solid var(--line)}
+th{color:var(--cyan);font-weight:700;font-size:12px;text-transform:uppercase;letter-spacing:.14em}
+tbody tr:hover td{background:rgba(5,217,232,.04)}
+td.num,th.num{text-align:right;font-family:var(--mono)}
+.tag{display:inline-block;font:12px/1.5 var(--mono);box-shadow:inset 0 0 0 1px var(--line2);padding:0 6px;color:var(--muted);letter-spacing:.04em;text-transform:uppercase}
+.tag.KRITIEK{box-shadow:inset 0 0 0 1px var(--mag);color:#fff;background:var(--mag);text-shadow:none;animation:blink 1s infinite}
+.tag.HOOG{box-shadow:inset 0 0 0 1px var(--amber);color:var(--amber)}
+.tag.LAAG{color:var(--dim)}
+.tag.ok{box-shadow:inset 0 0 0 1px var(--green);color:var(--green)}
+.tag.cyan{box-shadow:inset 0 0 0 1px var(--cyan);color:var(--cyan)}
+
+/* ---- inbox ---- */
+.inbox{display:grid;grid-template-columns:minmax(260px,390px) 1fr;background:var(--panel);box-shadow:inset 0 0 0 1px var(--line);height:calc(100dvh - 210px);min-height:420px;overflow:hidden}
+.ilist{border-right:1px solid var(--line);display:flex;flex-direction:column;min-height:0}
+.itools{padding:10px;border-bottom:1px solid var(--line);display:flex;flex-direction:column;gap:8px;background:rgba(6,2,14,.4)}
+.tabs{display:flex;gap:4px;flex-wrap:wrap}
+.tabs button{background:none;border:0;padding:3px 10px;cursor:pointer;color:var(--muted);font-weight:700;font-size:13px;letter-spacing:.1em;text-transform:uppercase}
+.tabs button:hover{color:#fff}
+.tabs button.on{color:#03141a;background:var(--cyan)}
+.mails{overflow-y:auto;flex:1}
+.mail{display:block;width:100%;text-align:left;background:none;border:0;border-bottom:1px solid var(--line);padding:10px 13px;cursor:pointer;color:var(--text);position:relative}
+.mail:hover{background:linear-gradient(90deg,rgba(5,217,232,.08),transparent)}
+.mail.sel{background:linear-gradient(90deg,rgba(255,42,109,.16),transparent)}
+.mail.sel::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--mag);box-shadow:var(--glow-m)}
+.mail .from{font-size:13.5px;display:flex;justify-content:space-between;gap:8px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em}
+.mail .from b{font-weight:700}
+.mail .subj{font-size:16px;margin:1px 0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:600}
+.mail .prev{font:13px var(--mono);color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mail.unread .subj{color:#fff;font-weight:700}
+.mail.unread .from b{color:var(--cyan)}
+.mail.unread .from b::before{content:"";display:inline-block;width:7px;height:7px;background:var(--cyan);box-shadow:var(--glow-c);margin-right:7px;vertical-align:1px;animation:blink 1.6s infinite}
+.reader{overflow-y:auto;padding:20px 24px;min-height:0;background:linear-gradient(180deg,rgba(6,2,14,.35),transparent 200px)}
+.reader .hdr{border-bottom:1px dashed var(--line2);padding-bottom:13px;margin-bottom:15px}
+.reader .hdr h2{margin:0 0 8px;font:700 22px/1.25 var(--sans);color:#fff;text-transform:none;letter-spacing:.02em;display:block}
+.reader .hdr h2::before,.reader .hdr h2::after{display:none}
+.reader .meta{font-size:14px;color:var(--muted);display:grid;grid-template-columns:auto 1fr;gap:2px 14px}
+.reader .meta>span:nth-child(odd){font:12px/1.9 var(--mono);text-transform:uppercase;color:var(--dim)}
+.reader .stamp{float:right;font:11px var(--mono);color:var(--green);box-shadow:inset 0 0 0 1px var(--green);padding:1px 6px;letter-spacing:.1em}
+.md{font:14.5px/1.65 var(--mono);color:#d9d2f5}
+.md p{margin:0 0 11px}
+.md h1{font:800 15px var(--disp);letter-spacing:.14em;margin:4px 0 12px;color:var(--cyan);text-shadow:var(--glow-c)}
+.md h1::after{display:none}
+.md b{color:#fff}
+.md table{margin:6px 0 14px;max-width:660px;display:block;overflow-x:auto;font-size:14px}
+.md code{background:var(--panel2);padding:0 4px}
+.empty{color:var(--dim);text-align:center;padding:50px 10px;font:14px var(--mono);letter-spacing:.1em;text-transform:uppercase}
+.back{display:none}
+
+/* ---- kaart ---- */
+.mapwrap{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(270px,1fr);gap:16px;align-items:start}
+svg.map{width:100%;height:auto;display:block;background:
+  linear-gradient(rgba(5,217,232,.07) 1px,transparent 1px) 0 0/100% 22px,
+  linear-gradient(90deg,rgba(5,217,232,.07) 1px,transparent 1px) 0 0/22px 100%,#05010c;
+  box-shadow:inset 0 0 0 1px var(--line2)}
+.dist{cursor:pointer}
+.dist rect{fill:rgba(20,10,42,.82);stroke:#43297a;stroke-width:1.4;transition:fill .15s,stroke .15s}
+.dist:hover rect{fill:rgba(36,20,73,.9);stroke:var(--violet)}
+.dist.player rect{fill:rgba(5,217,232,.11);stroke:var(--cyan);filter:drop-shadow(0 0 6px rgba(5,217,232,.6));animation:pulse 2.6s ease-in-out infinite}
+.dist.sel rect{stroke:var(--mag);stroke-width:2.5;filter:drop-shadow(0 0 8px rgba(255,42,109,.7))}
+@keyframes pulse{50%{filter:drop-shadow(0 0 2px rgba(5,217,232,.3))}}
+.dist text{font-family:var(--mono)}
+.dist text:not([fill]){fill:var(--text)}
+.dist .nm{fill:#fff}
+.dist .hqm rect{fill:#2a0717;stroke:var(--mag);filter:drop-shadow(0 0 4px rgba(255,42,109,.8));animation:none}
+.dist .hqm text{fill:var(--mag);font-family:var(--mono)}
+.dist .nm{font-family:var(--disp);font-weight:800;letter-spacing:.06em}
+.dist .id{fill:var(--dim);font-size:13px}
+.dist.player .id{fill:var(--cyan)}
+.dist .hqm{animation:hq 1.6s infinite}
+@keyframes hq{50%{opacity:.55}}
+.ring{animation:dash 3s linear infinite}
+@keyframes dash{to{stroke-dashoffset:-44}}
+.legend{display:flex;gap:16px;flex-wrap:wrap;font:13px var(--mono);color:var(--muted);margin-top:9px}
+.legend i{display:inline-block;width:10px;height:10px;margin-right:6px;vertical-align:-1px}
+
+/* ---- overig ---- */
+.kv{display:grid;grid-template-columns:auto 1fr;gap:4px 16px;font-size:15px}
+.kv dt{color:var(--dim);font:12px/1.9 var(--mono);text-transform:uppercase}
+.kv dd{margin:0;font-family:var(--mono);color:#fff}
+.big{font:22px/1.2 var(--mono);color:#fff;text-shadow:0 0 10px rgba(255,255,255,.15)}
+.kpi{font:700 11.5px var(--sans);letter-spacing:.18em;text-transform:uppercase;color:var(--muted)}
+.prog{height:6px;margin-top:7px;background:repeating-linear-gradient(90deg,rgba(124,77,255,.2) 0 6px,transparent 6px 8px)}
+.prog i{display:block;height:100%;background:var(--violet);box-shadow:0 0 8px var(--violet);-webkit-mask:repeating-linear-gradient(90deg,#000 0 6px,transparent 6px 8px);mask:repeating-linear-gradient(90deg,#000 0 6px,transparent 6px 8px)}
+.fac{display:grid;grid-template-columns:96px 1fr 92px;gap:12px;align-items:center;padding:6px 0;font-size:15px;text-transform:uppercase;letter-spacing:.08em;font-weight:600}
+.fbar{position:relative;height:6px;background:rgba(124,77,255,.15)}
+.fbar::after{content:"";position:absolute;left:50%;top:-3px;width:1px;height:12px;background:var(--line2)}
+.fbar i{position:absolute;top:0;height:100%}
+.toast{position:fixed;right:calc(18px + env(safe-area-inset-right,0px));bottom:calc(52px + env(safe-area-inset-bottom,0px));display:flex;flex-direction:column;gap:8px;z-index:80;max-width:min(430px,calc(100vw - 32px))}
+.toast div{background:rgba(20,10,42,.96);box-shadow:inset 0 0 0 1px var(--line2),0 10px 30px rgba(0,0,0,.6);border-left:3px solid var(--cyan);padding:10px 14px;
+  white-space:pre-wrap;font:14px/1.45 var(--mono);animation:tin .25s ease-out}
+.toast div::before{content:"> ";color:var(--cyan)}
+.toast div.bad{border-left-color:var(--mag)} .toast div.bad::before{content:"! ";color:var(--mag)}
+@keyframes tin{from{transform:translateX(20px);opacity:0}}
+.modal{position:fixed;inset:0;background:rgba(3,0,8,.8);display:flex;align-items:center;justify-content:center;z-index:70;padding:16px}
+.modal .box{background:var(--panel2);box-shadow:inset 0 0 0 1px var(--line2);max-width:720px;width:100%;max-height:calc(100vh - 32px);overflow-y:auto;padding:20px 22px}
+.setup{max-width:900px;margin:0 auto}
+.setup .card{margin-bottom:14px}
+.setup .hero{font:800 34px/1.05 var(--disp);letter-spacing:.14em;color:#fff;margin:6px 0 6px}
+.setup .hero b{color:var(--mag);text-shadow:var(--glow-m)}
+.setup .hero span{color:var(--cyan);text-shadow:var(--glow-c)}
+.chips{display:flex;gap:6px;flex-wrap:wrap}
+.chip{border:0;box-shadow:inset 0 0 0 1px var(--line2);padding:6px 13px;cursor:pointer;background:rgba(6,2,14,.6);font-weight:700;font-size:14px;letter-spacing:.04em}
+.chip:hover{box-shadow:inset 0 0 0 1px var(--cyan)}
+.chip.on{box-shadow:inset 0 0 0 1px var(--cyan),0 0 12px rgba(5,217,232,.3);color:#03141a;background:var(--cyan)}
+.over{text-align:center;padding:70px 20px}
+.over .big{font:800 44px/1.1 var(--disp);color:var(--mag);letter-spacing:.14em;text-shadow:var(--glow-m)}
+pre.rolls{font:13px/1.6 var(--mono);white-space:pre-wrap;color:var(--green);margin:0;text-shadow:0 0 6px rgba(43,255,154,.25)}
+
+/* ---- nieuwsticker ---- */
+.ticker{position:fixed;left:0;right:0;bottom:0;z-index:60;display:flex;align-items:center;height:34px;overflow:hidden;border-top:1px solid var(--line2);background:rgba(6,2,14,.92);font:13.5px var(--mono)}
+.ticker .lbl{flex:none;height:100%;display:flex;align-items:center;padding:0 14px;background:var(--mag);color:#fff;font:800 12px var(--disp);letter-spacing:.16em;box-shadow:var(--glow-m);
+  clip-path:polygon(0 0,100% 0,calc(100% - 10px) 100%,0 100%);padding-right:22px}
+.ticker .lane{flex:1;overflow:hidden;white-space:nowrap;-webkit-mask:linear-gradient(90deg,transparent,#000 30px,#000 calc(100% - 30px),transparent);mask:linear-gradient(90deg,transparent,#000 30px,#000 calc(100% - 30px),transparent)}
+.ticker .run{display:inline-block;padding-left:100%;animation:tick var(--dur,60s) linear infinite}
+.ticker:hover .run{animation-play-state:paused}
+.ticker .it{margin-right:46px;color:var(--muted)} .ticker .it b{color:var(--cyan);font-weight:400;margin-right:8px}
+@keyframes tick{to{transform:translateX(-100%)}}
+
+/* ---- opstart & sync ---- */
+.boot,.sync{position:fixed;inset:0;z-index:100;background:#030008;display:flex;align-items:center;justify-content:center;padding:24px}
+.boot pre{font:15px/1.7 var(--mono);color:var(--cyan);text-shadow:var(--glow-c);margin:0;max-width:640px;width:100%;white-space:pre-wrap}
+.boot pre .m{color:var(--mag);text-shadow:var(--glow-m)} .boot pre .g{color:var(--green)}
+.boot .skip{position:fixed;bottom:18px;right:22px;font:12px var(--mono);color:var(--dim);letter-spacing:.1em}
+.boot.out,.sync.out{animation:fadeout .45s forwards}
+@keyframes fadeout{to{opacity:0;visibility:hidden}}
+.sync{flex-direction:column;gap:18px;background:rgba(3,0,8,.93)}
+.sync .t{font:800 30px var(--disp);letter-spacing:.24em;color:#fff;text-align:center}
+.sync .s{font:14px var(--mono);color:var(--cyan);letter-spacing:.14em;text-align:center}
+.sync .pb{width:min(420px,80vw);height:8px;background:repeating-linear-gradient(90deg,rgba(124,77,255,.25) 0 8px,transparent 8px 10px)}
+.sync .pb i{display:block;height:100%;width:0;background:var(--mag);box-shadow:var(--glow-m);animation:fill 1.1s ease-in-out forwards;
+  -webkit-mask:repeating-linear-gradient(90deg,#000 0 8px,transparent 8px 10px);mask:repeating-linear-gradient(90deg,#000 0 8px,transparent 8px 10px)}
+@keyframes fill{to{width:100%}}
+.shake{animation:shake .35s steps(3)}
+@keyframes shake{0%{transform:translate(0)}33%{transform:translate(-4px,2px);filter:hue-rotate(40deg)}66%{transform:translate(3px,-2px)}100%{transform:none}}
+
+@media (max-width:860px){
+  .app{grid-template-columns:minmax(0,1fr);grid-template-rows:auto auto 1fr}
+  .top{flex-wrap:wrap;gap:10px;padding:10px 16px}
+  .brand{order:0} .btn.next{order:1;margin-left:auto;padding:10px 14px} .date{order:2} .nx-long{display:none}
+  .stats{order:3;width:100%;flex-basis:100%}
+  nav{flex-direction:row;overflow-x:auto;border-right:0;border-bottom:1px solid var(--line);padding:6px 10px}
+  nav button{width:auto;gap:6px;padding:7px 10px;white-space:nowrap}
+  nav button.on::before{left:6px;right:6px;top:auto;bottom:0;width:auto;height:2px}
+  nav .sep,nav .sys{display:none}
+  main{padding:16px 16px 40px}
+  .inbox{grid-template-columns:1fr;height:auto;min-height:0}
+  .inbox .reader{display:none}
+  .inbox.reading .ilist{display:none}
+  .inbox.reading .reader{display:block}
+  .back{display:inline-block;margin-bottom:10px}
+  .mapwrap{grid-template-columns:1fr}
+  .setup .hero{font-size:24px}
+  .toast{bottom:46px;right:12px;left:12px;max-width:none}
+  .toast div{font-size:13px}
+  .ticker .lbl{font-size:10px;padding:0 18px 0 10px;letter-spacing:.1em}
+}
+/* iPhone: notch en home-balk */
+@supports (padding:max(0px)){
+  .top{padding-top:max(10px,env(safe-area-inset-top));padding-left:max(18px,env(safe-area-inset-left));padding-right:max(18px,env(safe-area-inset-right))}
+  .ticker{height:calc(34px + env(safe-area-inset-bottom));padding-bottom:env(safe-area-inset-bottom)}
+  .app{height:calc(100% - 34px - env(safe-area-inset-bottom))}
+}
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation:none!important;transition:none!important}
+  .fx.roll{display:none}
+}
+
+/* ---- artifact: laden, opdrachten, GM ---- */
+.loading{height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;text-align:center;padding:24px}
+.loading .t{font:800 22px var(--disp);letter-spacing:.22em;color:#fff}
+.loading .s{font:14px var(--mono);color:var(--cyan);letter-spacing:.12em}
+.order.voorstel{box-shadow:inset 0 0 0 1px rgba(255,180,0,.55)}
+.order.beoordelen{box-shadow:inset 0 0 0 1px rgba(5,217,232,.55)}
+.prop{margin-top:10px;padding:12px;background:rgba(6,2,14,.6);box-shadow:inset 0 0 0 1px var(--line2)}
+.prop .ptext{font-weight:700;font-size:16px;color:#fff;margin-bottom:10px}
+.pstats{display:grid;grid-template-columns:auto auto 1fr;gap:6px 22px;align-items:baseline}
+.pstats>div{display:flex;flex-direction:column;gap:2px;min-width:0}
+.pstats b{font:22px var(--mono);color:#fff}
+.pstats .wide span:last-child{font-size:14.5px;color:var(--muted)}
+.meter{height:8px;margin-top:10px;background:repeating-linear-gradient(90deg,rgba(255,42,109,.35) 0 8px,transparent 8px 10px)}
+.meter i{display:block;height:100%;background:var(--green);box-shadow:0 0 8px rgba(43,255,154,.6);-webkit-mask:repeating-linear-gradient(90deg,#000 0 8px,transparent 8px 10px);mask:repeating-linear-gradient(90deg,#000 0 8px,transparent 8px 10px)}
+.answer{margin-top:8px;font:14px/1.5 var(--mono);color:var(--text);border-left:2px solid var(--green);padding-left:10px}
+.answer.bad{border-left-color:var(--mag)}
+.gmwait{margin-top:8px;font:14px var(--mono);color:var(--cyan)}
+.dots::after{content:"▮▯▯";animation:dots 1.2s steps(3) infinite}
+@keyframes dots{0%{content:"▮▯▯"}33%{content:"▮▮▯"}66%{content:"▮▮▮"}}
+.modal{z-index:95}
+@media (max-width:860px){.pstats{grid-template-columns:auto auto}.pstats .wide{grid-column:1/-1}}
+</style>
+<div id="root"></div>
+<footer class="ticker" id="ticker" hidden><span class="lbl">NEON NEWS 24</span><div class="lane"><span class="run" id="tickrun"></span></div></footer>
+<div class="fx scan"></div><div class="fx vig"></div><div class="fx roll"></div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+<script>
+"use strict";
+/* =====================================================================
+   CHROME LEDGER — engine (JavaScript-versie van tools/sim.py + world.py)
+   Bedragen in k€. De engine gooit alle dobbelstenen; de GM (Claude)
+   beoordeelt alleen kosten en kansen, vóór de worp.
+   ===================================================================== */
+const DIFF = {Casual: 0.8, Realistisch: 1.0, Genadeloos: 1.3};
+const DT = {
+  "Biotech": {rev: 9, cost: 6, heat: 1, vol: 0.35},
+  "Cyberware": {rev: 11, cost: 7, heat: 2, vol: 0.40},
+  "Logistiek": {rev: 7, cost: 4, heat: 0, vol: 0.15},
+  "Media & Data": {rev: 8, cost: 4, heat: 1, vol: 0.30},
+  "Private Security": {rev: 8, cost: 5, heat: 2, vol: 0.20},
+  "Financieel": {rev: 10, cost: 5, heat: 1, vol: 0.45},
+  "Smokkel": {rev: 14, cost: 4, heat: 4, vol: 0.50},
+};
+const SECTORS = Object.keys(DT);
+const R = Math.random, U = (a, b) => a + R() * (b - a), RI = (a, b) => a + Math.floor(R() * (b - a + 1));
+const CH = a => a[Math.floor(R() * a.length)];
+const clamp = (x, lo = 0, hi = 100) => Math.max(lo, Math.min(hi, x));
+const r1 = x => Math.round(x * 10) / 10;
+const ym = s => `${s.date.year}-${String(s.date.month).padStart(2, "0")}`;
+const hex8 = () => Math.floor(R() * 0xffffffff).toString(16).padStart(8, "0");
+const clone = o => JSON.parse(JSON.stringify(o));
+function d100(){ try { const a = new Uint32Array(1); crypto.getRandomValues(a); return 1 + (a[0] % 100); } catch(e){ return RI(1, 100); } }
+
+function template(){
+  return {
+    setup_done: false, status: "actief", date: {year: 2004, month: 1},
+    player: {corp_name: "", title: "CEO", motto: "", background: "", doctrine: "", difficulty: "Realistisch", home_district: ""},
+    cash: 100, debt: 0, interest_rate: 0.08, heat: 5, reputation: 30, morale: 60,
+    staff: {count: 20, avg_salary: 30},
+    culture: {slogans: [], layoff_policy: "normal", bonus_cost: 0, morale_drift: 0, heat_decay: 2, ethics_rules: []},
+    divisions: [], projects: [],
+    districts: [
+      {id: "A", name: "Haven", control: "neutral", income: 6, upkeep: 2, lore: "Docks, smokkel, vakbonden. Goedkope logistiek."},
+      {id: "B", name: "Staal", control: "neutral", income: 7, upkeep: 3, lore: "Fabrieken, veel arbeid, lage lonen."},
+      {id: "C", name: "Glas", control: "neutral", income: 10, upkeep: 6, lore: "Corpotorens. Prestige, dure grond."},
+      {id: "D", name: "Oude Stad", control: "neutral", income: 5, upkeep: 2, lore: "Politie, bank, bureaucratie. Vergunningen en krediet."},
+      {id: "E", name: "De Kruising", control: "neutral", income: 8, upkeep: 3, lore: "Transitknoop. Alles komt hier langs."},
+      {id: "F", name: "Neon Mile", control: "neutral", income: 8, upkeep: 4, lore: "Media, nachtleven, vice."},
+      {id: "G", name: "Roest", control: "neutral", income: 3, upkeep: 1, lore: "Sloppen, zwarte markt, goedkope rekruten."},
+      {id: "H", name: "Campus", control: "neutral", income: 6, upkeep: 3, lore: "Universiteit en labs. Onderzoek en talent."},
+    ],
+    rivals: [
+      {name: "Okonkwo-Brandt Holdings", ceo: "Adaeze Brandt", cash: 400, aggression: 0.4, memory: [], hq: "C", sector: "Financieel"},
+      {name: "Vanderhoeven Logistics", ceo: "Pieter Vanderhoeven", cash: 250, aggression: 0.3, memory: [], hq: "A", sector: "Logistiek"},
+      {name: "Saito Neurosystems", ceo: "Haruki Saito", cash: 500, aggression: 0.6, memory: [], hq: "H", sector: "Cyberware"},
+    ],
+    npcs: [
+      {name: "Marta Delcourt", role: "CFO", loyalty: 70, ambition: 55, secret: "Houdt een tweede set boeken bij 'voor de zekerheid'."},
+      {name: "Jorik Maes", role: "Head of Security", loyalty: 60, ambition: 40, secret: "Heeft een schuld bij de maffia van Roest."},
+      {name: "Lien Verstraeten", role: "PR", loyalty: 50, ambition: 75, secret: "Lekt af en toe aan een journalist."},
+    ],
+    flags: {},
+  };
+}
+
+function migrate(s){
+  s.accounts ??= {operationeel: s.cash, zwart: 0, offshore: 0};
+  s.accounts.zwart ??= 0; s.accounts.offshore ??= 0;
+  s.invoices ??= []; s.auto_pay ??= true; s.arcs ??= []; s.hidden_truth ??= [];
+  s.lopende_effecten ??= []; s.projects ??= []; s.divisions ??= []; s.flags ??= {};
+  s.log ??= []; s.worpen ??= [];
+  s.factions ??= {
+    nomaden: {standing: 0, note: "Clans buiten de Ringweg. Respect, geen vriendschap."},
+    vakbond: {standing: 0, note: "Haven/Staal. Onderhandelt hard, staakt sneller."},
+    politie: {standing: 0, note: "Oude Stad. Koopbaar, maar de prijs stijgt."},
+    stad: {standing: 0, note: "Gemeenteraad. Vergunningen en subsidies."},
+    straat: {standing: 0, note: "Roest/Neon. Wie je ook bent, zij weten het eerder."},
+  };
+  s.market ??= {};
+  for (const sec of SECTORS){
+    const m = s.market[sec] ??= {size: 100, player: 0, rivals: {}};
+    for (const r of s.rivals) m.rivals[r.name] ??= 0;
+  }
+  for (const r of s.rivals){ r.sector ??= CH(SECTORS); r.memory ??= []; }
+  for (const n of s.npcs){ n.loyalty ??= 50; n.ambition ??= 50; }
+  for (const i of s.invoices){ i.id ??= hex8(); i.auto_pay ??= true; i.overdue ??= 0; }
+  return s;
+}
+
+const faction = (s, n) => (s.factions[n] || {}).standing || 0;
+function shiftFaction(s, n, d){ const f = s.factions[n] ??= {standing: 0, note: ""}; f.standing = clamp(f.standing + d, -100, 100); }
+function addLog(s, line){ s.log.push(`${ym(s)} · ${line}`); s.log = s.log.slice(-300); }
+function addRoll(s, line){ s.worpen.push(`${ym(s)} · ${line}`); s.worpen = s.worpen.slice(-80); }
+function remember(r, s, txt){ r.memory.push(`${ym(s)}: ${txt}`); r.memory = r.memory.slice(-12); }
+
+/* ---------- mails: de engine verzamelt, de opslag schrijft weg ---------- */
+function Ctx(){ return {mails: [], rep: []}; }
+function mail(ctx, s, van, onderwerp, body, prio = "NORMAAL"){
+  ctx.mails.push({datum: ym(s), van, aan: s.player.title || "CEO", onderwerp, prio, body});
+}
+
+/* ---------- events ---------- */
+const EVENTS = [
+  {id: "staking", prob: 0.07, when: s => s.morale < 45 || faction(s, "vakbond") < -40, effect: {cash_pct: -0.04, morale: -5, reputation: -3},
+   from: "HR", subject: "Wilde staking in {district}", prio: "HOOG", body: "Morale is te laag. De ploeg legt het werk neer. Elke dag stilstand kost geld. De vakbond wil praten, niet drinken."},
+  {id: "audit", prob: 0.08, when: s => s.heat > 35, effect: {cash_pct: -0.06, heat: -8, reputation: -2},
+   from: "Juridische Zaken", subject: "Onaangekondigde inspectie", prio: "HOOG", body: "De toezichthouder staat in de lobby met een rechter-commissaris en veel tijd. Boetes volgen. Als je heat hoog blijft, komt hij terug."},
+  {id: "datalek", prob: 0.05, when: () => true, effect: {reputation: -6, cash: -15},
+   from: "Head of Security", subject: "Datalek, bron onbekend", prio: "HOOG", body: "Klantgegevens zijn te koop op een forum. Ik weet nog niet of het intern of extern is. Vertrouw niemand met toegang tot de serverkamer."},
+  {id: "beurspiek", prob: 0.07, when: () => true, effect: {cash_pct: 0.05, reputation: 2},
+   from: "CFO", subject: "Markt trekt aan", prio: "NORMAAL", body: "Sector-optimisme verhoogt de omzet. Het gaat vanzelf weer weg. Houd cash, geen illusies."},
+  {id: "recessie", prob: 0.05, when: () => true, effect: {cash_pct: -0.05, morale: -2},
+   from: "CFO", subject: "Kredietmarkt droogt op", prio: "HOOG", body: "Banken sluiten de kraan. Omzet daalt, schulden niet."},
+  {id: "talent", prob: 0.06, when: s => s.reputation > 40, effect: {morale: 4, reputation: 1},
+   from: "HR", subject: "Een toptalent solliciteert", prio: "NORMAAL", body: "Een ex-onderzoeker van een rivaal wil bij ons werken. Salaris is niet laag. Motieven ook niet duidelijk."},
+  {id: "schandaal", prob: 0.05, when: s => s.heat > 25, effect: {reputation: -10, heat: 5},
+   from: "PR", subject: "Journalist weet iets", prio: "HOOG", body: "Een freelancer belt over een 'patroon in de cijfers'. We kunnen bellen, betalen of zwijgen. Alle drie hebben een prijs."},
+  {id: "sabotage", prob: 0.06, when: s => s.rivals.some(r => r.aggression > 0.5), effect: {cash: -20, morale: -3},
+   from: "Anoniem", subject: "Brand in magazijn", prio: "HOOG", body: "Geen dodelijke slachtoffers. Wel een brief: 'dit was maar een proefrun.'"},
+];
+function eventProb(s, e, diff){
+  let p = e.prob * diff;
+  if (e.id === "staking") p *= faction(s, "vakbond") < -30 ? 1.5 : faction(s, "vakbond") > 30 ? 0.6 : 1;
+  if (e.id === "audit") p *= faction(s, "politie") > 30 ? 0.5 : faction(s, "politie") < -30 ? 1.4 : 1;
+  return p;
+}
+function applyEffect(s, eff){
+  s.cash = r1(s.cash + (eff.cash || 0) + s.cash * (eff.cash_pct || 0));
+  for (const k of ["heat", "morale", "reputation"]) if (k in eff) s[k] = clamp(s[k] + eff[k]);
+}
+
+/* ---------- markt ---------- */
+function marketRevMult(s, type){
+  const m = s.market[type]; if (!m) return 1;
+  const vals = Object.values(m.rivals); const top = vals.length ? Math.max(...vals) : 0;
+  return clamp(1 + m.player - top * 0.6, 0.6, 1.5);
+}
+const divCostMult = (s, type) => (["Logistiek", "Smokkel"].includes(type) && s.flags.nomad_contract === true) ? 0.8 : 1;
+
+function lingeringTick(s, ctx, diff){
+  s.lopende_effecten = s.lopende_effecten.filter(e => {
+    const f = e.effect || {};
+    s.cash = r1(s.cash + (f.cash || 0) * ((f.cash || 0) < 0 ? diff : 1));
+    for (const k of ["reputation", "heat", "morale"]) if (k in f) s[k] = clamp(s[k] + f[k]);
+    e.maanden -= 1; ctx.rep.push(`Lopend: ${e.naam}`);
+    return e.maanden > 0;
+  });
+}
+
+const RECURRING = [
+  ["Netbeheer Meridian Energie", 1.5, 3.0, "Elektriciteit en datacenter-koeling."],
+  ["Vastgoedfonds Glas BV", 2.5, 6.0, "Huur van kantoor- en labruimte."],
+  ["Advocatenkantoor De Wit & Partners", 1.0, 4.0, "Maandelijkse retainer, 'voor het geval dat'."],
+  ["Verzekeraar Argos-Bloom", 1.0, 2.5, "Premie bedrijfsaansprakelijkheid. Met uitsluitingen."],
+];
+function invoice(s, payee, amount, due, note, tag = "vast"){
+  s.invoices.push({id: hex8(), payee, amount: r1(amount), due_in: due, note, tag, overdue: 0, auto_pay: true});
+}
+function invoicesTick(s, ctx, diff){
+  const scale = 0.55 * Math.sqrt(Math.max(1, s.divisions.length));
+  for (const [p, lo, hi, note] of RECURRING) if (R() < 0.4) invoice(s, p, U(lo, hi) * scale * diff, 2, note);
+  if (R() < 0.25){
+    const payee = CH(["Beveiligingsbureau Falk", "Consultants Meridian & Zoon", "Gemeente: leges en heffingen", "Schadeherstel BV 'Snelle Jan'", "Cleaning crew (geen vragen)"]);
+    let amt = U(1, 8) * scale * diff;
+    if (payee.startsWith("Gemeente") && faction(s, "stad") < -30) amt *= 1.5;
+    invoice(s, payee, amt, 1, "Onverwacht, wel verplicht.", "incidenteel");
+  }
+  let paid = 0, late = 0; const still = [];
+  for (const inv of s.invoices){
+    inv.due_in -= 1;
+    if (inv.due_in > 0){ still.push(inv); continue; }
+    if (s.auto_pay && inv.auto_pay && s.cash >= inv.amount){ s.cash = r1(s.cash - inv.amount); paid += inv.amount; continue; }
+    inv.overdue += 1;
+    const fee = r1(inv.amount * 0.08); inv.amount = r1(inv.amount + fee); late += fee;
+    s.reputation = clamp(s.reputation - 1.5);
+    if (inv.overdue === 2) mail(ctx, s, inv.payee, `Aanmaning: ${inv.payee}`, `Tweede herinnering. Openstaand: €${inv.amount}k. Daarna volgt de deurwaarder, niet de sympathie.`, "HOOG");
+    if (inv.overdue === 4){
+      s.reputation = clamp(s.reputation - 4); s.flags["deurwaarder_" + inv.payee] = true; ctx.rep.push(`Deurwaarder voor ${inv.payee}`);
+      mail(ctx, s, "Deurwaarder Claes", "Beslag op bedrijfsmiddelen", `Namens ${inv.payee} leg ik beslag. €${inv.amount}k, binnen de week.`, "KRITIEK");
+    }
+    if (inv.overdue >= 5){
+      const take = Math.min(Math.max(s.cash, 0), inv.amount);
+      s.cash = r1(s.cash - take); inv.amount = r1(inv.amount - take);
+      if (take) ctx.rep.push(`Beslag gelegd: €${r1(take)}k`);
+      if (inv.amount <= 0) continue;
+    }
+    still.push(inv);
+  }
+  s.invoices = still;
+  if (paid) ctx.rep.push(`Facturen betaald: €${r1(paid)}k`);
+  if (late) ctx.rep.push(`Boete/rente achterstallig: €${r1(late)}k`);
+}
+
+function marketTick(s, ctx){
+  for (const [sec, m] of Object.entries(s.market)){
+    m.size = Math.max(50, m.size * (1 + U(-0.03, 0.04)));
+    const lvl = s.divisions.filter(d => d.type === sec).reduce((a, d) => a + d.level, 0);
+    const tgt = Math.min(0.5, lvl * 0.07 * (0.6 + s.reputation / 250));
+    m.player += (tgt - m.player) * 0.2;
+    for (const r of s.rivals){
+      let t = (r.sector === sec ? 0.30 : 0.04) * (0.7 + 0.6 * R()) * (1 + r.aggression * 0.4);
+      m.rivals[r.name] = (m.rivals[r.name] || 0) + (t - (m.rivals[r.name] || 0)) * 0.15;
+    }
+    const total = m.player + Object.values(m.rivals).reduce((a, b) => a + b, 0);
+    if (total > 0.92){ const f = 0.92 / total; m.player *= f; for (const k in m.rivals) m.rivals[k] *= f; }
+  }
+  for (const r of s.rivals){
+    if (R() >= 0.12 + r.aggression * 0.1) continue;
+    const sec = r.sector, move = CH(["headhunt", "gezamenlijk", "dumping", "smaad", "licentiebod"]);
+    r.cash = r1(r.cash - U(2, 8));
+    if (move === "headhunt" && s.npcs.length){
+      const n = CH(s.npcs);
+      mail(ctx, s, r.ceo, "Koffie?", `Hoorde dat ${n.name} (${n.role}) ontevreden is. Ik heb altijd plek voor talent. Dit mailtje bestaat niet.`);
+      n.loyalty = clamp(n.loyalty - RI(3, 10)); n.benaderd_door ??= r.name;
+      ctx.rep.push(`${r.name} probeert ${n.name} weg te kopen`);
+    } else if (move === "gezamenlijk"){
+      mail(ctx, s, r.ceo, `Joint venture ${sec}`, `${r.name} stelt een gezamenlijk project voor in ${sec}. Winst delen, risico's delen, geheimen niet.`);
+      s.flags["jv_aanbod_" + r.name] = ym(s);
+    } else if (move === "dumping"){
+      s.market[sec].player *= 0.9; ctx.rep.push(`${r.name} dumpt prijzen in ${sec}`);
+    } else if (move === "smaad"){
+      s.reputation = clamp(s.reputation - 3);
+      mail(ctx, s, "PR", "Campagne tegen ons", `Anonieme blogs wijzen naar ${r.name}. Natuurlijk zonder bewijs. Natuurlijk effectief.`, "HOOG");
+    } else {
+      mail(ctx, s, r.ceo, "Licentie aanbod", `${r.name} wil technologie van ons licentiëren. Prijs vraagt u maar. Dat is zelden goed nieuws.`);
+    }
+  }
+  for (const r of s.rivals){
+    if (R() < 0.04){
+      r.cash = r1(r.cash - r.cash * U(0.2, 0.5));
+      if (R() < 0.6) mail(ctx, s, "Journalist", `Problemen bij ${r.name}?`, `Bronnen spreken over een mislukt project bij ${r.name}. Cijfers ontbreken. Paniek niet.`);
+    }
+  }
+  for (const r of [...s.rivals]){
+    if (r.cash < 30 && R() < 0.25){
+      s.rivals = s.rivals.filter(x => x !== r);
+      for (const m of Object.values(s.market)){ m.player += (m.rivals[r.name] || 0) * 0.3; delete m.rivals[r.name]; }
+      mail(ctx, s, "Journalist", `${r.name} failliet`, `${r.name} is omgevallen. Bezittingen worden verkocht. Wie het eerst belt, krijgt de beste stukken.`, "HOOG");
+      s.flags["faillissement_" + r.name] = ym(s); ctx.rep.push(`${r.name} gaat failliet (kans!)`);
+    }
+  }
+  if (R() < 0.04){
+    const naam = CH(["Kestrel Dynamics", "Nova-Linde GmbH", "Pallas Bio", "Zenith Haven Co", "Roest & Zonen", "Helix Mutual"]);
+    if (!s.rivals.some(r => r.name === naam)){
+      const sec = CH(SECTORS);
+      s.rivals.push({name: naam, ceo: CH(["Ilse Verhoeven", "Chen Wei", "Rafael Ortega", "Dr. Vos"]), cash: RI(80, 300),
+        aggression: r1(U(0.2, 0.7) * 10) / 10, memory: [], hq: CH([..."ABCDEFGH"]), sector: sec});
+      for (const m of Object.values(s.market)) m.rivals[naam] = 0;
+      mail(ctx, s, "Marktonderzoek", `Nieuwe speler: ${naam}`, `Nieuwkomer in ${sec}. Geld uit onduidelijke bron. Dat is gewoonlijk een signaal.`);
+      ctx.rep.push(`Nieuwe concurrent: ${naam}`);
+    }
+  }
+}
+
+function factionTick(s, ctx){
+  if (s.flags.nomad_contract_gebroken && s.flags.nomad_contract === true){
+    s.flags.nomad_contract = false; shiftFaction(s, "nomaden", -60);
+    mail(ctx, s, "Nomadenleider Isra", "Het pact", "U heeft uw woord teruggenomen. Wij nemen niets terug. Niet vandaag, wel ooit.", "KRITIEK");
+    ctx.rep.push("Nomadenpact gebroken");
+  }
+  for (const f of Object.values(s.factions)) f.standing = clamp(f.standing * 0.97, -100, 100);
+  if (s.morale < 40) shiftFaction(s, "vakbond", -3);
+  if (s.heat > 40){ shiftFaction(s, "politie", -2); shiftFaction(s, "stad", -1); }
+  if (s.districts.some(d => d.control === "player" && (d.id === "G" || d.id === "F"))) shiftFaction(s, "straat", 1);
+  if (s.flags.nomad_contract === true) shiftFaction(s, "nomaden", 1);
+  if (faction(s, "vakbond") < -40 && R() < 0.15){
+    s.morale = clamp(s.morale - 4);
+    mail(ctx, s, "HR", "Vakbond dreigt met acties", "De vakbond heeft een stakingskas en een lijst grieven. Wij staan bovenaan beide.", "HOOG");
+  }
+}
+
+function npcTick(s, ctx){
+  for (const n of [...s.npcs]){
+    const target = 15 + s.morale * 0.5 - (n.ambition - 50) * 0.3;
+    n.loyalty = r1(clamp(n.loyalty + (target - n.loyalty) * 0.05 + U(-1.5, 1.5)));
+    const risk = n.loyalty < 35 ? (35 - n.loyalty) / 100 + n.ambition / 400 : 0;
+    if (risk <= 0 || R() > risk) continue;
+    const role = (n.role || "").toLowerCase();
+    if (n.ambition >= 60 && !n.verraad){
+      n.verraad = ym(s);
+      if (role.includes("cfo")){ s.flags.cfo_manipuleert = n.name; s.hidden_truth.push({id: "cfo_boeken", waar: true, inhoud: `${n.name} kleurt de maandrapporten en roomt af.`}); }
+      else if (role.includes("pr")){ s.flags.pr_lekt = n.name; s.hidden_truth.push({id: "pr_lek", waar: true, inhoud: `${n.name} lekt structureel aan de pers.`}); }
+      else if (role.includes("security")){ s.flags.security_verkocht = n.name; s.hidden_truth.push({id: "security_lek", waar: true, inhoud: `${n.name} verkoopt toegang aan derden.`}); }
+      else s.flags["verraad_" + n.name] = ym(s);
+      continue;
+    }
+    s.npcs = s.npcs.filter(x => x !== n);
+    const to = n.benaderd_door || (s.rivals.length ? CH(s.rivals).name : "onbekend");
+    mail(ctx, s, n.name, "Mijn ontslag", `Na rijp beraad stop ik als ${n.role}, per direct. Ik dank u voor de kansen. Mijn badge ligt bij de receptie.`, "HOOG");
+    mail(ctx, s, "HR", `Vertrek ${n.role}`, `${n.name} is weg. Volgens de wandelgangen naar ${to}. Wat er in het hoofd van ${n.name} zat, gaat mee.`, "HOOG");
+    s.morale = clamp(s.morale - 3); s.flags["vacature_" + n.role] = ym(s);
+    for (const r of s.rivals) if (r.name === to) remember(r, s, `nam ${n.name} (${n.role}) over`);
+    ctx.rep.push(`${n.name} (${n.role}) neemt ontslag`);
+  }
+  if (s.flags.cfo_manipuleert && R() < 0.5) s.cash = r1(s.cash - U(1, 4));
+  if (s.flags.pr_lekt && R() < 0.25){
+    s.reputation = clamp(s.reputation - 3);
+    mail(ctx, s, "Journalist", "Vraag om reactie", "Ik heb interne notulen van uw laatste directievergadering. Wilt u reageren voor publicatie? Morgen gaat het online.", "HOOG");
+  }
+  if (s.flags.security_verkocht && R() < 0.15){
+    s.cash = r1(s.cash - U(5, 15));
+    mail(ctx, s, "IT", "Inbraak zonder braaksporen", "Iemand is binnengekomen met een geldige badge. De logs van die nacht zijn gewist. Netjes gewist.", "HOOG");
+  }
+}
+
+function chaosTick(s, ctx, diff){
+  if (R() > 0.35) return;
+  const n = faction(s, "nomaden"), contract = s.flags.nomad_contract === true, broken = !!s.flags.nomad_contract_gebroken;
+  const table = [["nomaden_konvooi", 3], ["nomaden_ruil", 2], ["nomaden_conflict", n < 10 ? (broken ? 5 : 2) : 0], ["nomaden_eis", contract ? 3 : 0],
+    ["cyberpsycho", s.divisions.some(d => d.type === "Cyberware") ? 2 : 0.5], ["spookzending", 1.5], ["heimwee_ai", 1], ["sekte_roest", 1.5],
+    ["overstroming", 1], ["dode_cfo_brief", s.flags.dode_cfo_pakket ? 0 : 1], ["slimme_vreemdeling", 1.5], ["stroomstoring", 1.5],
+    ["gemeentelijk_feest", 1], ["tip_van_straat", 2]];
+  let x = U(0, table.reduce((a, [, w]) => a + w, 0)), pick = table[0][0];
+  for (const [k, w] of table){ x -= w; if (w && x <= 0){ pick = k; break; } }
+  const dist = CH(s.districts).name;
+  const eff = ({cash = 0, rep = 0, mor = 0, heat = 0, nom = 0} = {}) => {
+    s.cash = r1(s.cash + cash * diff); s.reputation = clamp(s.reputation + rep); s.morale = clamp(s.morale + mor);
+    s.heat = clamp(s.heat + heat); shiftFaction(s, "nomaden", nom);
+  };
+  const M = (v, o, b, p = "NORMAAL") => mail(ctx, s, v, o, b, p);
+  switch (pick){
+    case "nomaden_konvooi":
+      if (n >= 15 || contract){ eff({cash: 6, nom: 3}); M("Logistiek", "Konvooi uit de woestenij", "Een nomaden-konvooi van de Zwarte Kraai-clan levert onderdelen. Geen papieren. Wel korting. Ze willen terugbetaling in gunsten."); }
+      else if (n <= -15){ eff({cash: -12, nom: -2}); M("Head of Security", "Konvooi blokkeert de Ringweg", "Een clan blokkeert onze leveringen. Ze eisen tol. Ik raad niet aan om met een pistool te onderhandelen. Ik raad niets aan.", "HOOG"); }
+      else { eff({cash: -3}); M("Logistiek", "Konvooi op de Ringweg", "Een nomaden-konvooi vertraagt onze vrachtwagens. Geen vijandigheid, nog niet. Gewoon aanwezigheid.", "LAAG"); }
+      break;
+    case "nomaden_ruil": eff({nom: 2}); M("Anoniem", "Ruilvoorstel van de clan", "Een nomadenvrouw (kenteken onleesbaar) biedt een koffer 'gekalibreerde onderdelen'. Ze wil data in ruil. Welke data staat er niet bij.");
+      s.hidden_truth.push({id: "ruil", waar: R() < 0.5, bron: "nomaden"}); break;
+    case "nomaden_conflict": eff({cash: -15, nom: -6, heat: 3}); M("Head of Security", "Clan viel depot aan", `De Zwarte Kraai raakte een depot in ${dist}. Er is niets gestolen dat we kunnen opsommen. Maar iemand wilde een boodschap afgeven.`, "HOOG"); break;
+    case "nomaden_eis": { const amt = r1(U(3, 8) * diff); s.flags.nomaden_eis = {bedrag: amt, sinds: ym(s)};
+      M("Nomadenleider Isra", "Een gunst", `Het pact is goud waard, toch? Een van onze trucks staat in beslag in de Haven. €${amt}k of een telefoontje naar de juiste persoon. Ik wacht niet lang.`, "HOOG"); break; }
+    case "cyberpsycho": eff({cash: -8, rep: -4, mor: -3, heat: 2}); M("Head of Security", "Cyberware-incident in " + dist, "Een gebruiker van implantaten is losgeslagen. Drie gewonden, één dode. Pers belt. Of het onze implantaten waren, weet ik nog niet. De pers wacht daar niet op.", "HOOG");
+      s.flags.cyberpsycho_incident = (s.flags.cyberpsycho_incident || 0) + 1; break;
+    case "spookzending": eff({rep: -1}); M("IT", "Piratensignaal op ons interne netwerk", "Een stem leest woordelijk onze managementnotulen voor. Of iemand heeft een bug geplant, of iemand in de directie praat.", "HOOG"); s.flags.lek_intern = true; break;
+    case "heimwee_ai": eff({mor: 2}); M("IT", "Het planningssysteem stelt vragen", "Het oude planningssysteem begint te antwoorden in volzinnen. Het vraagt of 'de bezoeker uit 1997' nog leeft. We hebben niemand uit 1997.", "LAAG"); break;
+    case "sekte_roest": eff({mor: -2, rep: -1}); M("HR", "Medewerkers vertrekken naar de Kerk van Chroom", "Een sekte in Roest rekruteert onze operators. Ze zeggen 'vlees is tijdelijk'. Dat is niet ons loonbeleid."); break;
+    case "overstroming": eff({cash: -9}); M("COO", "Overstroming in " + dist, "Stormvloed. Magazijnen onder water. Verzekeraar vermeldt 'artikel 7'. Dat artikel bestaat niet.", "HOOG"); break;
+    case "dode_cfo_brief": M("Notaris Hubrecht", "Afgifte van een brief", "Een voormalig CFO van een rivaal is overleden. Hij liet instructies na dat dit pakket naar u gaat. Ik open het niet.", "HOOG");
+      s.flags.dode_cfo_pakket = true; s.hidden_truth.push({id: "dode_cfo", waar: true, inhoud: `bewijs van illegaal handelen bij ${s.rivals.length ? CH(s.rivals).name : "een rivaal"}`}); break;
+    case "slimme_vreemdeling": M("Receptie", "Vreemdeling vraagt naar u", "Een man zonder naam wil u persoonlijk spreken. Hij betaalt contant voor een kop koffie en weigert te verklaren wat hij wil.");
+      s.hidden_truth.push({id: "vreemdeling", waar: R() < 0.5, bron: "onbekend"}); break;
+    case "stroomstoring": eff({cash: -4, mor: -1}); M("COO", "Stroomstoring in " + dist, "Twee uur duisternis. Noodgenerator weigerde. De monteur zegt dat hij 'dit pas hoort bij sluiting'."); break;
+    case "gemeentelijk_feest": eff({rep: 2, cash: -2}); M("PR", "Gemeente vraagt sponsoring", "Een stadsfeest in de Oude Stad zoekt een hoofdsponsor. Een kans, een kostenpost, en een bom aan fotografen.", "LAAG"); break;
+    case "tip_van_straat": M("Anoniem", "Tip: iemand praat over u in Roest", "Een bron beweert dat een rivaal een sabotage plant. Of dit waar is, weten we niet. De bron vraagt €2k.");
+      s.hidden_truth.push({id: "tip", waar: R() < 0.5, bron: "straat"}); break;
+  }
+}
+function nomadDemandTick(s, ctx){
+  const e = s.flags.nomaden_eis;
+  if (!e || typeof e !== "object" || e.sinds === ym(s)) return;
+  delete s.flags.nomaden_eis; shiftFaction(s, "nomaden", -12);
+  mail(ctx, s, "Nomadenleider Isra", "Genoteerd", "U had het druk. Wij onthouden wie het druk heeft.");
+  ctx.rep.push("Nomaden-eis genegeerd");
+}
+
+const RUMORS = [
+  ["rivaal_fusie", "Gerucht: twee rivalen bespreken een fusie."],
+  ["overheid_regels", "Gerucht: de stad schrijft nieuwe regels voor implantaten."],
+  ["vonk_terug", "Gerucht: Mara Vonk is terug in Neon Mile. Iemand zag de vuist met de bliksem op een muur."],
+  ["nomaden_pact", "Gerucht: nomadenclans sluiten een pact en gaan de Ringweg tolheffen."],
+  ["ceo_verdwenen", "Gerucht: de CEO van een rivaal is verdwenen. Of op vakantie."],
+  ["bank_wankelt", "Gerucht: de bank in de Oude Stad staat er slechter voor dan ze zegt."],
+  ["mol", "Gerucht: een rivaal heeft iemand binnen in uw bedrijf."],
+];
+function rumorTick(s, ctx){
+  if (R() >= 0.3) return;
+  const [id, txt] = CH(RUMORS);
+  let waar = R() < 0.55;
+  if (id === "mol") waar = !!(s.flags.security_verkocht || s.flags.pr_lekt || s.flags.cfo_manipuleert) || R() < 0.2;
+  s.hidden_truth.push({id, waar, datum: ym(s)});
+  mail(ctx, s, "Gerucht (bron onbekend)", "Gerucht in de lift", txt + " Betrouwbaarheid: onbekend.", "LAAG");
+}
+
+/* ---------- verhaalbogen ---------- */
+const ARCS = {
+  vonk: {start: 0.05, stages: [
+    {delay: 2, from: "Receptie", subject: "Graffiti op de HQ-muur", body: "Iemand heeft 'JULLIE ETEN DE STAD OP' op de muur gespoten. Signatuur: een vuist die een bliksemschicht vasthoudt. De schoonmaakploeg vraagt overuren.", effect: {reputation: -1}},
+    {delay: 2, from: "PR", subject: "Illegaal concert in Neon Mile", body: "Mara Vonk, frontvrouw van punkband Kortsluiting, speelde gisteren op het dak van een parkeergarage. Het refrein was onze bedrijfsnaam, gevolgd door een woord dat ik hier niet typ. Tweehonderd telefoons filmden mee.", effect: {reputation: -3, heat: 2}, flag: "vonk_concert"},
+    {delay: 3, from: "Mara Vonk", subject: "Een voorstel, geen verzoek", body: "Je hebt het nummer gehoord. Er komen er meer. Twee opties: je financiert mijn volgende tour en ik zing over iemand anders, of je wordt mijn album. Geen contract, geen advocaten. - M.V.", flag: "vonk_keuze", decide: true},
+    {delay: 2, from: "Straat", subject: "Neon Mile heeft besloten", resolve: true},
+  ]},
+  nomaden_pact: {start: 0.04, stages: [
+    {delay: 2, from: "Logistiek", subject: "Clans verzamelen aan de Ringweg", body: "Meerdere clans staan stil bij het knooppunt. Geen aanvallen, geen vragen. Iemand ziet een zwarte vlag met een kraai.", flag: "nomaden_verzameling"},
+    {delay: 3, from: "Nomadenleider Isra", subject: "Een uitnodiging", body: "We hebben uw bedrijf gezien. We vragen geen vriendschap. We vragen toegang tot uw netwerk, in ruil voor bescherming op de Ringweg.", flag: "nomaden_aanbod", decide: true},
+    {delay: 1, from: "Nomadenleider Isra", subject: "Ons antwoord op uw antwoord", resolve: true},
+  ]},
+  hostile_bid: {start: 0.03, stages: [
+    {delay: 3, from: "Marktwacht", subject: "Ongewone aandelenaankopen", body: "Iemand koopt stilletjes onze aandelen op. De bron is een holding in een belastingparadijs. De namen zijn geen namen.", effect: {reputation: -1}},
+    {delay: 3, from: "Advocaat De Wit", subject: "Formeel overnamebod ontvangen", body: "Een 'vriendelijk' overnamebod ligt op tafel. U heeft 30 dagen. Een verdediging kost geld. Niets doen kost de baan.", effect: {heat: 1}, flag: "overnamebod", decide: true},
+    {delay: 1, from: "Advocaat De Wit", subject: "Uitslag overnamestrijd", resolve: true},
+  ]},
+};
+const DEFENSES = {niets: [0.15, 0], investeren: [0.35, 1 / 200], white_knight: [0.60, 0], juridisch: [0.35, 1 / 150], poison_pill: [0.75, 0]};
+const RESOLVE = {
+  vonk(s, ctx){
+    const deal = s.flags.vonk_deal || "negeren";
+    if (deal === "sponsor"){ shiftFaction(s, "straat", 15); shiftFaction(s, "politie", -5); s.heat = clamp(s.heat + 5); s.reputation = clamp(s.reputation + 2);
+      return "Kortsluiting speelt een nieuw nummer. Het gaat over de burgemeester. Uw logo hangt klein naast het podium. Neon Mile vindt u ineens minder erg. De politie vindt u ineens interessanter."; }
+    if (deal === "uitgeschakeld"){
+      shiftFaction(s, "straat", -25); s.heat = clamp(s.heat + 15);
+      if (R() < 0.35){ s.reputation = clamp(s.reputation - 15); s.flags.vonk_schandaal = ym(s);
+        s.lopende_effecten.push({naam: "Boycot na Vonk-schandaal", maanden: 3, effect: {reputation: -1, morale: -1}}); ctx.rep.push("Vonk-zaak lekt uit");
+        return "Mara Vonk is van de straat. En iemand heeft een opname van een telefoontje vanuit ons gebouw. Het staat op elke muur in Roest. Dit gaat niet over."; }
+      s.hidden_truth.push({id: "vonk_spoor", waar: true, inhoud: "Er bestaat ergens een spoor naar de opdrachtgever."});
+      return "Kortsluiting heeft het laatste concert afgezegd. Niemand weet waarom. Neon Mile is stil, en stil is in Neon Mile nooit een goed teken.";
+    }
+    const m = RI(1, 3); s.lopende_effecten.push({naam: "Vonk zingt over ons", maanden: m, effect: {reputation: -2}});
+    return `Het nieuwe album heet naar ons bedrijf. Het staat op elke radio die niet van ons is. Verwacht ${m} maand(en) reputatieschade.`;
+  },
+  nomaden_pact(s){
+    if (s.flags.nomad_contract === true){ shiftFaction(s, "nomaden", 20);
+      return "Het pact staat. Onze trucks rijden voortaan veilig over de Ringweg, en uw logistiek wordt goedkoper. Wij vragen soms een gunst. Wie weigert, merkt dat de Ringweg lang is."; }
+    shiftFaction(s, "nomaden", -10); s.flags.nomad_contract = false;
+    return "U heeft nee gezegd. Dat is uw goed recht. De Ringweg is ook van ons. Rij voorzichtig.";
+  },
+  hostile_bid(s, ctx, diff){
+    const d = s.hostile_bid || {}; let def = DEFENSES[d.verdediging] ? d.verdediging : "niets";
+    const budget = +d.budget || 0, [base, perK] = DEFENSES[def];
+    let chance = base + budget * perK + (s.reputation - 30) / 300 + (s.cash > 150 ? 0.05 : 0);
+    chance = clamp(chance / Math.sqrt(diff), 0.05, 0.92);
+    const roll = R(), won = roll < chance;
+    Object.assign(d, {kans: r1(chance * 100) / 100, rol: Math.round(roll * 100) / 100, uitslag: won ? "afgeslagen" : "verloren"}); s.hostile_bid = d;
+    ctx.rep.push(`Overnamestrijd (${def}): rol ${roll.toFixed(2)} vs kans ${chance.toFixed(2)} -> ${won ? "afgeslagen" : "verloren"}`);
+    addRoll(s, `Overnamestrijd (${def}): ${Math.round(roll * 100)} vs ${Math.round(chance * 100)}% → ${won ? "afgeslagen" : "verloren"}`);
+    if (def === "white_knight") s.flags.white_knight_schuld = true;
+    if (def === "poison_pill"){ s.morale = clamp(s.morale - 10); s.reputation = clamp(s.reputation - 5); s.debt = r1(s.debt + 50); }
+    if (def === "juridisch") s.heat = clamp(s.heat + 3);
+    if (won) return `Het bod is van tafel (verdediging: ${def}). De kopers trekken zich terug, voor nu. Ze hebben wel geleerd hoe we reageren.`;
+    if (s.player.difficulty === "Casual" && s.divisions.length){
+      const big = s.divisions.reduce((a, b) => b.level > a.level ? b : a); s.divisions = s.divisions.filter(x => x !== big); s.cash = r1(s.cash * 0.7);
+      return `We verliezen de strijd gedeeltelijk. De kopers nemen divisie '${big.name || big.type}' en 30% van de kas mee als schikking. U blijft CEO van wat er over is.`;
+    }
+    s.flags.overgenomen = true;
+    return "De aandeelhouders hebben gekozen. Morgen staat er een andere naam op de deur. Uw badge werkt tot middernacht.";
+  },
+};
+function arcsTick(s, ctx, diff){
+  const active = new Set(s.arcs.map(a => a.id)), done = s.flags.arcs_done || [];
+  for (const [id, arc] of Object.entries(ARCS))
+    if (!active.has(id) && !done.includes(id) && R() < arc.start){ s.arcs.push({id, stage: 0, next_in: arc.stages[0].delay}); ctx.rep.push(`Verhaallijn gestart: ${id}`); }
+  for (const a of [...s.arcs]){
+    if (!ARCS[a.id]){ s.arcs = s.arcs.filter(x => x !== a); continue; }
+    if (s.flags["wacht_op_speler_" + a.id]){ ctx.rep.push(`Verhaallijn ${a.id} wacht op een keuze van de CEO`); continue; }
+    if (--a.next_in > 0) continue;
+    const st = ARCS[a.id].stages[a.stage];
+    const body = st.resolve ? RESOLVE[a.id](s, ctx, diff) : st.body;
+    mail(ctx, s, st.from, st.subject, body, st.decide || st.resolve ? "HOOG" : "NORMAAL");
+    const e = st.effect || {}; s.reputation = clamp(s.reputation + (e.reputation || 0)); s.heat = clamp(s.heat + (e.heat || 0));
+    if (st.flag) s.flags[st.flag] = ym(s);
+    if (st.decide) s.flags["wacht_op_speler_" + a.id] = true;
+    a.stage += 1;
+    if (a.stage >= ARCS[a.id].stages.length){ s.arcs = s.arcs.filter(x => x !== a); (s.flags.arcs_done ??= []).push(a.id); ctx.rep.push(`Verhaallijn afgerond: ${a.id}`); }
+    else a.next_in = ARCS[a.id].stages[a.stage].delay;
+  }
+}
+
+/* ---------- de maand ---------- */
+function tick(s){
+  migrate(s);
+  const ctx = Ctx(), diff = DIFF[s.player.difficulty] || 1, played = ym(s), start = s.cash, rep = ctx.rep;
+  let rev = 0, cost = 0, heatAdd = 0; const lines = [];
+  for (const d of s.divisions){
+    const t = DT[d.type] || {rev: 6, cost: 4, heat: 1, vol: 0.3};
+    const eff = (d.efficiency || 1) * (0.6 + 0.4 * s.morale / 100);
+    const r = t.rev * d.level * eff * (1 + U(-t.vol, t.vol)) * marketRevMult(s, d.type);
+    const c = t.cost * d.level * diff * divCostMult(s, d.type);
+    rev += r; cost += c; heatAdd += t.heat * d.level * 0.5;
+    lines.push(`| ${d.name || d.type} (${d.type} L${d.level}) | ${r1(r)} | ${r1(c)} |`);
+  }
+  for (const d of s.districts) if (d.control === "player"){ rev += d.income * U(0.85, 1.15); cost += d.upkeep; }
+  const payroll = s.staff.count * s.staff.avg_salary / 12 * 0.1;
+  const interest = s.debt * s.interest_rate / 12;
+  const projCost = s.projects.reduce((a, p) => a + (p.cost_per_month || 0), 0);
+  cost += payroll + (s.culture.bonus_cost || 0) + interest + projCost;
+  const net = r1(rev - cost); s.cash = r1(s.cash + net);
+
+  s.heat = clamp(s.heat + heatAdd - (s.culture.heat_decay ?? 2));
+  let drift = (s.culture.morale_drift || 0) + (net > 0 ? 1 : -2); if (s.culture.layoff_policy === "hard") drift -= 2;
+  s.morale = clamp(s.morale + drift + U(-2, 2));
+  s.reputation = clamp(s.reputation + (net > 0 ? 0.5 : -1) - s.heat / 60);
+
+  for (const p of [...s.projects]){
+    if (--p.eta_months > 0) continue;
+    s.projects = s.projects.filter(x => x !== p);
+    mail(ctx, s, "COO", `Project klaar: ${p.name}`, p.done_msg || "Opgeleverd. Kijk wat het oplevert."); rep.push(`Project klaar: ${p.name}`);
+    const oc = p.on_complete || {};
+    if (oc.new_division) s.divisions.push(oc.new_division);
+    if (oc.upgrade_division) for (const d of s.divisions) if ((d.name || d.type) === oc.upgrade_division) d.level += oc.levels || 1;
+    if (oc.district_control) for (const d of s.districts) if (d.id === oc.district_control) d.control = "player";
+    if (oc.effect) applyEffect(s, oc.effect);
+  }
+
+  for (const r of s.rivals){
+    r.cash = r1(r.cash * (1 + U(-0.03, 0.06)));
+    if (s.heat > 40){ remember(r, s, "speler heeft hoge heat"); r.aggression = clamp(r.aggression + 0.05, 0, 1); }
+    if (R() < 0.1 + r.aggression * 0.12){
+      const move = CH(["overname-bod", "spionage", "prijsoorlog", "lobby"]);
+      if (move === "overname-bod" && r.cash > s.cash * 1.5 && s.cash < 50){
+        mail(ctx, s, r.ceo, "Vriendelijk voorstel", `${r.name} biedt aan je bedrijf te 'redden'. Lees tussen de regels. Dit is een bod, geen vriendschap.`, "HOOG");
+        s.flags["reddingsbod_" + r.name] = played; rep.push(`${r.name} doet overname-bod`);
+      } else if (move === "spionage"){
+        mail(ctx, s, "Head of Security", `Spionageactiviteit door ${r.name}?`, "Ongeautoriseerde toegang tot een testserver. Ik kan het niet bewijzen. Nog niet.");
+        s.flags["spionage_" + r.name] = played;
+      } else if (move === "prijsoorlog"){ s.cash = r1(s.cash - RI(3, 10) * diff); r.cash = r1(r.cash - RI(3, 10)); rep.push(`Prijsoorlog met ${r.name}`); }
+      else if (move === "lobby"){ s.reputation = clamp(s.reputation - 2); rep.push(`${r.name} lobbyt tegen je`); }
+    }
+  }
+
+  for (const e of EVENTS){
+    if (e.when(s) && R() < eventProb(s, e, diff)){
+      applyEffect(s, e.effect);
+      const dist = CH(s.districts).name, subj = e.subject.replace("{district}", dist);
+      mail(ctx, s, e.from, subj, e.body, e.prio); rep.push(`Event: ${subj}`);
+    }
+  }
+
+  s.accounts.operationeel = s.cash;
+  lingeringTick(s, ctx, diff); invoicesTick(s, ctx, diff); marketTick(s, ctx); factionTick(s, ctx);
+  npcTick(s, ctx); nomadDemandTick(s, ctx); chaosTick(s, ctx, diff); rumorTick(s, ctx); arcsTick(s, ctx, diff);
+  s.accounts.operationeel = s.cash; s.hidden_truth = s.hidden_truth.slice(-30);
+
+  let status = "actief";
+  if (s.cash < 0){
+    s.flags.negatieve_cash_maanden = (s.flags.negatieve_cash_maanden || 0) + 1;
+    const left = 3 - s.flags.negatieve_cash_maanden;
+    mail(ctx, s, "CFO", "Cash is negatief", "We betalen onze leveranciers met rente. " + (left > 0 ? `Nog ${left} maand(en) zo en de rechtbank beslist voor ons.` : "Het is op."), "KRITIEK");
+    if (s.flags.negatieve_cash_maanden >= 3) status = "FAILLIET";
+  } else s.flags.negatieve_cash_maanden = 0;
+  if (s.morale < 10 && R() < 0.3) status = "COUP IN DE RAAD";
+  else if (s.morale < 20) mail(ctx, s, "Anoniem", "De raad vergadert zonder u", "Drie bestuursleden lunchten gisteren samen. U stond niet op de lijst.", "HOOG");
+  if (s.heat > 90 && R() < 0.25) status = "RAZZIA / VERVOLGING";
+  else if (s.heat > 75) mail(ctx, s, "Juridische Zaken", "Er wordt een dossier opgebouwd", "Een bevriende griffier zegt dat ons dossier dikker wordt. Bij de huidige heat is een inval een kwestie van tijd.", "KRITIEK");
+  if (s.flags.overgenomen){ delete s.flags.overgenomen; status = "OVERGENOMEN"; }
+  s.status = status;
+  if (status !== "actief") mail(ctx, s, "Raad van Bestuur", `Einde: ${status}`, `Per ${played} is het voorbij. Status: ${status}. Het archief wordt verzegeld.`, "KRITIEK");
+
+  const shown = {cash: s.cash, net, heat: s.heat};
+  if (s.flags.cfo_manipuleert){
+    shown.cash = r1(s.cash * U(1.05, 1.2) + U(2, 8)); shown.net = r1(net + Math.abs(net) * U(0.1, 0.3) + U(1, 4)); shown.heat = clamp(s.heat - U(3, 8));
+  }
+  const risks = [shown.cash < 30 && "Cash laag", shown.heat > 40 && "Heat hoog", s.morale < 40 && "Morale laag", s.reputation < 30 && "Reputatie zwak",
+    s.debt > shown.cash && "Schuld", s.invoices.some(i => i.overdue) && "Achterstallige facturen"].filter(Boolean).slice(0, 3);
+  const waiting = Object.keys(s.flags).filter(k => k.startsWith("wacht_op_speler_") && s.flags[k]).map(k => k.slice(16));
+  const report = `# Maandrapport ${played}\n\n*Bedragen in k€ (duizend euro). Opgesteld door de CFO.*\n\n| Item | Waarde |\n|---|---|\n` +
+    `| Cash | ${shown.cash} (was ${start}) |\n| Omzet | ${r1(rev)} |\n| Kosten | ${r1(cost)} (lonen ${r1(payroll)}, rente ${r1(interest)}, projecten ${r1(projCost)}) |\n` +
+    `| Netto (voor facturen) | ${shown.net} |\n| Schuld | ${s.debt} |\n| Open facturen | ${s.invoices.length} (€${r1(s.invoices.reduce((a, i) => a + i.amount, 0))}k) |\n` +
+    `| Zwart / offshore | ${s.accounts.zwart} / ${s.accounts.offshore} |\n| Heat | ${r1(shown.heat)} |\n| Reputatie | ${r1(s.reputation)} |\n| Morale | ${r1(s.morale)} |\n| Status | ${status} |\n\n` +
+    (lines.length ? `| Divisie | Omzet | Kosten |\n|---|---|---|\n${lines.join("\n")}\n\n` : "") +
+    `**Projecten:** ${s.projects.map(p => `${p.name} (${p.eta_months} mnd)`).join("; ") || "geen"}\n\n` +
+    `**Top risico's:** ${risks.join(", ") || "Geen acute risico's. Verdacht."}\n\n**Gebeurd:** ${rep.join("; ") || "Niets noemenswaards."}\n` +
+    (waiting.length ? `\n**Wacht op uw besluit:** ${waiting.join(", ")}\n` : "");
+  mail(ctx, s, "CFO", `Maandrapport ${played}`, report);
+  ctx.reportIndex = ctx.mails.length - 1;
+  s.laatste_rapport = {maand: played, netto: shown.net, omzet: r1(rev), kosten: r1(cost), cash_offset: r1(shown.cash - s.cash), heat_offset: r1(shown.heat - s.heat), gebeurd: rep};
+  addLog(s, `Maand gespeeld: netto ${shown.net >= 0 ? "+" : ""}${shown.net}k${status !== "actief" ? " · " + status : ""}`);
+  if (status === "actief"){ const d = s.date; d.month += 1; if (d.month > 12){ d.month = 1; d.year += 1; } }
+  return ctx;
+}
+
+/* ---------- acties van de speler ---------- */
+const loanCap = s => r1(Math.max(0, s.reputation * 4 - s.debt + Math.max(0, s.cash) * 0.5));
+const districtCost = (s, d) => r1((d.upkeep * 8 + d.income * 4) * (s.rivals.some(r => r.hq === d.id) ? 2 : 1) * (DIFF[s.player.difficulty] || 1));
+const upgradeCost = (s, d) => r1(15 * d.level * (DIFF[s.player.difficulty] || 1));
+const newDivCost = s => r1(30 * (DIFF[s.player.difficulty] || 1));
+
+function actTransfer(s, ctx, van, naar, amount){
+  const A = ["operationeel", "zwart", "offshore"]; amount = +amount;
+  if (!A.includes(van) || !A.includes(naar) || van === naar || !(amount > 0)) return {ok: false, msg: "Kies twee verschillende rekeningen en een bedrag."};
+  const bal = van === "operationeel" ? s.cash : s.accounts[van];
+  if (bal < amount) return {ok: false, msg: `Onvoldoende saldo op ${van}: €${bal}k.`};
+  const pct = (5 + RI(0, 10)) / 100, fee = r1(amount * pct);
+  if (van === "operationeel") s.cash = r1(s.cash - amount); else s.accounts[van] = r1(s.accounts[van] - amount);
+  if (naar === "operationeel") s.cash = r1(s.cash + amount - fee); else s.accounts[naar] = r1(s.accounts[naar] + amount - fee);
+  let risk = Math.min(0.6, 0.05 + amount / 400 + s.heat / 300 + ([van, naar].includes("zwart") ? 0.08 : 0));
+  if (faction(s, "politie") > 30) risk *= 0.6;
+  const roll = d100(), caught = roll <= Math.round(risk * 100);
+  addRoll(s, `Controle bij transfer €${amount}k: d100 = ${roll} vs ${Math.round(risk * 100)}% → ${caught ? "GEMELD" : "onopgemerkt"}`);
+  let msg = `€${amount}k van ${van} naar ${naar}. Fee ${Math.round(pct * 100)}% (€${fee}k). Controle: ${caught ? "gemeld" : "onopgemerkt"}.`;
+  if (caught){
+    s.heat = clamp(s.heat + 6 + amount / 20); s.flags.transfer_onderzoek = ym(s);
+    mail(ctx, s, "Bank Oude Stad, afdeling Compliance", "Ongebruikelijke transactie", `Wij hebben een transactie van €${amount}k gemeld bij de toezichthouder. Dit is een standaardprocedure. Wij hopen voor u dat het standaard blijft.`, "HOOG");
+  }
+  s.accounts.operationeel = s.cash; addLog(s, msg);
+  return {ok: true, msg};
+}
+function actLoan(s, amount){
+  amount = +amount; const cap = loanCap(s);
+  if (!(amount > 0)) return {ok: false, msg: "Vul een bedrag in."};
+  if (amount > cap) return {ok: false, msg: `De bank weigert. Maximaal leenbaar nu: €${cap}k.`};
+  const nd = s.debt + amount;
+  const rate = Math.round((0.06 + Math.max(0, 50 - s.reputation) / 500 + nd / 3000 + (s.heat > 40 ? 0.03 : 0)) * 1000) / 1000;
+  s.debt = r1(nd); s.interest_rate = rate; s.cash = r1(s.cash + amount);
+  const msg = `Lening €${amount}k. Totale schuld €${s.debt}k tegen ${r1(rate * 100)}% per jaar (≈ €${r1(s.debt * rate / 12)}k rente per maand).`;
+  addLog(s, msg); return {ok: true, msg};
+}
+function actRepay(s, amount){
+  amount = Math.min(+amount || 0, s.debt);
+  if (amount <= 0 || s.cash < amount) return {ok: false, msg: `Kan niet aflossen. Schuld €${s.debt}k, cash €${s.cash}k.`};
+  s.cash = r1(s.cash - amount); s.debt = r1(s.debt - amount);
+  const msg = `€${amount}k afgelost. Resterende schuld €${s.debt}k.`; addLog(s, msg); return {ok: true, msg};
+}
+function actInvoice(s, id, action){
+  const inv = s.invoices.find(i => i.id === id); if (!inv) return {ok: false, msg: "Factuur niet gevonden."};
+  if (action === "betaal"){
+    if (s.cash < inv.amount) return {ok: false, msg: `Onvoldoende cash voor €${inv.amount}k.`};
+    s.cash = r1(s.cash - inv.amount); s.invoices = s.invoices.filter(x => x !== inv);
+    if (inv.overdue) s.reputation = clamp(s.reputation + 0.5);
+    return {ok: true, msg: `${inv.payee} betaald: €${inv.amount}k.`};
+  }
+  inv.auto_pay = !inv.auto_pay;
+  return {ok: true, msg: `${inv.payee}: ${inv.auto_pay ? "wordt automatisch betaald." : "laten we bewust liggen."}`};
+}
+function actDecision(s, arc, keuze, budget){
+  const f = s.flags; budget = Math.max(0, +budget || 0);
+  const pay = (amt, black) => {
+    if (black && s.accounts.zwart >= amt){ s.accounts.zwart = r1(s.accounts.zwart - amt); return true; }
+    if (s.cash < amt) return false; s.cash = r1(s.cash - amt); return true;
+  };
+  let line;
+  if (arc === "vonk" && f.wacht_op_speler_vonk && ["sponsor", "negeren", "uitgeschakeld"].includes(keuze)){
+    const c = {sponsor: 15, negeren: 0, uitgeschakeld: 10}[keuze];
+    if (!pay(c, keuze === "uitgeschakeld")) return {ok: false, msg: `Niet genoeg geld (€${c}k nodig).`};
+    f.vonk_deal = keuze; delete f.wacht_op_speler_vonk;
+    line = {sponsor: "We financieren de tour van Mara Vonk.", negeren: "We negeren Mara Vonk.", uitgeschakeld: "Mara Vonk wordt 'opgelost'."}[keuze];
+  } else if (arc === "nomaden_pact" && f.wacht_op_speler_nomaden_pact && ["ja", "nee"].includes(keuze)){
+    f.nomad_contract = keuze === "ja"; delete f.wacht_op_speler_nomaden_pact;
+    line = keuze === "ja" ? "Pact met de nomaden gesloten." : "Pact met de nomaden geweigerd.";
+  } else if (arc === "hostile_bid" && f.wacht_op_speler_hostile_bid && DEFENSES[keuze]){
+    const b = ["investeren", "juridisch"].includes(keuze) ? budget : 0;
+    if (!pay(b)) return {ok: false, msg: `Niet genoeg cash voor een budget van €${b}k.`};
+    s.hostile_bid = {verdediging: keuze, budget: b}; delete f.wacht_op_speler_hostile_bid;
+    line = `Verdediging tegen het overnamebod: ${keuze}${b ? ` (budget €${b}k)` : ""}.`;
+  } else if (arc === "nomaden_eis" && f.nomaden_eis && ["betalen", "weigeren"].includes(keuze)){
+    if (keuze === "betalen"){
+      const a = f.nomaden_eis.bedrag; if (!pay(a)) return {ok: false, msg: `Niet genoeg cash (€${a}k).`};
+      shiftFaction(s, "nomaden", 3); delete f.nomaden_eis; line = `Isra's gunst betaald (€${a}k).`;
+    } else { f.nomaden_eis.genegeerd = true; line = "Isra's eis blijft liggen."; }
+  } else return {ok: false, msg: "Dit besluit staat niet (meer) open."};
+  s.accounts.operationeel = s.cash; addLog(s, line);
+  return {ok: true, msg: line + " De gevolgen merk je na de volgende maand."};
+}
+function actProject(s, kind, a){
+  let cost, proj;
+  if (kind === "upgrade"){
+    const d = s.divisions.find(x => (x.name || x.type) === a.divisie); if (!d) return {ok: false, msg: "Divisie niet gevonden."};
+    const nm = d.name || d.type;
+    if (s.projects.some(p => p.division === nm)) return {ok: false, msg: "Daar loopt al een uitbreiding."};
+    cost = upgradeCost(s, d);
+    proj = {name: `Uitbreiding ${nm} naar L${d.level + 1}`, eta_months: 2, cost_per_month: 2, division: nm,
+      done_msg: `${nm} draait nu op niveau ${d.level + 1}. Meer omzet, meer kosten, meer aandacht.`, on_complete: {upgrade_division: nm, levels: 1}};
+  } else if (kind === "divisie"){
+    const type = a.type, nm = String(a.naam || type).trim().slice(0, 40) || type;
+    if (!DT[type]) return {ok: false, msg: "Onbekend type."};
+    if (s.divisions.some(x => x.name === nm) || s.projects.some(p => p.new_name === nm)) return {ok: false, msg: "Die naam bestaat al."};
+    cost = newDivCost(s);
+    proj = {name: `Opstart ${nm} (${type})`, eta_months: 3, cost_per_month: 3, new_name: nm,
+      done_msg: `${nm} is operationeel. Klein begin. De concurrentie heeft het gezien.`, on_complete: {new_division: {name: nm, type, level: 1}}};
+    if (type === "Smokkel") proj.on_complete.effect = {heat: 4};
+  } else if (kind === "district"){
+    const d = s.districts.find(x => x.id === a.id);
+    if (!d || d.control === "player") return {ok: false, msg: "Dat district is al van jou."};
+    if (s.projects.some(p => p.district === d.id)) return {ok: false, msg: "Daar loopt al een vestiging."};
+    cost = districtCost(s, d);
+    proj = {name: `Vestiging in ${d.name}`, eta_months: 3, cost_per_month: 1, district: d.id,
+      done_msg: `We hebben voet aan de grond in ${d.name}. Panden, contacten, een paar mensen die ons kennen.`, on_complete: {district_control: d.id}};
+    for (const r of s.rivals) if (r.hq === d.id){ remember(r, s, `speler dringt district ${d.id} binnen`); r.aggression = Math.min(1, r1(r.aggression * 100 + 5) / 100); }
+  } else return {ok: false, msg: "Onbekend project."};
+  if (s.cash < cost) return {ok: false, msg: `Niet genoeg cash: €${cost}k nodig.`};
+  s.cash = r1(s.cash - cost); s.accounts.operationeel = s.cash; s.projects.push(proj);
+  addLog(s, `Project gestart: ${proj.name} (€${cost}k + €${proj.cost_per_month}k/maand, ${proj.eta_months} mnd).`);
+  return {ok: true, msg: `${proj.name} gestart. €${cost}k betaald, klaar over ${proj.eta_months} maanden.`};
+}
+function newGame(d){
+  const s = migrate(template()), p = s.player, ctx = Ctx();
+  p.corp_name = String(d.corp_name || "Naamloos BV").trim().slice(0, 60);
+  p.motto = String(d.motto || "").trim().slice(0, 120);
+  p.background = String(d.background || "").trim().slice(0, 200);
+  p.difficulty = DIFF[d.difficulty] ? d.difficulty : "Realistisch";
+  const doctrine = (d.doctrine || []).filter(x => DT[x]).slice(0, 2); if (!doctrine.length) doctrine.push("Logistiek");
+  p.doctrine = doctrine.join(" + ");
+  const home = s.districts.some(x => x.id === d.home) ? d.home : "A"; p.home_district = home;
+  for (const x of s.districts) if (x.id === home) x.control = "player";
+  const yr = parseInt(d.year, 10); s.date = {year: clamp(isNaN(yr) ? 2004 : yr, 1980, 2100), month: 1};
+  [s.cash, s.debt] = ({krap: [80, 0], normaal: [100, 0], ruim: [150, 60]})[d.kapitaal] || [100, 0];
+  const lvl = doctrine.length === 1 ? 2 : 1;
+  s.divisions = doctrine.map((t, i) => ({name: i === 0 && String(d.divisie_naam || "").trim() ? String(d.divisie_naam).trim().slice(0, 40) : t, type: t, level: lvl}));
+  const c = s.culture;
+  c.slogans = String(d.slogan || "").split("\n").map(x => x.trim()).filter(Boolean).slice(0, 3);
+  c.layoff_policy = d.ontslag === "hard" ? "hard" : "normal";
+  [c.bonus_cost, c.morale_drift] = ({geen: [0, 0], redelijk: [2, 1], royaal: [5, 2]})[d.bonus] || [0, 0];
+  c.heat_decay = ({streng: 3, normaal: 2, geen_vragen: 1})[d.ethiek] ?? 2;
+  c.ethics_rules = ({streng: ["Geen illegale deals", "Klokkenluiders worden beschermd"], normaal: ["Niet betrapt worden"], geen_vragen: ["Resultaat telt"]})[d.ethiek] || [];
+  if (d.ethiek === "streng") s.reputation += 5;
+  if (d.ethiek === "geen_vragen") shiftFaction(s, "straat", 10);
+  if (c.layoff_policy === "hard") shiftFaction(s, "vakbond", -15);
+  s.setup_done = true; s.accounts.operationeel = s.cash;
+  const hn = s.districts.find(x => x.id === home).name;
+  mail(ctx, s, "Marta Delcourt (CFO)", "Welkom, CEO",
+    `Welkom bij ${p.corp_name}.${p.motto ? " " + p.motto : ""}\n\nWe zitten in ${hn}. We hebben €${s.cash}k in kas${s.debt ? ` en €${s.debt}k schuld bij de bank` : ""}, ${s.staff.count} mensen op de loonlijst en ${s.divisions.length} divisie(s): ${s.divisions.map(x => x.name).join(", ")}.\n\nElke maand stuur ik u een rapport. Lees het. De rest van uw mail is minder betrouwbaar dan ik.\n\nWat de knoppen niet kunnen, schrijft u als opdracht. De GM zegt wat het kost en hoe groot de kans is, en de dobbelsteen beslist.\n\n— M. Delcourt`, "HOOG");
+  addLog(s, `${p.corp_name} opgericht in ${hn}. Doctrine: ${p.doctrine}. Moeilijkheid: ${p.difficulty}.`);
+  return {s, ctx};
+}
+
+/* ---------- GM: effecten van een goedgekeurde opdracht, binnen grenzen ---------- */
+const GM_FLAGS_REMOVABLE = ["cfo_manipuleert", "pr_lekt", "security_verkocht", "lek_intern", "transfer_onderzoek", "white_knight_schuld", "nomad_contract_gebroken"];
+function applyGmEffect(s, e){
+  if (!e || typeof e !== "object") return [];
+  const out = [], num = (v, lo, hi) => clamp(+v || 0, lo, hi);
+  if (e.cash){ const v = num(e.cash, -300, 150); s.cash = r1(s.cash + v); out.push(`cash ${v >= 0 ? "+" : ""}${v}`); }
+  if (e.zwart){ const v = num(e.zwart, -150, 100); s.accounts.zwart = r1(Math.max(0, s.accounts.zwart + v)); out.push(`zwart ${v >= 0 ? "+" : ""}${v}`); }
+  for (const k of ["heat", "reputation", "morale"]) if (e[k]){ const v = num(e[k], -25, 25); s[k] = clamp(s[k] + v); }
+  for (const [n, v] of Object.entries(e.factions || {})) if (s.factions[n]) shiftFaction(s, n, num(v, -30, 30));
+  for (const [n, v] of Object.entries(e.loyaliteit || {})){ const p = s.npcs.find(x => x.name === n); if (p) p.loyalty = clamp(p.loyalty + num(v, -40, 40)); }
+  for (const [n, v] of Object.entries(e.rivaal_agressie || {})){ const r = s.rivals.find(x => x.name === n); if (r) r.aggression = r1(clamp(r.aggression + num(v, -0.3, 0.3), 0, 1) * 100) / 100; }
+  for (const [n, v] of Object.entries(e.rivaal_cash || {})){ const r = s.rivals.find(x => x.name === n); if (r) r.cash = r1(Math.max(0, r.cash + num(v, -200, 100))); }
+  for (const [n, t] of Object.entries(e.rivaal_geheugen || {})){ const r = s.rivals.find(x => x.name === n); if (r) remember(r, s, String(t).slice(0, 120)); }
+  if (e.district && s.districts.some(d => d.id === e.district)) for (const d of s.districts) if (d.id === e.district) d.control = "player";
+  for (const f of e.verwijder_flags || []) if (GM_FLAGS_REMOVABLE.includes(f)){
+    delete s.flags[f];
+    const ht = {cfo_manipuleert: "cfo_boeken", pr_lekt: "pr_lek", security_verkocht: "security_lek"}[f];
+    if (ht) s.hidden_truth = s.hidden_truth.filter(h => h.id !== ht);
+  }
+  for (const n of e.ontslag || []){ const before = s.npcs.length; s.npcs = s.npcs.filter(x => x.name !== n); if (s.npcs.length < before){ s.morale = clamp(s.morale - 2); out.push(`${n} vertrokken`); } }
+  if (e.nieuwe_npc && e.nieuwe_npc.name && s.npcs.length < 8){
+    const q = e.nieuwe_npc; s.npcs.push({name: String(q.name).slice(0, 40), role: String(q.role || "Adviseur").slice(0, 40), loyalty: num(q.loyalty ?? 55, 0, 100), ambition: num(q.ambition ?? 50, 0, 100), secret: String(q.secret || "Onbekend.").slice(0, 160)});
+  }
+  if (e.lopend && e.lopend.naam){ const L = e.lopend; s.lopende_effecten.push({naam: String(L.naam).slice(0, 60), maanden: clamp(+L.maanden || 1, 1, 6), effect: {cash: num(L.cash, -20, 20), reputation: num(L.reputation, -3, 3), heat: num(L.heat, -3, 3), morale: num(L.morale, -3, 3)}}); }
+  if (e.flag && /^gm_[a-z0-9_]{1,40}$/.test(e.flag)) s.flags[e.flag] = ym(s);
+  s.accounts.operationeel = s.cash;
+  return out;
+}
+
+/* =====================================================================
+   Opslag: de database van het artifact (alleen de eigenaar leest en
+   schrijft), met browseropslag als terugval. De GM (Claude) kan via
+   dezelfde database meelezen en mails terugschrijven.
+   ===================================================================== */
+const G = {game: null, mails: [], orders: [], mode: "laden", gid: null, db: null, sample: null, sampleOff: false, unsub: []};
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+let mailSeq = 0;
+const LKEY = "cl_spel_v1";
+
+function localLoad(){ try { return JSON.parse(localStorage.getItem(LKEY) || "null"); } catch(e){ return null; } }
+function localSave(){ try { localStorage.setItem(LKEY, JSON.stringify({game: G.game, mails: G.mails.slice(0, 400), orders: G.orders.slice(0, 100)})); } catch(e){} }
+
+const Store = {
+  async init(){
+    let db = null;
+    try { db = window.claude && window.claude.use ? await window.claude.use("db") : null; } catch(e){ db = null; }
+    if (!db){ this.useLocal(); return; }
+    G.db = db;
+    try {
+      const ptr = await withTimeout(db.doc("meta/huidig").get(), 10000);
+      G.gid = ptr.exists ? ptr.data().gid : null;
+      if (!G.gid){ G.gid = "g" + uid(); await db.doc("meta/huidig").set({gid: G.gid}); }
+      G.mode = "db"; this.subscribe();
+    } catch(e){ G.db = null; this.useLocal(); toast("De online opslag reageert niet. Je spel wordt nu alleen in deze browser bewaard.", true); }
+  },
+  useLocal(){
+    const d = localLoad(); G.mode = "lokaal";
+    if (d){ G.game = d.game; G.mails = d.mails || []; G.orders = d.orders || []; }
+    S.loaded = true; render();
+  },
+  subscribe(){
+    for (const u of G.unsub) u(); G.unsub = [];
+    const base = "games/" + G.gid, db = G.db;
+    let first = false;
+    const timer = setTimeout(() => { if (!first){ S.loadNote = "De opslag reageert traag. Wat je ziet kan verouderd zijn."; render(); } }, 10000);
+    G.unsub.push(db.doc(base).onSnapshot(snap => {
+      first = true; clearTimeout(timer); S.loadNote = "";
+      if (!S.busy) G.game = snap.exists ? clone(snap.data().s) : null;
+      S.loaded = true; render();
+    }, e => { clearTimeout(timer); S.loaded = true; toast("Opslag niet bereikbaar (" + e.code + ").", true); render(); }));
+    G.unsub.push(db.collection(base + "/mails").orderBy("t", "desc").limit(400).onSnapshot(q => {
+      const before = G.mails.length;
+      G.mails = q.docs.map(d => ({id: d.id, ...d.data()}));
+      if (S.loaded && G.mails.length > before && !S.busy && before) toast(`${G.mails.length - before} nieuwe mail(s).`);
+      if (!S.busy) render();
+    }, () => {}));
+    G.unsub.push(db.collection(base + "/orders").orderBy("t", "desc").limit(100).onSnapshot(q => {
+      G.orders = q.docs.map(d => ({id: d.id, ...d.data()}));
+      if (!S.busy) render();
+    }, () => {}));
+  },
+  async saveGame(){
+    if (G.mode !== "db") return localSave();
+    await G.db.doc("games/" + G.gid).set({s: G.game, bijgewerkt: Date.now()});
+  },
+  async addMails(list){
+    const now = Date.now();
+    const docs = list.map(m => ({id: "m" + uid() + (mailSeq++), t: now * 100 + (mailSeq % 100), gelezen: false, archief: false, ...m}));
+    G.mails = [...docs.slice().reverse(), ...G.mails];
+    if (G.mode !== "db") { localSave(); return docs; }
+    const col = G.db.collection("games/" + G.gid + "/mails");
+    await Promise.all(docs.map(({id, ...body}) => col.doc(id).set(body)));
+    return docs;
+  },
+  async patchMail(id, patch){
+    const m = G.mails.find(x => x.id === id); if (!m) return; Object.assign(m, patch);
+    if (G.mode !== "db") return localSave();
+    await G.db.doc(`games/${G.gid}/mails/${id}`).update(patch);
+  },
+  async putOrder(o){
+    const i = G.orders.findIndex(x => x.id === o.id);
+    if (i >= 0) G.orders[i] = o; else G.orders.unshift(o);
+    if (G.mode !== "db") return localSave();
+    const {id, ...body} = o;
+    await G.db.doc(`games/${G.gid}/orders/${id}`).set(body);
+  },
+  async newGame(){
+    if (G.mode === "db"){
+      G.gid = "g" + uid(); await G.db.doc("meta/huidig").set({gid: G.gid});
+      G.game = null; G.mails = []; G.orders = []; this.subscribe();
+    } else { G.game = null; G.mails = []; G.orders = []; localSave(); }
+  },
+};
+function withTimeout(p, ms){ return Promise.race([p, new Promise((_, rej) => setTimeout(() => rej({code: "timeout"}), ms))]); }
+async function persist(ctx){
+  const out = [];
+  try {
+    await Store.saveGame();
+    if (ctx && ctx.mails.length) out.push(...await Store.addMails(ctx.mails));
+  } catch(e){
+    toast(e && e.code === "quota_exceeded" ? "De opslag is vol. Begin een nieuw spel of laat oude mails opruimen." : "Opslaan mislukt (" + (e && e.code || "onbekend") + "). Probeer het zo nog eens.", true);
+  }
+  return out;
+}
+
+/* ---------- wat het scherm toont (zoals de CFO het rapporteert) ---------- */
+function seeded(str){ let h = 1779033703 ^ str.length; for (let i = 0; i < str.length; i++){ h = Math.imul(h ^ str.charCodeAt(i), 3432918353); h = h << 13 | h >>> 19; } return () => { h = Math.imul(h ^ h >>> 16, 2246822507); h = Math.imul(h ^ h >>> 13, 3266489909); return ((h ^= h >>> 16) >>> 0) / 4294967296; }; }
+const labelFaction = v => v <= -50 ? "vijandig" : v <= -15 ? "koel" : v < 15 ? "neutraal" : v < 50 ? "warm" : "bondgenoot";
+const impression = n => n.verraad ? "lijkt tevreden" : n.loyalty >= 65 ? "loyaal" : n.loyalty >= 45 ? "tevreden" : n.loyalty >= 30 ? "twijfelt" : "ontevreden";
+function pendingDecisions(s){
+  const f = s.flags, out = [], zw = s.accounts.zwart || 0;
+  if (f.wacht_op_speler_vonk) out.push({arc: "vonk", titel: "Mara Vonk wil een antwoord", tekst: "Financier haar tour, negeer haar, of laat het 'oplossen'. De straat kijkt mee.", opties: [
+    {keuze: "sponsor", label: "Tour financieren", kost: 15, uitleg: "€15k. Straat warmer, politie koeler, wat heat."},
+    {keuze: "negeren", label: "Negeren", kost: 0, uitleg: "Gratis. 1 tot 3 maanden reputatieschade."},
+    {keuze: "uitgeschakeld", label: "Laten oplossen", kost: 10, uitleg: `€10k${zw >= 10 ? " uit zwart geld" : ""}. Veel heat, straat woedend, 35% kans dat het uitlekt.`}]});
+  if (f.wacht_op_speler_nomaden_pact) out.push({arc: "nomaden_pact", titel: "Isra biedt een pact aan", tekst: "Toegang tot uw netwerk in ruil voor bescherming op de Ringweg.", opties: [
+    {keuze: "ja", label: "Pact sluiten", kost: 0, uitleg: "Logistiek en smokkel 20% goedkoper, konvooien helpen. Af en toe een eis. Breken is gevaarlijk."},
+    {keuze: "nee", label: "Weigeren", kost: 0, uitleg: "Nomaden koeler. Meer kans op gedoe op de Ringweg."}]});
+  if (f.wacht_op_speler_hostile_bid) out.push({arc: "hostile_bid", titel: "Vijandig overnamebod", tekst: "U heeft 30 dagen. Kies een verdediging. Een gevecht kost geld; niets doen kost meestal het bedrijf.", opties: [
+    {keuze: "niets", label: "Niets doen", kost: 0, uitleg: "Ongeveer 15% kans dat het bod mislukt."},
+    {keuze: "investeren", label: "Aandelen terugkopen", kost: "budget", uitleg: "35% + 0,5% per €1k budget."},
+    {keuze: "juridisch", label: "Juridische strijd", kost: "budget", uitleg: "35% + 0,67% per €1k budget, +3 heat."},
+    {keuze: "white_knight", label: "White knight zoeken", kost: 0, uitleg: "60%, maar daarna sta je bij iemand in het krijt."},
+    {keuze: "poison_pill", label: "Poison pill", kost: 0, uitleg: "75%, maar morale -10, reputatie -5 en €50k extra schuld."}]});
+  if (f.nomaden_eis && typeof f.nomaden_eis === "object") out.push({arc: "nomaden_eis", titel: "Isra vraagt een gunst", tekst: `€${f.nomaden_eis.bedrag}k, of het pact wordt kouder.`, opties: [
+    {keuze: "betalen", label: `Betalen (€${f.nomaden_eis.bedrag}k)`, kost: f.nomaden_eis.bedrag, uitleg: "Houdt de Ringweg vriendelijk."},
+    {keuze: "weigeren", label: "Laten liggen", kost: 0, uitleg: "Kost nomaden-standing."}]});
+  return out;
+}
+function vm(){
+  const s = G.game;
+  if (!s) return {geen_spel: true, setup_done: false, divisie_types: SECTORS};
+  migrate(s);
+  const lr = s.laatste_rapport || {}, manip = !!s.flags.cfo_manipuleert;
+  const hq = {}; for (const r of s.rivals) (hq[r.hq] ??= []).push(r.name);
+  const pd = new Set(s.projects.map(p => p.district).filter(Boolean)), pu = new Set(s.projects.map(p => p.division).filter(Boolean));
+  return {
+    setup_done: !!s.setup_done, status: s.status, speler: s.player, datum: s.date, maand: ym(s),
+    cash: r1(s.cash + (manip ? lr.cash_offset || 0 : 0)), schuld: s.debt, rente: s.interest_rate,
+    heat: r1(clamp(s.heat + (manip ? lr.heat_offset || 0 : 0))), reputatie: r1(s.reputation), morale: r1(s.morale),
+    zwart: s.accounts.zwart, offshore: s.accounts.offshore, personeel: s.staff, cultuur: s.culture,
+    divisies: s.divisions.map(d => ({naam: d.name || d.type, type: d.type, level: d.level, aandeel: Math.round((s.market[d.type]?.player || 0) * 100), upgrade_kost: upgradeCost(s, d), bezig: pu.has(d.name || d.type)})),
+    projecten: s.projects,
+    districten: s.districts.map(d => ({id: d.id, naam: d.name, controle: d.control, inkomen: d.income, onderhoud: d.upkeep, lore: d.lore || "", hq: hq[d.id] || [], thuis: s.player.home_district === d.id, kost: districtCost(s, d), bezig: pd.has(d.id)})),
+    rivalen: s.rivals.map(r => ({naam: r.name, ceo: r.ceo, sector: r.sector, hq: r.hq, agressie: r.aggression < 0.35 ? "laag" : r.aggression < 0.6 ? "gemiddeld" : "hoog",
+      kas_schatting: Math.round(r.cash * (0.7 + 0.6 * seeded(r.name + ym(s))()) / 10) * 10, aandeel: Math.round((s.market[r.sector]?.rivals[r.name] || 0) * 100), geheugen: r.memory.slice(-3)})),
+    npcs: s.npcs.map(n => ({naam: n.name, rol: n.role, indruk: impression(n)})),
+    facties: Object.entries(s.factions).map(([k, v]) => ({naam: k, label: labelFaction(v.standing), waarde: Math.round(v.standing), noot: v.note})),
+    facturen: s.invoices, auto_pay: s.auto_pay, lopend: s.lopende_effecten.map(e => e.naam),
+    besluiten: pendingDecisions(s),
+    mails: G.mails.map(m => ({id: m.id, van: m.van, onderwerp: m.onderwerp, datum: m.datum, prio: m.prio, gelezen: !!m.gelezen, archief: !!m.archief,
+      preview: String(m.body || "").replace(/[#*|`_-]+/g, " ").slice(0, 120).trim()})),
+    opdrachten: G.orders,
+    rapport: lr.maand ? {...lr, mail: (G.mails.find(m => m.onderwerp === "Maandrapport " + lr.maand) || {}).id} : null,
+    leenruimte: loanCap(s), nieuwe_divisie_kost: newDivCost(s), divisie_types: SECTORS, contract: s.flags.nomad_contract,
+    log: s.log.slice().reverse().map(l => "- " + l).join("\n"), worpen: s.worpen,
+  };
+}
+
+/* ---------- de GM: Claude beoordeelt, de engine gooit ---------- */
+function gmPrompt(s, o){
+  const facts = {
+    datum: ym(s), bedrijf: s.player, cash: s.cash, zwart: s.accounts.zwart, offshore: s.accounts.offshore, schuld: s.debt,
+    heat: r1(s.heat), reputatie: r1(s.reputation), morale: r1(s.morale), personeel: s.staff, cultuur: s.culture,
+    divisies: s.divisions, projecten: s.projects.map(p => p.name), districten: s.districts.map(d => ({id: d.id, naam: d.name, controle: d.control, lore: d.lore})),
+    rivalen: s.rivals.map(r => ({naam: r.name, ceo: r.ceo, sector: r.sector, hq: r.hq, kas: r.cash, agressie: r.aggression, geheugen: r.memory.slice(-4)})),
+    directie: s.npcs, facties: Object.fromEntries(Object.entries(s.factions).map(([k, v]) => [k, Math.round(v.standing)])),
+    vlaggen: s.flags, verborgen_waarheid: s.hidden_truth.slice(-15),
+    recente_mails: G.mails.slice(0, 8).map(m => `${m.datum} ${m.van}: ${m.onderwerp}`), logboek: s.log.slice(-10),
+  };
+  return `Je bent de Game Master van CHROME LEDGER, een cyberpunk-bedrijfssimulatie in de stad Meridian Bay (startjaar rond 2004, retro-cyberpunk). Taal: Nederlands. Toon: droog, cynisch, corporate-noir.
+
+De speler (de CEO) geeft een opdracht in eigen woorden. Jij beoordeelt die eerlijk en vooraf: wat het kost, hoe groot de kans van slagen is, en wat er gebeurt bij succes en bij falen. Jij gooit NIET: de engine gooit daarna een d100 tegen jouw kans. Red de speler niet en straf hem niet zonder reden.
+
+Regels:
+- Bedragen in k€ (duizend euro). Geld is krap. Realistische prijzen voor deze stad: een agent omkopen 2-8, privédetective 3-10, hacker 10-40, advocaat 5-20, mediacampagne 10-30, iemand laten intimideren 5-15.
+- Noemt de speler een budget, blijf daarbinnen of verlaag de kans. Kan het niet van de beschikbare cash (of zwart geld bij illegale zaken), zet "haalbaar": false.
+- Illegale acties geven heat, ook bij succes. Snelle winst kost morale, reputatie of geeft juridisch risico.
+- Gebruik "verborgen_waarheid", vlaggen en geheimen van de directie om onderzoek eerlijk af te handelen. Een onderzoek dat slaagt mag de waarheid onthullen in de mail; als iets niet waar is, vindt het onderzoek ook niets. Is een verrader ontmaskerd en aangepakt, zet dan de bijbehorende vlag in "verwijder_flags" (cfo_manipuleert, pr_lekt, security_verkocht).
+- Rivalen, facties en directie reageren logisch. Geen gratis winst. Grote stappen hebben lage kansen.
+- Is de opdracht onmogelijk, onzinnig, of valt ze buiten de spelwereld: "haalbaar": false met een korte reden in de stem van de CFO of Juridische Zaken.
+- Is de opdracht te vaag om te beoordelen: zet "vraag" met één concrete vraag en "haalbaar": false.
+- Kans: een geheel getal 5-95, of 100 als er niets mis kan gaan (dan wordt er niet gegooid).
+- Mails: 2-5 zinnen, in de stem van de afzender (CFO droog, Head of Security paranoïde, PR spin, contacten op straat kortaf). Verklap in de succes-mail niets wat het onderzoek niet kan weten.
+- Effecten blijven binnen: cash -300..150, heat/reputation/morale -25..25, factie -30..30, loyaliteit -40..40, rivaal_agressie -0.3..0.3. Laat velden weg die niet veranderen. De kost (vooraf) staat los van de effecten; zet die niet nog eens in cash.
+
+De stand (alleen voor jou, de speler ziet dit niet):
+${JSON.stringify(facts)}
+
+De opdracht${o.context ? ` (context: ${o.context})` : ""}:
+"""${o.tekst}"""
+
+Antwoord met alleen JSON in exact deze vorm:
+{"haalbaar": true, "samenvatting": "wat er concreet gebeurt, 1 zin, voor de speler", "kost": 6, "bron": "operationeel", "kans": 60, "risico": "wat er mis kan gaan, 1 zin, voor de speler", "vraag": "",
+ "succes": {"effect": {"heat": 2, "factions": {"politie": 5}, "loyaliteit": {"Naam": -5}, "rivaal_agressie": {"Naam": 0.1}, "rivaal_cash": {"Naam": -20}, "rivaal_geheugen": {"Naam": "korte notitie"}, "district": "G", "verwijder_flags": [], "ontslag": [], "nieuwe_npc": null, "lopend": null}, "mail": {"van": "...", "onderwerp": "...", "tekst": "...", "prio": "NORMAAL"}},
+ "falen": {"effect": {}, "mail": {"van": "...", "onderwerp": "...", "tekst": "...", "prio": "HOOG"}}}
+"bron" is "operationeel" of "zwart". "nieuwe_npc" is null of {"name","role","loyalty","ambition","secret"}. "lopend" is null of {"naam","maanden","cash","reputation","heat","morale"}.`;
+}
+function cleanProposal(p, s){
+  if (!p || typeof p !== "object") throw {code: "invalid_json"};
+  const txt = (v, n) => String(v ?? "").slice(0, n);
+  const mailOf = m => ({van: txt(m?.van || "CFO", 60), onderwerp: txt(m?.onderwerp || "Afgehandeld", 90), tekst: txt(m?.tekst || "", 1500), prio: ["LAAG", "NORMAAL", "HOOG", "KRITIEK"].includes(m?.prio) ? m.prio : "NORMAAL"});
+  return {
+    haalbaar: p.haalbaar !== false, samenvatting: txt(p.samenvatting, 240), risico: txt(p.risico, 240), vraag: txt(p.vraag, 240),
+    kost: r1(clamp(+p.kost || 0, 0, 500)), bron: p.bron === "zwart" ? "zwart" : "operationeel",
+    kans: p.kans === 100 ? 100 : Math.round(clamp(+p.kans || 50, 5, 95)),
+    succes: {effect: p.succes?.effect || {}, mail: mailOf(p.succes?.mail)}, falen: {effect: p.falen?.effect || {}, mail: mailOf(p.falen?.mail)},
+  };
+}
+async function gmJudge(id){
+  const o = G.orders.find(x => x.id === id); if (!o || !G.game) return;
+  if (!G.sample){ o.status = "open"; o.antwoord = "Live GM is niet beschikbaar in deze weergave. De opdracht wacht tot Claude hem verwerkt."; await Store.putOrder(o); render(); return; }
+  o.status = "beoordelen"; o.antwoord = ""; await Store.putOrder(o); render();
+  try {
+    const raw = await G.sample.json(gmPrompt(G.game, o), {modelTier: "default"});
+    const p = cleanProposal(raw, G.game);
+    o.voorstel = p;
+    if (!p.haalbaar){ o.status = p.vraag ? "vraag" : "geweigerd"; o.antwoord = p.vraag || p.samenvatting || "Dit kan niet."; }
+    else { o.status = "voorstel"; o.antwoord = ""; }
+  } catch(e){
+    const c = e && e.code;
+    if (c === "not_granted" || c === "sampling_disabled" || c === "not_declared"){ G.sampleOff = true; o.status = "open"; o.antwoord = "Je gaf Claude geen toestemming in dit venster. De opdracht wacht; vraag het later opnieuw of laat Claude hem in de chat verwerken."; }
+    else if (c === "rate_limited"){ o.status = "open"; o.antwoord = "De GM is even overbelast. Probeer het over een minuut opnieuw."; }
+    else { o.status = "open"; o.antwoord = "De GM gaf geen bruikbaar antwoord. Probeer het opnieuw of formuleer de opdracht concreter."; }
+  }
+  await Store.putOrder(o); render();
+}
+async function gmExecute(id){
+  const o = G.orders.find(x => x.id === id), s = G.game; if (!o || o.status !== "voorstel" || !s) return {ok: false, bericht: "Dit voorstel staat niet meer open."};
+  const p = o.voorstel;
+  if (p.bron === "zwart"){ if (s.accounts.zwart < p.kost) return {ok: false, bericht: `Niet genoeg zwart geld (€${p.kost}k nodig).`}; s.accounts.zwart = r1(s.accounts.zwart - p.kost); }
+  else { if (s.cash < p.kost) return {ok: false, bericht: `Niet genoeg cash (€${p.kost}k nodig).`}; s.cash = r1(s.cash - p.kost); }
+  let roll = null, ok = true;
+  if (p.kans < 100){ roll = d100(); ok = roll <= p.kans; addRoll(s, `d100 = ${roll} vs ${p.kans}% → ${ok ? "GELUKT" : "MISLUKT"} · ${p.samenvatting}`); }
+  const br = ok ? p.succes : p.falen;
+  applyGmEffect(s, br.effect);
+  const ctx = Ctx(); mail(ctx, s, br.mail.van, br.mail.onderwerp, br.mail.tekst, br.mail.prio);
+  o.status = "verwerkt"; o.uitkomst = ok ? "gelukt" : "mislukt"; o.worp = roll;
+  o.antwoord = `${ok ? "Gelukt" : "Mislukt"}${roll != null ? ` (worp ${roll}, nodig ≤ ${p.kans})` : ""}. ${p.samenvatting}`;
+  addLog(s, `Opdracht ${ok ? "gelukt" : "mislukt"}: ${p.samenvatting}${p.kost ? ` (€${p.kost}k)` : ""}`);
+  const docs = await persist(ctx); await Store.putOrder(o);
+  return {ok: true, bericht: o.antwoord, mail: docs[0] && docs[0].id};
+}
+
+/* ---------- acties zoals het scherm ze aanroept ---------- */
+const API = {
+  async "/api/opdracht"(d){
+    const tekst = String(d.tekst || "").trim(); if (!tekst) return {ok: false, bericht: "Lege opdracht."};
+    const o = {id: "o" + uid(), t: Date.now(), maand: G.game ? ym(G.game) : "", tekst: tekst.slice(0, 2000), context: String(d.context || "").slice(0, 200), status: "open", antwoord: "", tijd: new Date().toLocaleString("nl-NL", {dateStyle: "short", timeStyle: "short"})};
+    await Store.putOrder(o);
+    if (G.sample && !G.sampleOff){ setTimeout(() => gmJudge(o.id), 0); S.view = "opdrachten"; return {ok: true, bericht: "De GM bekijkt je opdracht…"}; }
+    return {ok: true, bericht: "Opdracht staat klaar. Vraag Claude in de chat om opdrachten te verwerken."};
+  },
+  async "/api/opdracht/intrekken"(d){ const o = G.orders.find(x => x.id === d.id); if (o && ["open", "voorstel", "vraag", "geweigerd"].includes(o.status)){ o.status = "ingetrokken"; await Store.putOrder(o); } return {ok: true}; },
+  async "/api/gm/beoordeel"(d){ G.sampleOff = false; setTimeout(() => gmJudge(d.id), 0); return {ok: true}; },
+  async "/api/gm/uitvoeren"(d){ return gmExecute(d.id); },
+  async "/api/tick"(d){
+    const s = G.game; if (!s || s.status !== "actief") return {ok: false, bericht: "Het spel is voorbij."};
+    const open = G.orders.filter(o => ["open", "beoordelen", "voorstel"].includes(o.status));
+    if (open.length && !d.force) return {ok: false, vraag: true, bericht: `Er staan ${open.length} opdracht(en) open. Als je nu doorgaat, gebeuren die deze maand niet.`};
+    const ctx = tick(s); const docs = await persist(ctx);
+    return {ok: true, status: s.status, rapport_mail: docs[ctx.reportIndex] && docs[ctx.reportIndex].id};
+  },
+  async "/api/factuur"(d){
+    const s = G.game;
+    if (d.alles !== undefined){ s.auto_pay = !!d.alles; await persist(); return {ok: true, bericht: "Automatisch betalen " + (s.auto_pay ? "aan." : "uit.")}; }
+    const r = actInvoice(s, d.id, d.actie); if (r.ok) await persist(); return {ok: r.ok, bericht: r.msg};
+  },
+  async "/api/besluit"(d){ const r = actDecision(G.game, d.arc, d.keuze, d.budget); if (r.ok) await persist(); return {ok: r.ok, bericht: r.msg}; },
+  async "/api/project"(d){ const r = actProject(G.game, d.soort, d); if (r.ok) await persist(); return {ok: r.ok, bericht: r.msg}; },
+  async "/api/geld"(d){
+    const s = G.game, ctx = Ctx();
+    const r = d.soort === "transfer" ? actTransfer(s, ctx, d.van, d.naar, d.bedrag) : d.soort === "lening" ? actLoan(s, d.bedrag) : actRepay(s, d.bedrag);
+    if (r.ok) await persist(ctx); return {ok: r.ok, bericht: r.msg};
+  },
+  async "/api/mail/flag"(d){
+    const key = d.soort === "archief" ? "archief" : "gelezen";
+    const ids = d.ids.filter(id => { const m = G.mails.find(x => x.id === id); return m && !!m[key] !== !!d.waarde; });
+    for (const id of ids) await Store.patchMail(id, {[key]: !!d.waarde});
+    return {ok: true};
+  },
+  async "/api/setup"(d){ const {s, ctx} = newGame(d); G.game = s; await persist(ctx); return {ok: true, bericht: "Bedrijf opgericht."}; },
+  async "/api/nieuw"(){ await Store.newGame(); S.setup = null; return {ok: true, bericht: "Nieuw spel. Het oude spel blijft bewaard in de opslag."}; },
+};
+async function api(path, body){
+  if (path === "/api/state") return vm();
+  return API[path] ? API[path](body || {}) : {ok: false, bericht: "Onbekende actie."};
+}
+
+/* ---------- bevestigen in de pagina zelf ---------- */
+function ask(title, text, ok = "Doorgaan", danger = false){
+  return new Promise(res => {
+    const m = document.createElement("div"); m.className = "modal";
+    m.innerHTML = `<div class="box" role="dialog" aria-modal="true" aria-labelledby="askt"><h2 id="askt">${esc(title)}</h2><p style="margin:0 0 16px;white-space:pre-wrap">${esc(text)}</p>
+      <div class="row" style="justify-content:flex-end"><button class="btn" data-x="0">Annuleren</button><button class="btn ${danger ? "danger" : "primary"}" data-x="1">${esc(ok)}</button></div></div>`;
+    const done = v => { m.remove(); document.removeEventListener("keydown", key); res(v); };
+    const key = e => { if (e.key === "Escape") done(false); };
+    m.addEventListener("click", e => { const b = e.target.closest("[data-x]"); if (b) { e.stopPropagation(); done(b.dataset.x === "1"); } else if (e.target === m) done(false); });
+    document.addEventListener("keydown", key);
+    document.body.appendChild(m); m.querySelector('[data-x="1"]').focus();
+  });
+}
+
+/* ---------- opdrachtenkaart ---------- */
+function orderCard(x){
+  const p = x.voorstel, st = x.status;
+  const tag = {open: "HOOG", beoordelen: "cyan", voorstel: "HOOG", vraag: "HOOG", verwerkt: "ok", geweigerd: "", ingetrokken: ""}[st] ?? "";
+  const label = {open: "wacht", beoordelen: "GM beoordeelt…", voorstel: "voorstel", vraag: "vraag van de GM", verwerkt: x.uitkomst || "verwerkt", geweigerd: "kan niet", ingetrokken: "ingetrokken"}[st] || st;
+  let body = "";
+  if (st === "beoordelen") body = `<div class="gmwait"><span class="dots"></span> De GM rekent kosten en kansen uit. Dit duurt meestal 10 tot 40 seconden.</div>`;
+  if (st === "voorstel" && p) body = `<div class="prop">
+      <div class="ptext">${esc(p.samenvatting)}</div>
+      <div class="pstats"><div><span class="kpi">KOST</span><b>${p.kost ? eur(p.kost) : "gratis"}</b>${p.kost && p.bron === "zwart" ? '<span class="dim"> zwart</span>' : ""}</div>
+        <div><span class="kpi">KANS</span><b>${p.kans}%</b></div><div class="wide"><span class="kpi">RISICO</span><span>${esc(p.risico || "-")}</span></div></div>
+      <div class="meter"><i style="width:${p.kans}%"></i></div>
+      <div class="row" style="margin-top:10px"><button class="btn primary sm" data-a="gmgo" data-id="${x.id}">Uitvoeren${p.kans < 100 ? " · gooi d100" : ""}</button><button class="btn sm" data-a="cancel" data-id="${x.id}">Afzien</button></div></div>`;
+  if (x.antwoord && st !== "voorstel") body += `<div class="answer ${x.uitkomst === "mislukt" ? "bad" : ""}">${esc(x.antwoord)}</div>`;
+  if (st === "open" && G.sample) body += `<div class="row" style="margin-top:8px"><button class="btn sm" data-a="gmretry" data-id="${x.id}">Laat de GM beoordelen</button><button class="btn sm" data-a="cancel" data-id="${x.id}">Intrekken</button></div>`;
+  else if (st === "open") body += `<div class="row" style="margin-top:8px"><button class="btn sm" data-a="cancel" data-id="${x.id}">Intrekken</button></div>`;
+  if (st === "vraag" || st === "geweigerd") body += `<div class="row" style="margin-top:8px"><button class="btn sm" data-a="rephrase" data-id="${x.id}">Opnieuw formuleren</button></div>`;
+  return `<div class="card order ${st}"><div class="spread"><span class="mono dim" style="font-size:12px">${esc(x.maand)} · ${esc(x.tijd || "")}${x.context ? " · " + esc(x.context) : ""}</span><span class="tag ${tag}">${esc(label)}</span></div>
+    <p style="margin:6px 0 4px;white-space:pre-wrap">${esc(x.tekst)}</p>${body}</div>`;
+}
+
+/* ===================== scherm ===================== */
+const S = {loaded:false, loadNote:"", sound: !!localGet("sound"), decrypt:false, booted:false, state:null, view: (location.hash || "").slice(1) || localGet("view") || "overzicht", mail:null, mailBody:null, filter:"alles", q:"", dist:null, busy:false, version:0, setup:null};
+
+function localGet(k){ try { return localStorage.getItem("cl_"+k); } catch(e){ return null; } }
+function localSet(k,v){ try { localStorage.setItem("cl_"+k, v); } catch(e){} }
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const k = n => (Math.round(n*10)/10).toLocaleString("nl-NL") ;
+const eur = n => "€" + k(n) + "k";
+const MONTHS = ["januari","februari","maart","april","mei","juni","juli","augustus","september","oktober","november","december"];
+
+function toast(msg, bad){
+  const t = document.createElement("div"); if (bad) t.className = "bad"; t.textContent = msg;
+  const box = document.getElementById("toast"); box.appendChild(t);
+  while (box.children.length > 3) box.firstChild.remove();
+  setTimeout(() => t.remove(), bad ? 7000 : 4500);
+}
+async function load(){ render(); }
+async function act(path, body, opts={}){
+  if (S.busy) return; S.busy = true;
+  try {
+    const r = await api(path, body);
+    if (r.bericht && !opts.silent) toast(r.bericht, !r.ok);
+    await load();
+    return r;
+  } catch(e){ toast("Er ging iets mis: " + (e && (e.message || e.code) || "onbekend"), true); console.error(e); }
+  finally { S.busy = false; }
+}
+
+/* ---- mini markdown voor mails ---- */
+function inline(s){
+  return esc(s).replace(/`([^`]+)`/g,"<code>$1</code>").replace(/\*\*([^*]+)\*\*/g,"<b>$1</b>").replace(/\*([^*]+)\*/g,"<i>$1</i>");
+}
+function md(src){
+  const lines = String(src||"").split(/\r?\n/); let out = "", para = [], i = 0;
+  const flush = () => { if (para.length){ out += "<p>"+para.map(inline).join("<br>")+"</p>"; para = []; } };
+  while (i < lines.length){
+    const l = lines[i];
+    if (/^\s*\|/.test(l)){
+      flush(); const rows = [];
+      while (i < lines.length && /^\s*\|/.test(lines[i])) rows.push(lines[i++]);
+      const cells = r => r.trim().replace(/^\||\|$/g,"").split("|").map(c => c.trim());
+      const body = rows.filter(r => !/^\s*\|[\s:|-]+\|\s*$/.test(r));
+      out += "<table><thead><tr>" + cells(body[0]).map(c=>"<th>"+inline(c)+"</th>").join("") + "</tr></thead><tbody>" +
+        body.slice(1).map(r => "<tr>"+cells(r).map(c=>"<td>"+inline(c)+"</td>").join("")+"</tr>").join("") + "</tbody></table>";
+      continue;
+    }
+    const h = l.match(/^(#{1,3})\s+(.*)/);
+    if (h){ flush(); out += `<h1>${inline(h[2])}</h1>`; i++; continue; }
+    if (/^\s*[-*]\s+/.test(l) && !/^\*\*/.test(l.trim())){
+      flush(); out += "<ul>"; while (i < lines.length && /^\s*[-*]\s+/.test(lines[i])) out += "<li>"+inline(lines[i++].replace(/^\s*[-*]\s+/,""))+"</li>"; out += "</ul>"; continue;
+    }
+    if (!l.trim()){ flush(); i++; continue; }
+    para.push(l); i++;
+  }
+  flush(); return out;
+}
+
+/* ---- layout ---- */
+function render(){
+  const root = document.getElementById("root");
+  if (!S.loaded){ root.innerHTML = `<div class="loading"><div class="t">CHROME<span style="color:var(--mag)">//</span>LEDGER</div><div class="s"><span class="dots"></span> VERBINDEN MET CITYNET</div>${S.loadNote?`<div class="muted">${esc(S.loadNote)}</div>`:""}</div>`; return; }
+  S.state = vm(); const st = S.state;
+  if (st.geen_spel || !st.setup_done) { root.innerHTML = setupView(); bindSetup(); document.getElementById("ticker").hidden = true; return; }
+  const unread = st.mails.filter(m => !m.gelezen && !m.archief).length;
+  const openOrders = st.opdrachten.filter(o => ["open","voorstel","vraag"].includes(o.status)).length;
+  const nav = [["overzicht","Overzicht", st.besluiten.length ? `<span class="badge amber">${st.besluiten.length}</span>`:""],
+    ["inbox","Inbox", unread ? `<span class="badge">${unread}</span>`:""], ["kaart","Kaart",""], ["bedrijf","Bedrijf",""],
+    ["financien","Financiën", st.facturen.some(f=>f.overdue) ? '<span class="badge amber">!</span>' : ""], ["rivalen","Rivalen",""],
+    ["sep"], ["opdrachten","Opdrachten", openOrders ? `<span class="badge">${openOrders}</span>`:""], ["logboek","Logboek",""]];
+  const over = st.status !== "actief";
+  root.innerHTML = `<div class="app">
+    <header class="top">
+      <div class="brand"><span class="neon">CHROME</span><b>//</b>LEDGER<small>${esc(st.speler.corp_name)}</small></div>
+      <div class="date">${MONTHS[st.datum.month-1].toUpperCase()} ${st.datum.year}</div>
+      <div class="stats">
+        ${stat("Cash", eur(st.cash), null, st.cash < 30 ? "var(--amber)" : null)}
+        ${stat("Heat", k(st.heat), st.heat, null, "heat")}
+        ${stat("Reputatie", k(st.reputatie), st.reputatie)}
+        ${stat("Morale", k(st.morale), st.morale)}
+        ${stat("Schuld", eur(st.schuld), null, st.schuld > st.cash ? "var(--amber)" : null)}
+      </div>
+      <button class="btn primary next" data-a="tick" ${over?"disabled":""}>VOLGENDE<span class="nx-long"> MAAND</span> ▸</button>
+    </header>
+    <nav>${(() => { let i = 0; return nav.map(n => n[0]==="sep" ? '<div class="sep"></div>' :
+      `<button class="${S.view===n[0]?"on":""}" data-view="${n[0]}"><span><span class="ix">${String(++i).padStart(2,"0")}</span>${n[1]}</span>${n[2]}</button>`).join(""); })()}
+      <div class="sys">OPSLAG <span class="on">● ${G.mode==="db"?"ONLINE":"BROWSER"}</span><br>GM <span class="${G.sample&&!G.sampleOff?"on":""}">● ${G.sample&&!G.sampleOff?"LIVE":"VIA CHAT"}</span><br>GELUID <button data-a="sound">${S.sound?"AAN":"UIT"}</button></div></nav>
+    <main id="main">${over ? gameOver() : (VIEWS[S.view] || VIEWS.overzicht)()}</main>
+  </div>`;
+  afterRender();
+}
+function stat(label, val, pct, color, cls=""){
+  return `<div class="stat"><div class="k">${label}</div><div class="v" ${color?`style="color:${color}"`:""}>${val}</div>${pct!=null?`<div class="bar ${cls}"><i style="width:${Math.max(0,Math.min(100,pct))}%"></i></div>`:""}</div>`;
+}
+function gameOver(){
+  const st = S.state;
+  return `<div class="over"><div class="big">${esc(st.status)}</div>
+    <p class="muted">${esc(st.speler.corp_name)} · ${MONTHS[st.datum.month-1]} ${st.datum.year}</p>
+    <p>Het spel is voorbij. De laatste mails staan nog in je inbox.</p>
+    <div class="row" style="justify-content:center;margin-top:20px">
+      <button class="btn" data-view="inbox">Inbox lezen</button>
+      <button class="btn primary" data-a="nieuw">Nieuw spel</button></div></div>`;
+}
+
+/* ---- views ---- */
+const VIEWS = {
+overzicht(){
+  const st = S.state, r = st.rapport;
+  const recent = st.mails.filter(m => !m.archief).slice(0,5);
+  return `<h1>Overzicht</h1>
+  ${st.besluiten.length ? `<h2>Wacht op uw besluit</h2><div class="grid g2">${st.besluiten.map(decisionCard).join("")}</div>` : ""}
+  <div class="grid g2" style="margin-top:14px">
+    <div class="card"><div class="spread"><h3>Laatste maandrapport</h3>${r?`<span class="tag">${esc(r.maand)}</span>`:""}</div>
+      ${r ? `<div class="grid g3" style="gap:8px;margin:8px 0">
+          <div><div class="kpi">OMZET</div><div class="big">${k(r.omzet)}</div></div>
+          <div><div class="kpi">KOSTEN</div><div class="big">${k(r.kosten)}</div></div>
+          <div><div class="kpi">NETTO</div><div class="big" style="color:${r.netto>=0?"var(--green)":"var(--red)"}">${r.netto>=0?"+":""}${k(r.netto)}</div></div></div>
+        <div class="muted" style="font-size:13px">${(r.gebeurd||[]).length ? esc(r.gebeurd.join(" · ")) : "Niets noemenswaards."}</div>
+        <div style="margin-top:10px"><button class="btn sm" data-open="${esc(r.mail)}">Volledig rapport lezen</button></div>`
+      : `<p class="muted">Nog geen rapport. Speel je eerste maand.</p>`}
+    </div>
+    <div class="card"><div class="spread"><h3>Recente mail</h3><button class="btn sm" data-view="inbox">Inbox</button></div>
+      ${recent.length ? recent.map(m => `<button class="mail ${m.gelezen?"":"unread"}" data-open="${esc(m.id)}" style="padding:7px 0;border-bottom:1px solid var(--line)">
+        <div class="from"><b>${esc(m.van)}</b><span class="tag ${m.prio}">${m.prio}</span></div><div class="subj">${esc(m.onderwerp)}</div></button>`).join("") : '<p class="muted">Leeg.</p>'}
+    </div>
+  </div>
+  <div class="card" style="margin-top:14px">
+    <h3>Wat wil je deze maand doen?</h3>
+    <p class="muted" style="margin:0 0 8px;font-size:13px">Schrijf het in je eigen woorden: iemand omkopen, een journalist bellen, personeel ontslaan, een deal met een rivaal. De GM (Claude) zegt wat het kost en voert het uit; het antwoord komt als mail.</p>
+    <textarea id="ordertxt" placeholder="Bijv.: Huur een privédetective om Marta Delcourt na te trekken. Max €5k."></textarea>
+    <div class="row" style="margin-top:8px"><button class="btn primary" data-a="order">Naar de GM sturen</button>
+      <span class="muted" style="font-size:13px">${st.opdrachten.filter(o=>o.status==="open").length} open opdracht(en)</span></div>
+  </div>
+  ${st.lopend.length ? `<h2>Lopende effecten</h2><div class="row">${st.lopend.map(x=>`<span class="tag HOOG">${esc(x)}</span>`).join("")}</div>`:""}`;
+},
+inbox(){
+  const st = S.state;
+  let list = st.mails.filter(m => S.filter==="archief" ? m.archief : !m.archief);
+  if (S.filter==="ongelezen") list = list.filter(m => !m.gelezen);
+  if (S.filter==="belangrijk") list = list.filter(m => m.prio==="HOOG" || m.prio==="KRITIEK");
+  if (S.q) { const q = S.q.toLowerCase(); list = list.filter(m => (m.van+m.onderwerp+m.preview).toLowerCase().includes(q)); }
+  const tab = (id,l) => `<button class="${S.filter===id?"on":""}" data-filter="${id}">${l}</button>`;
+  const sel = S.mailBody;
+  return `<div class="spread"><h1>Inbox</h1><div class="row">
+      <button class="btn sm" data-a="allread">Alles gelezen</button>
+      <button class="btn sm" data-a="compose">Nieuwe opdracht</button></div></div>
+  ${st.besluiten.length ? `<div class="card decision" style="margin-bottom:12px;padding:10px 14px"><div class="spread"><span><b style="color:var(--amber)">${st.besluiten.length} besluit(en) open.</b> <span class="muted">De verhaallijn staat stil tot je kiest.</span></span><button class="btn sm warn" data-view="overzicht">Beslissen</button></div></div>`:""}
+  <div class="inbox ${sel?"reading":""}">
+    <div class="ilist">
+      <div class="itools"><input type="text" id="q" placeholder="Zoeken in mail…" value="${esc(S.q)}">
+        <div class="tabs">${tab("alles","Alles")}${tab("ongelezen","Ongelezen")}${tab("belangrijk","Belangrijk")}${tab("archief","Archief")}</div></div>
+      <div class="mails">${list.length ? list.map(m => `<button class="mail ${m.gelezen?"":"unread"} ${sel&&sel.id===m.id?"sel":""}" data-open="${esc(m.id)}">
+          <div class="from"><b>${esc(m.van)}</b><span class="mono dim" style="font-size:12px">${esc(m.datum)}</span></div>
+          <div class="subj">${m.prio!=="NORMAAL"?`<span class="tag ${m.prio}">${m.prio}</span> `:""}${esc(m.onderwerp)}</div>
+          <div class="prev">${esc(m.preview)}</div></button>`).join("") : '<div class="empty">Geen mail hier.</div>'}</div>
+    </div>
+    <div class="reader">${sel ? `
+      <button class="btn sm back" data-a="closemail">← Terug</button>
+      <div class="hdr"><span class="stamp">ONTSLEUTELD</span><h2 id="subj">${esc(sel.meta.Onderwerp)}</h2>
+        <div class="meta"><span>Van</span><b>${esc(sel.meta.Van)}</b><span>Aan</span><span>${esc(sel.meta.Aan)}</span>
+          <span>Datum</span><span class="mono">${esc(sel.meta.Datum)}</span><span>Prioriteit</span><span><span class="tag ${esc(sel.meta.Prioriteit)}">${esc(sel.meta.Prioriteit)}</span></span></div>
+        <div class="row" style="margin-top:12px">
+          <button class="btn sm primary" data-a="reply">Reageren</button>
+          <button class="btn sm" data-a="archive">${(st.mails.find(m=>m.id===sel.id)||{}).archief?"Terug naar inbox":"Archiveren"}</button>
+          <button class="btn sm" data-a="unread">Markeer ongelezen</button></div>
+        <div id="replybox" style="display:none;margin-top:12px">
+          <textarea id="replytxt" placeholder="Wat doe je hiermee? Bijv.: Betaal de bron €2k en laat Jorik het natrekken."></textarea>
+          <div class="row" style="margin-top:6px"><button class="btn primary sm" data-a="sendreply">Naar de GM sturen</button><span class="muted" style="font-size:12.5px">De GM verwerkt dit en antwoordt met een mail.</span></div></div>
+      </div>
+      <div class="md">${md(sel.body)}</div>` : '<div class="empty">Kies een mail.</div>'}
+    </div>
+  </div>`;
+},
+kaart(){
+  const st = S.state, D = Object.fromEntries(st.districten.map(d => [d.id, d]));
+  const pos = {A:[0,0],B:[1,0],C:[2,0],D:[0,1],E:[1,1],F:[2,1],G:[0,2],H:[2,2]};
+  const W=200,H=130,P=14;
+  const cells = Object.entries(pos).filter(([id]) => D[id]).map(([id,[x,y]]) => {
+    const d = D[id], X = P + x*(W+P), Y = 46 + y*(H+P);
+    const player = d.controle === "player";
+    const hq = d.hq.length ? `<g class="hqm" transform="translate(${X+W-26},${Y+12})"><rect width="16" height="16" rx="2" fill="#2a0717" stroke="#ff2a6d"/><text x="8" y="12.5" text-anchor="middle" font-size="11" fill="#ff2a6d">${d.hq.length}</text></g>` : "";
+    const flag = d.bezig ? `<text x="${X+12}" y="${Y+H-12}" font-size="11" fill="#b967ff">◷ vestiging in opbouw</text>` : "";
+    return `<g class="dist ${player?"player":""} ${S.dist===id?"sel":""}" data-dist="${id}">
+      <rect x="${X}" y="${Y}" width="${W}" height="${H}" rx="5"/>
+      <text class="id" x="${X+12}" y="${Y+22}">[${id}]${d.thuis?" ⌂":""}</text>
+      <text x="${X+12}" y="${Y+48}" class="nm" font-size="15">${esc(d.naam.toUpperCase().slice(0,16))}</text>
+      <text x="${X+12}" y="${Y+70}" font-size="12" fill="#a297cc">${player?"★ jouw district":d.controle==="neutral"?"neutraal":esc(d.controle)}</text>
+      <text x="${X+12}" y="${Y+90}" font-size="12" fill="#6d6299">+${d.inkomen} / -${d.onderhoud} per mnd</text>
+      ${hq}${flag}</g>`;
+  }).join("");
+  const rx = P + (W+P), ry = 46 + 2*(H+P);
+  const svg = `<svg class="map" viewBox="0 0 ${3*W+4*P} ${46+3*(H+P)+8}" role="img" aria-label="Kaart van Meridian Bay">
+    <rect x="0" y="0" width="100%" height="36" fill="rgba(5,217,232,.08)"/>
+    <text x="50%" y="23" text-anchor="middle" font-family="Share Tech Mono,ui-monospace,monospace" font-size="12" fill="#05d9e8" letter-spacing="6">~ ~ ~ NOORDZEE-HAVEN ~ ~ ~</text>
+    ${cells}
+    <g><rect x="${rx}" y="${ry}" width="${W}" height="${H}" rx="60" fill="none" class="ring" stroke="#b967ff" stroke-dasharray="6 5" stroke-width="2"/>
+      <text x="${rx+W/2}" y="${ry+H/2-4}" text-anchor="middle" font-family="Share Tech Mono,ui-monospace,monospace" font-size="13" fill="#b967ff">RINGWEG</text>
+      <text x="${rx+W/2}" y="${ry+H/2+14}" text-anchor="middle" font-size="11" fill="#6d6299">${st.contract===true?"nomadenpact actief":"nomadengebied"}</text></g>
+  </svg>`;
+  const d = S.dist && D[S.dist];
+  const side = d ? `<div class="card"><div class="spread"><h3>[${d.id}] ${esc(d.naam)}</h3>${d.controle==="player"?'<span class="tag cyan">jouw district</span>':""}</div>
+      ${d.lore?`<p class="muted" style="margin:4px 0 10px">${esc(d.lore)}</p>`:""}
+      <dl class="kv"><dt>Inkomen</dt><dd>${eur(d.inkomen)} / mnd</dd><dt>Onderhoud</dt><dd>${eur(d.onderhoud)} / mnd</dd>
+        <dt>Controle</dt><dd>${d.controle==="neutral"?"neutraal":esc(d.controle)}</dd><dt>Rivalen-HQ</dt><dd>${d.hq.length?esc(d.hq.join(", ")):"-"}</dd></dl>
+      ${d.controle!=="player" ? `<div style="margin-top:14px"><button class="btn primary" data-a="district" data-id="${d.id}" ${d.bezig?"disabled":""}>Vestiging openen · ${eur(d.kost)}</button>
+        <div class="muted" style="font-size:12.5px;margin-top:6px">Duurt 3 maanden, +€1k/mnd tijdens de opbouw.${d.hq.length?" Een rivaal heeft hier zijn HQ: dubbele prijs en die rivaal onthoudt het.":""}</div></div>`:""}
+      <div style="margin-top:14px"><textarea id="disttxt" placeholder="Iets anders hier? Bijv.: Koop de wijkagent om, of bouw een opslagloods."></textarea>
+        <button class="btn sm" style="margin-top:6px" data-a="distorder" data-id="${d.id}">Opdracht aan GM</button></div></div>`
+    : `<div class="card"><h3>Meridian Bay</h3><p class="muted">Klik op een district.</p></div>`;
+  return `<h1>Kaart</h1><div class="mapwrap"><div>${svg}
+    <div class="legend"><span><i style="background:var(--cyan-d);border:1px solid var(--cyan)"></i>jouw district</span><span><i style="background:#3d1420;border:1px solid var(--red)"></i>rivalen-HQ (aantal)</span><span>⌂ thuisbasis</span></div></div>${side}</div>`;
+},
+bedrijf(){
+  const st = S.state;
+  return `<h1>Bedrijf</h1>
+  <h2>Divisies</h2><div class="grid g3">${st.divisies.map(d => `<div class="card">
+      <div class="spread"><h3>${esc(d.naam)}</h3><span class="tag cyan">L${d.level}</span></div>
+      <div class="muted" style="font-size:13px">${esc(d.type)} · marktaandeel ~${d.aandeel}%</div>
+      <div style="margin-top:10px"><button class="btn sm" data-a="upgrade" data-div="${esc(d.naam)}" ${d.bezig?"disabled":""}>${d.bezig?"Uitbreiding loopt":`Uitbreiden · ${eur(d.upgrade_kost)}`}</button></div></div>`).join("")}
+    <div class="card"><h3>Nieuwe divisie</h3>
+      <div class="row" style="margin-top:6px"><select id="ndtype">${st.divisie_types.map(t=>`<option>${esc(t)}</option>`).join("")}</select>
+        <input type="text" id="ndname" placeholder="Naam" style="flex:1;min-width:100px"></div>
+      <div class="row" style="margin-top:8px"><button class="btn sm primary" data-a="newdiv">Opstarten · ${eur(st.nieuwe_divisie_kost)}</button><span class="muted" style="font-size:12.5px">3 maanden, +€3k/mnd</span></div></div>
+  </div>
+  <h2>Projecten</h2>${st.projecten.length ? `<div class="grid g3">${st.projecten.map(p => `<div class="card"><h3 style="font-size:14px">${esc(p.name)}</h3>
+      <div class="muted" style="font-size:13px">Nog ${p.eta_months} maand(en)${p.cost_per_month?` · ${eur(p.cost_per_month)}/mnd`:""}</div>
+      <div class="prog"><i style="width:${Math.max(8, 100 - p.eta_months*30)}%"></i></div></div>`).join("")}</div>` : '<p class="muted">Geen lopende projecten.</p>'}
+  <div class="grid g2" style="margin-top:8px">
+    <div class="card"><h3>Directie</h3><table><tbody>${st.npcs.map(n => `<tr><td>${esc(n.naam)}</td><td class="muted">${esc(n.rol)}</td>
+        <td><span class="tag ${n.indruk==="ontevreden"?"KRITIEK":n.indruk==="twijfelt"?"HOOG":"ok"}">${esc(n.indruk)}</span></td></tr>`).join("") || '<tr><td class="muted">Niemand. Dat is ook een keuze.</td></tr>'}</tbody></table>
+      <p class="dim" style="font-size:12px;margin:8px 0 0">Dit is je indruk, niet de waarheid.</p></div>
+    <div class="card"><h3>Personeel & cultuur</h3><dl class="kv">
+      <dt>Medewerkers</dt><dd>${st.personeel.count}</dd><dt>Gem. salaris</dt><dd>${eur(st.personeel.avg_salary)}/jaar</dd>
+      <dt>Ontslagbeleid</dt><dd>${st.cultuur.layoff_policy==="hard"?"hard":"normaal"}</dd><dt>Bonussen</dt><dd>${eur(st.cultuur.bonus_cost||0)}/mnd</dd>
+      <dt>Ethiek</dt><dd>${esc((st.cultuur.ethics_rules||[]).join("; ")||"-")}</dd>
+      <dt>Slogans</dt><dd>${esc((st.cultuur.slogans||[]).join(" · ")||"-")}</dd></dl></div>
+  </div>
+  <h2>Facties</h2><div class="card">${st.facties.map(f => {
+      const v = f.waarde, w = Math.abs(v)/2, left = v<0 ? 50-w : 50;
+      return `<div class="fac"><span style="text-transform:capitalize">${esc(f.naam)}</span>
+        <div class="fbar" title="${esc(f.noot)}"><i style="left:${left}%;width:${w}%;background:${v<0?"var(--red)":"var(--cyan)"}"></i></div>
+        <span class="muted" style="font-size:13px">${esc(f.label)}</span></div>`; }).join("")}</div>`;
+},
+financien(){
+  const st = S.state;
+  const accts = ["operationeel","zwart","offshore"];
+  return `<h1>Financiën</h1>
+  <div class="grid g3">
+    <div class="card"><div class="kpi">OPERATIONEEL</div><div class="big">${eur(st.cash)}</div><div class="dim" style="font-size:12px">volgens de CFO</div></div>
+    <div class="card"><div class="kpi">ZWART</div><div class="big">${eur(st.zwart)}</div></div>
+    <div class="card"><div class="kpi">OFFSHORE</div><div class="big">${eur(st.offshore)}</div></div>
+    <div class="card"><div class="kpi">SCHULD</div><div class="big">${eur(st.schuld)}</div><div class="dim" style="font-size:12px">${k(st.rente*100)}% per jaar · ≈${eur(st.schuld*st.rente/12)}/mnd</div></div>
+  </div>
+  <div class="grid g2" style="margin-top:14px">
+    <div class="card"><h3>Geld verplaatsen</h3><p class="muted" style="font-size:13px;margin:0 0 8px">Fee 5–15%. Kans op controle stijgt met het bedrag, je heat en zwart geld.</p>
+      <div class="row"><select id="tvan">${accts.map(a=>`<option>${a}</option>`).join("")}</select> → <select id="tnaar">${accts.map((a,i)=>`<option ${i===2?"selected":""}>${a}</option>`).join("")}</select>
+        <input type="number" id="tbedrag" min="1" step="1" placeholder="k€" style="width:90px"><button class="btn" data-a="transfer">Verplaatsen</button></div></div>
+    <div class="card"><h3>Bank van de Oude Stad</h3><p class="muted" style="font-size:13px;margin:0 0 8px">Leenruimte nu: <b class="mono">${eur(st.leenruimte)}</b>. Rente hangt af van reputatie, schuld en heat, en geldt voor de hele schuld.</p>
+      <div class="row"><input type="number" id="lbedrag" min="1" step="1" placeholder="k€" style="width:90px"><button class="btn" data-a="lening">Lenen</button>
+        <button class="btn" data-a="aflossen" ${st.schuld?"":"disabled"}>Aflossen</button></div></div>
+  </div>
+  <h2>Facturen</h2>
+  <div class="card"><div class="spread" style="margin-bottom:8px"><span class="muted" style="font-size:13px">Automatisch betalen op vervaldatum (als er cash is)</span>
+      <button class="btn sm ${st.auto_pay?"":"warn"}" data-a="autopay">${st.auto_pay?"Aan":"Uit"}</button></div>
+    ${st.facturen.length ? `<div style="overflow-x:auto"><table><thead><tr><th>Van</th><th>Omschrijving</th><th class="num">Bedrag</th><th>Vervalt</th><th></th></tr></thead><tbody>
+      ${st.facturen.map(f => `<tr><td>${esc(f.payee)}</td><td class="muted">${esc(f.note)}</td><td class="num">${eur(f.amount)}</td>
+        <td>${f.overdue?`<span class="tag KRITIEK">${f.overdue} mnd te laat</span>`:f.due_in<=1?'<span class="tag HOOG">deze maand</span>':`over ${f.due_in} mnd`}</td>
+        <td><div class="row" style="justify-content:flex-end;flex-wrap:nowrap"><button class="btn sm" data-a="pay" data-id="${f.id}">Betalen</button>
+          <button class="btn sm ${f.auto_pay?"":"warn"}" data-a="hold" data-id="${f.id}" title="Bewust laten liggen of weer automatisch betalen">${f.auto_pay?"Laten liggen":"Vastgehouden"}</button></div></td></tr>`).join("")}
+      </tbody></table></div>` : '<p class="muted">Geen openstaande facturen. Geniet ervan.</p>'}
+  </div>`;
+},
+rivalen(){
+  const st = S.state;
+  return `<h1>Rivalen</h1><div class="grid g2">${st.rivalen.map(r => `<div class="card">
+      <div class="spread"><h3>${esc(r.naam)}</h3><span class="tag ${r.agressie==="hoog"?"KRITIEK":r.agressie==="gemiddeld"?"HOOG":""}">agressie ${r.agressie}</span></div>
+      <dl class="kv"><dt>CEO</dt><dd>${esc(r.ceo)}</dd><dt>Sector</dt><dd>${esc(r.sector)} (~${r.aandeel}%)</dd><dt>HQ</dt><dd>district ${esc(r.hq)}</dd>
+        <dt>Kas</dt><dd>~${eur(r.kas_schatting)} <span class="dim">(schatting)</span></dd></dl>
+      ${r.geheugen.length?`<div style="margin-top:8px;font-size:13px"><span class="muted">Wat ze over ons onthouden:</span><ul style="margin:4px 0 0;padding-left:18px">${r.geheugen.map(m=>`<li>${esc(m)}</li>`).join("")}</ul></div>`:""}
+      <div style="margin-top:10px"><button class="btn sm" data-a="rivalorder" data-naam="${esc(r.naam)}">Actie tegen of met ${esc(r.naam.split(" ")[0])}…</button></div></div>`).join("") || '<p class="muted">Geen rivalen. Wantrouw dat.</p>'}</div>`;
+},
+opdrachten(){
+  const st = S.state;
+  return `<h1>Opdrachten aan de GM</h1>
+  <div class="card"><p class="muted" style="margin:0 0 8px;font-size:15px">Alles wat de knoppen niet kunnen: iemand omkopen, een journalist bellen, een rivaal saboteren, iemand ontslaan. ${G.sample && !G.sampleOff ? "De GM (Claude) rekent uit wat het kost en hoe groot de kans is. Jij beslist of het doorgaat; de dobbelsteen beslist of het lukt." : "Live GM is hier niet beschikbaar. Je opdracht wacht tot je Claude in de chat vraagt om opdrachten te verwerken."}</p>
+    <textarea id="ordertxt" placeholder="Bijv.: Bied Vanderhoeven een joint venture aan in de Haven, 50/50."></textarea>
+    <div class="row" style="margin-top:8px"><button class="btn primary" data-a="order">Naar de GM</button></div></div>
+  <h2>Opdrachten</h2>
+  ${st.opdrachten.length ? st.opdrachten.map(orderCard).join("") : '<p class="muted">Nog niets verstuurd.</p>'}`;
+},
+logboek(){
+  const st = S.state;
+  return `<h1>Logboek</h1><div class="grid g2"><div class="card md">${md(st.log) || "Nog niets gebeurd."}</div>
+    <div class="card"><h3>Dobbelstenen</h3><p class="muted" style="font-size:13px;margin:0 0 8px">Elke worp van de engine, met de kans die vooraf gold. Zo zie je of er eerlijk gespeeld wordt.</p>
+      <pre class="rolls">${esc(st.worpen.slice().reverse().join("\n")) || "Nog geen worpen."}</pre></div></div>
+  <div class="row" style="margin-top:16px"><button class="btn danger" data-a="nieuw">Nieuw spel…</button><span class="muted" style="font-size:13px">Je spel wordt na elke actie automatisch bewaard (${G.mode==="db"?"online, alleen voor jou":"in deze browser"}).</span></div>`;
+},
+};
+
+function decisionCard(b){
+  return `<div class="card decision"><h3>${esc(b.titel)}</h3><p class="muted" style="margin:0">${esc(b.tekst)}</p>
+    <div class="opts">${b.opties.map(o => `<div class="opt"><div><div class="t">${esc(o.label)}</div><div class="u">${esc(o.uitleg)}</div></div>
+      <div class="row" style="flex-wrap:nowrap">${o.kost==="budget"?`<input type="number" min="0" step="5" value="30" style="width:74px" id="bud_${b.arc}_${o.keuze}" aria-label="budget in k€">`:""}
+      <button class="btn sm warn" data-a="decide" data-arc="${esc(b.arc)}" data-keuze="${esc(o.keuze)}">Kies</button></div></div>`).join("") ||
+      `<button class="btn sm" data-view="opdrachten">Via de GM</button>`}</div></div>`;
+}
+
+/* ---- setup ---- */
+function setupView(){
+  const st = S.state;
+  const T = S.setup ||= {corp_name:"", motto:"", background:"Ex-havenarbeider", doctrine:["Logistiek"], difficulty:"Realistisch", year:2004,
+    kapitaal:"normaal", home:"A", ontslag:"normaal", bonus:"geen", ethiek:"normaal", slogan:"", divisie_naam:"", namen:{}};
+  const types = (st.divisie_types||["Biotech","Cyberware","Logistiek","Media & Data","Private Security","Financieel","Smokkel"]);
+  const chips = (key, opts, multi) => `<div class="chips">${opts.map(([v,l]) => `<button class="chip ${(multi?T[key].includes(v):T[key]===v)?"on":""}" data-chip="${key}" data-v="${esc(v)}" data-multi="${multi?1:""}">${esc(l)}</button>`).join("")}</div>`;
+  const dists = [["A","Haven"],["B","Staal"],["C","Glas"],["D","Oude Stad"],["E","De Kruising"],["F","Neon Mile"],["G","Roest"],["H","Campus"]];
+  return `<div style="padding:28px 16px 60px"><div class="setup">
+    <div class="mono" style="color:var(--dim);letter-spacing:.2em;font-size:13px">MERIDIAN BAY CITYNET // NIEUWE REGISTRATIE</div><div class="hero"><span>CHROME</span><b>//</b>LEDGER</div>
+    <p class="muted" style="margin:0 0 22px;font-size:17px">Meridian Bay, een stad die alles verkoopt. Richt je bedrijf op. Alles is later aan te passen via de GM.</p>
+    <div class="card"><h3>Het bedrijf</h3><div class="grid g2">
+      <label class="f">Naam<input type="text" data-f="corp_name" value="${esc(T.corp_name)}" placeholder="Bijv. Kraanvogel Logistiek NV"></label>
+      <label class="f">Motto<input type="text" data-f="motto" value="${esc(T.motto)}" placeholder="Bijv. Wij vragen niet wat er in de container zit."></label>
+      <label class="f">Achtergrond oprichter<input type="text" data-f="background" value="${esc(T.background)}" list="bgs"></label>
+      <label class="f">Naam eerste divisie (optioneel)<input type="text" data-f="divisie_naam" value="${esc(T.divisie_naam)}" placeholder="Bijv. Havenlijn"></label></div>
+      <datalist id="bgs"><option>Ex-militair</option><option>Hacker</option><option>Erfgenaam</option><option>Ex-vakbondsman</option><option>Ex-havenarbeider</option><option>Gevallen bankier</option></datalist></div>
+    <div class="card"><h3>Doctrine <span class="muted" style="font-weight:400;font-size:13px">kies 1 (sterk, niveau 2) of 2 (breed, elk niveau 1)</span></h3>${chips("doctrine", types.map(t=>[t,t]), true)}</div>
+    <div class="grid g2">
+      <div class="card"><h3>Moeilijkheid</h3>${chips("difficulty", [["Casual","Casual"],["Realistisch","Realistisch"],["Genadeloos","Genadeloos"]])}
+        <h3 style="margin-top:14px">Startkapitaal</h3>${chips("kapitaal", [["krap","Krap · €80k"],["normaal","Normaal · €100k"],["ruim","Ruim · €150k, €60k schuld"]])}
+        <label class="f" style="margin-top:14px;max-width:140px">Startjaar<input type="number" data-f="year" value="${esc(T.year)}"></label></div>
+      <div class="card"><h3>Thuisdistrict</h3>${chips("home", dists.map(([id,n])=>[id, id+" · "+(T.namen[id]||n)]))}
+        <p class="muted" style="font-size:13px;margin:10px 0 0">Haven: goedkope logistiek, vakbonden. Glas: prestige, duur. Roest: zwarte markt, goedkope arbeid. Campus: onderzoek.</p></div>
+    </div>
+    <div class="card"><h3>Cultuur</h3><div class="grid g2">
+      <div><div class="muted" style="font-size:13px;margin-bottom:4px">Ontslag</div>${chips("ontslag", [["normaal","Normaal"],["hard","Hard (morale -2/mnd, vakbond boos)"]])}</div>
+      <div><div class="muted" style="font-size:13px;margin-bottom:4px">Bonussen</div>${chips("bonus", [["geen","Geen"],["redelijk","Redelijk · €2k/mnd"],["royaal","Royaal · €5k/mnd"]])}</div>
+      <div><div class="muted" style="font-size:13px;margin-bottom:4px">Ethiek</div>${chips("ethiek", [["streng","Streng (heat zakt sneller)"],["normaal","Normaal"],["geen_vragen","Geen vragen (heat blijft hangen)"]])}</div>
+      <label class="f">Slogan(s), één per regel<textarea data-f="slogan" style="min-height:60px">${esc(T.slogan)}</textarea></label></div></div>
+    <div class="row" style="justify-content:flex-end"><button class="btn primary next" data-a="setup">REGISTREER BEDRIJF ▸</button></div>
+  </div></div>`;
+}
+function bindSetup(){
+  document.querySelectorAll("[data-f]").forEach(el => el.addEventListener("input", () => { S.setup[el.dataset.f] = el.value; }));
+}
+
+/* ---- events ---- */
+document.addEventListener("click", async e => {
+  if (S.sound && e.target.closest("button,.dist")) blip(e.target.closest(".next") ? 220 : 660, .045);
+  const t = e.target.closest("[data-view],[data-a],[data-open],[data-filter],[data-dist],[data-chip]");
+  if (!t) return;
+  if (t.dataset.view){ S.view = t.dataset.view; localSet("view", S.view); try { history.replaceState(null, "", "#" + S.view); } catch(_){} if (S.view!=="inbox") S.mailBody = null; render(); document.getElementById("main")?.scrollTo(0,0); return; }
+  if (t.dataset.filter){ S.filter = t.dataset.filter; render(); return; }
+  if (t.dataset.dist){ S.dist = t.dataset.dist; render(); return; }
+  if (t.dataset.chip){
+    const key = t.dataset.chip, v = t.dataset.v;
+    if (t.dataset.multi){ const a = S.setup[key]; const i = a.indexOf(v); if (i>=0) { if (a.length>1) a.splice(i,1); } else { a.push(v); if (a.length>2) a.shift(); } }
+    else S.setup[key] = v;
+    render(); return;
+  }
+  if (t.dataset.open){ await openMail(t.dataset.open); return; }
+  const a = t.dataset.a, val = id => (document.getElementById(id)||{}).value;
+  switch (a){
+    case "sound": S.sound = !S.sound; localSet("sound", S.sound ? "1" : ""); if (S.sound) blip(880,.06); render(); return;
+    case "tick": return doTick(false);
+    case "order": {
+      const txt = val("ordertxt"); if (!txt || !txt.trim()) return toast("Schrijf eerst wat je wilt doen.", true);
+      return act("/api/opdracht", {tekst: txt});
+    }
+    case "compose": S.view = "opdrachten"; render(); return;
+    case "reply": { const b = document.getElementById("replybox"); b.style.display = b.style.display==="none"?"block":"none"; document.getElementById("replytxt").focus(); return; }
+    case "sendreply": {
+      const txt = val("replytxt"); if (!txt || !txt.trim()) return;
+      return act("/api/opdracht", {tekst: txt, context: "Re: " + S.mailBody.meta.Onderwerp + " (" + S.mailBody.meta.Van + ")"});
+    }
+    case "archive": { const m = S.state.mails.find(m=>m.id===S.mailBody.id); await act("/api/mail/flag", {ids:[S.mailBody.id], soort:"archief", waarde:!m.archief}, {silent:true}); S.mailBody = null; render(); return; }
+    case "unread": await act("/api/mail/flag", {ids:[S.mailBody.id], soort:"gelezen", waarde:false}, {silent:true}); S.mailBody = null; render(); return;
+    case "allread": return act("/api/mail/flag", {ids: S.state.mails.map(m=>m.id), soort:"gelezen", waarde:true}, {silent:true});
+    case "closemail": S.mailBody = null; render(); return;
+    case "decide": {
+      const bud = document.getElementById(`bud_${t.dataset.arc}_${t.dataset.keuze}`);
+      if (!await ask("Besluit nemen?", "Dit besluit is definitief.", "Kiezen")) return;
+      return act("/api/besluit", {arc:t.dataset.arc, keuze:t.dataset.keuze, budget: bud ? Number(bud.value) : 0});
+    }
+    case "district": if (!await ask("Vestiging openen?", "Het geld gaat er nu af. Het duurt 3 maanden.", "Openen")) return; return act("/api/project", {soort:"district", id:t.dataset.id});
+    case "distorder": { const txt = val("disttxt"); if (!txt || !txt.trim()) return; const d = S.state.districten.find(x=>x.id===t.dataset.id); return act("/api/opdracht", {tekst: txt, context: `District ${d.id} ${d.naam}`}); }
+    case "upgrade": if (!await ask("Divisie uitbreiden?", "Het geld gaat er nu af. Het duurt 2 maanden.", "Uitbreiden")) return; return act("/api/project", {soort:"upgrade", divisie:t.dataset.div});
+    case "newdiv": return act("/api/project", {soort:"divisie", type: val("ndtype"), naam: val("ndname")});
+    case "transfer": return act("/api/geld", {soort:"transfer", van:val("tvan"), naar:val("tnaar"), bedrag:val("tbedrag")});
+    case "lening": return act("/api/geld", {soort:"lening", bedrag:val("lbedrag")});
+    case "aflossen": return act("/api/geld", {soort:"aflossen", bedrag:val("lbedrag") || S.state.schuld});
+    case "autopay": return act("/api/factuur", {alles: !S.state.auto_pay});
+    case "pay": return act("/api/factuur", {id:t.dataset.id, actie:"betaal"});
+    case "hold": return act("/api/factuur", {id:t.dataset.id, actie:"toggle"});
+    case "rivalorder": { S.view = "opdrachten"; render(); const ta = document.getElementById("ordertxt"); ta.value = `${t.dataset.naam}: `; ta.focus(); return; }
+    case "cancel": return act("/api/opdracht/intrekken", {id:t.dataset.id}, {silent:true});
+    case "gmgo": { const r = await act("/api/gm/uitvoeren", {id:t.dataset.id}, {silent:true}); if (r){ toast(r.bericht, !r.ok); if (r.ok && S.sound) sweep(); } return; }
+    case "gmretry": return act("/api/gm/beoordeel", {id:t.dataset.id}, {silent:true});
+    case "rephrase": { const o = G.orders.find(x => x.id === t.dataset.id); S.view = "opdrachten"; render(); const ta = document.getElementById("ordertxt"); if (ta && o){ ta.value = o.tekst + "\n"; ta.focus(); } return; }
+    case "nieuw": if (!await ask("Nieuw spel beginnen?", "Je huidige bedrijf blijft bewaard in de opslag, maar je speelt verder met een nieuw bedrijf.", "Nieuw spel", true)) return; S.setup = null; return act("/api/nieuw", {zeker:true});
+    case "setup": {
+      if (!S.setup.corp_name.trim()) return toast("Geef je bedrijf een naam.", true);
+      const r = await act("/api/setup", S.setup); if (r && r.ok){ S.view = "inbox"; localSet("view","inbox"); render(); }
+      return;
+    }
+  }
+});
+document.addEventListener("input", e => { if (e.target.id === "q"){ S.q = e.target.value; const pos = e.target.selectionStart; render(); const q = document.getElementById("q"); q.focus(); q.setSelectionRange(pos,pos); } });
+
+async function openMail(id){
+  const m = G.mails.find(x => x.id === id);
+  if (!m) return toast("Mail niet gevonden.", true);
+  S.mailBody = {id, meta: {Onderwerp: m.onderwerp, Van: m.van, Aan: m.aan || "CEO", Datum: m.datum, Prioriteit: m.prio}, body: m.body};
+  S.view = "inbox"; localSet("view","inbox"); S.decrypt = true;
+  render();
+  if (!m.gelezen) Store.patchMail(id, {gelezen: true}).then(render).catch(() => {});
+}
+async function doTick(force){
+  if (S.busy) return;
+  const d = S.state.datum, nm = d.month === 12 ? [1, d.year+1] : [d.month+1, d.year];
+  const ov = showSync(MONTHS[d.month-1].toUpperCase() + " " + d.year + "  →  " + MONTHS[nm[0]-1].toUpperCase() + " " + nm[1]);
+  if (S.sound) sweep();
+  const [r] = await Promise.all([act("/api/tick", {force}, {silent:true}), sleep(1150)]);
+  hideSync(ov);
+  if (!r) return;
+  document.getElementById("main")?.classList.add("shake");
+  if (r.vraag){ if (await ask("Opdrachten staan nog open", r.bericht, "Toch doorgaan")) return doTick(true); return; }
+  if (!r.ok) return toast(r.bericht, true);
+  if (r.status && r.status !== "actief") { toast("Het is voorbij: " + r.status, true); return; }
+  toast(`Nieuwe maand. ${S.state.mails.filter(m=>!m.gelezen).length} ongelezen mail(s).`);
+  if (r.rapport_mail) openMail(r.rapport_mail);
+}
+
+/* ---- cyberpunk-laag: glitch, ticker, ontsleutelen, opstart, sync, geluid ---- */
+const REDUCED = window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches;
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+function afterRender(){
+  document.querySelectorAll("main h1").forEach(h => { h.classList.add("glitch"); h.dataset.text = h.textContent; });
+  updateTicker();
+  if (S.decrypt){ S.decrypt = false; scramble(document.getElementById("subj")); }
+}
+let tickerKey = "";
+function updateTicker(){
+  const st = S.state, el = document.getElementById("ticker");
+  if (!st || !st.setup_done){ el.hidden = true; return; }
+  el.hidden = false;
+  const items = st.mails.filter(m => !/^Maandrapport/.test(m.onderwerp)).slice(0, 12).map(m => [m.van.toUpperCase(), m.onderwerp]);
+  st.rivalen.slice(0, 4).forEach(r => items.push(["MARKT", `${r.naam} houdt ~${r.aandeel}% van ${r.sector}`]));
+  items.push(["STAD", `Heat-index ${esc(st.speler.corp_name)}: ${Math.round(st.heat)}`]);
+  const key = JSON.stringify(items);
+  if (key === tickerKey) return;
+  tickerKey = key;
+  const run = document.getElementById("tickrun");
+  run.innerHTML = items.map(([a,b]) => `<span class="it"><b>${esc(a)}</b>${esc(b)}</span>`).join("");
+  run.style.setProperty("--dur", Math.max(35, items.reduce((n,[a,b]) => n + a.length + b.length, 0) / 5) + "s");
+}
+function scramble(el){
+  if (!el || REDUCED) return;
+  const final = el.textContent, chars = "▓▒░#$%&@*+=?/\\<>01ABCDEFX";
+  let f = 0; const total = 16;
+  const iv = setInterval(() => {
+    f++;
+    const n = Math.floor(final.length * f / total);
+    el.textContent = final.slice(0, n) + Array.from(final.slice(n)).map(c => c === " " ? " " : chars[Math.random()*chars.length|0]).join("");
+    if (f >= total){ clearInterval(iv); el.textContent = final; }
+  }, 28);
+}
+function showSync(sub){
+  const o = document.createElement("div"); o.className = "sync";
+  o.innerHTML = `<div class="t glitch" data-text="SYNCHRONISEREN">SYNCHRONISEREN</div><div class="pb"><i></i></div><div class="s">${esc(sub)}</div>`;
+  document.body.appendChild(o); return o;
+}
+function hideSync(o){ o.classList.add("out"); setTimeout(() => o.remove(), 500); }
+async function boot(){
+  let seen = false; try { seen = sessionStorage.getItem("cl_boot") === "1"; sessionStorage.setItem("cl_boot", "1"); } catch(e){}
+  if (seen || REDUCED) return;
+  const st = S.state || {}, corp = st.setup_done ? st.speler.corp_name : "ONBEKEND";
+  if (!S.loaded) await sleep(50);
+  const lines = [
+    `<span class="m">MERIDIAN BAY CITYNET</span>  v4.0.4  //  node ${(Math.random()*9000+1000|0)}`,
+    "> handshake ............... <span class=\"g\">OK</span>",
+    "> versleuteling ........... ICE-7 / 2048",
+    `> identiteit .............. CEO // ${esc(corp).toUpperCase()}`,
+    "> marktfeed ............... <span class=\"g\">LIVE</span>",
+    st.setup_done ? `> heat-scanner ............ ${Math.round(st.heat)}` : "> registratie ............. <span class=\"m\">VEREIST</span>",
+    "", `<span class="m">█</span> TOEGANG VERLEEND`];
+  const o = document.createElement("div"); o.className = "boot";
+  o.innerHTML = '<pre></pre><div class="skip">KLIK OM OVER TE SLAAN</div>';
+  document.body.appendChild(o);
+  const pre = o.querySelector("pre"); let skip = false;
+  const end = () => { skip = true; o.classList.add("out"); setTimeout(() => o.remove(), 500); };
+  o.addEventListener("click", end); window.addEventListener("keydown", end, {once:true});
+  for (const l of lines){ if (skip) return; pre.innerHTML += l + "\n"; if (S.sound) blip(1200, .02); await sleep(170); }
+  await sleep(450); if (!skip) end();
+}
+let AC = null;
+function audio(){ try { AC = AC || new (window.AudioContext || window.webkitAudioContext)(); } catch(e){} return AC; }
+function blip(freq, dur){
+  const ac = audio(); if (!ac) return;
+  const o = ac.createOscillator(), g = ac.createGain();
+  o.type = "square"; o.frequency.value = freq; g.gain.value = .035;
+  g.gain.exponentialRampToValueAtTime(.0001, ac.currentTime + dur);
+  o.connect(g).connect(ac.destination); o.start(); o.stop(ac.currentTime + dur);
+}
+function sweep(){
+  const ac = audio(); if (!ac) return;
+  const o = ac.createOscillator(), g = ac.createGain();
+  o.type = "sawtooth"; o.frequency.setValueAtTime(90, ac.currentTime); o.frequency.exponentialRampToValueAtTime(700, ac.currentTime + 1.0);
+  g.gain.setValueAtTime(.03, ac.currentTime); g.gain.exponentialRampToValueAtTime(.0001, ac.currentTime + 1.1);
+  o.connect(g).connect(ac.destination); o.start(); o.stop(ac.currentTime + 1.15);
+}
+
+window.addEventListener("hashchange", () => { const v = location.hash.slice(1); if (v && v !== S.view && VIEWS[v]){ S.view = v; render(); } });
+render();
+(async () => {
+  const sp = (async () => { try { G.sample = window.claude && window.claude.use ? await window.claude.use("sample") : null; } catch(e){ G.sample = null; } })();
+  await Store.init(); await sp; render(); boot();
+})();
+</script>
