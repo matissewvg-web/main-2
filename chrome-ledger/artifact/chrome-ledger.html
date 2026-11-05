@@ -330,7 +330,7 @@ svg.globe .dn{font-size:9.5px;letter-spacing:.03em}
 svg.real{background:transparent;min-width:760px}
 svg.real .dist path{stroke-width:.7;transition:fill-opacity .15s,stroke-width .15s;cursor:pointer}
 svg.real .dist:hover path{fill-opacity:1;stroke:#fff;stroke-width:1.2}
-svg.real .dist.player path{filter:drop-shadow(0 0 4px rgba(5,217,232,.8))}
+svg.real .dist.player path{filter:drop-shadow(0 0 4px rgba(5,217,232,.9));stroke:#e6ffff;stroke-width:1}
 svg.real .dist.reach path{stroke:#05d9e8;stroke-width:1.6;stroke-dasharray:4 3}
 svg.real .dist.sel path{stroke:#fff;stroke-width:2.2;stroke-dasharray:none}
 svg.real .lbl{pointer-events:none}
@@ -342,6 +342,14 @@ svg.real .zn{font:700 8.5px var(--disp);letter-spacing:.14em;fill:#c9fff4;paint-
 svg.real .zd{font:8.5px var(--mono);paint-order:stroke;stroke:#062730;stroke-width:3px}
 svg.real .gl{stroke:rgba(160,255,235,.08)}
 svg.real .cityname{font-size:14px;fill:rgba(255,255,255,.12)}
+.tierbar{position:relative;height:10px;background:rgba(124,77,255,.15);margin:4px 0 2px}
+.tierbar i{position:absolute;left:0;top:0;bottom:0}
+.tierbar b{position:absolute;top:-3px;bottom:-3px;width:1px;background:rgba(255,255,255,.55)}
+.domrow{padding:8px 0;border-bottom:1px solid var(--line)}
+.domrow .spread{font-size:14.5px}
+.domnext{font-size:12.5px;color:var(--muted)}
+svg.real .domlbl{font:800 10px var(--disp);letter-spacing:.14em;fill:#fff;paint-order:stroke;stroke:#12030c;stroke-width:3px;pointer-events:none}
+svg.real .domlbl.big{font-size:13px}
 .navy{margin-top:14px;padding:12px;background:rgba(6,2,14,.55);box-shadow:inset 0 0 0 1px var(--line2);display:flex;flex-direction:column;gap:8px}
 svg.globe .di{font-size:9.5px}
 svg.globe .zn{font-size:10.5px}
@@ -511,6 +519,8 @@ function migrate(s){
   for (const r of s.rivals){ r.sector ??= CH(SECTORS); r.memory ??= []; initRival(r); }
   s.defensie ??= 0; s.aanbiedingen ??= [];
   if (!s.map) buildMapForExisting(s);
+  if (s.map && s.map.kind === "wereld" && !s.map.frame) upgradeToRealWorld(s);
+  s.invloed ??= 0;
   if (s.schepen === undefined){ s.schepen = (s.vloot || 0) * 2; s.inzet = {}; const z0 = (s.districts.find(d => d.control === "player" && (d.zee || []).length) || {}).zee; if (z0 && s.schepen) s.inzet[z0[0]] = s.schepen; }
   s.inzet ??= {};
   for (const r of s.rivals) if (!r.kleur) r.kleur = RIVAL_COLORS.find(c => !s.rivals.some(x => x.kleur === c)) || "#cccccc";
@@ -907,7 +917,9 @@ function tick(s){
     lines.push(`| ${d.name || d.type} (${d.type} L${d.level}) | ${r1(r)} | ${r1(c)} |`);
   }
   for (const d of s.districts) if (d.control === "player"){ rev += d.income * U(0.85, 1.15); cost += d.upkeep; }
-  for (const z of seaControl(s)) if (z.dominant === "player"){ rev += z.bonus; ctx.rep.push(`Zeedominantie ${z.naam}: +€${z.bonus}k`); }
+  const dom = dominanceIncome(s, "player");
+  if (dom.geld){ rev += dom.geld; ctx.rep.push(`Dominantie: +€${dom.geld}k`); }
+  if (dom.inv){ s.invloed = r1((s.invloed || 0) + dom.inv); ctx.rep.push(`Invloed +${dom.inv}`); }
   const payroll = s.staff.count * s.staff.avg_salary / 12 * 0.1;
   const interest = s.debt * s.interest_rate / 12;
   const projCost = s.projects.reduce((a, p) => a + (p.cost_per_month || 0), 0);
@@ -1174,22 +1186,6 @@ function navalTick(s, ctx, diff){
     if (r.status === "oorlog") for (const z of sc()) if (z.dominant === "player" && (coast.includes(z.id) || s.districts.some(d => d.control === "player" && (d.zee || []).includes(z.id)))) want.unshift(z.id);
     r.inzet = {}; if (want.length) for (let i = 0; i < r.schepen; i++){ const z = want[i % want.length]; r.inzet[z] = (r.inzet[z] || 0) + 1; }
   }
-  // zeeslagen
-  for (const r of s.rivals.filter(x => x.status === "oorlog")){
-    for (const z of s.map.zones){
-      const p = (s.inzet || {})[z.id] || 0, e = (r.inzet || {})[z.id] || 0; if (!p || !e) continue;
-      const pw = p * (1 + 0.05 * navalLevels(s, "player")), ew = e * (1 + 0.05 * navalLevels(s, r.name));
-      const roll = d100(), pShare = pw / (pw + ew), won = roll <= Math.round(pShare * 100);
-      const lossP = Math.min(p, won ? (R() < 0.4 ? 1 : 0) : Math.max(1, Math.round(p * U(0.2, 0.45))));
-      const lossE = Math.min(e, won ? Math.max(1, Math.round(e * U(0.25, 0.5))) : (R() < 0.4 ? 1 : 0));
-      s.inzet[z.id] = p - lossP; if (!s.inzet[z.id]) delete s.inzet[z.id]; s.schepen = Math.max(0, (s.schepen || 0) - lossP);
-      r.inzet[z.id] = e - lossE; r.schepen = Math.max(0, r.schepen - lossE); r.moeheid = clamp(r.moeheid + lossE * 4);
-      addRoll(s, `Zeeslag ${z.naam} tegen ${r.name}: d100 = ${roll} vs ${Math.round(pShare * 100)}% → ${won ? "GEWONNEN" : "VERLOREN"}`);
-      const txt = `Zeeslag in de ${z.naam}: wij verliezen ${lossP} eskader(s), ${r.name} verliest er ${lossE}.`;
-      mail(ctx, s, "Admiraliteit", `Zeeslag: ${won ? "overwinning" : "nederlaag"} in de ${z.naam}`, txt + ` (Worp ${roll}, nodig ≤ ${Math.round(pShare * 100)}.)`, won ? "HOOG" : "KRITIEK");
-      ctx.rep.push(txt);
-    }
-  }
   // konvooioorlog: een vijand die een zee beheerst, knijpt de handel van jouw kustgebieden daar af
   let raid = 0;
   for (const z of sc()){
@@ -1226,6 +1222,80 @@ function genWorld(){
   const districts = D.territories.map(t => ({id: t.id, name: t.name, kort: t.kort, continent: t.continent, arch: t.arch, control: "neutral", income: t.income, upkeep: t.upkeep, lore: t.lore, tags: [...((ARCH[t.arch] || {}).tags || [])], zee: t.zee, neighbors: t.neighbors}));
   const cells = {}; for (const t of D.territories) cells[t.id] = {d: t.d, cx: t.cx, cy: t.cy};
   return WORLD_CACHE = {districts, map: {kind: "wereld", versie: 2, city: "Wereld", w: D.w, h: D.h, frame, continents: CONTINENTS, zones, cells}};
+}
+
+/* ---------- dominantie: aandeel per continent en per zee, drempels, opbrengst per beurt ---------- */
+const DOM_TIERS = [
+  {min: 25, naam: "Voet aan de grond", geld: 0, inv: 1},
+  {min: 50, naam: "Dominant", geld: 1, inv: 2},
+  {min: 80, naam: "Hegemonie", geld: 2, inv: 4},
+];
+const SEA_TIERS = [
+  {min: 50, naam: "Overwicht", geld: 1, inv: 0},
+  {min: 80, naam: "Zeeheerschappij", geld: 2, inv: 1},
+];
+const SEA_MIN = 6; // zonder echte vloot geen zeeheerschappij
+function tierOf(pct, tiers = DOM_TIERS){ let t = null; for (const x of tiers) if (pct >= x.min) t = x; return t; }
+function nextTier(pct, tiers = DOM_TIERS){ return tiers.find(x => pct < x.min) || null; }
+function regionDominance(s){
+  const conts = [...new Set(s.districts.map(d => d.continent).filter(Boolean))];
+  return conts.map(c => {
+    const ds = s.districts.filter(d => d.continent === c), tot = ds.reduce((a, d) => a + d.income, 0), by = {};
+    for (const d of ds) if (d.control !== "neutral") by[d.control] = (by[d.control] || 0) + d.income;
+    const shares = Object.entries(by).map(([o, v]) => ({o, pct: Math.round(v / tot * 100)})).sort((a, b) => b.pct - a.pct);
+    return {soort: "continent", id: c, naam: c, totaal: tot, waarde: Math.max(2, Math.round(tot * 0.12)), shares, gebieden: ds.length};
+  });
+}
+function dominanceIncome(s, owner){
+  let geld = 0, inv = 0; const regels = [];
+  for (const r of regionDominance(s)){
+    const sh = r.shares.find(x => x.o === owner), pct = sh ? sh.pct : 0, t = tierOf(pct);
+    if (t){ const g = r.waarde * t.geld; geld += g; inv += t.inv; regels.push({soort: "continent", naam: r.naam, pct, tier: t.naam, geld: g, inv: t.inv}); }
+  }
+  for (const z of seaControl(s)){
+    const v = z.sterkte[owner] || 0, pct = z.totaal ? Math.round(v / z.totaal * 100) : 0, t = v >= SEA_MIN ? tierOf(pct, SEA_TIERS) : null;
+    if (t){ const g = z.bonus * t.geld; geld += g; inv += t.inv; regels.push({soort: "zee", naam: z.naam, pct, tier: t.naam, geld: g, inv: t.inv}); }
+  }
+  return {geld: r1(geld), inv, regels};
+}
+/* invloed besteden: een soort politieke macht die je per beurt opbouwt */
+const INFLUENCE = {
+  pers: {label: "Mediacampagne", kost: 20, uitleg: "Reputatie +5."},
+  rust: {label: "Rust in de straat", kost: 20, uitleg: "Heat -8: de juiste mensen kijken even de andere kant op."},
+  lobby: {label: "Lobbyen", kost: 25, uitleg: "Een factie naar keuze +15."},
+  diplomatie: {label: "Diplomatieke druk", kost: 30, uitleg: "Relatie met een rivaal naar keuze +15."},
+  vergunning: {label: "Vergunning op maat", kost: 35, uitleg: "Je volgende vestiging kost geen geld, alleen de opbouwtijd."},
+};
+function actInfluence(s, kind, target){
+  const a = INFLUENCE[kind]; if (!a) return {ok: false, msg: "Onbekende actie."};
+  if ((s.invloed || 0) < a.kost) return {ok: false, msg: `Niet genoeg invloed (${a.kost} nodig, je hebt ${Math.floor(s.invloed || 0)}).`};
+  let msg;
+  if (kind === "pers"){ s.reputation = clamp(s.reputation + 5); msg = "De campagne loopt: reputatie +5."; }
+  else if (kind === "rust"){ s.heat = clamp(s.heat - 8); msg = "Een paar telefoontjes later: heat -8."; }
+  else if (kind === "lobby"){ if (!s.factions[target]) return {ok: false, msg: "Kies een factie."}; shiftFaction(s, target, 15); msg = `Gelobbyd bij ${target}: +15.`; }
+  else if (kind === "diplomatie"){ const r = s.rivals.find(x => x.name === target); if (!r) return {ok: false, msg: "Kies een rivaal."}; relShift(r, 15); msg = `Druk via tussenpersonen: relatie met ${r.name} +15.`; }
+  else if (kind === "vergunning"){ if (s.flags.vergunning) return {ok: false, msg: "Je hebt al een vergunning klaarliggen."}; s.flags.vergunning = true; msg = "Vergunning geregeld: je volgende vestiging kost geen geld."; }
+  s.invloed = r1(s.invloed - a.kost); addLog(s, `Invloed besteed (${a.kost}): ${msg}`);
+  return {ok: true, msg};
+}
+/* oude verzonnen wereldkaart naar de echte wereld, met bezit en al */
+const OLD2REAL = {CAS: "CAN", GML: "CAN", MOJ: "USA", AKF: "USA", GOL: "MEX", AMA: "BRA", RPK: "CSU", AND: "AND", LLC: "BNL", RIJ: "DEU", IBP: "IBE", NDS: "SCA", BTZ: "BLK",
+  LAG: "NGA", HRN: "HRN", KAP: "ZAF", SZS: "MAG", NKP: "JPN", HDC: "CHN", MKV: "IDC", BNG: "IND", SIB: "RUS", ZKG: "AUS", TVZ: "PAC"};
+function upgradeToRealWorld(s){
+  const W = genWorld(), nd = clone(W.districts), conv = id => OLD2REAL[id] || id;
+  s.player.home_district = conv(s.player.home_district);
+  const home = nd.find(x => x.id === s.player.home_district) || nd.find(x => x.id === "BNL"); s.player.home_district = home.id; home.control = "player";
+  for (const d of s.districts) if (d.control !== "neutral"){ const t = nd.find(x => x.id === conv(d.id)); if (t && t.control === "neutral") t.control = d.control; }
+  for (const r of s.rivals){
+    let t = nd.find(x => x.id === conv(r.hq));
+    if (!t || (t.control !== "neutral" && t.control !== r.name)){ const free = nd.filter(x => x.control === "neutral" && x.continent !== home.continent); t = free[Math.floor(R() * free.length)]; }
+    if (t){ r.hq = t.id; t.control = r.name; }
+    r.kleur = undefined; r.inzet = {};
+  }
+  for (const p of s.projects){ if (p.district) p.district = conv(p.district); if (p.on_complete && p.on_complete.district_control) p.on_complete.district_control = conv(p.on_complete.district_control); }
+  for (const o of s.aanbiedingen || []) if (o.district) o.district = conv(o.district);
+  s.districts = nd; s.map = clone(W.map); s.city = "Wereld"; s.inzet = {};
+  if (s.log) addLog(s, "De kaart is bijgewerkt naar de echte wereld. Je bezit en je hoofdkantoor zijn meeverhuisd.");
 }
 
 /* ---------- eigen bedrijfssoorten & personeel ---------- */
@@ -1488,7 +1558,7 @@ function rivalAI(s, ctx, diff){
     for (const [sec, lv] of Object.entries(r.divs)){ const t = typeOf(s, sec) || {rev: 8, cost: 5}; inc += lv * (t.rev - t.cost) * 0.8; }
     for (const d of rivalDistricts(s, r)) inc += d.income - d.upkeep;
     inc -= r.defensie * 2 + (r.schepen || 0) * 1.2 + (r.status === "oorlog" ? 3 : 0) + r.staff / 8;
-    for (const z of seaControl(s)) if (z.dominant === r.name) inc += z.bonus;
+    inc += dominanceIncome(s, r.name).geld;
     for (const v of r.verdragen){ inc += v.bedrag; }
     r.cash = r1(r.cash + inc * U(0.8, 1.2));
     // verdragen
@@ -1660,7 +1730,7 @@ function actProject(s, kind, a){
     if (d.control !== "neutral") return {ok: false, msg: `${d.name} is in handen van ${d.control}. Koop het van hen of neem het in, via Rivalen.`};
     if (!reachable(s, "player", d)) return {ok: false, msg: `${d.name} ligt buiten bereik. Breid uit via een buurdistrict, of beheers de zee aan die kust.`};
     if (s.projects.some(p => p.district === d.id)) return {ok: false, msg: "Daar loopt al een vestiging."};
-    cost = districtCost(s, d);
+    cost = s.flags.vergunning ? 0 : districtCost(s, d); if (s.flags.vergunning) delete s.flags.vergunning;
     proj = {name: `Vestiging in ${d.name}`, eta_months: 3, cost_per_month: 1, district: d.id,
       done_msg: `We hebben voet aan de grond in ${d.name}. Panden, contacten, een paar mensen die ons kennen.`, on_complete: {district_control: d.id}};
     for (const r of s.rivals) if (r.hq === d.id){ remember(r, s, `speler dringt district ${d.id} binnen`); r.aggression = Math.min(1, r1(r.aggression * 100 + 5) / 100); }
@@ -1786,6 +1856,7 @@ const Store = {
     G.unsub.push(db.doc(base).onSnapshot(snap => {
       first = true; clearTimeout(timer); S.loadNote = "";
       if (!S.busy) G.game = snap.exists ? clone(snap.data().s) : null;
+      if (G.game && G.game.map && G.game.map.kind === "wereld" && !G.game.map.frame){ migrate(G.game); Store.saveGame().catch(() => {}); }
       S.loaded = true; render();
     }, e => { clearTimeout(timer); S.loaded = true; toast("Opslag niet bereikbaar (" + e.code + ").", true); render(); }));
     G.unsub.push(db.collection(base + "/mails").orderBy("t", "desc").limit(400).onSnapshot(q => {
@@ -2130,6 +2201,8 @@ function vm(){
       return {...c, laatste: last ? (last.van === "ik" ? "U: " : "") + (last.tekst || (last.status === "denkt" ? "typt…" : "")) : "", open: !!(ch && openProposal(ch)), bezig: !!(last && (last.status === "denkt" || last.status === "wacht")), t: last ? last.t : 0}; }),
     rapport: lr.maand ? {...lr, mail: (G.mails.find(m => m.onderwerp === "Maandrapport " + lr.maand) || {}).id} : null,
     geschiedenis: s.history || [],
+    invloed: s.invloed || 0, dominantie: dominanceIncome(s, "player"), zeeSterkte: Object.fromEntries(seaControl(s).map(z => [z.id, z.sterkte.player || 0])), regios: regionDominance(s), vergunning: !!s.flags.vergunning,
+    invloedActies: INFLUENCE, factieNamen: Object.keys(s.factions), rivaalNamen: s.rivals.map(r => r.name),
     leenruimte: loanCap(s), nieuwe_divisie_kost: newDivCost(s), divisie_types: allTypes(s), contract: s.flags.nomad_contract,
     log: s.log.slice().reverse().map(l => "- " + l).join("\n"), worpen: s.worpen,
   };
@@ -2160,6 +2233,7 @@ const API = {
     return {ok: r.ok, bericht: r.ok ? `${r.msg} Omzet ${ty.rev}, kosten ${ty.cost}, heat ${ty.heat} per niveau.${uitleg ? " " + uitleg : ""}` : r.msg};
   },
   async "/api/rivaal"(d){ const s = G.game, ctx = Ctx(); const r = WAR[d.soort] ? actWar(s, ctx, d.naam, d.soort, d.district) : actDiplo(s, ctx, d.naam, d.soort, d); if (r.ok) await persist(ctx); return {ok: r.ok, bericht: r.msg}; },
+  async "/api/invloed"(d){ const r = actInfluence(G.game, d.soort, d.doel); if (r.ok) await persist(); return {ok: r.ok, bericht: r.msg}; },
   async "/api/vloot"(d){ const r = d.zone ? actDeploy(G.game, d.zone, d.delta) : actShip(G.game); if (r.ok) await persist(); return {ok: r.ok, bericht: r.msg}; },
   async "/api/beveiliging"(){ const r = actDefense(G.game); if (r.ok) await persist(); return {ok: r.ok, bericht: r.msg}; },
   async "/api/aanbod"(d){ const s = G.game, ctx = Ctx(); const r = offerDecide(s, ctx, d.id, d.ja); if (r.ok) await persist(ctx); return {ok: r.ok, bericht: r.msg}; },
@@ -2293,6 +2367,7 @@ function render(){
         ${stat("Reputatie", k(st.reputatie), st.reputatie)}
         ${stat("Morale", k(st.morale), st.morale)}
         ${stat("Schuld", eur(st.schuld), null, st.schuld > st.cash ? "var(--amber)" : null)}
+        ${stat("Invloed", `${Math.floor(st.invloed)} <span class="dim" style="font-size:12px">+${st.dominantie.inv}/b</span>`, null, "var(--violet)")}
       </div>
       <button class="btn primary next" data-a="tick" ${over?"disabled":""}>VOLGENDE<span class="nx-long"> MAAND</span> ▸</button>
     </header>
@@ -2422,7 +2497,7 @@ kaart(){
         <div class="spread"><span class="kpi">JOUW ESKADERS HIER</span><span class="row" style="gap:6px"><button class="btn sm" data-a="deploy" data-z="${z.id}" data-d="-1" ${(st.vloot.inzet[z.id] || 0) ? "" : "disabled"} aria-label="eskader terughalen">−</button><b class="big" style="min-width:34px;text-align:center">${st.vloot.inzet[z.id] || 0}</b><button class="btn sm primary" data-a="deploy" data-z="${z.id}" data-d="1" ${st.vloot.vrij ? "" : "disabled"} aria-label="eskader inzetten">+</button></span></div>
         <div class="muted" style="font-size:13.5px">Vloot: ${st.vloot.schepen}/${st.vloot.max} eskaders, ${st.vloot.vrij} vrij · €1,2k per eskader per maand</div>
         ${st.vloot.schepen < st.vloot.max ? `<button class="btn sm" data-a="fleet">Eskader bouwen · ${eur(st.vloot.kost)}</button>` : ""}
-        <p class="dim" style="font-size:12.5px;margin:0">In oorlog: eskaders van vijanden in dezelfde zone leveren elke maand een zeeslag (de engine gooit, sterkte bepaalt de kans). Een vijand met overwicht pakt 30% van de handel van je kustgebieden aan die zee.</p>
+        <p class="dim" style="font-size:12.5px;margin:0">50% zeemacht is overwicht (+€${z.bonus}k per beurt, en een route naar elke kust aan deze zee). 80% is zeeheerschappij (+€${z.bonus * 2}k en +1 invloed per beurt). In oorlog kost een vijandig overwicht je 30% van de handel van je kustgebieden hier.</p>
       </div></div>`;
   } else if (d){
     const own = d.controle === "player" ? "jij" : d.controle === "neutral" ? "niemand" : d.controle;
@@ -2436,12 +2511,10 @@ kaart(){
       : d.controle!=="player" ? `<div style="margin-top:14px"><p class="muted" style="margin:0 0 8px">In handen van <b style="color:var(--mag)">${esc(d.controle)}</b>${d.hq.includes(d.controle)?" (hun hoofdkantoor)":""}. ${d.bereik ? "Grenst aan jouw gebied: in een oorlog kun je het innemen." : "Grenst niet aan jouw gebied: innemen kan pas als het dat wel doet."}</p><button class="btn primary sm" data-a="dossier" data-n="${esc(d.controle)}">Naar hun dossier</button></div>` : ""}
       <div style="margin-top:14px"><textarea id="disttxt" placeholder="Iets anders hier? Bijv.: Koop de wijkagent om, of bouw een opslagloods."></textarea>
         <button class="btn sm" style="margin-top:6px" data-a="distorder" data-id="${d.id}">Naar de Assistent</button></div></div>`;
-  } else side = `<div class="card"><h3>${M.kind === "wereld" ? "De wereld" : esc(M.city)}</h3><p class="muted">Klik op een ${M.kind === "wereld" ? "land of een oceaan" : "district of een zeezone"}. Gebied met een cyaan stippellijn kun je nu uitbreiden. ⚓ is een havenstaat, ★ een hoofdkantoor, ⌂ jouw thuisbasis.</p>
-      <dl class="kv"><dt>${M.kind === "wereld" ? "Landen" : "Districten"}</dt><dd>${M.cells.length}</dd><dt>Van jou</dt><dd>${M.cells.filter(c => c.own === "player").length}</dd><dt>${M.kind === "wereld" ? "Oceanen" : "Zeezones"}</dt><dd>${M.zones.filter(x => x.dominant === "player").length} van ${M.zones.length} in jouw hand</dd></dl>
-      ${M.kind === "wereld" ? `<h2 style="margin-top:16px">Continenten</h2>${M.continents.map(c => { const mine = M.cells.filter(x => st.districten.find(dd => dd.id === x.id).continent === c.naam); return `<div class="spread" style="font-size:14px;padding:3px 0"><span>${esc(c.naam)}</span><span class="mono">${mine.filter(x => x.own === "player").length}/${mine.length}</span></div>`; }).join("")}` : ""}</div>`;
+  } else side = domPanel(st, M);
   return `<h1>Kaart</h1>
   <div class="card" style="margin-bottom:12px;padding:12px 16px"><div class="spread"><span class="kpi">${M.kind === "wereld" ? "WERELDDOMINANTIE" : "DOMINANTIE OVER " + esc(M.city.toUpperCase())} · GEWOGEN NAAR INKOMEN</span></div>${domBar(M.dom)}</div>
-  <div class="mapwrap"><div><div class="row" style="margin-bottom:8px"><span class="kpi">ZOOM</span>${[1, 1.6, 2.4].map(zm => `<button class="chip ${(S.zoom || 1) === zm ? "on" : ""}" data-a="zoom" data-z="${zm}">${zm === 1 ? "Wereld" : zm === 1.6 ? "Regio" : "Dichtbij"}</button>`).join("")}</div>
+  <div class="mapwrap"><div><div class="row" style="margin-bottom:8px"><span class="kpi">KAART</span>${[["politiek", "Politiek"], ["dominantie", "Dominantie"], ["zee", "Zee"], ["economie", "Economie"]].map(([m, l]) => `<button class="chip ${(S.mapmode || "politiek") === m ? "on" : ""}" data-a="mapmode" data-m="${m}">${l}</button>`).join("")}<span class="kpi" style="margin-left:8px">ZOOM</span>${[1, 1.6, 2.4].map(zm => `<button class="chip ${(S.zoom || 1) === zm ? "on" : ""}" data-a="zoom" data-z="${zm}">${zm === 1 ? "Wereld" : zm === 1.6 ? "Regio" : "Dichtbij"}</button>`).join("")}</div>
     <div class="mapscroll" id="mapscroll"><div style="width:${(S.zoom || 1) * 100}%">${mapSvg(M, S.dist, S.zone)}</div></div>
     <div class="legend"><span><i style="background:#05d9e8"></i>jouw gebied</span><span><i style="background:#2c1f4f;border:1px dashed #05d9e8"></i>bereikbaar</span><span><i style="background:var(--mag)"></i>rivalen (eigen kleur)</span><span>⚓ haven · ★ HQ · ⌂ thuis</span></div></div>${side}</div>`;
 },
@@ -2671,12 +2744,17 @@ function mapView(s){
   const w = {}; let tot = 0; for (const d of s.districts){ w[d.control] = (w[d.control] || 0) + d.income; tot += d.income; }
   const dom = Object.entries(w).map(([o, v]) => ({o, naam: o === "player" ? s.player.corp_name : o === "neutral" ? "Niemand" : o, pct: Math.round(v / (tot || 1) * 100), kleur: ownerColor(s, o)}))
     .sort((a, b) => a.o === "player" ? -1 : b.o === "player" ? 1 : a.o === "neutral" ? 1 : b.o === "neutral" ? -1 : b.pct - a.pct);
-  return {kind: M.kind, w: M.w, h: M.h, city: M.city, land: M.land, frame: M.frame, continents: M.continents, cells, zones, dom};
+  const regs = regionDominance(s);
+  for (const c of cells){ const d = s.districts.find(x => x.id === c.id), rg = regs.find(r => r.id === d.continent); c.inc = d.income; c.cont = d.continent;
+    if (rg && rg.shares[0]){ c.contKleur = ownerColor(s, rg.shares[0].o); c.contPct = rg.shares[0].pct; } }
+  const contLbl = regs.map(r => { const cs = cells.filter(c => c.cont === r.id); return {naam: r.naam, x: Math.round(cs.reduce((a, c) => a + c.cx, 0) / cs.length), y: Math.round(cs.reduce((a, c) => a + c.cy, 0) / cs.length),
+    top: r.shares[0] ? {naam: r.shares[0].o === "player" ? "JIJ" : r.shares[0].o.split(" ")[0].toUpperCase(), pct: r.shares[0].pct, kleur: ownerColor(s, r.shares[0].o)} : null}; });
+  return {kind: M.kind, w: M.w, h: M.h, city: M.city, land: M.land, frame: M.frame, continents: M.continents, cells, zones, dom, mode: S.mapmode || "politiek", contLbl};
 }
 function mapSvg(M, sel, selZone){
   const pts = p => p.map(q => q[0] + "," + q[1]).join(" "), world = M.kind === "wereld", real = !!M.frame;
   const zoneShapes = M.zones.map(z => `<g class="zone ${selZone === z.id ? "sel" : ""}" data-zone="${z.id}">
-      ${(z.polys || [z.poly]).map(pp => `<polygon points="${pts(pp)}" fill="${z.kleur || "transparent"}" fill-opacity="${z.kleur ? .22 : 1}"/><polygon points="${pts(pp)}" fill="url(#hatch)" opacity="${z.kleur ? .9 : 0}"/><polygon class="zline" points="${pts(pp)}" fill="none"/>`).join("")}</g>`).join("");
+      ${(z.polys || [z.poly]).map(pp => `<polygon points="${pts(pp)}" fill="${z.kleur || "transparent"}" fill-opacity="${z.kleur ? (M.mode === "zee" ? .5 : .22) : 1}"/><polygon points="${pts(pp)}" fill="url(#hatch)" opacity="${z.kleur ? .9 : 0}"/><polygon class="zline" points="${pts(pp)}" fill="none"/>`).join("")}</g>`).join("");
   const zoneLabels = M.zones.map(z => { const ships = z.vloten ? Object.entries(z.vloten) : [];
     return `<text x="${z.lx}" y="${z.ly}" text-anchor="middle" class="zn">${esc(z.naam.toUpperCase())}</text>
       <text x="${z.lx}" y="${z.ly + 13}" text-anchor="middle" class="zd" fill="${z.kleur || "#9ff5e6"}">${z.dominant ? `${esc(z.shares[0].naam === "jij" ? "JIJ" : z.shares[0].naam.split(" ")[0].toUpperCase())} ${z.shares[0].pct}%` : (z.shares.length ? "BETWIST" : "VRIJ WATER")}${ships.length ? " · " + ships.map(([o, n]) => `⛴${n}`).join(" ") : ""}</text>`; }).join("");
@@ -2684,27 +2762,57 @@ function mapSvg(M, sel, selZone){
   const land = real ? "" : world ? M.continents.map(c => `<polygon points="${pts(c.poly)}" fill="#0d0820" stroke="#5b8cff" stroke-opacity=".6" stroke-width="2"/>`).join("") : `<polygon points="${pts(M.land)}" fill="#0d0820" stroke="#5b8cff" stroke-opacity=".55" stroke-width="2"/>`;
   const neutralFill = real ? "#b8155c" : "#1b1236", neutralStroke = real ? "#3a0420" : "#3b2a6b";
   const cells = M.cells.map(c => {
-    const own = c.own !== "neutral", fo = real ? (own ? .92 : .82) : (c.own === "player" ? .45 : own ? .38 : .9);
-    const shape = c.d ? `<path d="${c.d}" fill="${own ? c.fill : neutralFill}" fill-opacity="${fo}" stroke="${real ? "#12030c" : own ? c.fill : neutralStroke}" fill-rule="evenodd"/>`
+    const own = c.own !== "neutral"; let fo = real ? (own ? .92 : .82) : (c.own === "player" ? .45 : own ? .38 : .9);
+    let fillC = own ? c.fill : neutralFill;
+    if (M.mode === "dominantie"){ fillC = c.contKleur || "#2a1240"; fo = c.contKleur ? .3 + .65 * (c.contPct || 0) / 100 : .9; }
+    else if (M.mode === "economie"){ const k4 = Math.min(1, (c.inc || 0) / 12); fillC = `rgb(${Math.round(40 + 215 * k4)},${Math.round(15 + 197 * k4)},${Math.round(58 - 58 * k4)})`; fo = .95; }
+    else if (M.mode === "zee"){ fillC = own ? c.fill : "#3a0d2a"; fo = own ? .7 : .85; }
+    const shape = c.d ? `<path d="${c.d}" fill="${fillC}" fill-opacity="${fo}" stroke="${real ? "#12030c" : own ? c.fill : neutralStroke}" fill-rule="evenodd"/>`
       : `<polygon points="${pts(c.poly)}" fill="${own ? c.fill : neutralFill}" fill-opacity="${fo}" stroke="${own ? c.fill : neutralStroke}"/>`;
     return `<g class="dist ${c.own === "player" ? "player" : own ? "rival" : ""} ${c.reach ? "reach" : ""} ${sel === c.id ? "sel" : ""}" data-dist="${c.id}">${shape}</g>`; }).join("");
   const labels = M.cells.map(c => `<g class="lbl"><text x="${c.cx}" y="${c.cy - 2}" text-anchor="middle" class="dn">${esc((c.kort || c.naam).toUpperCase())}</text>
       <text x="${c.cx}" y="${c.cy + 9}" text-anchor="middle" class="di">${c.home ? "⌂" : ""}${c.hq ? "★" : ""}${c.haven ? "⚓" : ""}${c.bezig ? "◷" : ""}</text></g>`).join("");
+  const domLabels = M.mode === "dominantie" && M.contLbl ? M.contLbl.map(l => `<text x="${l.x}" y="${l.y - 14}" text-anchor="middle" class="domlbl">${esc(l.naam.toUpperCase())}</text><text x="${l.x}" y="${l.y}" text-anchor="middle" class="domlbl big" fill="${l.top ? l.top.kleur : "#fff"}">${l.top ? `${esc(l.top.naam)} ${l.top.pct}%` : "NIEMAND"}</text>`).join("") : "";
   const contLabels = world && !real ? M.continents.map(c => `<text x="${c.lx}" y="${c.ly}" text-anchor="middle" class="cn">${esc(c.naam.toUpperCase())}</text>`).join("") : "";
   const sea = real ? `<path d="M${M.frame.map(p => p[0] + " " + p[1]).join("L")}Z" fill="url(#seag)"/><path d="M${M.frame.map(p => p[0] + " " + p[1]).join("L")}Z" fill="url(#waves)"/>`
     : `<rect width="${M.w}" height="${M.h}" fill="url(#seag)"/><rect width="${M.w}" height="${M.h}" fill="url(#waves)"/>`;
   return `<svg class="map world ${world ? "globe" : ""} ${real ? "real" : ""}" viewBox="0 0 ${M.w} ${M.h}" role="img" aria-label="${world ? "Wereldkaart" : "Kaart van " + esc(M.city)}">
     <defs><pattern id="waves" width="28" height="14" patternUnits="userSpaceOnUse"><path d="M0 7 Q7 2 14 7 T28 7" fill="none" stroke="rgba(160,255,235,.10)" stroke-width="1"/></pattern>
       <pattern id="hatch" width="9" height="9" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="9" stroke="rgba(255,255,255,.12)" stroke-width="2"/></pattern>
-      ${real ? `<radialGradient id="seag" cx=".5" cy=".5" r=".7"><stop offset="0" stop-color="#127a73"/><stop offset=".6" stop-color="#0b4b4f"/><stop offset="1" stop-color="#062730"/></radialGradient>
+      ${real ? `<radialGradient id="seag" cx=".5" cy=".5" r=".7"><stop offset="0" stop-color="#0f6862"/><stop offset=".6" stop-color="#0a4148"/><stop offset="1" stop-color="#051f27"/></radialGradient>
         <clipPath id="frameclip"><path d="M${M.frame.map(p => p[0] + " " + p[1]).join("L")}Z"/></clipPath>`
       : `<linearGradient id="seag" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#060d2b"/><stop offset=".5" stop-color="#0b1a49"/><stop offset="1" stop-color="#060d2b"/></linearGradient>`}</defs>
     ${sea}${grid}
-    <g ${real ? 'clip-path="url(#frameclip)"' : ""}>${zoneShapes}</g>${land}${real ? `<g clip-path="url(#frameclip)">${cells}</g>` : cells}${labels}${contLabels}${zoneLabels}
+    <g ${real ? 'clip-path="url(#frameclip)"' : ""}>${zoneShapes}</g>${land}${real ? `<g clip-path="url(#frameclip)">${cells}</g>` : cells}${M.mode === "dominantie" ? domLabels : labels}${contLabels}${zoneLabels}
     ${real ? `<path d="M${M.frame.map(p => p[0] + " " + p[1]).join("L")}Z" fill="none" stroke="#3ff5d0" stroke-opacity=".55" stroke-width="2"/>` : ""}
     <text x="${M.w - 14}" y="${M.h - 10}" text-anchor="end" class="cityname">${world ? "CHROME LEDGER" : esc(M.city.toUpperCase())}</text>
   </svg>`;
 }
+function tierBar(pct, kleur, tiers){
+  return `<div class="tierbar"><i style="width:${Math.min(100, pct)}%;background:${kleur}"></i>${tiers.map(x => `<b style="left:${x.min}%" title="${esc(x.naam)} vanaf ${x.min}%"></b>`).join("")}</div>`;
+}
+function domPanel(st, M){
+  const D = st.dominantie, regs = st.regios;
+  const rowC = r => { const sh = r.shares.find(x => x.o === "player"), pct = sh ? sh.pct : 0, t = tierOf(pct), n = nextTier(pct), top = r.shares[0];
+    return `<div class="domrow"><div class="spread"><b>${esc(r.naam)}</b><span class="mono">${pct}%${t ? ` · <span style="color:var(--cyan)">${esc(t.naam)}</span>` : ""}</span></div>
+      ${tierBar(pct, "#05d9e8", DOM_TIERS)}
+      <div class="domnext">${t ? `Nu: ${t.geld ? `+€${r.waarde * t.geld}k` : ""}${t.geld && t.inv ? " en " : ""}+${t.inv} invloed per beurt. ` : ""}${n ? `Nog ${n.min - pct}% tot ${esc(n.naam)} (${n.geld ? `+€${r.waarde * n.geld}k, ` : ""}+${n.inv} invloed per beurt).` : "Maximaal."}${top && top.o !== "player" ? ` Grootste: ${esc(top.o)} ${top.pct}%.` : ""}</div></div>`; };
+  const seas = M.zones.map(z => { const me = z.shares.find(x => x.o === "player"), pct = me ? me.pct : 0, sterk = (st.zeeSterkte || {})[z.id] || 0, t = sterk >= SEA_MIN ? tierOf(pct, SEA_TIERS) : null; return {z, pct, t, sterk}; }).filter(x => x.pct > 0 || x.z.dominant);
+  return `<div class="card"><h3>Dominantie</h3>
+    <div class="row" style="gap:22px;margin:4px 0 6px"><div><div class="kpi">PER BEURT</div><div class="big" style="color:var(--green)">+€${D.geld}k</div></div>
+      <div><div class="kpi">INVLOED</div><div class="big" style="color:var(--violet)">${Math.floor(st.invloed)} <span style="font-size:14px">+${D.inv}/b</span></div></div></div>
+    <p class="muted" style="font-size:13.5px;margin:0 0 6px">Opbrengst wordt elke beurt bijgeschreven. Je aandeel per continent is je deel van het inkomen daar. Vanaf 25% krijg je invloed, vanaf 50% ben je dominant en levert het continent geld op, vanaf 80% heb je de hegemonie: dubbel.</p>
+    ${regs.map(rowC).join("") || '<p class="dim">Deze kaart heeft geen continenten.</p>'}
+    <h2 style="margin-top:14px">Zeeën</h2>
+    ${seas.length ? seas.map(({z, pct, t, sterk}) => `<div class="domrow"><div class="spread"><span>${esc(z.naam)}</span><span class="mono">${pct}%${t ? ` · <span style="color:var(--cyan)">${esc(t.naam)}</span>` : ""}</span></div>${tierBar(pct, "#05d9e8", SEA_TIERS)}
+      <div class="domnext">${t ? `+€${z.bonus * t.geld}k${t.inv ? ` en +${t.inv} invloed` : ""} per beurt.` : sterk < SEA_MIN && pct >= 50 ? `Je hebt het grootste aandeel, maar pas vanaf ${SEA_MIN} zeemacht (nu ${sterk}) levert het iets op. Zet een eskader in.` : `Overwicht vanaf 50% (+€${z.bonus}k per beurt).`}${z.dominant && z.dominant !== "player" ? ` In handen van ${esc(z.dominant)}.` : ""}</div></div>`).join("") : '<p class="dim" style="font-size:13.5px">Je hebt nog geen zeemacht. Kustgebieden en eskaders geven je een aandeel. Klik op een zee op de kaart.</p>'}
+    <h2 style="margin-top:14px">Invloed besteden</h2>
+    ${Object.entries(st.invloedActies).map(([key, a]) => `<div class="opt"><div><div class="t">${esc(a.label)} · ${a.kost}</div><div class="u">${esc(a.uitleg)}${key === "vergunning" && st.vergunning ? " (klaar voor gebruik)" : ""}</div></div>
+      <div class="row" style="flex-wrap:nowrap">${key === "lobby" ? `<select id="infl-fac" aria-label="factie">${st.factieNamen.map(f => `<option>${esc(f)}</option>`).join("")}</select>` : key === "diplomatie" ? `<select id="infl-riv" aria-label="rivaal">${st.rivaalNamen.map(f => `<option>${esc(f)}</option>`).join("")}</select>` : ""}
+      <button class="btn sm" data-a="infl" data-k="${key}" ${st.invloed >= a.kost ? "" : "disabled"}>Inzetten</button></div></div>`).join("")}
+  </div>`;
+}
+
 function domBar(dom){
   return `<div class="dombar" role="img" aria-label="Wie de stad beheerst">${dom.map(o => `<i style="width:${o.pct}%;background:${o.kleur}" title="${esc(o.naam)} ${o.pct}%"></i>`).join("")}</div>
     <div class="legend">${dom.map(o => `<span><i style="background:${o.kleur}"></i>${esc(o.naam)} <b class="mono">${o.pct}%</b></span>`).join("")}</div>`;
@@ -2713,8 +2821,9 @@ function domBar(dom){
 /* ---- setup ---- */
 function setupView(){
   const st = S.state;
-  const T = S.setup ||= {corp_name:"", motto:"", background:"Ex-havenarbeider", doctrine:["Logistiek"], difficulty:"Realistisch", year:2004,
-    kapitaal:"normaal", home:"BNL", ontslag:"normaal", bonus:"geen", ethiek:"normaal", slogan:"", divisie_naam:"", namen:{}, eigen_naam:"", eigen_omschrijving:"", eigen_profiel:"gebalanceerd"};
+  if (!S.setup){ try { const sv = JSON.parse(localGet("setup") || "null"); if (sv && typeof sv === "object") S.setup = sv; } catch(e){} }
+  const T = S.setup = Object.assign({corp_name:"", motto:"", background:"Ex-havenarbeider", doctrine:["Logistiek"], difficulty:"Realistisch", year:2004,
+    kapitaal:"normaal", home:"BNL", ontslag:"normaal", bonus:"geen", ethiek:"normaal", slogan:"", divisie_naam:"", namen:{}, eigen_naam:"", eigen_omschrijving:"", eigen_profiel:"gebalanceerd"}, S.setup || {});
   const types = (st.divisie_types||["Biotech","Cyberware","Logistiek","Media & Data","Private Security","Financieel","Smokkel"]);
   const chips = (key, opts, multi) => `<div class="chips">${opts.map(([v,l]) => `<button class="chip ${(multi?T[key].includes(v):T[key]===v)?"on":""}" data-chip="${key}" data-v="${esc(v)}" data-multi="${multi?1:""}">${esc(l)}</button>`).join("")}</div>`;
   const city = genWorld();
@@ -2757,7 +2866,7 @@ function setupView(){
   </div></div>`;
 }
 function bindSetup(){
-  document.querySelectorAll("[data-f]").forEach(el => el.addEventListener("input", () => { S.setup[el.dataset.f] = el.value; }));
+  document.querySelectorAll("[data-f]").forEach(el => el.addEventListener("input", () => { S.setup[el.dataset.f] = el.value; localSet("setup", JSON.stringify(S.setup)); }));
 }
 
 /* ---- events ---- */
@@ -2768,13 +2877,13 @@ document.addEventListener("click", async e => {
   if (t.dataset.view){ S.view = t.dataset.view; localSet("view", S.view); try { history.replaceState(null, "", "#" + S.view); } catch(_){} if (S.view!=="inbox") S.mailBody = null; render(); document.getElementById("main")?.scrollTo(0,0); return; }
   if (t.dataset.filter){ S.filter = t.dataset.filter; S.mailBody = null; S.compose = null; render(); return; }
   if (t.dataset.chat){ S.chat = t.dataset.chat; S.chatOpen = true; render(); document.getElementById("chattxt")?.focus({preventScroll: true}); return; }
-  if (t.dataset.dist){ if (!S.state || !S.state.setup_done){ S.setup.home = t.dataset.dist; render(); return; } S.dist = t.dataset.dist; S.zone = null; render(); return; }
+  if (t.dataset.dist){ if (!S.state || !S.state.setup_done){ S.setup.home = t.dataset.dist; localSet("setup", JSON.stringify(S.setup)); render(); return; } S.dist = t.dataset.dist; S.zone = null; render(); return; }
   if (t.dataset.zone){ if (!S.state || !S.state.setup_done) return; S.zone = t.dataset.zone; S.dist = null; render(); return; }
   if (t.dataset.chip){
     const key = t.dataset.chip, v = t.dataset.v;
     if (t.dataset.multi){ const a = S.setup[key]; const i = a.indexOf(v); if (i>=0) { if (a.length>1) a.splice(i,1); } else { a.push(v); if (a.length>2) a.shift(); } }
     else S.setup[key] = v;
-    render(); return;
+    localSet("setup", JSON.stringify(S.setup)); render(); return;
   }
   if (t.dataset.open){ await openMail(t.dataset.open); return; }
   const a = t.dataset.a, val = id => (document.getElementById(id)||{}).value;
@@ -2802,9 +2911,11 @@ document.addEventListener("click", async e => {
       if (r && r.ok){ S.compose = null; for (const id of ["mto","msubj","mbody"]) delete S.keep[id]; render(); } return; }
     case "closecompose": S.compose = null; for (const id of ["mto","msubj","mbody"]) delete S.keep[id]; render(); return;
     case "dossier": S.rival = (S.rival === t.dataset.n && S.view === "rivalen") ? null : t.dataset.n; S.view = "rivalen"; localSet("view","rivalen"); render(); return;
+    case "mapmode": S.mapmode = t.dataset.m; render(); return;
+    case "infl": { const k3 = t.dataset.k, doel = k3 === "lobby" ? val("infl-fac") : k3 === "diplomatie" ? val("infl-riv") : null; return act("/api/invloed", {soort: k3, doel}); }
     case "zoom": { const sc = document.getElementById("mapscroll"), old = S.zoom || 1, nz = +t.dataset.z; const fx = sc ? (sc.scrollLeft + sc.clientWidth / 2) / sc.scrollWidth : .5; S.zoom = nz; render();
       const sc2 = document.getElementById("mapscroll"); if (sc2) sc2.scrollLeft = fx * sc2.scrollWidth - sc2.clientWidth / 2; return; }
-    case "pickcont": S.setup.home = t.dataset.id; render(); return;
+    case "pickcont": S.setup.home = t.dataset.id; localSet("setup", JSON.stringify(S.setup)); render(); return;
     case "fleet": if (!await ask("Eskader bouwen?", `Eenmalig ${eur(S.state.vloot.kost)}, daarna €1,2k per maand. Een eskader geeft 4 zeemacht in de zone waar je het inzet.`, "Bouwen")) return; return act("/api/vloot", {});
     case "deploy": return act("/api/vloot", {zone: t.dataset.z, delta: +t.dataset.d}, {silent: true});
     case "defense": if (!await ask("Beveiliging verhogen?", `Eenmalig ${eur(S.state.macht.defkost)} en daarna €2k per maand extra. Je macht stijgt met 12.`, "Verhogen")) return; return act("/api/beveiliging", {});
@@ -2848,7 +2959,7 @@ document.addEventListener("click", async e => {
     case "setup": {
       if (!S.setup.corp_name.trim()) return toast("Geef je bedrijf een naam.", true);
       const d0 = {...S.setup, eigen: S.setup.eigen_naam.trim() ? {naam: S.setup.eigen_naam, omschrijving: S.setup.eigen_omschrijving, profiel: S.setup.eigen_profiel} : null};
-      const r = await act("/api/setup", d0); if (r && r.ok){ S.view = "inbox"; localSet("view","inbox"); render(); }
+      const r = await act("/api/setup", d0); if (r && r.ok){ localSet("setup", ""); S.view = "inbox"; localSet("view","inbox"); render(); }
       return;
     }
   }
