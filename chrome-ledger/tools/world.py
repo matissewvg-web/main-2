@@ -23,6 +23,10 @@ def migrate(s):
     for k in ("zwart", "offshore"):
         s["accounts"].setdefault(k, 0)
     s.setdefault("invoices", [])
+    for inv in s["invoices"]:
+        inv.setdefault("id", "%08x" % random.getrandbits(32))
+        inv.setdefault("auto_pay", True)
+        inv.setdefault("overdue", 0)
     s.setdefault("auto_pay", True)
     s.setdefault("arcs", [])
     s.setdefault("hidden_truth", [])
@@ -98,7 +102,7 @@ RECURRING = [
 
 
 def _invoice(s, payee, amount, due_in, note, tag="vast"):
-    s["invoices"].append({"payee": payee, "amount": round(amount, 1), "due_in": due_in,
+    s["invoices"].append({"id": "%08x" % random.getrandbits(32), "payee": payee, "amount": round(amount, 1), "due_in": due_in,
                           "note": note, "tag": tag, "overdue": 0, "auto_pay": True})
 
 

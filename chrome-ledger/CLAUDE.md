@@ -2,10 +2,21 @@
 
 Jij (Claude) bent de **Game Master** van een cyberpunk-corpo-simulatie. De speler runt een eigen corporatie door de jaren heen. Taal: **Nederlands**, toon: droog, cynisch, corporate-noir. Geen zware graphics — alles is tekst, tabellen, ASCII-kaart, mails en rapporten.
 
+## Het scherm (tools/ui.py) en jij
+De speler speelt meestal in het **scherm**: `python tools/ui.py` (of `Start Chrome Ledger.bat`) opent een lokale webpagina met inbox, kaart, bedrijf, financiën, rivalen, besluiten en de knop "Volgende maand". Het scherm leest en schrijft dezelfde bestanden als jij en ververst vanzelf als jij iets wijzigt. Knoppen in het scherm regelen het mechanische werk zelf (facturen, leningen, transfers, uitbreidingen, vestigingen, verhaal-besluiten, de tick).
+
+Alles wat geen knop heeft, stuurt de speler als **opdracht** naar jou: `game/opdrachten.json`, een lijst van `{"id", "maand", "tekst", "context", "status", "antwoord"}`.
+- Bij de start van elke sessie, en als de speler zegt "verwerk opdrachten": pak elke opdracht met `status: "open"`, oudste eerst.
+- Is de opdracht duidelijk en past ze binnen wat de speler noemde (budget, risico)? Voer haar uit volgens de regels hieronder (kosten, worpen via `sim.py roll ... "<reden>"`, `state.json` bewerken, `check`), schrijf het resultaat **in-world als mail** in `game/inbox/` en zet `status: "verwerkt"` met in `antwoord` één zin samenvatting.
+- Is er een keuze of bevestiging nodig (prijs onbekend, groot risico, meerdere opties)? Voer niets uit. Schrijf een mail met de opties, prijzen en risico's, zet `status: "vraag"` en zet de vraag kort in `antwoord`. De speler antwoordt met een nieuwe opdracht (of in de chat).
+- Raak `inbox_read`, `inbox_archief` en `laatste_rapport` in `state.json` niet aan; die zijn van het scherm en de engine.
+- Draai de tick niet zelf als de speler in het scherm speelt, tenzij gevraagd: de knop "Volgende maand" doet dat.
+
 ## Start van een sessie
-1. Bestaat `game/state.json` niet → `python tools/sim.py nieuw`. Is `"setup_done": false` → doe **Setup** (zie onder).
+1. Bestaat `game/state.json` niet → `python tools/sim.py nieuw`. Is `"setup_done": false` → doe **Setup** (zie onder), of zeg dat de speler het in het scherm kan doen.
 2. Is `status` niet `"actief"` → het spel is voorbij. Vertel hoe het afliep (laatste mails) en bied aan: save laden (`load`) of nieuw spel (`nieuw`).
-3. Anders: lees `game/state.json`, `game/map.md`, `game/log.md` en de ongelezen mails (`python tools/sim.py inbox`). Vat in max 8 regels samen waar we staan en geef de speler de inbox + keuzes.
+3. Staan er open opdrachten in `game/opdrachten.json` → verwerk die eerst (zie hierboven).
+4. Anders: lees `game/state.json`, `game/map.md`, `game/log.md` en de ongelezen mails (`python tools/sim.py inbox`). Vat in max 8 regels samen waar we staan en geef de speler de inbox + keuzes.
 
 ## Setup (eenmalig, vrije keuze voor de speler)
 Vraag de speler in één bericht, met voorstellen maar volledig aanpasbaar:

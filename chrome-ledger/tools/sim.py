@@ -456,7 +456,11 @@ def tick():
         f"**Gebeurd:** {'; '.join(rep) if rep else 'Niets noemenswaards.'}\n"
         + (f"\n**Wacht op uw besluit:** {', '.join(waiting)}\n" if waiting else "")
     )
-    add_mail(s, "CFO", f"Maandrapport {played}", report, "NORMAAL")
+    mail = add_mail(s, "CFO", f"Maandrapport {played}", report, "NORMAAL")
+    # wat de speler 'weet': het scherm toont cijfers zoals de CFO ze rapporteert
+    s["laatste_rapport"] = {"maand": played, "mail": mail, "netto": shown["net"], "omzet": round(rev, 1),
+                            "kosten": round(cost, 1), "cash_offset": round(shown["cash"] - s["cash"], 1),
+                            "heat_offset": round(shown["heat"] - s["heat"], 1), "gebeurd": rep}
     if status == "actief":
         advance_date(s)
     save(s)
