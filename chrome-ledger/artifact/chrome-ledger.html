@@ -324,8 +324,14 @@ svg.world .di{font:11px var(--mono);fill:#d9d2f5;paint-order:stroke;stroke:#0502
 svg.world .zone{cursor:pointer}
 svg.world .zone .zline{stroke:rgba(110,160,255,.35);stroke-dasharray:5 5;stroke-width:1.2}
 svg.world .zone:hover .zline,svg.world .zone.sel .zline{stroke:#fff;stroke-dasharray:none}
-svg.world .zn{font:700 12px var(--disp);letter-spacing:.2em;fill:#9fb6ff;pointer-events:none}
-svg.world .zd{font:11px var(--mono);letter-spacing:.08em;pointer-events:none}
+svg.world .zn{font:700 12px var(--disp);letter-spacing:.2em;fill:#9fb6ff;pointer-events:none;paint-order:stroke;stroke:#060d2b;stroke-width:3px}
+svg.world .zd{font:11px var(--mono);letter-spacing:.08em;pointer-events:none;paint-order:stroke;stroke:#060d2b;stroke-width:3px}
+svg.globe .dn{font-size:9.5px;letter-spacing:.03em}
+svg.globe .di{font-size:9.5px}
+svg.globe .zn{font-size:10.5px}
+svg.globe .zd{font-size:9.5px}
+svg.globe .gl{stroke:rgba(110,160,255,.07);stroke-width:1}
+svg.globe .cn{font:800 11px var(--disp);letter-spacing:.32em;fill:rgba(255,255,255,.22);pointer-events:none}
 svg.world .cityname{font:800 22px var(--disp);letter-spacing:.3em;fill:rgba(255,255,255,.08)}
 .dombar{display:flex;height:14px;margin:8px 0 6px;background:var(--line);overflow:hidden;box-shadow:inset 0 0 0 1px var(--line2)}
 .dombar i{display:block;height:100%;box-shadow:inset -1px 0 0 rgba(0,0,0,.6)}
@@ -1121,6 +1127,86 @@ function actFleet(s){
   addLog(s, msg); return {ok: true, msg};
 }
 
+/* ---------- de wereld: continenten, landen en oceanen ---------- */
+const WORLD_W = 1000, WORLD_H = 560;
+const CONTINENTS = [
+  {naam: "Noordelijk Pact", cx: 192, cy: 172, rx: 136, ry: 98, lore: "Ooit één supermacht, nu een lappendeken van vrijstaten waar elke corporatie haar eigen wetten koopt.", landen: [
+    ["CAS", "Cascadia Vrijstaat", "Cascadia", "campus", "Regenwouden, serverbossen en universiteiten die door biotechbedrijven worden betaald."],
+    ["GML", "Unie der Grote Meren", "Grote Meren", "industrie", "Roestende autofabrieken die nu drones en prothesen bouwen. Sterke bonden, lange winters."],
+    ["MOJ", "Mojave Corporatieve Zone", "Mojave", "data", "Woestijn vol zonnevelden en datakoepels. Bestuurd door een raad van aandeelhouders."],
+    ["AKF", "Atlantische Kustfederatie", "Atl. Kust", "corporate", "Glazen torens, beurzen en advocaten. Hier wordt het geld van het continent geteld."],
+    ["GOL", "Golfrepubliek", "Golf", "haven", "Olieplatforms, orkanen en havens waar niemand naar de lading vraagt."]]},
+  {naam: "Zuidelijke Kroon", cx: 298, cy: 412, rx: 78, ry: 112, lore: "Grondstoffen en jungle. Wie de wegen en havens beheerst, beheerst de rijkdom.", landen: [
+    ["AMA", "Amazonia Biotrust", "Amazonia", "campus", "Het regenwoud is gepatenteerd. Elke plant is eigendom, elke boer een licentiehouder."],
+    ["RPK", "Rio de Plata Kartel", "Rio Plata", "markt", "Havensteden waar kartels en banken dezelfde kantoren delen."],
+    ["AND", "Andes Mijnstaat", "Andes", "industrie", "Lithium, koper en mijnwerkers die met exoskeletten bergen afgraven."]]},
+  {naam: "Euro-Bond", cx: 492, cy: 150, rx: 92, ry: 72, lore: "Oude landen, nieuwe eigenaren. Regels die op papier streng zijn en in de praktijk te koop.", landen: [
+    ["LLC", "Lage Landen Combinaat", "Lage Landen", "haven", "Dijken, megahavens en een overheid die al lang een joint venture is."],
+    ["RIJ", "Rijnlandse Republiek", "Rijnland", "industrie", "Precisie-industrie en chemie. Alles werkt, alles heeft een prijs."],
+    ["IBP", "Iberisch Protectoraat", "Iberië", "nacht", "Hitte, toerisme en media. De mooiste reclames, de leegste huizen."],
+    ["NDS", "Noordse Datastaten", "Noordse St.", "data", "Koude datacentra en stille fjorden. Hier staan de back-ups van de halve wereld."],
+    ["BTZ", "Balkan-Tussenzone", "Balkan", "sloppen", "Bufferzone vol smokkelroutes, huurlingen en vergeten oorlogen."]]},
+  {naam: "Sahel-Unie", cx: 520, cy: 390, rx: 92, ry: 112, lore: "Het snelst groeiende continent: zonnestroom, megasteden en corporaties die om elke vierkante meter vechten.", landen: [
+    ["LAG", "Lagos Megalopolis", "Lagos", "nacht", "Veertig miljoen mensen, eindeloze markten en de luidste media ter wereld."],
+    ["HRN", "Hoorn-Corridor", "Hoorn", "haven", "De zeestraat waar elke vrachtroute langs moet. Tol, piraten en marinebases."],
+    ["KAP", "Kaap Autonomie", "Kaap", "corporate", "Financieel centrum aan de punt van het continent. Diamanten en derivaten."],
+    ["SZS", "Saharische Zonnestaat", "Sahara", "data", "Spiegelvelden tot aan de horizon. Wie de stroom heeft, heeft de macht."]]},
+  {naam: "Pan-Azië", cx: 790, cy: 188, rx: 148, ry: 108, lore: "Het economische hart van de wereld. Megacorporaties die ouder zijn dan sommige staten.", landen: [
+    ["NKP", "Neo-Kanto Prefectuur", "Neo-Kanto", "corporate", "Torens tot in de wolken, zaibatsu met privélegers en een keizer die alleen nog ceremonieel bestaat."],
+    ["HDC", "Han-Delta Consortium", "Han-Delta", "industrie", "De fabriek van de wereld. Honderd miljoen arbeiders, één planning."],
+    ["MKV", "Mekong Vrijhaven", "Mekong", "haven", "Rivierdelta vol vrijhandelszones, drijvende markten en geen vragen."],
+    ["BNG", "Bengaals Netwerk", "Bengalen", "sloppen", "Overstroomde megasteden en de beste hackers die geld niet kan kopen."],
+    ["SIB", "Siberisch Concessiegebied", "Siberië", "industrie", "Ontdooide toendra, verhuurd aan wie het meest biedt voor gas en metalen."]]},
+  {naam: "Zuiderkruis", cx: 848, cy: 452, rx: 94, ry: 54, lore: "Afgelegen, rijk en goed beveiligd. Het continent waar de elite naartoe vlucht.", landen: [
+    ["ZKG", "Zuiderkruis Gemenebest", "Zuiderkruis", "villa", "Ommuurde kuststeden voor wie genoeg heeft verdiend om de rest van de wereld te ontvluchten."],
+    ["TVZ", "Tasmaanse Vrijzone", "Tasmanië", "markt", "Belastingparadijs aan het einde van de wereld. Alles wordt hier geregistreerd, niets gecontroleerd."]]},
+];
+const OCEANS = [
+  {id: "Z1", naam: "Arctische Route", anchors: [[480, 12], [150, 12], [850, 12]], label: [640, 22], bonus: 2},
+  {id: "Z2", naam: "Atlantisch Bekken", anchors: [[372, 262], [405, 470], [372, 140]], label: [398, 300], bonus: 3},
+  {id: "Z3", naam: "Stille Dode Zone", anchors: [[22, 330], [985, 330], [40, 470], [975, 470]], label: [92, 330], bonus: 3},
+  {id: "Z4", naam: "Indische Corridor", anchors: [[672, 360], [690, 450], [640, 300]], label: [676, 380], bonus: 3},
+  {id: "Z5", naam: "Zuidelijke IJszee", anchors: [[300, 552], [620, 552], [880, 552]], label: [560, 548], bonus: 2},
+];
+function pointInPoly(x, y, poly){ let inside = false; for (let i = 0, j = poly.length - 1; i < poly.length; j = i++){ const [xi, yi] = poly[i], [xj, yj] = poly[j]; if (((yi > y) !== (yj > y)) && (x < (xj - xi) * (y - yi) / (yj - yi) + xi)) inside = !inside; } return inside; }
+function segDist(px, py, a, b){ const dx = b[0] - a[0], dy = b[1] - a[1], L = dx * dx + dy * dy; let t = L ? ((px - a[0]) * dx + (py - a[1]) * dy) / L : 0; t = Math.max(0, Math.min(1, t)); return Math.hypot(px - a[0] - t * dx, py - a[1] - t * dy); }
+function onBoundary(p, poly){ for (let i = 0; i < poly.length; i++) if (segDist(p[0], p[1], poly[i], poly[(i + 1) % poly.length]) < 0.6) return true; return false; }
+function oceanAt(x, y){ let best = null, bd = 1e9; for (const o of OCEANS) for (const a of o.anchors){ const d = Math.hypot(a[0] - x, a[1] - y); if (d < bd){ bd = d; best = o.id; } } return best; }
+let WORLD_CACHE = null;
+function genWorld(){
+  if (WORLD_CACHE) return WORLD_CACHE;
+  const rng = seeded("chrome-ledger-wereld-1"), districts = [], cells = {}, conts = [];
+  for (const C of CONTINENTS){
+    const p1 = rng() * 6.28, p2 = rng() * 6.28, p3 = rng() * 6.28, blob = [];
+    for (let k = 0; k < 64; k++){ const a = k / 64 * Math.PI * 2, r = 1 + 0.12 * Math.sin(3 * a + p1) + 0.06 * Math.sin(5 * a + p2) + 0.03 * Math.sin(9 * a + p3); blob.push([C.cx + Math.cos(a) * C.rx * r, C.cy + Math.sin(a) * C.ry * r]); }
+    const n = C.landen.length; let sites = [], tries = 0, minD = Math.sqrt(Math.PI * C.rx * C.ry / n) * 0.7;
+    while (sites.length < n && tries < 6000){ tries++; const x = C.cx + (rng() * 2 - 1) * C.rx, y = C.cy + (rng() * 2 - 1) * C.ry; if (!pointInPoly(x, y, blob)) continue; if (sites.every(s => Math.hypot(s[0] - x, s[1] - y) > minD)) sites.push([x, y]); if (tries % 1000 === 0) minD *= 0.85; }
+    while (sites.length < n) sites.push([C.cx + (rng() - 0.5) * C.rx, C.cy + (rng() - 0.5) * C.ry]);
+    let cs; for (let it = 0; it < 3; it++){ cs = sites.map((_, i) => cellOf(i, sites, blob)); sites = cs.map((c, i) => c.length > 2 ? centroid(c) : sites[i]); }
+    cs = sites.map((_, i) => cellOf(i, sites, blob));
+    // landen toewijzen: van west naar oost, zodat de volgorde ongeveer klopt met de lijst
+    const order = cs.map((c, i) => i).sort((a, b) => centroid(cs[a])[0] - centroid(cs[b])[0] || centroid(cs[a])[1] - centroid(cs[b])[1]);
+    const byName = [...C.landen].sort(() => 0); // vaste lijst
+    order.forEach((ci, k) => {
+      const [id, name, kort, arch, lore] = byName[k], A = ARCH[arch], c = cs[ci], cen = centroid(c);
+      const zee = [...new Set(c.filter(p => onBoundary(p, blob)).map(p => oceanAt(p[0], p[1])))];
+      districts.push({id, name, kort, continent: C.naam, arch, control: "neutral", income: Math.round((A.inc[0] + A.inc[1]) / 2), upkeep: Math.round((A.upk[0] + A.upk[1]) / 2), lore, tags: [...A.tags], zee, _cell: c});
+      cells[id] = {poly: c.map(p => [Math.round(p[0] * 10) / 10, Math.round(p[1] * 10) / 10]), cx: Math.round(cen[0]), cy: Math.round(cen[1])};
+    });
+    conts.push({naam: C.naam, lore: C.lore, poly: blob.map(p => [Math.round(p[0]), Math.round(p[1])]), lx: C.cx, ly: Math.round(C.cy - C.ry * 1.24 - 6)});
+  }
+  const shared = (a, b) => { let k = 0; for (const p of a) for (const q of b) if (Math.abs(p[0] - q[0]) < 0.75 && Math.abs(p[1] - q[1]) < 0.75){ k++; break; } return k; };
+  for (const d of districts) d.neighbors = districts.filter(e => e !== d && e.continent === d.continent && shared(d._cell, e._cell) >= 2).map(e => e.id);
+  for (const d of districts) delete d._cell;
+  // oceaanvlakken: voronoi van de ankerpunten over de hele kaart
+  const rect = [[0, 0], [WORLD_W, 0], [WORLD_W, WORLD_H], [0, WORLD_H]], all = [];
+  for (const o of OCEANS) for (const a of o.anchors) all.push({o, a});
+  const zones = OCEANS.map(o => ({id: o.id, naam: o.naam, bonus: o.bonus, lx: o.label[0], ly: o.label[1], polys: []}));
+  all.forEach((x, i) => { const poly = cellOf(i, all.map(y => y.a), rect); zones.find(z => z.id === x.o.id).polys.push(poly.map(p => [Math.round(p[0]), Math.round(p[1])])); });
+  for (const z of zones) z.poly = z.polys[0];
+  return WORLD_CACHE = {districts, map: {kind: "wereld", seed: "wereld-1", city: "Wereld", w: WORLD_W, h: WORLD_H, land: null, continents: conts, zones, cells}};
+}
+
 /* ---------- eigen bedrijfssoorten & personeel ---------- */
 const PRESETS = {
   veilig: {rev: 7, cost: 4, heat: 0, vol: 0.15, label: "Veilig", uitleg: "Stabiel, weinig marge, geen aandacht"},
@@ -1202,7 +1288,7 @@ const WAR = {
   sabotage: {label: "Sabotage", uitleg: "Brand in een loods, kapotte machines, zendingen die verdwijnen.", kost: 8, mod: 0, heat: 4},
   hack: {label: "Hack", uitleg: "Hun klantdata stelen en verkopen. Hun klanten gaan twijfelen.", kost: 12, mod: -5, heat: 2},
   smaad: {label: "Smaadcampagne", uitleg: "Journalisten met mapjes, anonieme blogs, een lek op het juiste moment.", kost: 6, mod: 10, heat: 1},
-  overval: {label: "District innemen", uitleg: "Hun panden, contacten en mensen op straat overnemen.", kost: 20, mod: -10, heat: 8, district: true},
+  overval: {label: "Gebied overnemen", uitleg: "Hun vestigingen, contacten en mensen in dat land overnemen.", kost: 20, mod: -10, heat: 8, district: true},
   hq: {label: "Aanval op hun HQ", uitleg: "Alles of niets. Lukt het, dan valt hun bedrijf en neem jij hun districten over.", kost: 45, mod: -30, heat: 15},
 };
 function defeatRival(s, ctx, r, how){
@@ -1577,14 +1663,17 @@ function newGame(d){
   }
   doctrine = doctrine.slice(0, 2); if (!doctrine.length) doctrine.push("Logistiek");
   p.doctrine = doctrine.join(" + ");
-  const seed = String(d.seed || uid()), city = genCity(seed);
-  s.districts = clone(city.districts); s.map = clone(city.map); s.city = city.map.city;
-  const home = s.districts.some(x => x.id === d.home) ? d.home : (s.districts.find(x => x.arch === "haven") || s.districts[0]).id; p.home_district = home;
+  const world = genWorld();
+  s.districts = clone(world.districts); s.map = clone(world.map); s.city = "Wereld";
+  const home = s.districts.some(x => x.id === d.home) ? d.home : "LLC"; p.home_district = home;
+  const homeCont = s.districts.find(x => x.id === home).continent;
   const pref = {Financieel: "corporate", Logistiek: "haven", Cyberware: "campus", "Media & Data": "nacht", "Private Security": "industrie", Biotech: "campus", Smokkel: "haven"};
   const taken = new Set([home, ...s.districts.filter(x => x.neighbors.includes(home)).map(x => x.id)]);
+  const usedCont = new Set([homeCont]);
   for (const r of s.rivals){
-    let c = s.districts.filter(x => !taken.has(x.id)); if (!c.length) c = s.districts.filter(x => x.id !== home);
-    const pick = c.find(x => x.arch === pref[r.sector]) || c[Math.floor(R() * c.length)]; r.hq = pick.id; taken.add(pick.id);
+    let c = s.districts.filter(x => !taken.has(x.id) && !usedCont.has(x.continent));
+    if (!c.length) c = s.districts.filter(x => !taken.has(x.id)); if (!c.length) c = s.districts.filter(x => x.id !== home);
+    const pick = c.find(x => x.arch === pref[r.sector]) || c[Math.floor(R() * c.length)]; r.hq = pick.id; taken.add(pick.id); usedCont.add(pick.continent);
   }
   for (const x of s.districts) x.control = x.id === home ? "player" : ((s.rivals.find(r => r.hq === x.id) || {}).name || "neutral");
   const yr = parseInt(d.year, 10); s.date = {year: clamp(isNaN(yr) ? 2004 : yr, 1980, 2100), month: 1};
@@ -1797,7 +1886,7 @@ function worldFacts(s){
     heat: r1(s.heat), reputatie: r1(s.reputation), morale: r1(s.morale),
     personeel: {aantal: s.staff.count, nodig: staffNeed(s), salaris_k_per_jaar: s.staff.avg_salary}, cultuur: s.culture,
     divisies: s.divisions, eigen_soorten: s.custom_types, projecten: s.projects.map(p => p.name),
-    stad: s.city, districten: s.districts.map(d => ({id: d.id, naam: d.name, soort: d.arch, controle: d.control, buren: d.neighbors, kust: d.zee})), zee: seaControl(s), jouw_vloot: s.vloot || 0,
+    stad: s.city, districten: s.districts.map(d => ({id: d.id, naam: d.name, continent: d.continent, soort: d.arch, controle: d.control, buren: d.neighbors, kust: d.zee})), zee: seaControl(s), jouw_vloot: s.vloot || 0,
     rivalen: s.rivals.map(r => ({naam: r.name, ceo: r.ceo, sector: r.sector, hq: r.hq, kas: r.cash, agressie: r.aggression, status: r.status, relatie: r.relatie, macht: rivalPower(s, r), divisies: r.divs, districten: rivalDistricts(s, r).map(d => d.id), verdragen: r.verdragen, geheugen: r.memory.slice(-4)})),
     jouw_macht: playerPower(s), aanbiedingen: s.aanbiedingen,
     directie: s.npcs, facties: Object.fromEntries(Object.entries(s.factions).map(([k, v]) => [k, Math.round(v.standing)])),
@@ -1832,7 +1921,7 @@ function talkPrompt(s, c, convo, kind){
   const fmt = kind === "mail"
     ? `{"onderwerp": "...", "tekst": "je antwoordmail, 2-8 zinnen", "voorstel": null, "stemming": 0}`
     : `{"bericht": "je antwoord, 1-4 zinnen", "voorstel": null, "stemming": 0}`;
-  return `Je speelt een personage in CHROME LEDGER, een cyberpunk-bedrijfssimulatie in de stad ${s.city || "Meridian Bay"} (rond ${s.date.year}). Taal: Nederlands. Toon: droog, cynisch, corporate-noir. Spreek de CEO aan met "u" tenzij je personage anders zou doen.
+  return `Je speelt een personage in CHROME LEDGER, een cyberpunk-bedrijfssimulatie ${s.map && s.map.kind === "wereld" ? "een wereld van rivaliserende megacorporaties, natiestaten die te koop zijn en oceanen vol vrachtroutes" : "de stad " + (s.city || "Meridian Bay")} (rond ${s.date.year}). Taal: Nederlands. Toon: droog, cynisch, corporate-noir. Spreek de CEO aan met "u" tenzij je personage anders zou doen.
 
 ${personaFor(s, c)}
 
@@ -2000,13 +2089,13 @@ function vm(){
     soorten: allTypes(s).map(n => ({naam: n, ...typeOf(s, n), eigen: !DT[n]})),
     projecten: s.projects,
     districten: s.districts.map(d => ({id: d.id, naam: d.name, controle: d.control, inkomen: d.income, onderhoud: d.upkeep, lore: d.lore || "", hq: hq[d.id] || [], thuis: s.player.home_district === d.id, kost: districtCost(s, d), bezig: pd.has(d.id),
-      buren: d.neighbors || [], zee: d.zee || [], bereik: reachable(s, "player", d)})),
+      buren: d.neighbors || [], zee: d.zee || [], bereik: reachable(s, "player", d), continent: d.continent || ""})),
     kaart: mapView(s), vloot: {niveau: s.vloot || 0, kost: r1(12 * ((s.vloot || 0) + 1) * (DIFF[s.player.difficulty] || 1))}, stad: s.city,
     rivalen: s.rivals.map(r => ({naam: r.name, ceo: r.ceo, sector: r.sector, hq: r.hq, key: "riv-" + slug(r.name), agressie: r.aggression < 0.35 ? "laag" : r.aggression < 0.6 ? "gemiddeld" : "hoog",
       kas_schatting: Math.round(r.cash * (0.7 + 0.6 * seeded(r.name + ym(s))()) / 10) * 10, aandeel: Math.round(((s.market[r.sector] || {rivals: {}}).rivals[r.name] || 0) * 100), geheugen: r.memory.slice(-3),
       status: r.status, relatie: r.relatie, macht: rivalPower(s, r), verdragen: r.verdragen, moe: r.moeheid > 55 ? "hoog" : r.moeheid > 25 ? "merkbaar" : "laag",
       vredeKans: peaceChance(s, r, 0), handelKans: tradeChance(s, r), handelBedrag: tradeAmount(s, r),
-      districten: rivalDistricts(s, r).map(d => ({id: d.id, naam: d.name, hq: d.id === r.hq, vraag: askPrice(s, r, d), bereik: reachable(s, "player", d)})),
+      districten: rivalDistricts(s, r).map(d => ({id: d.id, naam: d.kort || d.name, hq: d.id === r.hq, vraag: askPrice(s, r, d), bereik: reachable(s, "player", d)})),
       biedt: playerDistricts(s).filter(d => d.id !== s.player.home_district).map(d => ({id: d.id, naam: d.name, bod: bidPrice(s, r, d), kan: r.cash >= bidPrice(s, r, d)})),
       acties: Object.entries(WAR).map(([key, w]) => ({key, label: w.label, uitleg: w.uitleg, kost: r1(w.kost * (DIFF[s.player.difficulty] || 1)), kans: warChance(s, r, w.mod)}))})),
     macht: {speler: playerPower(s), defensie: s.defensie || 0, defkost: r1(15 * ((s.defensie || 0) + 1) * (DIFF[s.player.difficulty] || 1)), oorlogen: atWar(s).length},
@@ -2305,8 +2394,8 @@ kaart(){
   const d = S.dist && D[S.dist], z = S.zone && M.zones.find(x => x.id === S.zone);
   let side;
   if (z){
-    side = `<div class="card"><div class="spread"><h3>${esc(z.naam)}</h3><span class="tag cyan">zeezone</span></div>
-      <p class="muted" style="margin:4px 0 10px">Wie hier meer dan de helft van de zeemacht heeft, beheerst de zone: +€${z.bonus}k per maand en een route naar elke kust aan dit water.</p>
+    side = `<div class="card"><div class="spread"><h3>${esc(z.naam)}</h3><span class="tag cyan">${M.kind === "wereld" ? "oceaan" : "zeezone"}</span></div>
+      <p class="muted" style="margin:4px 0 10px">Wie hier meer dan de helft van de zeemacht heeft, beheerst ${M.kind === "wereld" ? "deze oceaan" : "de zone"}: +€${z.bonus}k per maand en een route naar elke kust aan dit water${M.kind === "wereld" ? ", ook op andere continenten" : ""}.</p>
       ${z.shares.length ? z.shares.map(sh => `<div class="fac" style="grid-template-columns:1fr 1.3fr 50px"><span style="font-size:14px">${esc(sh.naam)}</span><div class="fbar"><i style="left:0;width:${sh.pct}%;background:${sh.kleur}"></i></div><span class="mono">${sh.pct}%</span></div>`).join("") : '<p class="dim">Niemand heeft hier kustdistricten.</p>'}
       <p class="dim" style="font-size:13px;margin:10px 0 0">Zeemacht = kustdistricten (haven telt 3×) × (1 + 15% per niveau Logistiek of Smokkel en per vlootpunt).</p>
       <div class="row" style="margin-top:12px"><span class="kpi">JOUW VLOOT</span><b class="mono">${st.vloot.niveau}/5</b>${st.vloot.niveau < 5 ? `<button class="btn sm primary" data-a="fleet">Vloot uitbreiden · ${eur(st.vloot.kost)}</button>` : ""}</div></div>`;
@@ -2314,18 +2403,19 @@ kaart(){
     const own = d.controle === "player" ? "jij" : d.controle === "neutral" ? "niemand" : d.controle;
     side = `<div class="card"><div class="spread"><h3>[${d.id}] ${esc(d.naam)}</h3>${d.controle==="player"?'<span class="tag cyan">jouw district</span>':d.controle!=="neutral"?'<span class="tag KRITIEK">rivaal</span>':""}</div>
       ${d.lore?`<p class="muted" style="margin:4px 0 10px">${esc(d.lore)}</p>`:""}
-      <dl class="kv"><dt>Eigenaar</dt><dd>${esc(own)}</dd><dt>Inkomen</dt><dd>${eur(d.inkomen)} / mnd</dd><dt>Onderhoud</dt><dd>${eur(d.onderhoud)} / mnd</dd>
+      <dl class="kv">${d.continent ? `<dt>Continent</dt><dd>${esc(d.continent)}</dd>` : ""}<dt>Eigenaar</dt><dd>${esc(own)}</dd><dt>Inkomen</dt><dd>${eur(d.inkomen)} / mnd</dd><dt>Onderhoud</dt><dd>${eur(d.onderhoud)} / mnd</dd>
         <dt>Buren</dt><dd>${esc(d.buren.join(" ")) || "-"}</dd><dt>Kust</dt><dd>${d.zee.length ? esc(d.zee.map(id => (M.zones.find(x => x.id === id) || {}).naam).join(", ")) : "nee"}</dd></dl>
       ${d.controle==="neutral" ? (d.bereik ? `<div style="margin-top:14px"><button class="btn primary" data-a="district" data-id="${d.id}" ${d.bezig?"disabled":""}>Vestiging openen · ${eur(d.kost)}</button>
           <div class="muted" style="font-size:12.5px;margin-top:6px">Duurt 3 maanden, +€1k/mnd tijdens de opbouw.</div></div>`
-        : `<p class="muted" style="margin:14px 0 0">Buiten bereik. Je kunt alleen uitbreiden naar districten die aan jouw gebied grenzen, of naar kusten aan een zee die jij beheerst.</p>`)
+        : `<p class="muted" style="margin:14px 0 0">Buiten bereik. Je kunt alleen uitbreiden naar gebied dat aan het jouwe grenst, of naar kusten aan een ${M.kind === "wereld" ? "oceaan" : "zee"} die jij beheerst.</p>`)
       : d.controle!=="player" ? `<div style="margin-top:14px"><p class="muted" style="margin:0 0 8px">In handen van <b style="color:var(--mag)">${esc(d.controle)}</b>${d.hq.includes(d.controle)?" (hun hoofdkantoor)":""}. ${d.bereik ? "Grenst aan jouw gebied: in een oorlog kun je het innemen." : "Grenst niet aan jouw gebied: innemen kan pas als het dat wel doet."}</p><button class="btn primary sm" data-a="dossier" data-n="${esc(d.controle)}">Naar hun dossier</button></div>` : ""}
       <div style="margin-top:14px"><textarea id="disttxt" placeholder="Iets anders hier? Bijv.: Koop de wijkagent om, of bouw een opslagloods."></textarea>
         <button class="btn sm" style="margin-top:6px" data-a="distorder" data-id="${d.id}">Naar de Assistent</button></div></div>`;
-  } else side = `<div class="card"><h3>${esc(M.city)}</h3><p class="muted">Klik op een district of een zeezone. Districten met een cyaan stippellijn kun je nu uitbreiden. ⚓ is een haven, ★ een hoofdkantoor, ⌂ jouw thuisbasis.</p>
-      <dl class="kv"><dt>Districten</dt><dd>${M.cells.length}</dd><dt>Van jou</dt><dd>${M.cells.filter(c => c.own === "player").length}</dd><dt>Zeezones</dt><dd>${M.zones.filter(x => x.dominant === "player").length} van ${M.zones.length} in jouw hand</dd></dl></div>`;
+  } else side = `<div class="card"><h3>${M.kind === "wereld" ? "De wereld" : esc(M.city)}</h3><p class="muted">Klik op een ${M.kind === "wereld" ? "land of een oceaan" : "district of een zeezone"}. Gebied met een cyaan stippellijn kun je nu uitbreiden. ⚓ is een havenstaat, ★ een hoofdkantoor, ⌂ jouw thuisbasis.</p>
+      <dl class="kv"><dt>${M.kind === "wereld" ? "Landen" : "Districten"}</dt><dd>${M.cells.length}</dd><dt>Van jou</dt><dd>${M.cells.filter(c => c.own === "player").length}</dd><dt>${M.kind === "wereld" ? "Oceanen" : "Zeezones"}</dt><dd>${M.zones.filter(x => x.dominant === "player").length} van ${M.zones.length} in jouw hand</dd></dl>
+      ${M.kind === "wereld" ? `<h2 style="margin-top:16px">Continenten</h2>${M.continents.map(c => { const mine = M.cells.filter(x => st.districten.find(dd => dd.id === x.id).continent === c.naam); return `<div class="spread" style="font-size:14px;padding:3px 0"><span>${esc(c.naam)}</span><span class="mono">${mine.filter(x => x.own === "player").length}/${mine.length}</span></div>`; }).join("")}` : ""}</div>`;
   return `<h1>Kaart</h1>
-  <div class="card" style="margin-bottom:12px;padding:12px 16px"><div class="spread"><span class="kpi">DOMINANTIE OVER ${esc(M.city.toUpperCase())} · GEWOGEN NAAR INKOMEN</span></div>${domBar(M.dom)}</div>
+  <div class="card" style="margin-bottom:12px;padding:12px 16px"><div class="spread"><span class="kpi">${M.kind === "wereld" ? "WERELDDOMINANTIE" : "DOMINANTIE OVER " + esc(M.city.toUpperCase())} · GEWOGEN NAAR INKOMEN</span></div>${domBar(M.dom)}</div>
   <div class="mapwrap"><div><div class="mapscroll">${mapSvg(M, S.dist, S.zone)}</div>
     <div class="legend"><span><i style="background:#05d9e8"></i>jouw gebied</span><span><i style="background:#2c1f4f;border:1px dashed #05d9e8"></i>bereikbaar</span><span><i style="background:var(--mag)"></i>rivalen (eigen kleur)</span><span>⚓ haven · ★ HQ · ⌂ thuis</span></div></div>${side}</div>`;
 },
@@ -2528,7 +2618,7 @@ function rivalCard(r, st){
     <div class="spread"><h3>${esc(r.naam)}</h3><span class="tag ${STATUS_TAG[r.status] || ""}">${esc(r.status)}${r.verdragen.length ? " · handel" : ""}</span></div>
     <dl class="kv"><dt>CEO</dt><dd>${esc(r.ceo)}</dd><dt>Sector</dt><dd>${esc(r.sector)} (~${r.aandeel}%)</dd><dt>Kas</dt><dd>~${eur(r.kas_schatting)} <span class="dim">(schatting)</span></dd>
       <dt>Macht</dt><dd>${r.macht} <span class="dim">tegen jouw ${st.macht.speler}</span></dd>
-      <dt>Districten</dt><dd>${r.districten.map(d => `${d.id}${d.hq ? "★" : ""}`).join(" ") || "-"}</dd><dt>Agressie</dt><dd>${esc(r.agressie)}</dd></dl>
+      <dt>Gebied</dt><dd>${r.districten.map(d => `${d.id}${d.hq ? "★" : ""}`).join(" ") || "-"}</dd><dt>Agressie</dt><dd>${esc(r.agressie)}</dd></dl>
     <div class="fac" style="grid-template-columns:70px 1fr 70px"><span class="kpi">RELATIE</span>${relBar(r.relatie)}<span class="muted" style="font-size:14px">${r.relatie}</span></div>
     ${r.geheugen.length ? `<div style="margin-top:4px;font-size:13.5px"><span class="muted">Wat ze onthouden:</span> ${esc(r.geheugen.join(" · "))}</div>` : ""}
     <div class="row" style="margin-top:10px"><button class="btn sm ${open ? "" : "primary"}" data-a="dossier" data-n="${esc(r.naam)}">${open ? "Dossier sluiten" : "Dossier: diplomatie, ruilen, oorlog"}</button>
@@ -2547,7 +2637,7 @@ function offerCard(o){
 /* ---- de kaart: gebied per eigenaar, zeezones, dominantie ---- */
 function mapView(s){
   const sea = seaControl(s), M = s.map;
-  const cells = s.districts.map(d => { const c = M.cells[d.id] || {poly: [], cx: 0, cy: 0}; return {id: d.id, naam: d.name, poly: c.poly, cx: c.cx, cy: c.cy, own: d.control, fill: ownerColor(s, d.control),
+  const cells = s.districts.map(d => { const c = M.cells[d.id] || {poly: [], cx: 0, cy: 0}; return {id: d.id, naam: d.name, kort: d.kort, poly: c.poly, cx: c.cx, cy: c.cy, own: d.control, fill: ownerColor(s, d.control),
     hq: s.rivals.some(r => r.hq === d.id), home: s.player.home_district === d.id, reach: d.control === "neutral" && reachable(s, "player", d), bezig: s.projects.some(p => p.district === d.id), haven: d.arch === "haven"}; });
   const zones = M.zones.map(z => { const sc = sea.find(x => x.id === z.id) || {}, tot = sc.totaal || 0;
     const shares = Object.entries(sc.sterkte || {}).map(([o, v]) => ({o, naam: o === "player" ? "jij" : o, pct: tot ? Math.round(v / tot * 100) : 0, kleur: ownerColor(s, o)})).sort((a, b) => b.pct - a.pct);
@@ -2555,31 +2645,31 @@ function mapView(s){
   const w = {}; let tot = 0; for (const d of s.districts){ w[d.control] = (w[d.control] || 0) + d.income; tot += d.income; }
   const dom = Object.entries(w).map(([o, v]) => ({o, naam: o === "player" ? s.player.corp_name : o === "neutral" ? "Niemand" : o, pct: Math.round(v / (tot || 1) * 100), kleur: ownerColor(s, o)}))
     .sort((a, b) => a.o === "player" ? -1 : b.o === "player" ? 1 : a.o === "neutral" ? 1 : b.o === "neutral" ? -1 : b.pct - a.pct);
-  return {w: M.w, h: M.h, city: M.city, land: M.land, cells, zones, dom};
+  return {kind: M.kind, w: M.w, h: M.h, city: M.city, land: M.land, continents: M.continents, cells, zones, dom};
 }
 function mapSvg(M, sel, selZone){
-  const pts = p => p.map(q => q[0] + "," + q[1]).join(" ");
+  const pts = p => p.map(q => q[0] + "," + q[1]).join(" "), world = M.kind === "wereld";
   const zones = M.zones.map(z => `<g class="zone ${selZone === z.id ? "sel" : ""}" data-zone="${z.id}">
-      <polygon points="${pts(z.poly)}" fill="${z.kleur || "#0b1640"}" fill-opacity="${z.kleur ? .28 : .0}"/>
-      <polygon points="${pts(z.poly)}" fill="url(#hatch)" opacity="${z.kleur ? .9 : 0}"/>
-      <polygon class="zline" points="${pts(z.poly)}" fill="none"/>
-      <text x="${z.lx}" y="${z.ly}" text-anchor="middle" class="zn">${esc(z.naam.toUpperCase())}</text>
-      <text x="${z.lx}" y="${z.ly + 17}" text-anchor="middle" class="zd" fill="${z.kleur || "#7f93c9"}">${z.dominant ? `${esc(z.shares[0].naam === "jij" ? "JIJ" : z.shares[0].naam.split(" ")[0].toUpperCase())} ${z.shares[0].pct}% · +€${z.bonus}k/mnd` : (z.shares.length ? "BETWIST" : "VRIJ WATER")}</text></g>`).join("");
+      ${(z.polys || [z.poly]).map(pp => `<polygon points="${pts(pp)}" fill="${z.kleur || "#0b1640"}" fill-opacity="${z.kleur ? .16 : 0}"/><polygon points="${pts(pp)}" fill="url(#hatch)" opacity="${z.kleur ? .9 : 0}"/><polygon class="zline" points="${pts(pp)}" fill="none"/>`).join("")}
+      </g>`).join("");
+  const zoneLabels = M.zones.map(z => `<text x="${z.lx}" y="${z.ly}" text-anchor="middle" class="zn">${esc(z.naam.toUpperCase())}</text>
+      <text x="${z.lx}" y="${z.ly + 15}" text-anchor="middle" class="zd" fill="${z.kleur || "#7f93c9"}">${z.dominant ? `${esc(z.shares[0].naam === "jij" ? "JIJ" : z.shares[0].naam.split(" ")[0].toUpperCase())} ${z.shares[0].pct}% · +€${z.bonus}k/mnd` : (z.shares.length ? "BETWIST" : "VRIJ WATER")}</text>`).join("");
+  const grid = world ? Array.from({length: 9}, (_, i) => `<line x1="${(i + 1) * 100}" y1="0" x2="${(i + 1) * 100}" y2="${M.h}" class="gl"/>`).join("") + Array.from({length: 5}, (_, i) => `<line x1="0" y1="${(i + 1) * 95}" x2="${M.w}" y2="${(i + 1) * 95}" class="gl"/>`).join("") : "";
+  const land = world ? M.continents.map(c => `<polygon points="${pts(c.poly)}" fill="#0d0820" stroke="#5b8cff" stroke-opacity=".6" stroke-width="2"/>`).join("") : `<polygon points="${pts(M.land)}" fill="#0d0820" stroke="#5b8cff" stroke-opacity=".55" stroke-width="2"/>`;
   const cells = M.cells.map(c => {
-    const own = c.own !== "neutral", fo = c.own === "player" ? .42 : own ? .36 : .9;
+    const own = c.own !== "neutral", fo = c.own === "player" ? .45 : own ? .38 : .9;
     return `<g class="dist ${c.own === "player" ? "player" : own ? "rival" : ""} ${c.reach ? "reach" : ""} ${sel === c.id ? "sel" : ""}" data-dist="${c.id}">
       <polygon points="${pts(c.poly)}" fill="${own ? c.fill : "#1b1236"}" fill-opacity="${fo}" stroke="${own ? c.fill : "#3b2a6b"}"/>
-      <text x="${c.cx}" y="${c.cy - 4}" text-anchor="middle" class="dn">${esc(c.naam.toUpperCase())}</text>
-      <text x="${c.cx}" y="${c.cy + 12}" text-anchor="middle" class="di">${c.home ? "⌂ " : ""}${c.hq ? "★ " : ""}[${c.id}]${c.haven ? " ⚓" : ""}${c.bezig ? " ◷" : ""}</text></g>`; }).join("");
-  return `<svg class="map world" viewBox="0 0 ${M.w} ${M.h}" role="img" aria-label="Kaart van ${esc(M.city)}">
-    <defs><pattern id="waves" width="28" height="14" patternUnits="userSpaceOnUse"><path d="M0 7 Q7 2 14 7 T28 7" fill="none" stroke="rgba(110,160,255,.16)" stroke-width="1"/></pattern>
+      <text x="${c.cx}" y="${c.cy - 3}" text-anchor="middle" class="dn">${esc((c.kort || c.naam).toUpperCase())}</text>
+      <text x="${c.cx}" y="${c.cy + 10}" text-anchor="middle" class="di">${c.home ? "⌂ " : ""}${c.hq ? "★ " : ""}${world ? "" : "["}${c.id}${world ? "" : "]"}${c.haven ? " ⚓" : ""}${c.bezig ? " ◷" : ""}</text></g>`; }).join("");
+  const contLabels = world ? M.continents.map(c => `<text x="${c.lx}" y="${c.ly}" text-anchor="middle" class="cn">${esc(c.naam.toUpperCase())}</text>`).join("") : "";
+  return `<svg class="map world ${world ? "globe" : ""}" viewBox="0 0 ${M.w} ${M.h}" role="img" aria-label="${world ? "Wereldkaart" : "Kaart van " + esc(M.city)}">
+    <defs><pattern id="waves" width="28" height="14" patternUnits="userSpaceOnUse"><path d="M0 7 Q7 2 14 7 T28 7" fill="none" stroke="rgba(110,160,255,.14)" stroke-width="1"/></pattern>
       <pattern id="hatch" width="9" height="9" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="9" stroke="rgba(255,255,255,.10)" stroke-width="2"/></pattern>
-      <linearGradient id="seag" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#060d2b"/><stop offset="1" stop-color="#0d1c4f"/></linearGradient></defs>
-    <rect width="${M.w}" height="${M.h}" fill="url(#seag)"/><rect width="${M.w}" height="${M.h}" fill="url(#waves)"/>
-    ${zones}
-    <polygon points="${pts(M.land)}" fill="#0d0820" stroke="#5b8cff" stroke-opacity=".55" stroke-width="2"/>
-    ${cells}
-    <text x="${M.w - 14}" y="${M.h - 14}" text-anchor="end" class="cityname">${esc(M.city.toUpperCase())}</text>
+      <linearGradient id="seag" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#060d2b"/><stop offset=".5" stop-color="#0b1a49"/><stop offset="1" stop-color="#060d2b"/></linearGradient></defs>
+    <rect width="${M.w}" height="${M.h}" fill="url(#seag)"/><rect width="${M.w}" height="${M.h}" fill="url(#waves)"/>${grid}
+    ${zones}${land}${cells}${contLabels}${zoneLabels}
+    <text x="${M.w - 14}" y="${M.h - 12}" text-anchor="end" class="cityname">${world ? "CHROME LEDGER · WERELD" : esc(M.city.toUpperCase())}</text>
   </svg>`;
 }
 function domBar(dom){
@@ -2591,19 +2681,19 @@ function domBar(dom){
 function setupView(){
   const st = S.state;
   const T = S.setup ||= {corp_name:"", motto:"", background:"Ex-havenarbeider", doctrine:["Logistiek"], difficulty:"Realistisch", year:2004,
-    kapitaal:"normaal", seed: uid(), home:"", ontslag:"normaal", bonus:"geen", ethiek:"normaal", slogan:"", divisie_naam:"", namen:{}, eigen_naam:"", eigen_omschrijving:"", eigen_profiel:"gebalanceerd"};
+    kapitaal:"normaal", home:"LLC", ontslag:"normaal", bonus:"geen", ethiek:"normaal", slogan:"", divisie_naam:"", namen:{}, eigen_naam:"", eigen_omschrijving:"", eigen_profiel:"gebalanceerd"};
   const types = (st.divisie_types||["Biotech","Cyberware","Logistiek","Media & Data","Private Security","Financieel","Smokkel"]);
   const chips = (key, opts, multi) => `<div class="chips">${opts.map(([v,l]) => `<button class="chip ${(multi?T[key].includes(v):T[key]===v)?"on":""}" data-chip="${key}" data-v="${esc(v)}" data-multi="${multi?1:""}">${esc(l)}</button>`).join("")}</div>`;
-  const city = genCity(T.seed);
-  if (!city.districts.some(x => x.id === T.home)) T.home = (city.districts.find(x => x.arch === "haven") || city.districts[0]).id;
+  const city = genWorld();
+  if (!city.districts.some(x => x.id === T.home)) T.home = "LLC";
   const homeD = city.districts.find(x => x.id === T.home);
-  const prev = {w: city.map.w, h: city.map.h, city: city.map.city, land: city.map.land, dom: [],
+  const prev = {kind: "wereld", w: city.map.w, h: city.map.h, city: city.map.city, continents: city.map.continents, dom: [],
     zones: city.map.zones.map(z => ({...z, kleur: null, dominant: null, shares: []})),
-    cells: city.districts.map(x => ({id: x.id, naam: x.name, poly: city.map.cells[x.id].poly, cx: city.map.cells[x.id].cx, cy: city.map.cells[x.id].cy,
+    cells: city.districts.map(x => ({id: x.id, naam: x.name, kort: x.kort, poly: city.map.cells[x.id].poly, cx: city.map.cells[x.id].cx, cy: city.map.cells[x.id].cy,
       own: x.id === T.home ? "player" : "neutral", fill: "#05d9e8", hq: false, home: x.id === T.home, reach: (homeD.neighbors || []).includes(x.id), bezig: false, haven: x.arch === "haven"}))};
   return `<div style="padding:28px 16px 60px"><div class="setup">
-    <div class="mono" style="color:var(--dim);letter-spacing:.2em;font-size:13px">${esc(city.map.city.toUpperCase())} CITYNET // NIEUWE REGISTRATIE · VERSIE ${VERSION}</div><div class="hero"><span>CHROME</span><b>//</b>LEDGER <small class="ver">${VERSION}</small></div>
-    <p class="muted" style="margin:0 0 22px;font-size:17px">${esc(city.map.city)}, een stad die alles verkoopt. Elke game een andere stad. Richt je bedrijf op; alles is later aan te passen via de Assistent.</p>
+    <div class="mono" style="color:var(--dim);letter-spacing:.2em;font-size:13px">GLOBAL CORPNET // NIEUWE REGISTRATIE · VERSIE ${VERSION}</div><div class="hero"><span>CHROME</span><b>//</b>LEDGER <small class="ver">${VERSION}</small></div>
+    <p class="muted" style="margin:0 0 22px;font-size:17px">Zes continenten, vierentwintig landen die te koop zijn, en megacorporaties die al begonnen zijn. Kies waar je begint en richt je bedrijf op.</p>
     <div class="card"><h3>Het bedrijf</h3><div class="grid g2">
       <label class="f">Naam<input type="text" data-f="corp_name" value="${esc(T.corp_name)}" placeholder="Bijv. Kraanvogel Logistiek NV"></label>
       <label class="f">Motto<input type="text" data-f="motto" value="${esc(T.motto)}" placeholder="Bijv. Wij vragen niet wat er in de container zit."></label>
@@ -2620,10 +2710,11 @@ function setupView(){
         <h3 style="margin-top:14px">Startkapitaal</h3>${chips("kapitaal", [["krap","Krap · €80k"],["normaal","Normaal · €100k"],["ruim","Ruim · €150k, €60k schuld"]])}
         <label class="f" style="margin-top:14px;max-width:140px">Startjaar<input type="number" data-f="year" value="${esc(T.year)}"></label></div>
     </div>
-    <div class="card"><div class="spread"><h3>Je stad: ${esc(city.map.city)}</h3><button class="btn sm" data-a="reroll">Andere stad</button></div>
-      <p class="muted" style="font-size:14px;margin:0 0 10px">Klik op een district om daar te beginnen. Rivalen starten niet naast je. Havens (⚓) tellen zwaar mee voor de macht op zee.</p>
+    <div class="card"><h3>Startcontinent en land</h3>
+      <div class="chips" style="margin:6px 0 10px">${city.map.continents.map(c => { const first = city.districts.find(x => x.continent === c.naam); return `<button class="chip ${homeD.continent === c.naam ? "on" : ""}" data-a="pickcont" data-id="${first.id}">${esc(c.naam)}</button>`; }).join("")}</div>
+      <p class="muted" style="font-size:14px;margin:0 0 10px">${esc((city.map.continents.find(c => c.naam === homeD.continent) || {}).lore || "")} Klik op een land om daar te beginnen. Rivalen starten op andere continenten. Havenstaten (⚓) tellen zwaar mee voor de macht op zee.</p>
       <div class="mapscroll">${mapSvg(prev, T.home, null)}</div>
-      <p style="margin:10px 0 0"><b>[${homeD.id}] ${esc(homeD.name)}</b> <span class="muted">· ${esc(homeD.lore)} Inkomen ${homeD.income}, onderhoud ${homeD.upkeep} per maand.</span></p></div>
+      <p style="margin:10px 0 0"><b>${esc(homeD.name)}</b> <span class="muted">(${esc(homeD.continent)}) · ${esc(homeD.lore)} Inkomen ${homeD.income}, onderhoud ${homeD.upkeep} per maand.</span></p></div>
     <div class="card"><h3>Cultuur</h3><div class="grid g2">
       <div><div class="muted" style="font-size:13px;margin-bottom:4px">Ontslag</div>${chips("ontslag", [["normaal","Normaal"],["hard","Hard (morale -2/mnd, vakbond boos)"]])}</div>
       <div><div class="muted" style="font-size:13px;margin-bottom:4px">Bonussen</div>${chips("bonus", [["geen","Geen"],["redelijk","Redelijk · €2k/mnd"],["royaal","Royaal · €5k/mnd"]])}</div>
@@ -2678,7 +2769,7 @@ document.addEventListener("click", async e => {
       if (r && r.ok){ S.compose = null; for (const id of ["mto","msubj","mbody"]) delete S.keep[id]; render(); } return; }
     case "closecompose": S.compose = null; for (const id of ["mto","msubj","mbody"]) delete S.keep[id]; render(); return;
     case "dossier": S.rival = (S.rival === t.dataset.n && S.view === "rivalen") ? null : t.dataset.n; S.view = "rivalen"; localSet("view","rivalen"); render(); return;
-    case "reroll": S.setup.seed = uid(); S.setup.home = ""; render(); return;
+    case "pickcont": S.setup.home = t.dataset.id; render(); return;
     case "fleet": if (!await ask("Vloot uitbreiden?", `Eenmalig ${eur(S.state.vloot.kost)}, daarna €1,5k per maand extra. Je zeemacht groeit in elke zone waar je een kust hebt.`, "Uitbreiden")) return; return act("/api/vloot", {});
     case "defense": if (!await ask("Beveiliging verhogen?", `Eenmalig ${eur(S.state.macht.defkost)} en daarna €2k per maand extra. Je macht stijgt met 12.`, "Verhogen")) return; return act("/api/beveiliging", {});
     case "riv": { const k2 = t.dataset.k, n = t.dataset.n;
@@ -2801,7 +2892,7 @@ async function boot(){
   const st = S.state || {}, corp = st.setup_done ? st.speler.corp_name : "ONBEKEND";
   if (!S.loaded) await sleep(50);
   const lines = [
-    `<span class="m">${esc(((G.game && G.game.city) || "Meridian Bay").toUpperCase())} CITYNET</span>  //  CHROME LEDGER ${VERSION}  //  node ${(Math.random()*9000+1000|0)}`,
+    `<span class="m">${G.game && G.game.map && G.game.map.kind === "wereld" ? "GLOBAL CORPNET" : esc(((G.game && G.game.city) || "Meridian Bay").toUpperCase()) + " CITYNET"}</span>  //  CHROME LEDGER ${VERSION}  //  node ${(Math.random()*9000+1000|0)}`,
     "> handshake ............... <span class=\"g\">OK</span>",
     "> versleuteling ........... ICE-7 / 2048",
     `> identiteit .............. CEO // ${esc(corp).toUpperCase()}`,

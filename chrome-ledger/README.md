@@ -2,7 +2,7 @@
 
 ## Versie 1.0 (claude.ai-artifact)
 
-De hoofdversie draait als artifact in de browser, ook op je gsm: `artifact/chrome-ledger.html`, gepubliceerd op https://claude.ai/artifact/G1Mgzkv5m1xg2BVrcuvUCq. Elke game speelt in een willekeurig gegenereerde stad met een gebiedskaart, zeezones en zeedominantie, rivalen met een eigen economie (oorlog, vrede, handel, districten ruilen), chat en mail met iedereen in de stad, personeel, eigen bedrijfssoorten en een live GM die kosten en kansen bepaalt; de engine gooit de dobbelsteen. Je spel wordt online bewaard en is alleen voor jou.
+De hoofdversie draait als artifact in de browser, ook op je gsm: `artifact/chrome-ledger.html`, gepubliceerd op https://claude.ai/artifact/G1Mgzkv5m1xg2BVrcuvUCq. Je bouwt een megacorporatie op een eigen cyberpunkwereldkaart (zes continenten, 24 landen, vijf oceanen met zeedominantie) en kiest bij de start op welk continent en in welk land je begint. Verder: rivalen met een eigen economie (oorlog, vrede, handel, districten ruilen), chat en mail met iedereen in de stad, personeel, eigen bedrijfssoorten en een live GM die kosten en kansen bepaalt; de engine gooit de dobbelsteen. Je spel wordt online bewaard en is alleen voor jou.
 
 Hieronder staat de oudere lokale versie (Python-engine met een scherm op je eigen pc). Die heeft de 1.0-functies niet.
 
