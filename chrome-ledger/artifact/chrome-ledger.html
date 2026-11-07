@@ -917,6 +917,8 @@ function tick(s){
     lines.push(`| ${d.name || d.type} (${d.type} L${d.level}) | ${r1(r)} | ${r1(c)} |`);
   }
   for (const d of s.districts) if (d.control === "player"){ rev += d.income * U(0.85, 1.15); cost += d.upkeep; }
+  let streamRev = 0; for (const x of s.streams || []) streamRev += x.bedrag * (0.75 + 0.35 * s.morale / 100) * sf * U(0.85, 1.12);
+  if (streamRev){ rev += streamRev; lines.push(`| Eigen inkomstenbronnen (${(s.streams || []).length}) | ${r1(streamRev)} | 0 |`); }
   const dom = dominanceIncome(s, "player");
   if (dom.geld){ rev += dom.geld; ctx.rep.push(`Dominantie: +€${dom.geld}k`); }
   if (dom.inv){ s.invloed = r1((s.invloed || 0) + dom.inv); ctx.rep.push(`Invloed +${dom.inv}`); }
@@ -1598,7 +1600,7 @@ function rivalAI(s, ctx, diff){
     } else {
       // vrede: groeien, handelen, dreigen
       const free = freeDistricts(s, s.player.home_district).filter(d => reachable(s, r.name, d));
-      if (free.length && (s.history || []).length >= 10 && rivalDistricts(s, r).length < 3 && r.cash > 90 && R() < 0.03 + r.hebzucht * 0.04){
+      if (free.length && (s.history || []).length >= 10 && rivalDistricts(s, r).length < Math.min(10, 3 + Math.floor((s.history || []).length / 12) * 2) && r.cash > 90 && R() < 0.04 + r.hebzucht * 0.05){
         const d = CH(free), p = districtValue(d) * 0.8;
         if (r.cash > p * 2){ d.control = r.name; r.cash = r1(r.cash - p); mail(ctx, s, "Marktonderzoek", `${r.name} breidt uit naar ${d.name}`, `${r.name} heeft panden en vergunningen in ${d.name} gekocht. Dat district is nu van hen.`); ctx.rep.push(`${r.name} neemt ${d.name}`); }
       }
@@ -1812,6 +1814,14 @@ function applyGmEffect(s, e){
   }
   if (e.lopend && e.lopend.naam){ const L = e.lopend; s.lopende_effecten.push({naam: String(L.naam).slice(0, 60), maanden: clamp(+L.maanden || 1, 1, 6), effect: {cash: num(L.cash, -20, 20), reputation: num(L.reputation, -3, 3), heat: num(L.heat, -3, 3), morale: num(L.morale, -3, 3)}}); }
   if (e.flag && /^gm_[a-z0-9_]{1,40}$/.test(e.flag)) s.flags[e.flag] = ym(s);
+  if (e.divisie_upgrade){ const d = s.divisions.find(x => (x.name || x.type) === e.divisie_upgrade) || null; if (d && d.level < 12){ d.level += 1; out.push(`${d.name || d.type} naar L${d.level}`); } }
+  if (e.nieuwe_divisie && e.nieuwe_divisie.name){ const nm = String(e.nieuwe_divisie.name).trim().slice(0, 40), ty = typeOf(s, e.nieuwe_divisie.type) ? e.nieuwe_divisie.type : null;
+    if (ty && s.divisions.length < 8 && !s.divisions.some(x => x.name === nm)){ s.divisions.push({name: nm, type: ty, level: 1}); out.push(`nieuwe divisie ${nm}`); } }
+  if (e.omzet_bonus && e.omzet_bonus.naam){ s.streams ??= []; const b = r1(clamp(+e.omzet_bonus.bedrag || 0, 0.5, 6));
+    const same = s.streams.find(x => x.naam === String(e.omzet_bonus.naam).slice(0, 60));
+    if (same) same.bedrag = r1(Math.min(9, same.bedrag + b * 0.6)); else if (s.streams.length < 12) s.streams.push({naam: String(e.omzet_bonus.naam).slice(0, 60), bedrag: b, sinds: ym(s)});
+    out.push(`inkomstenbron +€${b}k/mnd`); }
+  if (e.omzet_verlies && e.omzet_verlies.naam){ s.streams ??= []; const st0 = s.streams.find(x => x.naam === e.omzet_verlies.naam); if (st0){ st0.bedrag = r1(Math.max(0, st0.bedrag - clamp(+e.omzet_verlies.bedrag || 1, 0.5, 6))); s.streams = s.streams.filter(x => x.bedrag > 0); } }
   if (e.personeel){ const v = Math.round(num(e.personeel, -50, 50)); s.staff.count = Math.max(5, s.staff.count + v); out.push(`personeel ${v >= 0 ? "+" : ""}${v}`); }
   s.accounts.operationeel = s.cash;
   return out;
@@ -1976,7 +1986,7 @@ function worldFacts(s){
     datum: ym(s), bedrijf: s.player, cash: s.cash, zwart: s.accounts.zwart, offshore: s.accounts.offshore, schuld: s.debt,
     heat: r1(s.heat), reputatie: r1(s.reputation), morale: r1(s.morale),
     personeel: {aantal: s.staff.count, nodig: staffNeed(s), salaris_k_per_jaar: s.staff.avg_salary}, cultuur: s.culture,
-    divisies: s.divisions, eigen_soorten: s.custom_types, projecten: s.projects.map(p => p.name),
+    divisies: s.divisions, eigen_soorten: s.custom_types, inkomstenbronnen: s.streams || [], projecten: s.projects.map(p => p.name),
     stad: s.city, districten: s.districts.map(d => ({id: d.id, naam: d.name, continent: d.continent, soort: d.arch, controle: d.control, buren: d.neighbors, kust: d.zee})), zee: seaControl(s), jouw_eskaders: {totaal: s.schepen || 0, inzet: s.inzet || {}},
     rivalen: s.rivals.map(r => ({naam: r.name, ceo: r.ceo, sector: r.sector, hq: r.hq, kas: r.cash, agressie: r.aggression, status: r.status, relatie: r.relatie, macht: rivalPower(s, r), divisies: r.divs, districten: rivalDistricts(s, r).map(d => d.id), verdragen: r.verdragen, geheugen: r.memory.slice(-4)})),
     jouw_macht: playerPower(s), aanbiedingen: s.aanbiedingen,
@@ -1995,6 +2005,8 @@ const RULES = `Spelregels voor voorstellen:
 - Illegale acties geven heat, ook bij succes. Snelle winst kost morale, reputatie of geeft juridisch risico.
 - Gebruik "verborgen_waarheid", vlaggen en geheimen om onderzoek eerlijk af te handelen: alleen als iets waar is kan een geslaagd onderzoek het vinden, en dat staat dan in de succes-mail. Een ontmaskerde verrader: zet de vlag in "verwijder_flags" (cfo_manipuleert, pr_lekt, security_verkocht).
 - Mogelijke effectvelden (laat weg wat niet verandert): cash (-300..150), zwart, heat, reputation, morale (-25..25), factions {naam: -30..30}, loyaliteit {"NPC-naam": -40..40}, personeel (-50..50 gewone medewerkers), ontslag ["NPC-naam"], nieuwe_npc {"name","role","loyalty","ambition","secret"} (een sleutelpersoon aannemen), rivaal_agressie {naam: -0.3..0.3}, rivaal_cash {naam}, rivaal_geheugen {naam: "notitie"}, district "A".."H", verwijder_flags [...], lopend {"naam","maanden","cash","reputation","heat","morale"} (maandelijks terugkerend, bv. een loonsverhoging: cash -2 per maand).
+- BLIJVENDE GROEI: bouwt de CEO iets op dat maand na maand geld oplevert (een product, dienst, abonnement, klantengroep, vestiging, contract, prijsmodel, marketing die klanten bindt), geef dan bij succes een blijvend effect, geen eenmalige cash: "omzet_bonus": {"naam": "korte naam van de inkomstenbron", "bedrag": k€ per maand}. Reken realistisch: ongeveer kost/10 per maand (terugverdientijd 8 tot 15 maanden), maximaal 6 per bron. Bouwt het verder op een bestaande bron, gebruik dezelfde naam. Groeit een divisie wezenlijk: "divisie_upgrade": "divisienaam". Een echt nieuwe bedrijfstak: "nieuwe_divisie": {"name", "type"} (type uit de bestaande of eigen soorten). Falen kan een bron kosten: "omzet_verlies": {"naam", "bedrag"}.
+- Bestaande inkomstenbronnen van de CEO staan in "inkomstenbronnen"; houd daar rekening mee.
 - De kost (vooraf betaald) staat los van de effecten; zet die niet nog eens in cash.`;
 function personaFor(s, c){
   if (c.soort === "gm") return `Je bent "de Assistent": de rechterhand van de CEO, die alles regelt wat de knoppen niet doen (onderzoek, deals, omkoping, inkoop, aannemen van sleutelmensen, sabotage). Zakelijk, droog, eerlijk over prijs en risico. Bij elk concreet verzoek doe je een voorstel. Je kent de verborgen waarheid om kansen eerlijk te bepalen, maar je verklapt die NOOIT in je bericht. Bij een vraag beantwoord je alleen wat de CEO ook had kunnen weten.`;
@@ -2201,7 +2213,7 @@ function vm(){
       return {...c, laatste: last ? (last.van === "ik" ? "U: " : "") + (last.tekst || (last.status === "denkt" ? "typt…" : "")) : "", open: !!(ch && openProposal(ch)), bezig: !!(last && (last.status === "denkt" || last.status === "wacht")), t: last ? last.t : 0}; }),
     rapport: lr.maand ? {...lr, mail: (G.mails.find(m => m.onderwerp === "Maandrapport " + lr.maand) || {}).id} : null,
     geschiedenis: s.history || [],
-    invloed: s.invloed || 0, dominantie: dominanceIncome(s, "player"), zeeSterkte: Object.fromEntries(seaControl(s).map(z => [z.id, z.sterkte.player || 0])), regios: regionDominance(s), vergunning: !!s.flags.vergunning,
+    streams: s.streams || [], invloed: s.invloed || 0, dominantie: dominanceIncome(s, "player"), zeeSterkte: Object.fromEntries(seaControl(s).map(z => [z.id, z.sterkte.player || 0])), regios: regionDominance(s), vergunning: !!s.flags.vergunning,
     invloedActies: INFLUENCE, factieNamen: Object.keys(s.factions), rivaalNamen: s.rivals.map(r => r.name),
     leenruimte: loanCap(s), nieuwe_divisie_kost: newDivCost(s), divisie_types: allTypes(s), contract: s.flags.nomad_contract,
     log: s.log.slice().reverse().map(l => "- " + l).join("\n"), worpen: s.worpen,
@@ -2421,6 +2433,12 @@ overzicht(){
       <textarea id="ordertxt" placeholder="Bijv.: Huur een privédetective om Marta Delcourt na te trekken. Max €5k."></textarea>
       <div class="row" style="margin-top:8px"><button class="btn primary" data-a="toassist">Naar de Assistent</button><button class="btn sm" data-view="comms">Alle gesprekken</button></div></div>
     <div class="card"><h3>Verloop</h3>${sparkCard(st.geschiedenis)}</div>
+    <div class="card"><div class="spread"><h3>Dominantie</h3><button class="btn sm" data-view="kaart">Naar de kaart</button></div>
+      <div class="row" style="gap:22px;margin:4px 0 8px"><div><div class="kpi">PER BEURT</div><div class="big" style="color:var(--green)">+€${st.dominantie.geld}k</div></div>
+        <div><div class="kpi">INVLOED</div><div class="big" style="color:var(--violet)">${Math.floor(st.invloed)} <span style="font-size:14px">+${st.dominantie.inv}/b</span></div></div>
+        <div><div class="kpi">INKOMSTENBRONNEN</div><div class="big">+€${r1(st.streams.reduce((a, x) => a + x.bedrag, 0))}k</div></div></div>
+      ${st.regios.map(r => { const sh = r.shares.find(x => x.o === "player"), pct = sh ? sh.pct : 0; return pct ? `<div class="spread" style="font-size:14px"><span>${esc(r.naam)}</span><span class="mono">${pct}%${tierOf(pct) ? " · " + esc(tierOf(pct).naam) : ""}</span></div>${tierBar(pct, "#05d9e8", DOM_TIERS)}` : ""; }).join("") || '<p class="muted" style="font-size:14px;margin:0">Nog geen 25% op een continent. Breid uit naar buurgebieden om invloed en dominantie op te bouwen.</p>'}
+    </div>
   </div>
   ${st.lopend.length ? `<h2>Lopende effecten</h2><div class="row">${st.lopend.map(x=>`<span class="tag HOOG">${esc(x)}</span>`).join("")}</div>`:""}`;
 },
@@ -2556,6 +2574,10 @@ bedrijf(){
       <div class="row" style="margin-top:12px"><span class="kpi">SALARIS</span>${["laag","marktconform","hoog"].map(l => `<button class="chip ${st.salaris===l?"on":""}" data-a="salary" data-l="${l}">${l} · €${SALARY[l]}k/jr</button>`).join("")}</div>
     </div>
   </div>
+  <h2>Inkomstenbronnen</h2>${st.streams.length ? `<div class="card"><table><thead><tr><th>Bron</th><th>Sinds</th><th class="num">Per maand</th></tr></thead><tbody>${st.streams.map(x => `<tr><td>${esc(x.naam)}</td><td class="mono dim">${esc(x.sinds)}</td><td class="num">+${eur(x.bedrag)}</td></tr>`).join("")}
+      <tr><td><b>Totaal</b></td><td></td><td class="num"><b>+${eur(st.streams.reduce((a, x) => a + x.bedrag, 0))}</b></td></tr></tbody></table>
+      <p class="dim" style="font-size:12.5px;margin:6px 0 0">Wat je via de Assistent opbouwt (een dienst, abonnement, contract, klantengroep) blijft elke maand geld opleveren. Morale en bezetting bepalen hoeveel er echt binnenkomt.</p></div>`
+    : '<p class="muted">Nog geen eigen inkomstenbronnen. Bouw iets op via de Assistent: een dienst, een abonnement, een contract. Lukt het, dan levert het elke maand geld op.</p>'}
   <h2>Projecten</h2>${st.projecten.length ? `<div class="grid g3">${st.projecten.map(pr => `<div class="card"><h3 style="font-size:15px">${esc(pr.name)}</h3>
       <div class="muted" style="font-size:14px">Nog ${pr.eta_months} maand(en)${pr.cost_per_month?` · ${eur(pr.cost_per_month)}/mnd`:""}</div>
       <div class="prog"><i style="width:${Math.max(8, 100 - pr.eta_months*30)}%"></i></div></div>`).join("")}</div>` : '<p class="muted">Geen lopende projecten.</p>'}
