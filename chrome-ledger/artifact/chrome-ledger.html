@@ -873,6 +873,7 @@ logboek(){
   return `<h1>Logboek</h1><div class="grid g2"><div class="card md">${md(st.log) || "Nog niets gebeurd."}</div>
     <div class="card"><h3>Dobbelstenen</h3><p class="muted" style="font-size:13px;margin:0 0 8px">Elke worp van de engine, met de kans die vooraf gold. Zo zie je of er eerlijk gespeeld wordt.</p>
       <pre class="rolls">${esc(st.worpen.slice().reverse().join("\n")) || "Nog geen worpen."}</pre></div></div>
+  ${spellenCard()}
   ${eregalerijCard()}
   ${opslagCard()}
   ${versieCard()}
@@ -961,6 +962,7 @@ function setupBonus(homeD){
     <p class="dim" style="font-size:13px;margin:6px 0 0">Elk soort land geeft een ander voordeel: havens, financiële centra, datavalleien, sloppen. Klik verschillende landen aan om ze te vergelijken.</p>` : "";
 }
 const VERSIES = [
+  ["3.1", "Spellen naast elkaar", ["Saveslots: bij Logboek → Spellen staan al je spellen. Wissel, hernoem of verwijder ze; elk spel heeft zijn eigen mail, chats en back-ups. Een nieuw spel beginnen gooit het oude niet meer weg uit beeld."]],
   ["3.0", "Af, levend en met een einde", ["Vraag en aanbod per soort product: oorlogen, bendeoorlogen, coups, virussen, sancties, de AI-wet en tijdperken schuiven de vraag; jouw aanbod en dat van rivalen drukken de prijs. Te zien bij Wereld → Markten en bij elk product.", "Producten krijgen bij de lancering een eigenschap (verslavend, cultstatus, duurzaam, slim, gepatenteerd, militaire specificatie, of slecht: goedkoop gemaakt, storingsgevoelig) en een eigen geschiedenis.", "Producten werken op de wereld: wapens maken syndicaten overal sterker, beveiliging drukt ze terug in je eigen gebied.", "Rivalen hebben een eigen productlijn: ze lanceren in markten met veel vraag, hun producten tellen mee in het aanbod en zijn te zien in hun dossier.", "Productcatalogus van de hele wereld (Wereld → Producten) en filteren op soort, ook in je eigen productlijn.", "Duidelijker: een Wat nu?-kaart met concrete volgende stappen, terugverdientijd bij uitbreidingen en vestigingen, de worp en echte kans bij elke keuze, en spelregels in het hulpvenster (?).", "Productkansen rechtgezet: vlaggenschepen waren met doel 9 bijna een loterij. Nu doel 6/7/8 en een geflopt groot product houdt meer populariteit over.", "Beter ontwikkelen: kies de soort en een focus (kwaliteit, snel, goedkoop, innovatief, veilig) en zie vooraf de kans op hit, gewoon, flop en terugroepactie, met de markt en het aantal concurrenten.", "Winnen kan: €8.000k bedrijfswaarde, 80% op drie continenten, of alle oorspronkelijke rivalen uitgeschakeld. Anders telt na 10 of 20 jaar je score (of speel eindeloos).", "Score en eindrapport bij elk einde, ook bij verlies, en een eregalerij. Na een overwinning kun je verder spelen.", "Gezondheid: per maand zie je waarom morale en heat bewegen, met een waarschuwing ruim voor de afgrond. Een coup of razzia vraagt nu twee slechte maanden op rij.", "Opslag: automatische back-up voor elke maand (laatste drie terug te zetten), exporteren en importeren, een melding als opslaan mislukt, en een waarschuwing bij twee tabbladen.", "Moeilijkheid raakt nu ook rivalen: rijker en agressiever op Genadeloos, rustiger op Casual.", "Rust in beeld: niets knippert meer, grotere kleine tekst, zichtbare focus, een schakelaar voor effecten en het intro alleen de eerste keer.", "Economie: hogere niveaus leveren iets minder extra op, uitbreidingen worden duurder, vestigingen ook naarmate je groter bent, progressieve winstbelasting (minder met geld offshore), en heat zakt sneller naarmate hij hoger is.", "Je start zonder producten. Per divisie een productiewachtrij van 3, en de Assistent kan productlijnen starten.", "Levende producten: elk product heeft een aard met eigen gevolgen (macht, heat, reputatie, invloed, zwart geld, facties), een prijsstrategie, een recensie en eigen gebeurtenissen: misbruik, bijwerkingen, datalekken, namaak, kopieën door rivalen, viraal gaan.", "Een fout gerepareerd waardoor de speeltijd na 48 maanden bleef staan: tijdperken, termijn en score werken nu over het hele spel.", "Meer concurrentie: vijf rivalen die allemaal groter beginnen dan jij, één in jouw sector en één op jouw continent, en ze breiden eerder uit. Genadeloos: kosten +15% in plaats van +30%, maar rivalen rijker en agressiever."]],
   ["2.1", "Producten en doelwit", ["Productlijn per divisie: je lineup met kwaliteit, populariteit en omzet. Nieuwe producten ontwikkelen in drie schalen, campagnes, nieuwe versies, uit de markt halen.", "Lanceringen kunnen een hit, een flop of een terugroepactie worden (2d6). Producten verouderen; rivalen lanceren ook.", "Projecten kunnen vertragen of mislukken: hogere kosten, langer wachten, of het geld kwijt.", "Je kunt doelwit worden: rivalen en syndicaten huren fixers en huurlingen in voor sabotage, datadiefstal, ontvoering, omkoping van je crew, inbraak bij R&D of laster. Met een speurder of fixer hoor je het vaak vooraf.", "Oprichting: zoom tot op landniveau en alle landen van het continent als knoppen, met hun startvoordeel."]],
   ["2.0", "Crew, tijd en dobbelstenen", ["De d100 is weg: elke worp is 2d6 + bonus tegen een doel. Twee zessen lukt altijd, twee enen nooit, en de getoonde kans is altijd de echte.", "Crew: specialisten op de loonlijst (netrunner, fixer, huurling, dealmaker, spindokter, speurder). Opdrachten kosten verder niets; wie slaagt, groeit in niveau.", "Klussen van fixers over de hele wereld: jouw crew doet het werk, jij krijgt het geld. Huurlegers voor een oorlog.", "Bijzondere wereldgebeurtenissen: beurskrach, blackout, AI-verdrag, poolroute, corporatieoorlog, cyberpsychose, de eerste orbitale fabriek.", "De wereld verandert: tijdperken, status van je bedrijf, opvolgers in je netwerk, nieuwe CEO's bij rivalen, startups en faillissementen.", "Veel acties goedkoper; een gesprek, gunst of crewopdracht kost niets."]],
@@ -970,9 +972,10 @@ const VERSIES = [
   ["1.1", "Wereld", ["Nieuwe tab Wereld: wereldnieuws, een ranglijst van alle bedrijven met waarde en markten per sector.", "25 bedrijven verspreid over de wereld: zakendiner, leveringscontract, aandelen met dividend of een overname.", "Gebeurtenissen per land en continent (stormen, staatsgrepen, handelsakkoorden) veranderen tijdelijk wat gebieden opleveren.", "Startvoordeel per soort land, een eigen stad voor je hoofdkantoor, en per gebied op de kaart: wat het oplevert.", "Geruchten en marktberichten staan in het nieuws in plaats van in je inbox."]],
   ["1.0", "Echte wereld", ["Echte wereldkaart, dominantie per continent en zee, eskaders, rivalen met oorlog en handel, blijvende inkomstenbronnen."]],
 ];
-const PLANNING = [["3.1", "Echte saveslots: meerdere spellen naast elkaar kiezen en wisselen."], ["3.2", "Bedrijfsfocus: een boom met keuzes die elke paar maanden een vaste bonus geven."], ["3.3", "Onderzoek: technologie per sector, betere divisies en nieuwe producten."], ["3.4", "Meer comfort: meldingen per soort aan/uit, een maandoverzicht met wat er veranderd is, en ongedaan maken van de laatste klik."]];
+const PLANNING = [["3.2", "Bedrijfsfocus: een boom met keuzes die elke paar maanden een vaste bonus geven."], ["3.3", "Onderzoek: technologie per sector, betere divisies en nieuwe producten."], ["3.4", "Meer comfort: meldingen per soort aan/uit, een maandoverzicht met wat er veranderd is, en ongedaan maken van de laatste klik."]];
 function versieCard(){
-  return `<div class="card" style="margin-top:16px"><h3>Versies</h3>${VERSIES.map(([v, t, l]) => `<div style="margin:8px 0"><b class="mono" style="color:var(--cyan)">${v}</b> <b>${esc(t)}</b><ul class="ylist">${l.map(x => `<li>${esc(x)}</li>`).join("")}</ul></div>`).join("")}
+  const vrs = ([v, t, l]) => `<div style="margin:8px 0"><b class="mono" style="color:var(--cyan)">${v}</b> <b>${esc(t)}</b><ul class="ylist">${l.map(x => `<li>${esc(x)}</li>`).join("")}</ul></div>`;
+  return `<div class="card" style="margin-top:16px"><h3>Versies</h3>${VERSIES.slice(0, 2).map(vrs).join("")}<details><summary class="muted" style="cursor:pointer;margin:6px 0">Oudere versies (${VERSIES.length - 2})</summary>${VERSIES.slice(2).map(vrs).join("")}</details>
     <h3 style="margin-top:12px">Gepland</h3><ul class="ylist">${PLANNING.map(([v, t]) => `<li><b class="mono">${v}</b> ${esc(t)}</li>`).join("")}</ul></div>`;
 }
 function spark(h){ if (!h || h.length < 2) return ""; const mx = Math.max(...h), mn = Math.min(...h), w = 80, ht = 22;
@@ -1211,6 +1214,26 @@ function eindScherm(st){
 function eregalerijCard(){
   const L = (G.eregalerij || []).slice(0, 10);
   return `<div class="card" style="margin-top:16px"><h3>Eregalerij</h3>${L.length ? `<table><thead><tr><th>#</th><th>Bedrijf</th><th>Einde</th><th class="num">Score</th></tr></thead><tbody>${L.map((x, i) => `<tr><td class="mono">${i + 1}</td><td>${esc(x.naam)}<div class="dim" style="font-size:13px">${esc(x.moeilijkheid)} · ${esc(x.datum)}</div></td><td style="font-size:13.5px">${esc(x.status)}</td><td class="num"><b>${x.score}</b></td></tr>`).join("")}</tbody></table>` : '<p class="muted" style="margin:0">Nog geen afgeronde spellen. Elk einde, gewonnen of verloren, krijgt hier een score.</p>'}</div>`;
+}
+function spellenCard(){
+  if (!G.slots && !S.slotsBezig){ S.slotsBezig = true; Store.slots().then(() => { S.slotsBezig = false; if (S.view === "logboek") render(); }).catch(() => { S.slotsBezig = false; }); }
+  const L = G.slots || [];
+  return `<div class="card" style="margin-top:16px"><div class="spread"><h3>Spellen</h3><button class="btn sm primary" data-a="nieuw">Nieuw spel</button></div>
+    <p class="muted" style="font-size:13.5px;margin:4px 0 8px">Je spellen staan naast elkaar. Wissel wanneer je wilt; elk spel wordt apart bewaard, met zijn eigen mail en back-ups.</p>
+    ${L.length ? `<div class="opts">${L.map(x => `<div class="opt"><div><div class="t">${esc(x.label || x.naam || "Naamloos spel")}${x.gid === G.gid ? ' <span class="tag cyan">nu</span>' : ""}${x.status && x.status !== "actief" ? ` <span class="tag">${esc(x.status)}</span>` : ""}</div>
+      <div class="u">${x.label && x.naam ? esc(x.naam) + " · " : ""}${esc(x.datum || "")}</div></div>
+      <div class="row" style="flex-wrap:nowrap;gap:6px">${x.gid !== G.gid ? `<button class="btn sm primary" data-a="slot" data-s="wissel" data-g="${esc(x.gid)}">Spelen</button>` : ""}<button class="btn sm" data-a="slot" data-s="naam" data-g="${esc(x.gid)}">Hernoemen</button>${x.gid !== G.gid ? `<button class="btn sm danger" data-a="slot" data-s="weg" data-g="${esc(x.gid)}" aria-label="spel verwijderen">✕</button>` : ""}</div></div>`).join("")}</div>` : '<p class="dim">Laden…</p>'}</div>`;
+}
+function naamModal(titel, waarde){
+  return new Promise(res => {
+    const m = document.createElement("div"); m.className = "modal";
+    m.innerHTML = `<div class="box" role="dialog" aria-modal="true" aria-label="${esc(titel)}" style="max-width:420px;width:100%"><h2>${esc(titel)}</h2><input type="text" id="nm_in" maxlength="40" value="${esc(waarde || "")}" style="width:100%">
+      <div class="row" style="justify-content:flex-end;margin-top:12px"><button class="btn" data-x="0">Annuleren</button><button class="btn primary" data-x="1">Opslaan</button></div></div>`;
+    const inp = () => m.querySelector("#nm_in"), done = v => { m.remove(); res(v); };
+    m.addEventListener("click", e => { const b = e.target.closest("[data-x]"); if (b) done(b.dataset.x === "1" ? inp().value : null); });
+    m.addEventListener("keydown", e => { if (e.key === "Enter") done(inp().value); if (e.key === "Escape") done(null); });
+    document.body.appendChild(m); inp().focus(); inp().select();
+  });
 }
 function opslagCard(){
   return `<div class="card" style="margin-top:16px"><h3>Opslag en back-ups</h3>
@@ -1638,6 +1661,12 @@ document.addEventListener("click", async e => {
     case "prodnew": { const dv = t.dataset.div, el = document.getElementById("pn_" + dv), sc = document.getElementById("ps_" + dv), pa = document.getElementById("pa_" + dv), pf = document.getElementById("pf_" + dv); const r = await act("/api/product", {soort: "ontwikkel", divisie: dv, naam: el && el.value, schaal: sc && sc.value, aard: pa && pa.value, focus: pf && pf.value}); if (r && r.ok && el) el.value = ""; return; }
     case "pfilter": S.pfilter = t.dataset.f; localSet("pfilter", S.pfilter); render(); return;
     case "szoom": S.szoom = +t.dataset.z; render(); return;
+    case "slot": { const g = t.dataset.g, x = (G.slots || []).find(y => y.gid === g), nm = x ? (x.label || x.naam || "dit spel") : "dit spel";
+      if (t.dataset.s === "wissel"){ if (S.busy) return; S.busy = true; try { await Store.switchSlot(g); } finally { S.busy = false; } S.view = "overzicht"; S.mailBody = null; S.backups = null; S.setup = null; toast(`Je speelt nu ${nm}.`); render(); return; }
+      if (t.dataset.s === "naam"){ const v = await naamModal("Spel hernoemen", x ? x.label || x.naam : ""); if (v == null) return; await Store.renameSlot(g, v); render(); return; }
+      if (t.dataset.s === "weg"){ if (!await ask(`${nm} verwijderen?`, "Het spel, zijn mail, chats en back-ups worden gewist. Dit kan niet ongedaan worden. Exporteer het eerst als je het wilt bewaren.", "Verwijderen", true)) return;
+        toast("Bezig met wissen…"); await Store.deleteSlot(g); toast(`${nm} is verwijderd.`); render(); return; }
+      return; }
     case "doorspelen": return act("/api/doorspelen", {});
     case "backups": { S.backups = await Store.backups(); render(); return; }
     case "restore": { const b = (S.backups || []).find(x => x.slot === +t.dataset.slot); if (!b) return;
@@ -1701,7 +1730,7 @@ document.addEventListener("click", async e => {
     case "pay": return act("/api/factuur", {id:t.dataset.id, actie:"betaal"});
     case "hold": return act("/api/factuur", {id:t.dataset.id, actie:"toggle"});
     case "rivalorder": { S.view = "comms"; S.chat = "gm"; S.chatOpen = true; render(); const ta = document.getElementById("chattxt"); if (ta){ ta.value = `${t.dataset.naam}: `; ta.focus(); } return; }
-    case "nieuw": if (!await ask("Nieuw spel beginnen?", "Je huidige bedrijf blijft bewaard in de opslag, maar je speelt verder met een nieuw bedrijf.", "Nieuw spel", true)) return; S.setup = null; S.sstep = 0; return act("/api/nieuw", {zeker:true});
+    case "nieuw": if (!await ask("Nieuw spel beginnen?", "Je huidige bedrijf blijft bewaard: je vindt het terug bij Logboek → Spellen en kunt er altijd naar terugwisselen.", "Nieuw spel")) return; S.setup = null; S.sstep = 0; return act("/api/nieuw", {zeker:true});
     case "setup": {
       if (!S.setup.corp_name.trim()){ S.sstep = 1; render(); document.querySelector("[data-f=corp_name]")?.focus(); return toast("Geef je bedrijf een naam.", true); }
       const d0 = {...S.setup, eigen: S.setup.eigen_naam.trim() ? {naam: S.setup.eigen_naam, omschrijving: S.setup.eigen_omschrijving, profiel: S.setup.eigen_profiel} : null};

@@ -611,7 +611,7 @@ function tick(s){
 }
 
 /* ---------- de stad: elke game een andere kaart ---------- */
-const VERSION = "3.0";
+const VERSION = "3.1";
 const MAP_W = 1000, MAP_H = 680;
 const RIVAL_COLORS = ["#ff9a1f", "#3d7bff", "#c6ff2e", "#f2f2f2", "#9b5cff", "#ffd400", "#ff4d4d"];
 const ARCH = {
@@ -2948,7 +2948,7 @@ const Store = {
     } catch(e){ G.db = null; this.useLocal(); toast("De online opslag reageert niet. Je spel wordt nu alleen in deze browser bewaard.", true); }
   },
   useLocal(){
-    const d = localLoad(); G.mode = "lokaal";
+    const d = localLoad(); G.mode = "lokaal"; try { G.gid = localStorage.getItem("cl_huidig") || "lokaal"; } catch(e){ G.gid = "lokaal"; }
     if (d){ G.game = d.game; G.mails = d.mails || []; G.chats = d.chats || {}; }
     S.loaded = true; render();
   },
@@ -3021,9 +3021,45 @@ const Store = {
     finally { delete c._pending; }
   },
   async newGame(){
-    G.game = null; G.mails = []; G.chats = {};
-    if (G.mode === "db"){ G.gid = "g" + uid(); await G.db.doc("meta/huidig").set({gid: G.gid}); this.subscribe(); }
+    const L = await this.slots().catch(() => G.slots || []), nieuw = "g" + uid();
+    if (G.mode !== "db"){ try { localStorage.setItem("cl_slot_" + G.gid, JSON.stringify({game: G.game, mails: G.mails.slice(0, 300), chats: G.chats})); localStorage.setItem("cl_huidig", nieuw); } catch(e){} }
+    G.game = null; G.mails = []; G.chats = {}; G.gid = nieuw;
+    L.unshift({gid: nieuw, naam: "", datum: "oprichting", status: "", t: Date.now()}); await this.saveSlots(L).catch(() => {});
+    if (G.mode === "db"){ await G.db.doc("meta/huidig").set({gid: G.gid}); this.subscribe(); }
     else localSave();
+  },
+  /* saveslots: meerdere spellen naast elkaar */
+  slotInfo(gid, s){ return {naam: s && s.player ? s.player.corp_name || "" : "", datum: s ? (s.setup_done ? ym(s) : "oprichting") : "", status: s ? s.status || "" : ""}; },
+  async slots(){
+    let L = [];
+    if (G.mode === "db"){
+      try { const d = await withTimeout(G.db.doc("meta/slots").get(), 8000); L = d.exists ? (d.data().lijst || []) : []; } catch(e){ return G.slots || []; }
+      if (!L.length){ let vorige = null; try { const p = await withTimeout(G.db.doc("meta/huidig").get(), 8000); vorige = p.exists ? p.data().vorige : null; } catch(e){}
+        for (const id of [G.gid, vorige].filter(Boolean)){ let info = {naam: "", datum: "", status: ""}; try { const g = await withTimeout(G.db.doc("games/" + id).get(), 8000); if (g.exists) info = this.slotInfo(id, g.data().s); } catch(e){} L.push({gid: id, ...info, t: Date.now()}); }
+        await G.db.doc("meta/slots").set({lijst: L}).catch(() => {}); }
+    } else { try { L = JSON.parse(localStorage.getItem("cl_slots") || "[]"); } catch(e){} }
+    if (!L.some(x => x.gid === G.gid)) L.unshift({gid: G.gid, naam: "", datum: "", status: "", t: Date.now()});
+    const cur = L.find(x => x.gid === G.gid); if (cur && G.game) Object.assign(cur, this.slotInfo(G.gid, G.game), {t: Date.now()});
+    G.slots = L; return L;
+  },
+  async saveSlots(L){ G.slots = L; if (G.mode === "db") await G.db.doc("meta/slots").set({lijst: L}); else { try { localStorage.setItem("cl_slots", JSON.stringify(L)); } catch(e){} } },
+  async switchSlot(gid){
+    if (!gid || gid === G.gid) return false;
+    const L = await this.slots(); await this.saveSlots(L).catch(() => {});
+    if (G.mode === "db"){ G.gid = gid; G.game = null; G.mails = []; G.chats = {}; await G.db.doc("meta/huidig").set({gid}); this.subscribe(); return true; }
+    try { localStorage.setItem("cl_slot_" + G.gid, JSON.stringify({game: G.game, mails: G.mails.slice(0, 300), chats: G.chats}));
+      const d = JSON.parse(localStorage.getItem("cl_slot_" + gid) || "null"); G.gid = gid; G.game = d ? d.game : null; G.mails = d ? d.mails || [] : []; G.chats = d ? d.chats || {} : {};
+      localStorage.setItem("cl_huidig", gid); localSave(); return true; } catch(e){ toast("Wisselen lukte niet: de browseropslag weigert.", true); return false; }
+  },
+  async renameSlot(gid, label){ const L = await this.slots(), x = L.find(y => y.gid === gid); if (!x) return; x.label = String(label || "").trim().slice(0, 40); await this.saveSlots(L); },
+  async deleteSlot(gid){
+    if (!gid || gid === G.gid) return false;
+    const L = (await this.slots()).filter(x => x.gid !== gid);
+    if (G.mode === "db"){ const base = "games/" + gid;
+      for (const sub of ["mails", "chats", "backups"]){ try { const q = await withTimeout(G.db.collection(base + "/" + sub).get(), 10000); for (const d of q.docs) await G.db.doc(base + "/" + sub + "/" + d.id).delete(); } catch(e){} }
+      try { await G.db.doc(base).delete(); } catch(e){} }
+    else { try { localStorage.removeItem("cl_slot_" + gid); } catch(e){} }
+    await this.saveSlots(L); return true;
   },
 };
 function withTimeout(p, ms){ return Promise.race([p, new Promise((_, rej) => setTimeout(() => rej({code: "timeout"}), ms))]); }
@@ -3349,6 +3385,7 @@ const API = {
     if ((openChats || openMails) && !d.force) return {ok: false, vraag: true, bericht: `Er staan nog ${openChats + openMails} voorstel(len) of gesprekken open. Als je doorgaat, vervallen open voorstellen niet, maar de wereld wacht ook niet.`};
     try { await Store.backup(); } catch(e){}
     S.expect = true; const ctx = tick(s); const docs = await persist(ctx); S.expect = false;
+    Store.slots().then(L => Store.saveSlots(L)).catch(() => {});
     if (s.status !== "actief" && s.eind) await Store.addScore({id: G.gid + "-" + s.eind.datum, naam: s.player.corp_name, status: s.status, score: s.eind.score, datum: s.eind.datum, moeilijkheid: s.player.difficulty});
     return {ok: true, status: s.status, rapport_mail: docs[ctx.reportIndex] && docs[ctx.reportIndex].id};
   },
@@ -3396,7 +3433,7 @@ const API = {
   async "/api/setup"(d){ const {s, ctx} = newGame(d); G.game = s; await persist(ctx); return {ok: true, bericht: "Bedrijf opgericht."}; },
   async "/api/doorspelen"(){ const s = G.game; if (!s || !s.eind || !(s.status.startsWith("OVERWINNING") || s.status === "EINDE TERMIJN")) return {ok: false, bericht: "Dit spel kan niet verder."};
     s.status = "actief"; s.player.lengte = "eindeloos"; s.flags.doorgespeeld = true; s.flags.gewonnen_op = s.eind.datum; delete s.eind; s.flags.start_rivalen = []; await persist(); return {ok: true, bericht: "Je speelt verder, zonder einddatum. Je score staat al in de eregalerij."}; },
-  async "/api/nieuw"(){ await Store.newGame(); S.setup = null; return {ok: true, bericht: "Nieuw spel. Het oude spel blijft bewaard in de opslag."}; },
+  async "/api/nieuw"(){ await Store.newGame(); S.setup = null; return {ok: true, bericht: "Nieuw spel. Je vorige spel staat bij Logboek → Spellen; daar kun je terugwisselen."}; },
 };
 async function api(path, body){
   if (path === "/api/state") return vm();
