@@ -611,7 +611,7 @@ function tick(s){
 }
 
 /* ---------- de stad: elke game een andere kaart ---------- */
-const VERSION = "3.1";
+const VERSION = "3.2";
 const MAP_W = 1000, MAP_H = 680;
 const RIVAL_COLORS = ["#ff9a1f", "#3d7bff", "#c6ff2e", "#f2f2f2", "#9b5cff", "#ffd400", "#ff4d4d"];
 const ARCH = {
@@ -2336,9 +2336,9 @@ function productTick(s, ctx){
   const namen = new Set(s.divisions.map(divNaam)); s.producten = s.producten.filter(p => namen.has(p.divisie));
   for (const d of s.divisions){ const nm = divNaam(d); if (s.producten.some(p => p.divisie === nm && p.status === "ontwikkeling")) continue;
     const q = s.producten.find(p => p.divisie === nm && p.status === "wachtrij"); if (!q) continue;
-    const sc = PRODUCT_SCHAAL[q.schaal || "klein"], F = DEV_FOCUS[q.focus || "standaard"] || DEV_FOCUS.standaard, kost = q.betaald ? 0 : r1(sc.kost * (DIFF[s.player.difficulty] || 1) * (F.kost || 1));
+    const sc = PRODUCT_SCHAAL[q.schaal || "klein"], F = DEV_FOCUS[q.focus || "standaard"] || DEV_FOCUS.standaard, kost = q.betaald ? 0 : q.kostOverride != null ? q.kostOverride : r1(sc.kost * (DIFF[s.player.difficulty] || 1) * (F.kost || 1));
     if (s.cash < kost + 10){ if (!q.wachtgeld) ctx.rep.push(`${q.naam} wacht in de rij op €${kost}k`); q.wachtgeld = true; continue; }
-    s.cash = r1(s.cash - kost); q.status = "ontwikkeling"; q.eta = Math.max(1, sc.maanden + (F.maanden || 0)) + 1; delete q.wachtgeld; ctx.rep.push(`Productie gestart: ${q.naam}${kost ? ` (€${kost}k)` : ""}`); }
+    s.cash = r1(s.cash - kost); q.status = "ontwikkeling"; q.eta = (q.maandenOverride || Math.max(1, sc.maanden + (F.maanden || 0))) + 1; delete q.wachtgeld; ctx.rep.push(`Productie gestart: ${q.naam}${kost ? ` (€${kost}k)` : ""}`); }
   for (const p of [...s.producten]){
     const d = s.divisions.find(x => divNaam(x) === p.divisie);
     if (p.status === "wachtrij") continue;
@@ -2358,7 +2358,7 @@ function productTick(s, ctx){
       if (r.ok){ p.kwaliteit = clamp(p.kwaliteit + 1, 1, 5); p.pop = clamp(p.pop + 10, 0, 95); p.leeftijd = 0; maakReview(p); if (p.trait === "gevoelig") p.trait = null; prodLog(p, s, `Versie ${p.kwaliteit}`); mail(ctx, s, "R&D", `${p.naam} versie ${p.kwaliteit}`, `De nieuwe versie is klaar (${r.txt}). Kwaliteit ${p.kwaliteit}, en de klanten merken het.`, "NORMAAL"); }
       else mail(ctx, s, "R&D", `Nieuwe versie ${p.naam} mislukt`, `Het ontwikkelteam kreeg het niet werkend (${r.txt}). Het geld is op, het product blijft zoals het was.`, "HOOG"); }
     p.leeftijd = (p.leeftijd || 0) + 1;
-    const idx = ((s.sectoren || {})[p.type] || {idx: 100}).idx, tgt = 28 + p.kwaliteit * 8 + (PRIJS[p.prijs || "standaard"] || PRIJS.standaard).pop + (idx - 100) / 3 - Math.max(0, p.leeftijd - 24) * (p.trait === "verslavend" ? 0.25 : 0.8) + ((((s.vraag || {})[p.aard] || {}).idx || 100) - 100) / 6;
+    const idx = ((s.sectoren || {})[p.type] || {idx: 100}).idx, tgt = 28 + p.kwaliteit * 8 + (PRIJS[p.prijs || "standaard"] || PRIJS.standaard).pop + (idx - 100) / 3 - Math.max(0, p.leeftijd - 24) * (p.trait === "verslavend" || p.soort === "abonnement" ? 0.25 : 0.8) + ((((s.vraag || {})[p.aard] || {}).idx || 100) - 100) / 6;
     p.pop = Math.round(clamp(p.pop + (tgt - p.pop) * 0.08 + U(-2, 2), p.trait === "cult" ? 35 : 3, 95));
     if (p.trait === "gevoelig" && p.leeftijd % 3 === 0 && !p.verbetering) p.pop = Math.max(3, p.pop - 5);
   }
@@ -2546,7 +2546,7 @@ const PRIJS = {budget: {label: "Budget", pop: 12, gewicht: 0.8, rep: -0.05}, sta
 const prodGewicht = (p, s) => p.kwaliteit * p.pop / 100 * (PRIJS[p.prijs || "standaard"] || PRIJS.standaard).gewicht * (s ? vraagFactor(s, p.aard || aardVan(p.type, p.naam)) : 1) * (p.trait === "goedkoop" ? 1.15 : 1);
 const prodSterkte = p => p.pop / 100 * (0.5 + p.kwaliteit * 0.15);
 function prodEffecten(p){ const A = PRODUCT_AARD[p.aard || "consument"] || PRODUCT_AARD.consument, f = prodSterkte(p), out = {};
-  for (const [k2, v] of Object.entries(A.eff)) out[k2] = Math.round(v * f * 10) / 10; const pr = (PRIJS[p.prijs || "standaard"] || {}).rep || 0; if (pr) out.reputation = Math.round(((out.reputation || 0) + pr) * 10) / 10;
+  for (const [k2, v] of Object.entries(p.eigenEff || A.eff)) out[k2] = Math.round(v * f * 10) / 10; const pr = (PRIJS[p.prijs || "standaard"] || {}).rep || 0; if (pr) out.reputation = Math.round(((out.reputation || 0) + pr) * 10) / 10;
   for (const [k2, v] of Object.entries(traitEffecten(p))) out[k2] = Math.round(((out[k2] || 0) + v) * 10) / 10; return out; }
 const productMacht = s => Math.round((s.producten || []).filter(p => p.status === "markt").reduce((a, p) => a + (prodEffecten(p).macht || 0), 0));
 const REVIEW_TEKST = {
@@ -2570,7 +2570,7 @@ function productEffectTick(s){
   if (tot.morale) s.morale = clamp(s.morale + tot.morale);
   if (tot.invloed) s.invloed = r1((s.invloed || 0) + tot.invloed);
   if (tot.zwart) s.accounts.zwart = r1(s.accounts.zwart + tot.zwart);
-  for (const f of ["straat", "politie", "stad", "vakbond"]) if (tot[f]) shiftFaction(s, f, tot[f]);
+  for (const f of ["straat", "politie", "stad", "vakbond", "nomaden"]) if (tot[f]) shiftFaction(s, f, tot[f]);
   return tot;
 }
 const PRODUCT_EVENTS = [
@@ -2610,6 +2610,9 @@ function productEventTick(s, ctx){
   const markt = (s.producten || []).filter(p => p.status === "markt"); if (!markt.length || R() > 0.16) return;
   if ((s.keuzes || []).some(k => String(k.soort).startsWith("prod_"))) return;
   const p = wpick(markt.map(x => [x, 5 + x.pop + (x.trait === "goedkoop" ? 30 : 0)])); p.aard ??= aardVan(p.type, p.naam);
+  if (p.gb && p.gb.length && R() < 0.65){ let vrij = p.gb.filter((g, i) => !(p.gbGebruikt || []).includes(i)); if (!vrij.length){ p.gbGebruikt = []; vrij = p.gb; }
+    const g = CH(vrij), gi = p.gb.indexOf(g); (p.gbGebruikt ??= []).push(gi);
+    addKeuze(s, ctx, {soort: "prod_" + p.id, van: g.van, titel: g.titel, tekst: g.tekst, opties: g.opties.map(o => ({label: o.label, uitleg: o.uitleg, kost: o.kost, eff: gbEff(o.eff, p.id)})), standaard: g.opties.length - 1}); prodLog(p, s, g.titel); return; }
   const opts = PRODUCT_EVENTS.filter(e => (!e.aard || e.aard.includes(p.aard)) && (!e.when || e.when(s, p)));
   const e = wpick(opts.map(x => [x, x.aard ? 2.5 : 1])), land = CH(s.districts).name, k = e.gen(s, p, land);
   k.soort = "prod_" + p.id; addKeuze(s, ctx, k); prodLog(p, s, k.titel);
@@ -2746,7 +2749,7 @@ function devPlan(s, d, schaal, focus, aard){
     concurrenten: s.rivals.reduce((n, r) => n + (r.producten || []).filter(p => p.aard === a).length, 0)};
 }
 function lanceerWorp(s, d, p){
-  const F = DEV_FOCUS[p.focus || "standaard"] || DEV_FOCUS.standaard, k = productKans(s, d, p.schaal || "klein"), doel = k.doel + (F.doel || 0);
+  const F = DEV_FOCUS[p.focus || "standaard"] || DEV_FOCUS.standaard, k = productKans(s, d, p.schaal || "klein"), doel = p.doelOverride || (k.doel + (F.doel || 0));
   const a = d6(), b = d6(), t = a + b, crit = t >= (F.crit || 12), blunder = !F.veilig && t <= (F.blunder || 2), ok = crit || (!blunder && t + k.bonus >= doel);
   return {ok, crit, blunder, txt: `${DICE[a - 1]}${DICE[b - 1]}${k.bonus ? ` +${k.bonus}` : ""} = ${t + k.bonus}, nodig ${doel}+${crit ? " · hit" : blunder ? " · blunder" : ""}`};
 }
@@ -2801,6 +2804,77 @@ const SPELREGELS = [
   ["Winnen", "€8.000k bedrijfswaarde, 80% op drie continenten, of alle oorspronkelijke rivalen uitgeschakeld. Anders telt na de gekozen speellengte je score."],
   ["Keuzes", "Keuzemails hebben knoppen; elke optie zegt wat ze kost en doet. Antwoord je niet, dan kiest het spel na twee maanden de standaardoptie."],
 ];
+
+/* ===================== 3.2 CONCEPTEN: jij beschrijft, de GM ontwerpt, de engine gooit ===================== */
+const CONCEPT_SOORT = {product: "Product", dienst: "Dienst", abonnement: "Abonnement", netwerk: "Netwerk"};
+const EFF_GRENS = {macht: [0, 3], heat: [-0.5, 1], reputation: [-0.5, 0.6], invloed: [0, 0.5], zwart: [0, 1.2], morale: [-0.3, 0.3], straat: [-0.6, 0.6], politie: [-0.6, 0.6], stad: [-0.6, 0.6], vakbond: [-0.6, 0.6], nomaden: [-0.6, 0.6]};
+const cStr = (v, n) => String(v ?? "").replace(/\s+/g, " ").trim().slice(0, n);
+function conceptPrompt(s, d, tekst){
+  const b = Math.ceil(d.level / 2);
+  return `Je bent de Game Master van CHROME LEDGER, een cyberpunk-bedrijfssimulatie op de echte wereldkaart (taal: Nederlands, toon: droog, cynisch, corporate-noir). De CEO van ${s.player.corp_name} wil iets nieuws op de markt brengen via de divisie "${divNaam(d)}" (${d.type}, niveau ${d.level}). Zijn eigen omschrijving: "${tekst}".
+
+Ontwerp dit als een echt ding in deze wereld, zo dicht mogelijk bij wat de CEO bedoelt. Bepaal of het een product, een dienst, een abonnement of een netwerk is; geef het een naam (gebruik de naam van de CEO als die er een noemt), een doelgroep en wat het met de wereld doet. Wees eerlijk: groot is duur en moeilijk, illegaal of gewelddadig geeft heat, iets dat mensen redt geeft reputatie. Schrijf daarnaast 2 of 3 gebeurtenissen die later met juist DIT ding kunnen gebeuren (een klant, een incident, de pers, een concurrent, de overheid), elk met 2 of 3 echte keuzes.
+
+Regels en grenzen:
+- "kost" 3-60 (k€, opzetten), "maanden" 1-6, "kwaliteit" 1-5, "moeilijkheid" 5-10: bij de lancering gooit de engine 2d6 + ${b} en moet dit getal halen (6 makkelijk, 8 gemiddeld, 10 zeer moeilijk). Moeilijkheid hoort bij hoe gewaagd het idee is, niet bij het budget: met genoeg geld is iets groots niet automatisch riskant. Hoge kwaliteit voor weinig geld kan niet.
+- "markt": de soort markt waar het in concurreert, één van: wapen, medisch, implantaat, data, beveiliging, smokkel, logistiek, financieel, orbitaal, consument.
+- "effecten": wat het per maand doet bij volle populariteit, alleen deze velden: macht 0..3, heat -0.5..1, reputation -0.5..0.6, invloed 0..0.5, zwart 0..1.2 (k€ zwart geld), morale -0.3..0.3, straat/politie/stad/vakbond/nomaden -0.6..0.6. Laat weg wat niet verandert.
+- Gebeurtenis-opties: "kost" (k€ vooraf, 0-40) en "effect" met: cash (-30..20), heat, reputation, morale (-10..10), invloed (0..10), zwart (-20..20), factions {naam: -10..10}, populariteit (-25..25), of een kansworp {"kans": 5-95, "succes": {...}, "falen": {...}}.
+
+Stand van de wereld (alleen voor jou): ${JSON.stringify({cash: Math.round(s.cash), heat: Math.round(s.heat), reputatie: Math.round(s.reputation), tijdperk: TIJDPERKEN[s.tijdperk || 0].naam, divisies: s.divisions.map(x => `${divNaam(x)} (${x.type} L${x.level})`), eigen_producten: (s.producten || []).map(p => p.naam), vraag: Object.fromEntries(Object.entries(s.vraag || {}).map(([k2, v]) => [k2, Math.round(v.idx)])), rivalen: s.rivals.map(r => r.name)})}
+
+Antwoord met alleen JSON:
+{"naam": "...", "soort": "product|dienst|abonnement|netwerk", "pitch": "2-4 zinnen in de stem van het hoofd R&D: wat het is en voor wie", "doelgroep": "...", "markt": "...", "kost": 12, "maanden": 3, "moeilijkheid": 7, "kwaliteit": 3, "effecten": {"reputation": 0.3}, "vraag": "welke situatie in de wereld de vraag aanjaagt", "risico": "1 zin", "gebeurtenissen": [{"van": "...", "titel": "...", "tekst": "2-3 zinnen", "opties": [{"label": "...", "uitleg": "wat het kost en doet", "kost": 0, "effect": {"reputation": 3}}]}]}`;
+}
+function cleanKeuzeEff(e, diep){
+  const o = {}, num = (v, lo, hi) => Math.round(clamp(+v || 0, lo, hi) * 10) / 10;
+  if (!e || typeof e !== "object") return o;
+  if (e.kans != null && !diep){ o.kans = Math.round(clamp(+e.kans || 50, 5, 95)); o.succes = cleanKeuzeEff(e.succes, true); o.falen = cleanKeuzeEff(e.falen, true); return o; }
+  if (e.cash) o.cash = num(e.cash, -30, 20);
+  for (const k2 of ["heat", "reputation", "morale"]) if (e[k2]) o[k2] = num(e[k2], -10, 10);
+  if (e.invloed) o.invloed = num(e.invloed, 0, 10); if (e.zwart) o.zwart = num(e.zwart, -20, 20);
+  if (e.populariteit) o.populariteit = Math.round(clamp(+e.populariteit || 0, -25, 25));
+  if (e.factions && typeof e.factions === "object"){ o.factions = {}; for (const [n, v] of Object.entries(e.factions)) if (["straat", "politie", "stad", "vakbond", "nomaden"].includes(n)) o.factions[n] = num(v, -10, 10); }
+  if (e.tekst) o.tekst = cStr(e.tekst, 200);
+  return o;
+}
+function cleanConcept(r, s, d){
+  r = r && typeof r === "object" ? r : {};
+  const kost = r1(clamp(+r.kost || 10, 3, 60)), maxKw = clamp(1 + Math.floor(kost / 8) + Math.floor(d.level / 2), 1, 5);
+  const kw = Math.round(clamp(+r.kwaliteit || 2, 1, maxKw)), eff = {};
+  for (const [k2, [lo, hi]] of Object.entries(EFF_GRENS)) if (r.effecten && r.effecten[k2] != null && isFinite(+r.effecten[k2]) && +r.effecten[k2] !== 0) eff[k2] = Math.round(clamp(+r.effecten[k2], lo, hi) * 10) / 10;
+  const gb = (Array.isArray(r.gebeurtenissen) ? r.gebeurtenissen : []).slice(0, 3).map(g => ({van: cStr(g.van || "R&D", 60), titel: cStr(g.titel, 80), tekst: cStr(g.tekst, 500),
+    opties: (Array.isArray(g.opties) ? g.opties : []).slice(0, 3).map(o => ({label: cStr(o.label, 60), uitleg: cStr(o.uitleg, 180), kost: r1(clamp(+o.kost || 0, 0, 40)), eff: cleanKeuzeEff(o.effect)})).filter(o => o.label)})).filter(g => g.titel && g.opties.length >= 2);
+  return {naam: cStr(r.naam, 40) || nieuwProductNaam(s, d.type), soort: CONCEPT_SOORT[r.soort] ? r.soort : "product", pitch: cStr(r.pitch, 500), doelgroep: cStr(r.doelgroep, 80),
+    markt: PRODUCT_AARD[r.markt] ? r.markt : aardVan(d.type, r.naam || ""), kost, maanden: Math.round(clamp(+r.maanden || 3, 1, 6)), doel: Math.round(clamp(Math.max(+r.moeilijkheid || 7, 3 + kw), 5, 10)), kwaliteit: kw, eff,
+    vraag: cStr(r.vraag, 140), risico: cStr(r.risico, 200), gebeurtenissen: gb, divisie: divNaam(d)};
+}
+function conceptKansen(s, c){ const d = s.divisions.find(x => divNaam(x) === c.divisie) || {level: 1}; return devKansen(Math.ceil(d.level / 2) + ((s.crew || []).some(m => m.rol === "spindokter") ? 1 : 0), c.doel, "standaard"); }
+function actConcept(s, ctx, c){
+  if (!c) return {ok: false, msg: "Er ligt geen concept klaar."};
+  const d = s.divisions.find(x => divNaam(x) === c.divisie); if (!d) return {ok: false, msg: "Die divisie bestaat niet meer."};
+  const alle = (s.producten || []).filter(p => p.divisie === divNaam(d) && p.status !== "teruggeroepen");
+  if (alle.length >= maxProducten(d)) return {ok: false, msg: `${divNaam(d)} draagt al ${maxProducten(d)} producten (inclusief de wachtrij). Haal er een uit de markt of breid de divisie uit.`};
+  if ((s.producten || []).some(p => p.naam === c.naam)) return {ok: false, msg: "Die naam bestaat al."};
+  const kost = r1(c.kost * (DIFF[s.player.difficulty] || 1)), bezig = alle.some(p => p.status === "ontwikkeling");
+  if (bezig && alle.filter(p => p.status === "wachtrij").length >= 3) return {ok: false, msg: "De wachtrij is vol (3)."};
+  if (!bezig){ if (s.cash < kost) return {ok: false, msg: `Opzetten kost €${kost}k. Niet genoeg cash.`}; s.cash = r1(s.cash - kost); s.accounts.operationeel = s.cash; }
+  const p = mkProduct(s, d, c.naam, c.kwaliteit, 0);
+  Object.assign(p, {maandenOverride: c.maanden, aard: c.markt, soort: c.soort, pitch: c.pitch, doelgroep: c.doelgroep, eigenEff: c.eff, doelOverride: c.doel, kostOverride: kost, gb: c.gebeurtenissen, schaal: c.kost >= 25 ? "vlag" : c.kost >= 10 ? "groot" : "klein", vraagTekst: c.vraag, risico: c.risico});
+  if (bezig) p.status = "wachtrij"; else { p.status = "ontwikkeling"; p.eta = c.maanden; }
+  (s.producten ??= []).push(p); prodLog(p, s, `${CONCEPT_SOORT[c.soort]} ontworpen met de GM${bezig ? " (in de wachtrij)" : ""}`);
+  const K = conceptKansen(s, c);
+  const msg = `${c.naam} ${bezig ? "staat in de wachtrij" : `is in ontwikkeling: €${kost}k, ${c.maanden} maand(en)`}. Bij de lancering: hit ${K.hit}%, gewoon ${K.gewoon}%, flop ${K.flop}%, terugroepactie ${K.terug}%.`;
+  addLog(s, msg); return {ok: true, msg};
+}
+function gbEff(e, pid){ const o = {...(e || {})}; if (o.populariteit){ o.product = {[pid]: {pop: o.populariteit}}; delete o.populariteit; } if (o.succes) o.succes = gbEff(o.succes, pid); if (o.falen) o.falen = gbEff(o.falen, pid); return o; }
+async function gmConcept(divisie, tekst){
+  const s = G.game, d = s && s.divisions.find(x => divNaam(x) === divisie); if (!d) return {ok: false, bericht: "Kies een divisie."};
+  tekst = cStr(tekst, 600); if (tekst.length < 4) return {ok: false, bericht: "Beschrijf eerst wat je wilt maken."};
+  if (!live()) return {ok: false, bericht: "De GM is niet live verbonden. Gebruik 'Handmatig', of vraag het in de Claude-chat."};
+  try { const r = await G.sample.json(conceptPrompt(s, d, tekst), {modelTier: "default"}); const c = cleanConcept(r, s, d); c.vraagVan = tekst; (G.concepten ??= {})[divisie] = c; return {ok: true, bericht: `De GM heeft ${c.naam} uitgewerkt. Lees het voorstel en kies.`}; }
+  catch(e){ return {ok: false, bericht: sampleErrorText(e)}; }
+}
 
 function newGame(d){
   const s = migrate(template()), p = s.player, ctx = Ctx();
@@ -3136,7 +3210,7 @@ function worldFacts(s){
     bedrijven_in_de_wereld: (s.bedrijven || []).map(b => ({naam: b.naam, sector: b.sector, land: b.land, waarde: Math.round(b.waarde), eigenaar: b.eigenaar, jouw_aandeel: b.aandeel, contract: b.contract})),
     onderwereld: (s.gangs || []).map(g => ({naam: g.naam, leider: g.leider, relatie: g.relatie, afspraak: g.deal, gebied: g.gebied})),
     rivaal_producten: s.rivals.map(r => `${r.name}: ${(r.producten || []).map(p => `${p.naam} (${p.aard}, k${p.kwaliteit}, pop ${p.pop})`).join(", ")}`),
-    producten: (s.producten || []).map(p => ({naam: p.naam, divisie: p.divisie, soort: p.aard || aardVan(p.type, p.naam), eigenschap: p.trait || null, prijs: p.prijs || "standaard", vraagfactor: vraagFactor(s, p.aard || aardVan(p.type, p.naam)), kwaliteit: p.kwaliteit, populariteit: p.pop, status: p.status, recensie: p.review ? p.review.sterren : null})), verwachte_aanslagen: (s.dreigingen || []).map(t => `${t.label} door ${t.van}`),
+    producten: (s.producten || []).map(p => ({naam: p.naam, divisie: p.divisie, soort: p.aard || aardVan(p.type, p.naam), vorm: p.soort || "product", pitch: p.pitch || "", eigenschap: p.trait || null, prijs: p.prijs || "standaard", vraagfactor: vraagFactor(s, p.aard || aardVan(p.type, p.naam)), kwaliteit: p.kwaliteit, populariteit: p.pop, status: p.status, recensie: p.review ? p.review.sterren : null})), verwachte_aanslagen: (s.dreigingen || []).map(t => `${t.label} door ${t.van}`),
     crew: (s.crew || []).map(m => ({naam: m.naam, rol: m.rol, niveau: m.niveau, status: crewStatus(s, m), eigenschap: traitOf(m.trait).naam})), huurleger: s.huurleger, tijdperk: TIJDPERKEN[s.tijdperk || 0].naam, status: STATUS_LADDER[s.statusNiveau || 0][1],
     wereldnieuws: (s.nieuws || []).slice(0, 8).map(n => `${n.m} ${n.kop}`), open_keuzes: (s.keuzes || []).map(k => k.titel),
     recente_mails: G.mails.slice(0, 8).map(m => `${m.datum} ${m.van}: ${m.onderwerp}`), logboek: s.log.slice(-10),
@@ -3152,7 +3226,7 @@ const RULES = `Spelregels voor voorstellen:
 - Illegale acties geven heat, ook bij succes. Snelle winst kost morale, reputatie of geeft juridisch risico.
 - Gebruik "verborgen_waarheid", vlaggen en geheimen om onderzoek eerlijk af te handelen: alleen als iets waar is kan een geslaagd onderzoek het vinden, en dat staat dan in de succes-mail. Een ontmaskerde verrader: zet de vlag in "verwijder_flags" (cfo_manipuleert, pr_lekt, security_verkocht).
 - Mogelijke effectvelden (laat weg wat niet verandert): cash (-300..150), zwart, heat, reputation, morale (-25..25), factions {naam: -30..30}, loyaliteit {"NPC-naam": -40..40}, personeel (-50..50 gewone medewerkers), ontslag ["NPC-naam"], nieuwe_npc {"name","role","loyalty","ambition","secret"} (een sleutelpersoon aannemen), rivaal_agressie {naam: -0.3..0.3}, rivaal_cash {naam}, rivaal_geheugen {naam: "notitie"}, district "A".."H", verwijder_flags [...], lopend {"naam","maanden","cash","reputation","heat","morale"} (maandelijks terugkerend, bv. een loonsverhoging: cash -2 per maand).
-- PRODUCTEN: de divisies verkopen producten (zie "producten"). Vraagt de CEO een nieuw product of een productlijn, geef dan bij succes het effect "nieuw_product": {"divisie": "<naam van een bestaande divisie>", "naam": "productnaam", "schaal": "klein"|"groot"|"vlag", "aard": "wapen|medisch|implantaat|data|beveiliging|smokkel|logistiek|financieel|orbitaal|consument", "focus": "standaard|kwaliteit|snel|goedkoop|innovatief|veilig"}. De kost van je voorstel is dan de ontwikkelkost (klein 5, groot 14, vlaggenschip 30, maal de moeilijkheid). Is de divisie al iets aan het ontwikkelen, dan komt het in de wachtrij. De lancering (hit, flop) gooit de engine later zelf; beloof geen uitkomst.
+- PRODUCTEN: de divisies verkopen producten (zie "producten"). Vraagt de CEO een nieuw product, een dienst, een abonnement of een productlijn, wijs dan eerst op Bedrijf → Productlijn → "De GM werkt het uit", waar jij het volledig ontwerpt. Wil hij het toch via jou, geef dan bij succes het effect "nieuw_product": {"divisie": "<naam van een bestaande divisie>", "naam": "productnaam", "schaal": "klein"|"groot"|"vlag", "aard": "wapen|medisch|implantaat|data|beveiliging|smokkel|logistiek|financieel|orbitaal|consument", "focus": "standaard|kwaliteit|snel|goedkoop|innovatief|veilig"}. De kost van je voorstel is dan de ontwikkelkost (klein 5, groot 14, vlaggenschip 30, maal de moeilijkheid). Is de divisie al iets aan het ontwikkelen, dan komt het in de wachtrij. De lancering (hit, flop) gooit de engine later zelf; beloof geen uitkomst.
 - BLIJVENDE GROEI: bouwt de CEO iets op dat maand na maand geld oplevert (een product, dienst, abonnement, klantengroep, vestiging, contract, prijsmodel, marketing die klanten bindt), geef dan bij succes een blijvend effect, geen eenmalige cash: "omzet_bonus": {"naam": "korte naam van de inkomstenbron", "bedrag": k€ per maand}. Reken realistisch: ongeveer kost/10 per maand (terugverdientijd 8 tot 15 maanden), maximaal 6 per bron. Bouwt het verder op een bestaande bron, gebruik dezelfde naam. Groeit een divisie wezenlijk: "divisie_upgrade": "divisienaam". Een echt nieuwe bedrijfstak: "nieuwe_divisie": {"name", "type"} (type uit de bestaande of eigen soorten). Falen kan een bron kosten: "omzet_verlies": {"naam", "bedrag"}.
 - Bestaande inkomstenbronnen van de CEO staan in "inkomstenbronnen"; houd daar rekening mee.
 - De kost (vooraf betaald) staat los van de effecten; zet die niet nog eens in cash.`;
@@ -3407,6 +3481,7 @@ const API = {
   async "/api/invloed"(d){ const r = actInfluence(G.game, d.soort, d.doel); if (r.ok) await persist(); return {ok: r.ok, bericht: r.msg}; },
   async "/api/vloot"(d){ const r = d.zone ? actDeploy(G.game, d.zone, d.delta) : actShip(G.game); if (r.ok) await persist(); return {ok: r.ok, bericht: r.msg}; },
   async "/api/beveiliging"(){ const r = actDefense(G.game); if (r.ok) await persist(); return {ok: r.ok, bericht: r.msg}; },
+  async "/api/concept"(d){ const s = G.game, ctx = Ctx(); const r = actConcept(s, ctx, (G.concepten || {})[d.divisie]); if (r.ok){ delete G.concepten[d.divisie]; await persist(ctx); } return {ok: r.ok, bericht: r.msg}; },
   async "/api/product"(d){ const s = G.game, ctx = Ctx(); const r = actProduct(s, ctx, d.soort, d); if (r.ok) await persist(ctx); return {ok: r.ok, bericht: r.msg}; },
   async "/api/missie"(d){ const s = G.game, ctx = Ctx(); const r = actMissie(s, ctx, d.crew, d.missie, d.doel); if (r.ok) await persist(ctx); return {ok: r.ok, bericht: r.msg}; },
   async "/api/crew"(d){ const s = G.game, ctx = Ctx(); const r = actCrew(s, ctx, d.soort, d.id); if (r.ok) await persist(ctx); return {ok: r.ok, bericht: r.msg}; },
