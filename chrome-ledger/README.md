@@ -4,6 +4,14 @@
 
 De hoofdversie draait als artifact in de browser, ook op je gsm: `artifact/chrome-ledger.html`, gepubliceerd op https://claude.ai/artifact/G1Mgzkv5m1xg2BVrcuvUCq. Je bouwt een megacorporatie op de echte wereldkaart in cyberpunkstijl (Natural Earth-grenzen, 43 speelbare gebieden, 16 zeezones) en kiest bij de start op welk continent en in welk gebied je begint. Op zee bouw je eskaders en verdeel je ze over de zeezones: wie het overwicht heeft, verdient eraan en bereikt elke kust; in oorlog volgen zeeslagen en konvooiaanvallen. De kaartdata wordt gebouwd met `artifact/build-world.js`. Verder: rivalen met een eigen economie (oorlog, vrede, handel, districten ruilen), chat en mail met iedereen in de stad, personeel, eigen bedrijfssoorten en een live GM die kosten en kansen bepaalt; de engine gooit de dobbelsteen. Je spel wordt online bewaard en is alleen voor jou.
 
+### Versies
+- **1.4 Comfort en oprichting:** de oprichting is fase 0 in het spelscherm zelf (land, bedrijf, koers, registreren). Sneltoetsen: 1-9, 0 en − voor de tabs, N volgende maand, A Assistent, J/K door mail, / zoeken, M kaartmodus, Esc sluiten, ? overzicht.
+- **1.3 Onderwereld:** elf syndicaten met eigen gebied. Bescherming, partnerschap, geschenken of verdrijven (d100). Afpersing als keuzemail, bendeoorlogen die de economie van een land raken, kaartmodus Onderwereld.
+- **1.2 Mensen:** relaties met netwerk en directie, met acties zonder Assistent (diner, cadeau, gunst, druk). Drempels geven gunsten en vaste voordelen. Keuzemails met knoppen in plaats van losse flavor-mails.
+- **1.1 Wereld:** wereldnieuws, ranglijst van alle bedrijven met waarde, markten per sector, 25 bedrijven voor contracten, aandelen en overnames, gebeurtenissen per land, startvoordeel per soort land en "wat het oplevert" per gebied.
+
+Gepland: 1.5 doelen en einde, 1.6 bedrijfsfocus, 1.7 onderzoek, 1.8 saveslots, 1.9 meer comfort.
+
 Hieronder staat de oudere lokale versie (Python-engine met een scherm op je eigen pc). Die heeft de 1.0-functies niet.
 
 ## Lokale versie
