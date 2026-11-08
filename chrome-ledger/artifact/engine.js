@@ -626,7 +626,7 @@ function tick(s){
 }
 
 /* ---------- de stad: elke game een andere kaart ---------- */
-const VERSION = "3.9.1";
+const VERSION = "3.9.2";
 const MAP_W = 1000, MAP_H = 680;
 const RIVAL_COLORS = ["#ff9a1f", "#3d7bff", "#c6ff2e", "#f2f2f2", "#9b5cff", "#ffd400", "#ff4d4d"];
 const ARCH = {
@@ -2913,10 +2913,14 @@ function adviezen(s){
   const net = ((s.history || []).slice(-1)[0] || {}).netto;
   if (!markt.length && !dev.length && (s.flags.stappen_weg || maandenGespeeld(s) >= 8)) add(10, "Je verkoopt nog niets. Start je eerste product bij Bedrijf → Productlijn: klein kost €5k en is in 2 maanden klaar, en een divisie met producten verdient meer.", "bedrijf");
   else for (const d of s.divisions) if (!(s.producten || []).some(p => p.divisie === divNaam(d))) add((d.leeg || 0) > 12 ? 9 : 7, (d.leeg || 0) > 12 ? `${divNaam(d)} verkoopt al ${d.leeg} maanden niets: klanten lopen weg, omzet ×${productMult(s, d).toFixed(2)}. Start een product bij Bedrijf → Productlijn.` : `${divNaam(d)} heeft geen producten en draait op ×0,95; na een jaar zonder producten lopen klanten weg. Start er een bij Bedrijf → Productlijn.`, "bedrijf");
+  if (s.cash < 0){ const nog = Math.max(1, 3 - (s.flags.negatieve_cash_maanden || 0)), dochter = (s.bedrijven || []).some(b => b.eigenaar === "player" && b.koppeling === "dochter"), aand = (s.bedrijven || []).some(b => !b.eigenaar && b.aandeel > 0);
+    add(12, `Cash is negatief: nog ${nog} maand(en) tot faillissement. Snel geld: een lening (Financiën, tot €${Math.max(0, Math.round(loanCap(s)))}k)${s.accounts.zwart > 0 ? `, zwart geld overboeken (€${Math.round(s.accounts.zwart)}k)` : ""}${dochter ? ", een dochter verkopen (Bedrijf)" : ""}${aand ? ", aandelen verkopen (Wereld)" : ""}, of kosten schrappen: personeel, crew of een project.`, "financien"); }
   if ((s.keuzes || []).length) add(9, `${s.keuzes.length} beslissing(en) wachten op je. Zonder antwoord kiest het spel na twee maanden zelf, meestal niet in jouw voordeel.`, "overzicht");
-  if (net != null && net < 0 && s.cash > 0) add(9, `Je verloor vorige maand €${Math.abs(net)}k. Met €${Math.round(s.cash)}k in kas heb je nog ±${Math.max(1, Math.round(s.cash / -net))} maanden. Snij in crew, personeel of projecten, of lanceer een product.`, "financien");
+  if (net != null && net < -1 && s.cash > 0 && s.cash / -net < 24) add(9, `Je verloor vorige maand €${Math.abs(net)}k. Met €${Math.round(s.cash)}k in kas heb je nog ±${Math.max(1, Math.round(s.cash / -net))} maanden. Snij in crew, personeel of projecten, of lanceer een product.`, "financien");
   if (s.staff.count < staffNeed(s)) add(8, `Onderbezet: ${s.staff.count} mensen voor ${staffNeed(s)} plekken. Divisies draaien op halve kracht en morale lijdt. Neem ${staffNeed(s) - s.staff.count} mensen aan bij Bedrijf (€0,4k p.p.).`, "bedrijf");
   if (s.morale < 40) add(9, `Morale ${Math.round(s.morale)}: onder 10 komt de raad in opstand. Salaris omhoog (Bedrijf), een gunst van de bond (Mensen) of winst draaien helpt.`, "bedrijf");
+  { const h = (s.history || []).slice(-7), daling = h.length >= 6 ? r1(h[0].rep - h[h.length - 1].rep) : 0, pers = G.mails ? G.mails.filter(m => /^Journalist/.test(m.van) && m.datum >= ((s.history || []).slice(-6)[0] || {}).m).length : 0;
+    if (daling >= 6 && (pers >= 2 || s.reputation < 20)) add(8, `Reputatie zakt (−${daling} in 6 maanden)${pers >= 2 ? ` en journalisten citeren interne stukken: misschien lekt er iemand uit je directie` : ""}. Laat een speurder een directielid natrekken (Crew), praat met je mensen (Mensen) of zet je spindokter in.`, "crew"); }
   if (s.heat > 55) add(9, `Heat ${Math.round(s.heat)}: boven 90 volgt een razzia. Laat een netrunner sporen wissen (Crew), vraag de commissaris om een gunst (Mensen) of gebruik invloed (Kaart).`, "crew");
   const vrijeCrew = (s.crew || []).filter(m => crewStatus(s, m) === "vrij");
   for (const k of (s.klussen || [])){ const m = vrijeCrew.find(x => x.rol === k.rol); if (m){ add(6, `${m.naam} kan de klus "${k.titel}" doen: +€${k.beloning}k, ${kans2d6(crewBonus(s, m, k.gevaar), k.doel, m.trait === "slordig")}% kans.`, "crew"); break; } }
@@ -3575,7 +3579,8 @@ async function inboxOpruimen(s){
   const open = new Set((s.keuzes || []).map(k => k.id)), nu = ym(s);
   const rap = G.mails.filter(m => !m.uit && !m.archief && /^Maandrapport /.test(m.onderwerp)).sort((a, b) => String(b.datum).localeCompare(String(a.datum))).slice(3);
   const kz = G.mails.filter(m => !m.uit && !m.archief && m.keuze && !open.has(m.keuze) && String(m.datum) < nu);
-  for (const m of [...rap, ...kz].slice(0, 20)) await Store.patchMail(m.id, {archief: true, gelezen: true});
+  const mnd = d => { const [y, mo] = String(d || "0-0").split("-").map(Number); return y * 12 + mo; }, oud = G.mails.filter(m => !m.uit && !m.archief && !(m.keuze && open.has(m.keuze)) && !/^Maandrapport /.test(m.onderwerp) && mnd(nu) - mnd(m.datum) > 6);
+  for (const m of [...rap, ...kz, ...oud].slice(0, 25)) await Store.patchMail(m.id, {archief: true, gelezen: true});
 }
 async function chatSend(key, text){
   const s = G.game, c = contacts(s).find(x => x.key === key); text = String(text || "").trim();

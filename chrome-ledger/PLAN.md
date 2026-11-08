@@ -21,7 +21,8 @@ Zwak:
 - Bedrijfsfocus: een kleine boom met keuzes die elke paar maanden een vaste bonus geven.
 
 ### Balans (vervolg)
-- Genadeloos: vroegste dood in maand 16; bekijken of de eerste twee jaar daar eerlijk zijn. (8 nov)
+- Genadeloos: 8% gaat failliet vóór maand 30, met waarschuwing; nu ook concreet advies bij negatieve cash. Opnieuw bekijken na een playtest op Genadeloos. (8 nov)
+- Een lek in de directie kan al in maand 4 ontstaan; is dat te vroeg voor een nieuwe speler? Kijken of loyaliteit in het eerste jaar trager mag zakken. (8 nov)
 
 ### Kleine punten
 - Plannen: jij kunt nog geen eigen plan tegen een rivaal opzetten (spiegelbeeld). Mogelijk 4.x. (8 nov)
@@ -30,9 +31,10 @@ Zwak:
 - De testbot gebruikt geen abonnementen, dochters of de GM: die onderdelen zijn alleen functioneel getest, niet op balans. Een bot-variant die abonnementen kiest. (8 nov)
 - Tests mogen niet op toeval falen: concept.js viel om bij een terugroepactie (twee enen). Gerepareerd; andere tests nalopen op hetzelfde. (8 nov)
 - Expansie-bot in balans.js om hegemonie echt te meten.
-- Een "speel 24 maanden als mens"-run met screenshots per ronde, om zelf kritisch te kijken.
+- tests/mensrun.js draaien in elke opruimronde en de screenshots bekijken.
 
 ## Gedaan
+- 3.9.2 Na een mensrun: advies bij zakkende reputatie (lek), bij negatieve cash (hoeveel maanden, waar snel geld), oude mail naar archief, geen absurde speelruimte-melding meer. tests/mensrun.js toegevoegd.
 - 3.9.1 Online-test met nagebootste db (alles groen), lonen +6% per tijdperk.
 - 3.9 Abonnementen (loyaliteit, prijsverhoging, weglokken) en een overzicht van je dochters met opnemen of verkopen.
 - 3.8.1 Opruimen: automatisch archiveren van oude rapporten en afgehandelde keuzes, GM-venster duwt de inhoud opzij, Casual minder heat (razzia 22% → 13%, winst 87%: aan de makkelijke kant, bewust).

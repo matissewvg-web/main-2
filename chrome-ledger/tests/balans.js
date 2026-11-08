@@ -123,6 +123,7 @@ async function run(strat, n, diff){
     console.log("  score per einde:", Object.entries(per).map(([k, v]) => `${k} ${med(v)}`).join(" · "));
     const err = res.filter(r => r.fout); if (err.length) console.log("  FOUTEN:", err.length, err[0].fout);
   }
+  if (process.env.VROEG){ const res = await p.evaluate(([a, n, d]) => window.__run(a, n, d), ["verstandig", 100, DIFF]); const v = res.filter(r => r.maanden < 30); console.log("vroeg dood:", v.length, "van", res.length); for (const r of v.slice(0, 10)) console.log(r.maanden, r.status, r.divs, "cash", r.cash, "heat", r.heat, "morale", r.morale); }
   if (process.env.DIAG){ const res = await p.evaluate(([a, n, d]) => window.__run(a, n, d), ["verstandig", 60, DIFF]); for (const r of res.filter(r => /RAZZIA/.test(r.status)).slice(0, 12)) console.log(r.maanden, r.divs, JSON.stringify(r.heatGesch), JSON.stringify(r.heatDelen)); }
   if (fouten.length) console.log("\nPAGINAFOUTEN:", fouten.slice(0, 5));
   await b.close();
