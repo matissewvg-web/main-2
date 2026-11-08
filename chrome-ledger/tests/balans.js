@@ -64,7 +64,7 @@ function verstandig(s, ctx, agressief){
   if (d0 && s.cash > upgradeCost(s, d0) + 50 && !s.projects.some(p => p.division === divNaam(d0)) && !(s.heat > 50 && (typeOf(s, d0.type) || {}).heat >= 2)) actProject(s, "upgrade", {divisie: divNaam(d0)});
   const vrij = s.districts.filter(d => d.control === "neutral" && reachable(s, "player", d) && !s.projects.some(p => p.district === d.id)).sort((a, b) => b.income - a.income)[0];
   if (vrij && s.cash > districtCost(s, vrij) + 60) actProject(s, "district", {id: vrij.id});
-  if (s.divisions.length < 3 && s.cash > newDivCost(s) + 90) actProject(s, "divisie", {type: CH(SECTORS.filter(t => !s.divisions.some(d => d.type === t))), naam: "Bot " + s.divisions.length});
+  if (s.divisions.length < 3 && s.cash > newDivCost(s) + 90) { const opts = SECTORS.filter(t => !s.divisions.some(d => d.type === t) && (s.heat < 30 || (typeOf(s, t) || {}).heat <= 1)); if (opts.length) actProject(s, "divisie", {type: CH(opts), naam: "Bot " + s.divisions.length}); }
   // bedrijven: contracten en aandelen
   if (s.cash > 90){ const b = (s.bedrijven || []).filter(b => !b.eigenaar && !b.contract).sort((a, b) => bedrijfOpties(s, b).contract.kost - bedrijfOpties(s, a).contract.kost).pop(); if (b && bedrijfOpties(s, b).contract.kost < s.cash - 60) actBedrijf(s, ctx, b.id, "contract"); }
   // agressief: oorlog tegen de zwakste rivaal
@@ -93,7 +93,7 @@ async function run(strat, n, diff){
       try { if (strat === "passief") passief(s, ctx); else verstandig(s, ctx, strat === "agressief"); } catch(e){ out.push({fout: String(e && e.stack || e).slice(0, 300)}); break; }
       tick(s); ctx.mails.length = 0;
     }
-    out.push({status: s.status, maanden: maandenGespeeld(s), waarde: playerValue(s), cash: Math.round(s.cash), score: s.eind ? s.eind.score : null, derde, weg, morale: Math.round(s.morale), heat: Math.round(s.heat)});
+    out.push({status: s.status, maanden: maandenGespeeld(s), waarde: playerValue(s), cash: Math.round(s.cash), score: s.eind ? s.eind.score : null, derde, weg, heatGesch: (s.history || []).slice(-8).map(h => Math.round(h.heat)), heatDelen: s.gezondheid && s.gezondheid.heat && s.gezondheid.heat.delen, divs: s.divisions.map(d => d.type + d.level).join(","), morale: Math.round(s.morale), heat: Math.round(s.heat)});
   }
   return out;
 }
@@ -122,6 +122,7 @@ async function run(strat, n, diff){
     console.log("  score per einde:", Object.entries(per).map(([k, v]) => `${k} ${med(v)}`).join(" · "));
     const err = res.filter(r => r.fout); if (err.length) console.log("  FOUTEN:", err.length, err[0].fout);
   }
+  if (process.env.DIAG){ const res = await p.evaluate(([a, n, d]) => window.__run(a, n, d), ["verstandig", 60, DIFF]); for (const r of res.filter(r => /RAZZIA/.test(r.status)).slice(0, 12)) console.log(r.maanden, r.divs, JSON.stringify(r.heatGesch), JSON.stringify(r.heatDelen)); }
   if (fouten.length) console.log("\nPAGINAFOUTEN:", fouten.slice(0, 5));
   await b.close();
 })();

@@ -478,7 +478,7 @@ function tick(s){
     const eff = (d.efficiency || 1) * (0.75 + 0.35 * s.morale / 100) * sf;
     const r = t.rev * Math.pow(d.level, 0.95) * eff * (1 + U(-t.vol, t.vol)) * marketRevMult(s, d.type) * sectorBonus(s, d.type) * sectorMult(s, d.type) * productMult(s, d);
     const c = t.cost * 0.85 * d.level * diff * divCostMult(s, d.type);
-    rev += r; cost += c; heatAdd += t.heat * Math.pow(d.level, 0.75) * 0.5;
+    rev += r; cost += c; heatAdd += t.heat * Math.pow(t.heat <= 1 ? Math.min(d.level, 6) : d.level, 0.75) * 0.5;
     lines.push(`| ${d.name || d.type} (${d.type} L${d.level}) | ${r1(r)} | ${r1(c)} |`); (s.divomzet ??= {})[d.name || d.type] = r1(r);
   }
   for (const d of s.districts) if (d.control === "player"){ rev += incOf(d) * U(0.85, 1.15); cost += d.upkeep; }
@@ -613,7 +613,7 @@ function tick(s){
 }
 
 /* ---------- de stad: elke game een andere kaart ---------- */
-const VERSION = "3.4";
+const VERSION = "3.5";
 const MAP_W = 1000, MAP_H = 680;
 const RIVAL_COLORS = ["#ff9a1f", "#3d7bff", "#c6ff2e", "#f2f2f2", "#9b5cff", "#ffd400", "#ff4d4d"];
 const ARCH = {
@@ -2323,7 +2323,8 @@ function mkProduct(s, d, naam, kw, pop){ return {id: "p" + hex8(), naam: naam ||
 const divNaam = d => d.name || d.type;
 const opMarkt = (s, d) => (s.producten || []).filter(p => p.divisie === divNaam(d) && p.status === "markt");
 const maxProducten = d => 2 + d.level;
-function productMult(s, d){ const ps = opMarkt(s, d); if (!ps.length) return 0.95; return clamp(0.95 + 0.06 * ps.reduce((a, p) => a + prodGewicht(p, s), 0), 0.95, 1.45); }
+const leegStraf = d => clamp(((d.leeg || 0) - 12) * 0.006, 0, 0.2);
+function productMult(s, d){ const ps = opMarkt(s, d); if (!ps.length) return Math.round((0.95 - leegStraf(d)) * 100) / 100; return clamp(0.95 + 0.06 * ps.reduce((a, p) => a + prodGewicht(p, s), 0), 0.95, 1.45); }
 function productKans(s, d, schaal){ const sc = PRODUCT_SCHAAL[schaal]; const b = Math.ceil(d.level / 2) + ((s.crew || []).some(m => m.rol === "spindokter") ? 1 : 0); return {bonus: b, doel: sc.doel, kans: kans2d6(b, sc.doel)}; }
 function actProduct(s, ctx, soort, a){
   const pay = k => { if (s.cash < k) return false; s.cash = r1(s.cash - k); s.accounts.operationeel = s.cash; return true; };
@@ -2359,6 +2360,7 @@ function actProduct(s, ctx, soort, a){
 }
 function productTick(s, ctx){
   s.producten ??= [];
+  for (const d of s.divisions){ const had = (d.leeg || 0) > 12; d.leeg = opMarkt(s, d).length ? 0 : (d.leeg || 0) + 1; if (d.leeg === 13) mail(ctx, s, "Verkoop", `${divNaam(d)} verkoopt al een jaar niets`, `Klanten van ${divNaam(d)} stappen over naar rivalen die wel iets nieuws hebben. Zolang we niets op de markt hebben, zakt de omzet van deze divisie elke maand verder, tot −20%. Eén product stopt het meteen.`, "HOOG"); }
   const namen = new Set(s.divisions.map(divNaam)); s.producten = s.producten.filter(p => namen.has(p.divisie));
   for (const d of s.divisions){ const nm = divNaam(d); if (s.producten.some(p => p.divisie === nm && p.status === "ontwikkeling")) continue;
     const q = s.producten.find(p => p.divisie === nm && p.status === "wachtrij"); if (!q) continue;
@@ -2815,7 +2817,7 @@ function adviezen(s){
   const markt = (s.producten || []).filter(p => p.status === "markt"), dev = (s.producten || []).filter(p => p.status === "ontwikkeling" || p.status === "wachtrij");
   const net = ((s.history || []).slice(-1)[0] || {}).netto;
   if (!markt.length && !dev.length) add(10, "Je verkoopt nog niets. Start je eerste product bij Bedrijf → Productlijn: klein kost €5k en is in 2 maanden klaar, en een divisie met producten verdient meer.", "bedrijf");
-  else for (const d of s.divisions) if (!(s.producten || []).some(p => p.divisie === divNaam(d))) add(7, `${divNaam(d)} heeft geen producten en draait op ×0,95. Start er een bij Bedrijf → Productlijn.`, "bedrijf");
+  else for (const d of s.divisions) if (!(s.producten || []).some(p => p.divisie === divNaam(d))) add((d.leeg || 0) > 12 ? 9 : 7, (d.leeg || 0) > 12 ? `${divNaam(d)} verkoopt al ${d.leeg} maanden niets: klanten lopen weg, omzet ×${productMult(s, d).toFixed(2)}. Start een product bij Bedrijf → Productlijn.` : `${divNaam(d)} heeft geen producten en draait op ×0,95; na een jaar zonder producten lopen klanten weg. Start er een bij Bedrijf → Productlijn.`, "bedrijf");
   if ((s.keuzes || []).length) add(9, `${s.keuzes.length} beslissing(en) wachten op je. Zonder antwoord kiest het spel na twee maanden zelf, meestal niet in jouw voordeel.`, "overzicht");
   if (net != null && net < 0 && s.cash > 0) add(9, `Je verloor vorige maand €${Math.abs(net)}k. Met €${Math.round(s.cash)}k in kas heb je nog ±${Math.max(1, Math.round(s.cash / -net))} maanden. Snij in crew, personeel of projecten, of lanceer een product.`, "financien");
   if (s.staff.count < staffNeed(s)) add(8, `Onderbezet: ${s.staff.count} mensen voor ${staffNeed(s)} plekken. Divisies draaien op halve kracht en morale lijdt. Neem ${staffNeed(s) - s.staff.count} mensen aan bij Bedrijf (€0,4k p.p.).`, "bedrijf");
@@ -2842,7 +2844,8 @@ const SPELREGELS = [
   ["Een beurt", "Elke beurt is een maand. Je doet wat je wilt (producten, mensen, crew, deals) en klikt dan Volgende maand. Dan rekent de engine omzet, kosten, gebeurtenissen en rivalen uit en stuurt de CFO een rapport."],
   ["Geld", "Omzet komt uit divisies (hoger niveau = meer), producten (kwaliteit × populariteit × markt), gebieden, contracten en klussen. Kosten: divisies, lonen, crew, rente, projecten en winstbelasting. Drie maanden rood = failliet."],
   ["Dobbelstenen", "Elke onzekere actie is 2d6 + bonus tegen een doel. Twee zessen lukt altijd, twee enen nooit. De kans die je vooraf ziet is de echte kans. Elke worp staat in Logboek → Dobbelstenen."],
-  ["Morale en heat", "Morale onder 10, twee maanden lang: coup. Heat boven 90, twee maanden lang: razzia. Het overzicht laat zien waarom ze bewegen en waarschuwt ruim op tijd."],
+  ["Morale en heat", "Morale onder 10, twee maanden lang: coup. Heat boven 90, twee maanden lang: razzia. Heat komt vooral uit riskante en illegale divisies (Smokkel, Cyberware, Private Security), die met elk niveau meer aandacht trekken; legale divisies trekken boven niveau 6 geen extra aandacht meer. Het overzicht laat zien waarom ze bewegen en waarschuwt ruim op tijd."],
+  ["Stilstand", "Verkoopt een divisie een jaar lang niets, dan lopen klanten naar rivalen: de omzet zakt elke maand verder, tot −20%. Eén product op de markt stopt het meteen."],
   ["Winnen", "Een bedrijfswaarde van €8.000k (10 jaar: €4.800k, eindeloos: €12.000k), 60% op drie continenten, of 3 van de 5 oorspronkelijke rivalen uitgeschakeld. Anders telt na de gekozen speellengte je score."],
   ["Score", "Bedrijfswaarde telt met de wortel (40 × √waarde), plus dominantie, reputatie, jaren, uitgeschakelde rivalen en status. Winnen ×1,25 plus tempo, termijn uitdienen ×1, verliezen ×0,75 en zonder de waarde van je bedrijf: een verlies scoort dus nooit hoger dan overleven met hetzelfde bedrijf."],
   ["Keuzes", "Keuzemails hebben knoppen; elke optie zegt wat ze kost en doet. Antwoord je niet, dan kiest het spel na twee maanden de standaardoptie."],
