@@ -556,7 +556,7 @@ function tick(s){
   rivalAI(s, ctx, diff);
   navalTick(s, ctx, diff);
   gangTick(s, ctx, diff);
-  crewTick(s, ctx); legerTick(s, ctx); dreigTick(s, ctx, diff);
+  crewTick(s, ctx); legerTick(s, ctx); dreigTick(s, ctx, diff); planTick(s, ctx, diff);
 
   for (const e of EVENTS){
     if (e.when(s) && R() < eventProb(s, e, diff)){
@@ -626,7 +626,7 @@ function tick(s){
 }
 
 /* ---------- de stad: elke game een andere kaart ---------- */
-const VERSION = "3.7.1";
+const VERSION = "3.8";
 const MAP_W = 1000, MAP_H = 680;
 const RIVAL_COLORS = ["#ff9a1f", "#3d7bff", "#c6ff2e", "#f2f2f2", "#9b5cff", "#ffd400", "#ff4d4d"];
 const ARCH = {
@@ -1718,6 +1718,7 @@ function applyChoice(s, ctx, eff, out = []){
     if (o.pop) p.pop = Math.round(clamp(p.pop + o.pop, 3, 95)); if (o.pop && isAbo(p)) p.abo = r1(clamp((p.abo ?? p.pop) * (1 + o.pop / (o.pop < 0 ? 100 : 200)), 0, 140)); if (o.prijs && PRIJS[o.prijs]) p.prijs = o.prijs; if (o.versie && !p.verbetering && p.kwaliteit < 5) p.verbetering = o.versie; }
   if (eff.crew_vrij){ const m = (s.crew || []).find(x => x.id === eff.crew_vrij); if (m){ m.uit = null; m.loyaliteit = clamp(m.loyaliteit + 15); } }
   for (const [id, v] of Object.entries(eff.crew_loy || {})){ const m = (s.crew || []).find(x => x.id === id); if (m) m.loyaliteit = clamp(m.loyaliteit + v); }
+  if (eff.plan) planActie(s, eff.plan, out);
   if (eff.integratie) out.push(koppelBedrijf(s, eff.integratie.id, eff.integratie.wijze));
   if (eff.tekst) out.push(eff.tekst);
   return out;
@@ -2426,6 +2427,70 @@ function verdediging(s, t){
   if (t && t.type === "smaad" && cr.some(m => m.rol === "spindokter")) v += 1;
   if (t && t.type === "omkoping" && cr.some(m => m.rol === "speurder")) v += 1;
   return v;
+}
+
+/* ===================== 3.8 PLANNEN: rivalen en syndicaten die over maanden iets tegen je opbouwen ===================== */
+const PLAN_SOORT = {
+  prijsoorlog: {titel: (w) => `${w} bereidt een prijsoorlog voor`, stappen: ["koopt stilletjes leveranciers op", "werft verkopers weg bij concurrenten", "dumpt de prijzen"], eindTekst: "4 maanden minder omzet en je producten verliezen populariteit",
+    eind(s, p, f){ (s.lopende_effecten ??= []).push({naam: `Prijsoorlog van ${p.wie}`, maanden: 4, effect: {cash: -r1(4 * omvang(s) * f)}}); for (const x of (s.producten || []).filter(x => x.status === "markt")) x.pop = Math.round(clamp(x.pop - 8 * f, 3, 95)); return `${p.wie} dumpt de prijzen: vier maanden lang verliezen we omzet en klanten.`; }},
+  personeel: {titel: (w) => `${w} wil je mensen`, stappen: ["brengt je teams in kaart", "doet aanbiedingen onder de tafel", "haalt een heel team weg"], eindTekst: "je verliest personeel, morale en loyaliteit van je directie",
+    eind(s, p, f){ const n = Math.max(2, Math.round(s.staff.count * 0.1 * f)); s.staff.count = Math.max(5, s.staff.count - n); s.morale = clamp(s.morale - 6 * f); const np = s.npcs[0]; if (np) np.loyalty = clamp(np.loyalty - 15 * f); return `${p.wie} heeft ${n} mensen weggekocht. De rest kijkt rond.`; }},
+  laster: {titel: (w) => `${w} bouwt een lastercampagne`, stappen: ["verzamelt vuil over je bedrijf", "benadert journalisten", "publiceert"], eindTekst: "reputatie omlaag, heat omhoog",
+    eind(s, p, f){ s.reputation = clamp(s.reputation - 8 * f); s.heat = clamp(s.heat + 4 * f); (s.lopende_effecten ??= []).push({naam: `Laster van ${p.wie}`, maanden: 2, effect: {reputation: -1 * f}}); return `De artikelen staan online. ${p.wie} ontkent alles, met een glimlach.`; }},
+  contract: {titel: (w, b) => `${w} wil je contract met ${b}`, stappen: ["praat met je contractpartner", "biedt meer dan jij", "neemt het contract over"], eindTekst: "je verliest een leveringscontract",
+    eind(s, p, f){ const st = (s.streams || []).find(x => x.naam === "Contract " + p.doel); if (!st || f < 1){ if (f < 1) return `${p.doel} bleef bij ons, omdat we op tijd beter boden. Het kostte wel wat goodwill bij ${p.wie}.`; return PLAN_SOORT.laster.eind(s, p, f); }
+      s.streams = s.streams.filter(x => x !== st); const b = (s.bedrijven || []).find(x => x.naam === p.doel); if (b){ b.contract = false; b.relatie = Math.round(clamp(b.relatie - 20, -100, 100)); } return `${p.doel} levert voortaan aan ${p.wie}. Ons contract (€${st.bedrag}k per maand) is weg.`; }},
+  sabotage: {titel: (w) => `${w} plant een aanslag op je depots`, stappen: ["verkent je depots", "koopt een bewaker om", "slaat toe"], eindTekst: "cash weg en je beste product raakt beschadigd",
+    eind(s, p, f){ const k = r1(10 * omvang(s) * f); s.cash = r1(s.cash - k); s.accounts.operationeel = s.cash; s.heat = clamp(s.heat + 2); const best = (s.producten || []).filter(x => x.status === "markt").sort((a, b) => b.pop - a.pop)[0]; if (best) best.pop = Math.round(clamp(best.pop - 15 * f, 3, 95));
+      return `Brand in een depot. €${k}k schade${best ? `, en ${best.naam} ligt een maand niet in de winkels` : ""}.`; }},
+};
+function planKansOntdekt(s){ return clamp(0.2 + ((s.crew || []).some(m => ["speurder", "fixer"].includes(m.rol) && crewStatus(s, m) !== "opgepakt") ? 0.3 : 0) + (relV(s, "fixer") >= 30 ? 0.15 : 0), 0, 0.8); }
+function planStart(s, ctx, diff){
+  if ((s.plannen ??= []).length || maandenGespeeld(s) < 8 || R() > 0.07 * diff) return;
+  const riv = s.rivals.filter(r => r.status === "oorlog" || (r.relatie || 0) < -10 || r.aggression > 0.6), gangs = (s.gangs || []).filter(g => g.deal === "oorlog" || g.relatie < -30);
+  const opties = [...riv.map(r => [{r}, 2]), ...gangs.map(g => [{g}, 1])]; if (!opties.length) return;
+  const o = wpick(opties); let soort, wie, doel = null;
+  if (o.g){ soort = "sabotage"; wie = o.g.naam; }
+  else { wie = o.r.name; const contract = (s.streams || []).find(x => /^Contract /.test(x.naam)); soort = CH(["prijsoorlog", "personeel", "laster", ...(contract ? ["contract"] : [])]); if (soort === "contract") doel = contract.naam.slice(9); }
+  const T = PLAN_SOORT[soort];
+  s.plannen.push({id: "pl" + hex8(), soort, wie, doel, gang: !!o.g, titel: T.titel(wie, doel), stappen: T.stappen.slice(), stap: 0, volgende: plusMonths(s, 2), ontdekt: false, sinds: ym(s)});
+}
+function planTick(s, ctx, diff){
+  planStart(s, ctx, diff);
+  for (const p of [...(s.plannen || [])]){
+    if (p.volgende > ym(s)) continue;
+    p.stap += 1; p.volgende = plusMonths(s, 2);
+    if (p.stap >= p.stappen.length){
+      const f = p.zacht ? 0.5 : 1, txt = PLAN_SOORT[p.soort].eind(s, p, f); s.plannen = s.plannen.filter(x => x !== p);
+      const r = s.rivals.find(x => x.name === p.wie); if (r) remember(r, s, `${p.titel}: uitgevoerd`);
+      mail(ctx, s, p.ontdekt ? "Head of Security" : "Anoniem", p.ontdekt ? `${p.titel}: het is zover` : `Nu pas zien we het: ${p.titel.charAt(0).toLowerCase() + p.titel.slice(1)}`, `${txt}${p.zacht ? " We waren voorbereid: het had erger kunnen zijn." : ""}${p.ontdekt ? "" : " Niemand had het zien aankomen. Een speurder of fixer in je crew hoort zulke dingen eerder."}`, "HOOG");
+      ctx.rep.push(`Plan uitgevoerd: ${p.titel}`); continue; }
+    if (!p.ontdekt && R() < planKansOntdekt(s)){
+      p.ontdekt = true; const kosten = r1(5 * omvang(s)), kans = snapKans(clamp(45 + ((s.crew || []).some(m => m.rol === "huurling") ? 10 : 0) + ((s.crew || []).some(m => m.rol === "speurder") ? 10 : 0) + (relV(s, "fixer") >= 30 ? 10 : 0), 20, 85));
+      addKeuze(s, ctx, {soort: "plan_" + p.id, van: "Je crew", titel: `Ontdekt: ${p.titel}`, tekst: `${p.wie} is bezig. Stap ${p.stap} van ${p.stappen.length}: ${p.stappen[p.stap - 1]}. Volgende stap: ${p.stappen[p.stap]}. Als het plan slaagt: ${PLAN_SOORT[p.soort].eindTekst}.${p.gm && p.motief ? " Waarom: " + p.motief : ""}`, opties: [
+        {label: `Verstoren · €${kosten}k`, kost: kosten, uitleg: `Kans ${kans}% dat het plan stopt. Mislukt het, dan weten ze dat we het weten: heat +3 en ze versnellen.`, eff: {kans, succes: {plan: {id: p.id, actie: "stop"}}, falen: {heat: 3, plan: {id: p.id, actie: "haast"}}}},
+        {label: "Voorbereiden · €3k", kost: 3, uitleg: "Het plan gaat door, maar de klap is half zo groot.", eff: {plan: {id: p.id, actie: "zacht"}}},
+        {label: "Laten gebeuren", uitleg: `Gratis. Over ${2 * (p.stappen.length - p.stap)} maanden: ${PLAN_SOORT[p.soort].eindTekst}.`, eff: {}}], standaard: 2}); }
+  }
+}
+function planActie(s, o, out){
+  const p = (s.plannen || []).find(x => x.id === o.id); if (!p) return;
+  if (o.actie === "stop"){ s.plannen = s.plannen.filter(x => x !== p); const r = s.rivals.find(x => x.name === p.wie); if (r){ remember(r, s, `${p.titel}: verstoord door de speler`); relShift(r, -5); } out.push(`${p.titel}: verstoord. ${p.wie} moet opnieuw beginnen.`); }
+  else if (o.actie === "zacht"){ p.zacht = true; out.push("We zijn voorbereid: de klap wordt half zo groot."); }
+  else if (o.actie === "haast"){ p.volgende = ym(s); out.push(`${p.wie} weet dat we het weten en versnelt.`); }
+}
+function planPrompt(s, p){
+  return `Je bent de Game Master van CHROME LEDGER (Nederlands, droog, cynisch, corporate-noir). ${p.wie} ${p.gang ? "(een syndicaat)" : "(een rivaliserende corporatie)"} begint een plan tegen ${s.player.corp_name}. Het soort plan ligt vast: ${p.soort} (${PLAN_SOORT[p.soort].eindTekst}). Schrijf er een geloofwaardige titel bij, ${p.stappen.length} korte stappen (3-8 woorden, wat ze doen) en een motief van 1 zin, passend bij wat ze over de speler onthouden.
+Context: ${JSON.stringify({rivaal_geheugen: ((s.rivals.find(r => r.name === p.wie) || {}).memory || []).slice(-4), speler_producten: (s.producten || []).filter(x => x.status === "markt").map(x => x.naam).slice(0, 5), doel: p.doel})}
+Antwoord met alleen JSON: {"titel": "...", "stappen": ["...", "...", "..."], "motief": "..."}`;
+}
+async function planGM(s){
+  if (!live()) return; const p = (s.plannen || []).find(x => !x.gm); if (!p) return; p.gm = true;
+  try { const r = await G.sample.json(planPrompt(s, p), {modelTier: "quick"}); if (s !== G.game) return;
+    if (r && cStr(r.titel, 90)) p.titel = cStr(r.titel, 90);
+    if (r && Array.isArray(r.stappen) && r.stappen.length === p.stappen.length) p.stappen = r.stappen.map((x, i) => cStr(x, 80) || p.stappen[i]);
+    if (r && r.motief) p.motief = cStr(r.motief, 200); await persist(Ctx()); }
+  catch(e){ foutLog("plan door de GM", e); }
 }
 function dreigTick(s, ctx, diff){
   s.dreigingen ??= [];
@@ -3615,6 +3680,7 @@ function vm(){
     streams: s.streams || [], invloed: s.invloed || 0, dominantie: dominanceIncome(s, "player"), zeeSterkte: Object.fromEntries(seaControl(s).map(z => [z.id, z.sterkte.player || 0])), regios: regionDominance(s), vergunning: !!s.flags.vergunning,
     invloedActies: INFLUENCE, factieNamen: Object.keys(s.factions), rivaalNamen: s.rivals.map(r => r.name),
     leenruimte: loanCap(s), nieuwe_divisie_kost: newDivCost(s), divisie_types: allTypes(s), contract: s.flags.nomad_contract,
+    plannen: (s.plannen || []).filter(p => p.ontdekt).map(p => ({titel: p.titel, wie: p.wie, stap: p.stap, van: p.stappen.length, stappen: p.stappen, wanneer: p.volgende, zacht: !!p.zacht, eind: PLAN_SOORT[p.soort].eindTekst, motief: p.motief || ""})),
     adviezen: adviezen(s), doelen: doelen(s), scoreNu: score(s), lengte: spelLengte(s), gezondheid: s.gezondheid || null, eind: s.eind || null,
     crewv: crewVM(s), tijd: tijdVM(s), productlijn: productVM(s), projectRisico: projectRisico(s),
     verdedigingInfo: {waarde: verdediging(s, null), macht: playerPower(s), intel: (s.crew || []).some(m => ["speurder", "fixer"].includes(m.rol)), open: (s.dreigingen || []).map(t => ({label: t.label, van: t.van, maand: t.maand}))},
@@ -3633,7 +3699,7 @@ const API = {
     try { await Store.backup(); } catch(e){ foutLog("back-up voor de maand", e); }
     S.expect = true; const ctx = tick(s); const docs = await persist(ctx); S.expect = false;
     Store.slots().then(L => Store.saveSlots(L)).catch(() => {});
-    verhaalBeurt(s).catch(() => {});
+    verhaalBeurt(s).catch(() => {}); planGM(s).catch(e => foutLog("plan door de GM", e));
     if (s.status !== "actief" && s.eind) await Store.addScore({id: G.gid + "-" + s.eind.datum, naam: s.player.corp_name, status: s.status, score: s.eind.score, datum: s.eind.datum, moeilijkheid: s.player.difficulty});
     return {ok: true, status: s.status, rapport_mail: docs[ctx.reportIndex] && docs[ctx.reportIndex].id};
   },

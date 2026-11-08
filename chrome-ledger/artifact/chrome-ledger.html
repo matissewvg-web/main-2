@@ -140,6 +140,7 @@ h2::after{content:"";flex:1;height:1px;background:linear-gradient(90deg,var(--li
 .opt .u{font-size:14px;color:var(--muted)}
 .starter{border:1px dashed var(--line);padding:10px 12px;margin-top:4px}
 .stappen{margin-bottom:14px;box-shadow:inset 0 0 0 1px var(--cyan)}
+.planstap{margin:6px 0;padding-left:20px;font-size:14px}.planstap li.af{opacity:.5;text-decoration:line-through}.planstap li.nu{color:var(--amber);font-weight:700}
 .gmsnel{display:flex;flex-wrap:wrap;gap:6px;padding:8px 12px;border-top:1px solid var(--line)}.gmsnel .chip{font-size:12.5px;padding:4px 9px}
 .stapl{list-style:none;margin:8px 0 0;padding:0;display:grid;gap:8px}
 .stapl li{display:grid;grid-template-columns:22px minmax(0,1fr) auto;gap:10px;align-items:center}
@@ -878,6 +879,7 @@ financien(){
 rivalen(){
   const st = S.state, P = st.macht;
   return `<h1>Rivalen</h1>
+  ${plannenCard(st)}
   <div class="card"><div class="spread" style="flex-wrap:wrap"><div class="row" style="gap:26px">
       <div><div class="kpi">JOUW MACHT</div><div class="big">${P.speler}</div></div>
       <div><div class="kpi">BEVEILIGING</div><div class="big">${P.defensie}<span class="dim" style="font-size:15px"> / 5</span></div></div>
@@ -996,6 +998,7 @@ function setupBonus(homeD){
     <p class="dim" style="font-size:13px;margin:6px 0 0">Elk soort land geeft een ander voordeel: havens, financiële centra, datavalleien, sloppen. Klik verschillende landen aan om ze te vergelijken.</p>` : "";
 }
 const VERSIES = [
+  ["3.8", "Plannen tegen jou", ["Rivalen en syndicaten bouwen nu over maanden iets tegen je op: een prijsoorlog, je mensen wegkopen, een lastercampagne, je leveringscontract afpakken of (syndicaten) een aanslag op je depots. Elk plan heeft drie stappen, twee maanden per stap.", "Met een speurder of fixer in je crew, of een goede band met je fixer, ontdek je een plan vaker op tijd. Dan kies je: verstoren (kost geld, met een kans), voorbereiden (de klap is half zo groot) of laten gebeuren. Bekende plannen staan bovenaan bij Rivalen, met elke stap.", "Is de GM live, dan schrijft hij titel, stappen en motief op maat, met wat de rivaal over je onthoudt. De effecten liggen vast in de engine."]],
   ["3.7.1", "De GM antwoordt altijd", ["Snelknoppen in het GM-venster: Wat nu?, Vat mijn maand samen, Hoe sta ik ervoor? en Wat kost het om… Is de GM niet live, dan antwoordt het spel zelf uit de cijfers, zodat de knoppen altijd iets opleveren.", "Kaart: namen die elkaar raken worden weggelaten (je eigen gebieden en de geselecteerde eerst); inzoomen maakt de letters kleiner zodat er meer namen passen. Gebieden zijn met Tab en Enter te bedienen.", "Wat nu? herhaalt niet meer wat Eerste stappen al zegt."]],
   ["3.7", "Rust en eerste stappen", ["Een kaart Eerste stappen in het overzicht: vijf concrete dingen voor je eerste maanden (eerste product, crew aan het werk, een contract, de GM iets vragen, je eerste maand), met een knop naar de juiste plek. Ze verdwijnt als alles af is, of met Verbergen.", "Kleine meldingen (stroomstoringen, marktgeruchten, konvooien, kleine incidenten) komen niet meer als losse mail maar onderaan het maandrapport onder Ook deze maand.", "Telefoon: de statusbalk is een raster van drie kolommen in plaats van een rij die afkapt, en tekst op een geselecteerde chip blijft leesbaar."]],
   ["3.6", "Opslag die niet stil faalt", ["Saves zijn ongeveer 75% kleiner: de wereldkaart wordt bij het laden opnieuw opgebouwd in plaats van elke maand mee bewaard. Daardoor passen er veel meer spellen en back-ups in je browser.", "Een mislukte back-up meldt zich nu luid (melding en opslagkaart) in plaats van stil te falen.", "Maximaal 6 spellen in de browser, met een duidelijke melding. Kan je huidige spel niet apart bewaard worden, dan start er geen nieuw spel, zodat je nooit iets kwijtraakt.", "Foutlog onder Logboek → Opslag: vangnetten die vroeger fouten stil inslikten, schrijven ze nu op."]],
@@ -1015,7 +1018,7 @@ const VERSIES = [
   ["1.1", "Wereld", ["Nieuwe tab Wereld: wereldnieuws, een ranglijst van alle bedrijven met waarde en markten per sector.", "25 bedrijven verspreid over de wereld: zakendiner, leveringscontract, aandelen met dividend of een overname.", "Gebeurtenissen per land en continent (stormen, staatsgrepen, handelsakkoorden) veranderen tijdelijk wat gebieden opleveren.", "Startvoordeel per soort land, een eigen stad voor je hoofdkantoor, en per gebied op de kaart: wat het oplevert.", "Geruchten en marktberichten staan in het nieuws in plaats van in je inbox."]],
   ["1.0", "Echte wereld", ["Echte wereldkaart, dominantie per continent en zee, eskaders, rivalen met oorlog en handel, blijvende inkomstenbronnen."]],
 ];
-const PLANNING = [["3.8", "De GM plant mee: snelknoppen in het GM-venster en rivalen en syndicaten met een eigen plan over meerdere maanden."], ["3.9", "Diepgang: abonnementen (prijsverhoging, loyaliteit), een overzicht van je dochters en een bedrijfsfocus."], ["4.0", "Onderzoek: technologie per sector, betere divisies en nieuwe producten."]];
+const PLANNING = [["3.9", "Diepgang: abonnementen (prijsverhoging, loyaliteit), een overzicht van je dochters en een bedrijfsfocus."], ["4.0", "Onderzoek: technologie per sector, betere divisies en nieuwe producten."]];
 function versieCard(){
   const vrs = ([v, t, l]) => `<div style="margin:8px 0"><b class="mono" style="color:var(--cyan)">${v}</b> <b>${esc(t)}</b><ul class="ylist">${l.map(x => `<li>${esc(x)}</li>`).join("")}</ul></div>`;
   return `<div class="card" style="margin-top:16px"><h3>Versies</h3>${VERSIES.slice(0, 2).map(vrs).join("")}<details><summary class="muted" style="cursor:pointer;margin:6px 0">Oudere versies (${VERSIES.length - 2})</summary>${VERSIES.slice(2).map(vrs).join("")}</details>
@@ -1326,6 +1329,13 @@ function naamModal(titel, waarde){
     m.addEventListener("keydown", e => { if (e.key === "Enter") done(inp().value); if (e.key === "Escape") done(null); });
     document.body.appendChild(m); inp().focus(); inp().select();
   });
+}
+function plannenCard(st){
+  const L = st.plannen || [];
+  if (!L.length) return `<p class="dim" style="font-size:13px;margin:-4px 0 12px">Rivalen en syndicaten kunnen over maanden iets tegen je opbouwen: een prijsoorlog, je mensen wegkopen, laster, je contract afpakken of een aanslag. Een speurder of fixer in je crew hoort zulke plannen eerder. Nu zijn er geen bekend.</p>`;
+  return `<div class="card decision" style="margin-bottom:14px"><h3>Plannen tegen jou</h3>${L.map(p => `<div style="margin:8px 0 12px"><div class="spread"><b>${esc(p.titel)}</b><span class="tag HOOG">stap ${p.stap} van ${p.van}</span></div>
+    <ol class="planstap">${p.stappen.map((x, i) => `<li class="${i < p.stap ? "af" : i === p.stap ? "nu" : ""}">${esc(x)}${i === p.stap ? ` <span class="dim">(rond ${esc(p.wanneer)})</span>` : ""}</li>`).join("")}</ol>
+    <div class="dim" style="font-size:13px">Als het slaagt: ${esc(p.eind)}${p.zacht ? " · <b>je bent voorbereid, de klap is half zo groot</b>" : ""}${p.motief ? ` · motief: ${esc(p.motief)}` : ""}</div></div>`).join("")}</div>`;
 }
 function eersteStappen(){
   const s = G.game; if (!s || s.flags.stappen_weg || maandenGespeeld(s) >= 8) return "";
