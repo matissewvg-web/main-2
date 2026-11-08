@@ -6,3 +6,4 @@ release/
 .ci-data/
 __pycache__/
 chrome-ledger/game/.gsm_code
+.claude/settings.local.json
