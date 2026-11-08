@@ -138,6 +138,7 @@ h2::after{content:"";flex:1;height:1px;background:linear-gradient(90deg,var(--li
 .opt:hover{box-shadow:inset 0 0 0 1px var(--amber)}
 .opt .t{font-weight:700;letter-spacing:.04em}
 .opt .u{font-size:14px;color:var(--muted)}
+.opt .keff{font-size:13px;color:var(--text);opacity:.85;margin-top:2px;font-family:var(--mono)}
 .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
 .spread{display:flex;justify-content:space-between;align-items:center;gap:10px}
 input[type=text],input[type=number],select,textarea{background:rgba(6,2,14,.85);border:0;box-shadow:inset 0 0 0 1px var(--line2);padding:8px 10px;min-width:0;font-family:var(--mono);font-size:14.5px;color:#fff}
@@ -777,10 +778,11 @@ bedrijf(){
       <div class="spread"><h3>${esc(d.naam)}</h3><span class="tag cyan">L${d.level}</span></div>
       <div class="muted" style="font-size:14px">${esc(d.type)}${d.eigen?' <span class="tag">eigen soort</span>':""} · marktaandeel ~${d.aandeel}%</div>
       <div style="margin-top:10px"><button class="btn sm" data-a="upgrade" data-div="${esc(d.naam)}" ${d.bezig?"disabled":""}>${d.bezig?"Uitbreiding loopt":`Uitbreiden · ${eur(d.upgrade_kost)}`}</button>${!d.bezig && d.plan ? `<div class="dim" style="font-size:13px;margin-top:4px">${d.plan.extra > 0 ? `±+€${d.plan.extra}k per maand na belasting · terugverdiend in ±${d.plan.terug} mnd` : "Levert op dit niveau nauwelijks extra op."}</div>` : ""}</div></div>`).join("")}
-    <div class="card"><h3>Nieuwe divisie</h3>
+    <div class="card"><h3>Nieuwe divisie</h3>${divConceptBlok()}
+      <details class="handmatig" ${live() ? "" : "open"}><summary>Handmatig: kies een soort</summary>
       <div class="row" style="margin-top:6px"><select id="ndtype" aria-label="soort divisie">${st.divisie_types.map(t=>`<option ${S.newType===t?"selected":""}>${esc(t)}</option>`).join("")}</select>
         <input type="text" id="ndname" placeholder="Naam" style="flex:1;min-width:100px" aria-label="naam divisie"></div>
-      <div class="row" style="margin-top:8px"><button class="btn sm primary" data-a="newdiv">Opstarten · ${eur(st.nieuwe_divisie_kost)}</button><span class="muted" style="font-size:13px">3 maanden, +€3k/mnd</span></div></div>
+      <div class="row" style="margin-top:8px"><button class="btn sm primary" data-a="newdiv">Opstarten · ${eur(st.nieuwe_divisie_kost)}</button><span class="muted" style="font-size:13px">3 maanden, +€3k/mnd</span></div></details></div>
   </div>
   ${productSection(st)}
   <div class="grid g2" style="margin-top:14px">
@@ -930,10 +932,24 @@ function districtYield(s, d){
 /* ---- kaarten ---- */
 function keuzeCard(k, inline){
   const st = S.state;
-  return `<div class="card decision keuze"><div class="spread"><h3>${esc(k.titel)}</h3><span class="tag HOOG">kies voor ${esc(k.verloopt)}</span></div>
+  return `<div class="card decision keuze"><div class="spread"><h3>${esc(k.titel)}</h3><span class="tag HOOG">kies voor ${esc(k.verloopt)}</span></div>${k.boog ? `<div class="kpi" style="color:var(--violet);margin:2px 0 4px">VERHAAL · ${esc(k.boog)}</div>` : ""}
     <p class="muted" style="margin:0 0 4px;font-size:13.5px">Van ${esc(k.van)}</p>${inline ? "" : `<p style="margin:0">${esc(k.tekst)}</p>`}
-    <div class="opts">${k.opties.map((o, i) => `<div class="opt"><div><div class="t">${esc(o.label)}</div><div class="u">${esc(o.uitleg || "")}${o.eff && o.eff.kans != null ? ` <span class="mono" style="color:var(--cyan)">· worp 2d6 ≥ ${doelVoor(o.eff.kans)}, ${snapKans(o.eff.kans)}% kans</span>` : ""}</div></div>
+    <div class="opts">${k.opties.map((o, i) => `<div class="opt"><div><div class="t">${esc(o.label)}</div><div class="u">${esc(o.uitleg || "")}${o.eff && o.eff.kans != null ? ` <span class="mono" style="color:var(--cyan)">· worp 2d6 ≥ ${doelVoor(o.eff.kans)}, ${snapKans(o.eff.kans)}% kans</span>` : ""}${k.gm && keuzeEffTekst(o.eff) ? `<div class="keff">${esc(keuzeEffTekst(o.eff))}</div>` : ""}</div></div>
       <button class="btn sm warn" data-a="keuze" data-id="${esc(k.id)}" data-i="${i}" ${o.kost && (o.bron === "zwart" ? st.zwart : st.cash) < o.kost ? "disabled" : ""}>Kies</button></div>`).join("")}</div></div>`;
+}
+const KE_NAAM = {heat: "heat", reputation: "reputatie", morale: "morale", invloed: "invloed"};
+function keuzeEffTekst(e){
+  if (!e || typeof e !== "object") return "";
+  if (e.kans != null) return `Lukt: ${keuzeEffTekst(e.succes) || "niets"}. Mislukt: ${keuzeEffTekst(e.falen) || "niets"}.`;
+  const d = [], sg = v => (v > 0 ? "+" : "") + v;
+  if (e.cash) d.push(`${e.cash > 0 ? "+" : "−"}€${Math.abs(e.cash)}k`);
+  if (e.zwart) d.push(`${e.zwart > 0 ? "+" : "−"}€${Math.abs(e.zwart)}k zwart`);
+  for (const k of Object.keys(KE_NAAM)) if (e[k]) d.push(`${KE_NAAM[k]} ${sg(e[k])}`);
+  for (const [n, v] of Object.entries(e.factions || {})) d.push(`${n} ${sg(v)}`);
+  for (const [n, v] of Object.entries(e.loyaliteit || {})) d.push(`loyaliteit ${n} ${sg(v)}`);
+  for (const [n, o] of Object.entries(e.rivaal || {})) if (o && o.relatie) d.push(`relatie ${n} ${sg(o.relatie)}`);
+  for (const [id, o] of Object.entries(e.product || {})){ const p = ((G.game && G.game.producten) || []).find(x => x.id === id); if (o && o.pop) d.push(`populariteit ${p ? p.naam : "product"} ${sg(o.pop)}`); }
+  return d.join(", ");
 }
 function keuzeInline(id){
   const st = S.state, k = st.keuzes.find(x => x.id === id);
@@ -967,6 +983,7 @@ function setupBonus(homeD){
     <p class="dim" style="font-size:13px;margin:6px 0 0">Elk soort land geeft een ander voordeel: havens, financiële centra, datavalleien, sloppen. Klik verschillende landen aan om ze te vergelijken.</p>` : "";
 }
 const VERSIES = [
+  ["3.3", "De GM ontwerpt en vertelt", ["Een nieuwe divisie of eigen bedrijfstak beschrijf je in je eigen woorden. De GM kiest een bestaande soort of verzint een nieuwe met eigen cijfers, ontwerpt het eerste product of de eerste dienst (start vanzelf bij de opening) en schrijft een openingsverhaal met keuzes.", "Verhaalbogen: om de paar maanden schrijft de GM een volgend hoofdstuk rond jouw bedrijf, met je echte producten, mensen, crew, rivalen en syndicaten. Je keuze bepaalt het volgende hoofdstuk; na 3 of 4 hoofdstukken sluit de boog af en begint er later een nieuwe.", "De engine bewaakt alle grenzen en gooit de dobbelstenen. Zonder live GM blijven de vaste gebeurtenissen en de keuzelijst onder Handmatig gewoon werken."]],
   ["3.2.1", "Eerlijker begin", ["Een startend bedrijf werd door facturen, gebeurtenissen, chaos, aanslagen, prijsoorlogen en beschermgeld net zo hard geraakt als een megacorporatie: gemiddeld €9,7k per maand buiten het maandresultaat om, terwijl een starter €5-8k netto verdient. Die posten schalen nu mee met je omzet (×0,35 tot ×2).", "Gevolg in de balanstest (40 spellen, Realistisch): de verstandige bot gaat niet meer binnen 2 jaar failliet en wint vaker (±43%), na gemiddeld ruim tien jaar."]],
   ["3.2", "Jij beschrijft, de GM ontwerpt", ["Iets nieuws maken begint nu met jouw eigen woorden: een product, een dienst, een abonnement of een netwerk. De GM ontwerpt het: naam, vorm, doelgroep, markt, kosten, duur, moeilijkheid, wat het per maand met de wereld doet, en 2 of 3 eigen verhaallijnen die later met juist dat ding gebeuren.", "De engine bewaakt de grenzen en gooit de dobbelstenen: kwaliteit kan niet hoger dan het geld toelaat, en de kans die je ziet is de echte.", "Abonnementen verouderen nauwelijks. De keuzemenu's van vroeger staan nog onder Handmatig, voor als de GM niet live is."]],
   ["3.1", "Spellen naast elkaar", ["Saveslots: bij Logboek → Spellen staan al je spellen. Wissel, hernoem of verwijder ze; elk spel heeft zijn eigen mail, chats en back-ups. Een nieuw spel beginnen gooit het oude niet meer weg uit beeld."]],
@@ -979,7 +996,7 @@ const VERSIES = [
   ["1.1", "Wereld", ["Nieuwe tab Wereld: wereldnieuws, een ranglijst van alle bedrijven met waarde en markten per sector.", "25 bedrijven verspreid over de wereld: zakendiner, leveringscontract, aandelen met dividend of een overname.", "Gebeurtenissen per land en continent (stormen, staatsgrepen, handelsakkoorden) veranderen tijdelijk wat gebieden opleveren.", "Startvoordeel per soort land, een eigen stad voor je hoofdkantoor, en per gebied op de kaart: wat het oplevert.", "Geruchten en marktberichten staan in het nieuws in plaats van in je inbox."]],
   ["1.0", "Echte wereld", ["Echte wereldkaart, dominantie per continent en zee, eskaders, rivalen met oorlog en handel, blijvende inkomstenbronnen."]],
 ];
-const PLANNING = [["3.3", "Bedrijfsfocus: een boom met keuzes die elke paar maanden een vaste bonus geven."], ["3.4", "Onderzoek: technologie per sector, betere divisies en nieuwe producten."], ["3.5", "Meer comfort: meldingen per soort aan/uit, een maandoverzicht met wat er veranderd is, en ongedaan maken van de laatste klik."]];
+const PLANNING = [["3.4", "Bedrijfsfocus: een boom met keuzes die elke paar maanden een vaste bonus geven."], ["3.5", "Onderzoek: technologie per sector, betere divisies en nieuwe producten."], ["3.6", "Meer comfort: meldingen per soort aan/uit, een maandoverzicht met wat er veranderd is, en ongedaan maken van de laatste klik."]];
 function versieCard(){
   const vrs = ([v, t, l]) => `<div style="margin:8px 0"><b class="mono" style="color:var(--cyan)">${v}</b> <b>${esc(t)}</b><ul class="ylist">${l.map(x => `<li>${esc(x)}</li>`).join("")}</ul></div>`;
   return `<div class="card" style="margin-top:16px"><h3>Versies</h3>${VERSIES.slice(0, 2).map(vrs).join("")}<details><summary class="muted" style="cursor:pointer;margin:6px 0">Oudere versies (${VERSIES.length - 2})</summary>${VERSIES.slice(2).map(vrs).join("")}</details>
@@ -1158,6 +1175,18 @@ function productVM(s){
 }
 const EFF_NAAM = {macht: "macht", heat: "heat", reputation: "reputatie", invloed: "invloed", zwart: "zwart €k", straat: "straat", politie: "politie", stad: "overheid", vakbond: "bond", nomaden: "nomaden", morale: "morale"};
 function effChips(eff){ return Object.entries(eff || {}).filter(([, v]) => v).map(([k3, v]) => `<span class="pe ${(k3 === "heat" ? v < 0 : v > 0) ? "good" : "bad"}">${v > 0 ? "+" : ""}${v} ${EFF_NAAM[k3] || k3}${k3 === "macht" ? "" : "/mnd"}</span>`).join(""); }
+function divConceptBlok(){
+  const c = G.divConcept, s = G.game, bezig = S.divBezig;
+  if (c){ const ty = c.cijfers || {};
+    return `<div class="concept"><div class="spread"><b class="cnaam">${esc(c.naam)}</b><span class="tag cyan">${esc(c.soort)}${c.nieuw ? " · nieuwe soort" : ""}</span></div>
+      ${c.omschrijving ? `<p class="cpitch">${esc(c.omschrijving)}</p>` : ""}
+      <dl class="kv"><dt>Per niveau</dt><dd>omzet ${ty.rev}, kosten ${ty.cost}, heat ${ty.heat}</dd><dt>Opstarten</dt><dd>${eur(newDivCost(s))} · 3 maanden</dd>
+        ${c.product ? `<dt>Eerste ${esc((CONCEPT_SOORT[c.product.soort] || "product").toLowerCase())}</dt><dd style="font-family:var(--sans)">${esc(c.product.naam)}: ${esc(c.product.pitch || "")} <span class="dim">(€${c.product.kost}k, start bij de opening)</span></dd>` : ""}
+        ${c.opening ? `<dt>Opening</dt><dd style="font-family:var(--sans)">${esc(c.opening.titel)}</dd>` : ""}</dl>
+      <div class="row acts"><button class="btn sm primary" data-a="divconceptja">Ja, opstarten · ${eur(newDivCost(s))}</button><button class="btn sm" data-a="divconcept" data-opnieuw="1" ${bezig ? "disabled" : ""}>${bezig ? "De GM denkt…" : "Opnieuw uitwerken"}</button><button class="btn sm danger" data-a="divconceptweg">Weg</button></div></div>`; }
+  return `<div class="conceptin"><textarea id="dc_txt" rows="2" aria-label="beschrijf de nieuwe divisie" placeholder="Wat voor tak wil je erbij? In je eigen woorden. Bijv.: een eigen ambulancevloot met gepantserde vtol's, of een piratenradio die reclame verkoopt."></textarea>
+    <div class="row" style="gap:8px"><button class="btn sm primary" data-a="divconcept" ${bezig || !live() ? "disabled" : ""}>${bezig ? "De GM denkt…" : "De GM werkt het uit"}</button>${live() ? "" : '<span class="dim" style="font-size:13px">De GM is niet live: kies hieronder een soort.</span>'}</div></div>`;
+}
 function conceptBlok(d){
   const c = (G.concepten || {})[d.naam], bezig = (S.conceptBezig || {})[d.naam], s = G.game;
   if (c){ const K = conceptKansen(s, c), kost = r1(c.kost * (DIFF[s.player.difficulty] || 1)), vr = ((s.vraag || {})[c.markt] || {idx: 100}).idx;
@@ -1685,6 +1714,10 @@ document.addEventListener("click", async e => {
     case "prodnew": { const dv = t.dataset.div, el = document.getElementById("pn_" + dv), sc = document.getElementById("ps_" + dv), pa = document.getElementById("pa_" + dv), pf = document.getElementById("pf_" + dv); const r = await act("/api/product", {soort: "ontwikkel", divisie: dv, naam: el && el.value, schaal: sc && sc.value, aard: pa && pa.value, focus: pf && pf.value}); if (r && r.ok && el) el.value = ""; return; }
     case "concept": { const dv = t.dataset.div, oud = (G.concepten || {})[dv], tekst = t.dataset.opnieuw && oud ? oud.vraagVan : val("pc_" + dv);
       (S.conceptBezig ??= {})[dv] = true; render(); const r = await gmConcept(dv, tekst); S.conceptBezig[dv] = false; if (!r.ok && oud) G.concepten[dv] = oud; toast(r.bericht, !r.ok); render(); return; }
+    case "divconcept": { const tekst = t.dataset.opnieuw && G.divConcept ? G.divConcept.vraagVan : val("dc_txt"), oud = G.divConcept; S.divBezig = true; render();
+      const r = await gmDivisie(tekst); S.divBezig = false; if (!r.ok && oud) G.divConcept = oud; toast(r.bericht, !r.ok); render(); return; }
+    case "divconceptja": { const r = await act("/api/divisieconcept", {}); if (r && r.ok) delete S.keep.dc_txt; return; }
+    case "divconceptweg": G.divConcept = null; render(); return;
     case "conceptja": { const r = await act("/api/concept", {divisie: t.dataset.div}); if (r && r.ok){ delete S.keep["pc_" + t.dataset.div]; const el = document.getElementById("pc_" + t.dataset.div); if (el) el.value = ""; } return; }
     case "conceptweg": if (G.concepten) delete G.concepten[t.dataset.div]; render(); return;
     case "pfilter": S.pfilter = t.dataset.f; localSet("pfilter", S.pfilter); render(); return;

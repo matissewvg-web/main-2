@@ -521,7 +521,7 @@ function tick(s){
     s.projects = s.projects.filter(x => x !== p);
     mail(ctx, s, "COO", `Project klaar: ${p.name}`, p.done_msg || "Opgeleverd. Kijk wat het oplevert."); rep.push(`Project klaar: ${p.name}`);
     const oc = p.on_complete || {};
-    if (oc.new_division) s.divisions.push(oc.new_division);
+    if (oc.new_division){ s.divisions.push(oc.new_division); divisieOpening(s, ctx, p, oc.new_division); }
     if (oc.upgrade_division) for (const d of s.divisions) if ((d.name || d.type) === oc.upgrade_division) d.level += oc.levels || 1;
     if (oc.district_control) for (const d of s.districts) if (d.id === oc.district_control) d.control = "player";
     if (oc.effect) applyEffect(s, oc.effect);
@@ -613,7 +613,7 @@ function tick(s){
 }
 
 /* ---------- de stad: elke game een andere kaart ---------- */
-const VERSION = "3.2.1";
+const VERSION = "3.3";
 const MAP_W = 1000, MAP_H = 680;
 const RIVAL_COLORS = ["#ff9a1f", "#3d7bff", "#c6ff2e", "#f2f2f2", "#9b5cff", "#ffd400", "#ff4d4d"];
 const ARCH = {
@@ -1693,7 +1693,7 @@ function actKeuze(s, ctx, id, i){
   s.keuzes = s.keuzes.filter(x => x !== k);
   const out = applyChoice(s, ctx, o.eff); s.accounts.operationeel = s.cash;
   const msg = `${k.titel}: ${o.label}. ${out.join(" ")}`.trim();
-  (s.keuzes_klaar ??= []).unshift({id: k.id, titel: k.titel, gekozen: o.label, uitkomst: out.join(" "), m: ym(s)}); s.keuzes_klaar = s.keuzes_klaar.slice(0, 40);
+  (s.keuzes_klaar ??= []).unshift({id: k.id, soort: k.soort, titel: k.titel, gekozen: o.label, uitkomst: out.join(" "), m: ym(s)}); s.keuzes_klaar = s.keuzes_klaar.slice(0, 40);
   addLog(s, msg); return {ok: true, msg};
 }
 function keuzeExpiry(s, ctx){
@@ -1701,7 +1701,7 @@ function keuzeExpiry(s, ctx){
     const o = k.opties[k.standaard || 0]; s.keuzes = s.keuzes.filter(x => x !== k);
     if (o.kost && s.cash >= o.kost) s.cash = r1(s.cash - o.kost);
     const out = applyChoice(s, ctx, o.eff);
-    (s.keuzes_klaar ??= []).unshift({id: k.id, titel: k.titel, gekozen: o.label + " (geen antwoord)", uitkomst: out.join(" "), m: ym(s)});
+    (s.keuzes_klaar ??= []).unshift({id: k.id, soort: k.soort, titel: k.titel, gekozen: o.label + " (geen antwoord)", uitkomst: out.join(" "), m: ym(s)});
     ctx.rep.push(`Geen antwoord op "${k.titel}": ${o.label}`);
   }
 }
@@ -2614,7 +2614,7 @@ function productEventTick(s, ctx){
   const p = wpick(markt.map(x => [x, 5 + x.pop + (x.trait === "goedkoop" ? 30 : 0)])); p.aard ??= aardVan(p.type, p.naam);
   if (p.gb && p.gb.length && R() < 0.65){ let vrij = p.gb.filter((g, i) => !(p.gbGebruikt || []).includes(i)); if (!vrij.length){ p.gbGebruikt = []; vrij = p.gb; }
     const g = CH(vrij), gi = p.gb.indexOf(g); (p.gbGebruikt ??= []).push(gi);
-    addKeuze(s, ctx, {soort: "prod_" + p.id, van: g.van, titel: g.titel, tekst: g.tekst, opties: g.opties.map(o => ({label: o.label, uitleg: o.uitleg, kost: o.kost, eff: gbEff(o.eff, p.id)})), standaard: g.opties.length - 1}); prodLog(p, s, g.titel); return; }
+    addKeuze(s, ctx, {soort: "prod_" + p.id, gm: true, van: g.van, titel: g.titel, tekst: g.tekst, opties: g.opties.map(o => ({label: o.label, uitleg: o.uitleg, kost: o.kost, eff: gbEff(o.eff, p.id)})), standaard: g.opties.length - 1}); prodLog(p, s, g.titel); return; }
   const opts = PRODUCT_EVENTS.filter(e => (!e.aard || e.aard.includes(p.aard)) && (!e.when || e.when(s, p)));
   const e = wpick(opts.map(x => [x, x.aard ? 2.5 : 1])), land = CH(s.districts).name, k = e.gen(s, p, land);
   k.soort = "prod_" + p.id; addKeuze(s, ctx, k); prodLog(p, s, k.titel);
@@ -2876,6 +2876,98 @@ async function gmConcept(divisie, tekst){
   if (!live()) return {ok: false, bericht: "De GM is niet live verbonden. Gebruik 'Handmatig', of vraag het in de Claude-chat."};
   try { const r = await G.sample.json(conceptPrompt(s, d, tekst), {modelTier: "default"}); const c = cleanConcept(r, s, d); c.vraagVan = tekst; (G.concepten ??= {})[divisie] = c; return {ok: true, bericht: `De GM heeft ${c.naam} uitgewerkt. Lees het voorstel en kies.`}; }
   catch(e){ return {ok: false, bericht: sampleErrorText(e)}; }
+}
+
+/* ===================== 3.3 DE GM ONTWERPT DIVISIES EN SCHRIJFT VERHAALBOGEN ===================== */
+function cleanVerhaalEff(e, s, diep){
+  const o = cleanKeuzeEff(e, diep); if (!e || typeof e !== "object") return o;
+  if (o.kans != null){ o.succes = cleanVerhaalEff(e.succes, s, true); o.falen = cleanVerhaalEff(e.falen, s, true); return o; }
+  const num = (v, lo, hi) => Math.round(clamp(+v || 0, lo, hi));
+  if (e.product){ const p = (s.producten || []).find(x => x.naam === String(e.product)); if (p && o.populariteit){ o.product = {[p.id]: {pop: o.populariteit}}; } }
+  delete o.populariteit;
+  if (e.rivaal && typeof e.rivaal === "object"){ for (const [n, v] of Object.entries(e.rivaal)){ const r = s.rivals.find(x => x.name === n); const rel = typeof v === "object" ? v.relatie : v; if (r && rel) (o.rivaal ??= {})[r.name] = {relatie: num(rel, -15, 15)}; } }
+  if (e.loyaliteit && typeof e.loyaliteit === "object"){ for (const [n, v] of Object.entries(e.loyaliteit)) if (s.npcs.some(x => x.name === n)) (o.loyaliteit ??= {})[n] = num(v, -15, 15); }
+  return o;
+}
+function cleanKeuzeGM(k, s){
+  k = k && typeof k === "object" ? k : {};
+  const opties = (Array.isArray(k.opties) ? k.opties : []).slice(0, 3).map(o => ({label: cStr(o.label, 60), uitleg: cStr(o.uitleg, 200), kost: r1(clamp(+o.kost || 0, 0, 40)), eff: cleanVerhaalEff(o.effect, s)})).filter(o => o.label);
+  return {van: cStr(k.van || "Een bekende", 60), titel: cStr(k.titel, 90), tekst: cStr(k.tekst, 700), opties};
+}
+/* divisie of eigen bedrijfstak in eigen woorden */
+function divisiePrompt(s, tekst){
+  const soorten = allTypes(s).map(t => { const x = typeOf(s, t); return `${t} (omzet ${x.rev}, kosten ${x.cost}, heat ${x.heat})`; }).join("; ");
+  return `Je bent de Game Master van CHROME LEDGER, een cyberpunk-bedrijfssimulatie op de echte wereldkaart (Nederlands, droog, cynisch, corporate-noir). De CEO van ${s.player.corp_name} wil een nieuwe divisie of bedrijfstak. Zijn eigen woorden: "${tekst}".
+
+Kies de best passende bestaande soort, of verzin een nieuwe soort als het echt iets anders is. Bestaande soorten (per niveau per maand, k€): ${soorten}.
+Voor een nieuwe soort geef je cijfers per niveau per maand: rev 5-14, cost 3-8 (rev hoogstens cost+7), heat 0-4 (legaal 0-1, grijs 2, illegaal 3-4), vol 0.1-0.5.
+Geef ook het eerste product of de eerste dienst van deze divisie, en een kort openingsverhaal: iets dat gebeurt op de dag dat de divisie opent, met 2 of 3 keuzes.
+Effecten van product en keuzes volgen deze grenzen. Product: kost 3-60, maanden 1-6, moeilijkheid 5-10, kwaliteit 1-5, markt (wapen, medisch, implantaat, data, beveiliging, smokkel, logistiek, financieel, orbitaal, consument), effecten per maand (macht 0..3, heat -0.5..1, reputation -0.5..0.6, invloed 0..0.5, zwart 0..1.2, morale -0.3..0.3, straat/politie/stad/vakbond/nomaden -0.6..0.6). Keuze-effecten: cash (-30..20), heat, reputation, morale (-10..10), invloed, zwart, factions {naam: -10..10}, of {"kans": 5-95, "succes": {...}, "falen": {...}}; een optie mag "kost" hebben (0-40).
+
+Stand: ${JSON.stringify({cash: Math.round(s.cash), divisies: s.divisions.map(x => `${divNaam(x)} (${x.type} L${x.level})`), land: homeLandNaam(s), tijdperk: TIJDPERKEN[s.tijdperk || 0].naam})}
+
+Antwoord met alleen JSON:
+{"naam": "naam van de divisie", "soort": "bestaande of nieuwe soortnaam", "nieuw": false, "cijfers": {"rev": 9, "cost": 5, "heat": 1, "vol": 0.3}, "omschrijving": "2-3 zinnen in de stem van de COO", "product": {"naam": "...", "soort": "product|dienst|abonnement|netwerk", "pitch": "...", "doelgroep": "...", "markt": "...", "kost": 10, "maanden": 2, "moeilijkheid": 7, "kwaliteit": 2, "effecten": {}, "vraag": "...", "risico": "...", "gebeurtenissen": []}, "opening": {"van": "...", "titel": "...", "tekst": "...", "opties": [{"label": "...", "uitleg": "...", "kost": 0, "effect": {}}]}}`;
+}
+function cleanDivisie(r, s){
+  r = r && typeof r === "object" ? r : {};
+  const naam = cStr(r.naam, 40) || "Nieuwe divisie";
+  let soort = cStr(r.soort, 30), nieuw = !typeOf(s, soort);
+  if (!soort) { soort = "Logistiek"; nieuw = false; }
+  const c = r.cijfers || {}, cost = clamp(+c.cost || 5, 3, 8), cijfers = {rev: r1(Math.min(clamp(+c.rev || 9, 5, 14), cost + 7)), cost: r1(cost), heat: Math.round(clamp(+c.heat || 0, 0, 4)), vol: Math.round(clamp(+c.vol || 0.3, 0.1, 0.5) * 100) / 100};
+  const pseudo = {name: naam, type: soort, level: 1};
+  const product = r.product ? cleanConcept(r.product, s, pseudo) : null; if (product) product.divisie = naam;
+  const opening = r.opening ? cleanKeuzeGM(r.opening, s) : null;
+  return {naam, soort, nieuw, cijfers: nieuw ? cijfers : typeOf(s, soort), omschrijving: cStr(r.omschrijving, 400), product, opening: opening && opening.titel && opening.opties.length >= 2 ? opening : null, vraagVan: ""};
+}
+async function gmDivisie(tekst){
+  const s = G.game; tekst = cStr(tekst, 600); if (tekst.length < 4) return {ok: false, bericht: "Beschrijf eerst wat voor tak je wilt."};
+  if (!live()) return {ok: false, bericht: "De GM is niet live verbonden. Kies hieronder een soort uit de lijst."};
+  try { const r = await G.sample.json(divisiePrompt(s, tekst), {modelTier: "default"}); const c = cleanDivisie(r, s); c.vraagVan = tekst; G.divConcept = c; return {ok: true, bericht: `De GM heeft ${c.naam} uitgewerkt.`}; }
+  catch(e){ return {ok: false, bericht: sampleErrorText(e)}; }
+}
+function actDivisieConcept(s, ctx, c){
+  if (!c) return {ok: false, msg: "Er ligt geen voorstel klaar."};
+  if (s.divisions.some(x => divNaam(x) === c.naam) || s.projects.some(p => p.new_name === c.naam)) return {ok: false, msg: "Die naam bestaat al."};
+  if (c.nieuw && !typeOf(s, c.soort)){ const r = addCustomType(s, c.soort, c.cijfers, c.omschrijving); if (!r.ok) return {ok: false, msg: r.msg}; }
+  const r = actProject(s, "divisie", {type: c.soort, naam: c.naam}); if (!r.ok) return r;
+  const proj = s.projects[s.projects.length - 1]; proj.eersteProduct = c.product; proj.opening = c.opening; proj.done_msg = c.omschrijving || proj.done_msg;
+  return {ok: true, msg: r.msg + (c.product ? ` Bij de opening staat ${c.product.naam} meteen in de wachtrij.` : "")};
+}
+function divisieOpening(s, ctx, p, d){
+  if (p.eersteProduct){ const c = p.eersteProduct, q = mkProduct(s, d, c.naam, c.kwaliteit, 0);
+    Object.assign(q, {status: "wachtrij", maandenOverride: c.maanden, aard: c.markt, soort: c.soort, pitch: c.pitch, doelgroep: c.doelgroep, eigenEff: c.eff, doelOverride: c.doel, kostOverride: r1(c.kost * (DIFF[s.player.difficulty] || 1)), gb: c.gebeurtenissen, schaal: c.kost >= 25 ? "vlag" : c.kost >= 10 ? "groot" : "klein"});
+    if (!(s.producten || []).some(x => x.naam === q.naam)){ (s.producten ??= []).push(q); prodLog(q, s, "Eerste product van de nieuwe divisie"); } }
+  if (p.opening) addKeuze(s, ctx, {soort: "opening_" + hex8(), gm: true, ...p.opening, standaard: p.opening.opties.length - 1});
+}
+/* verhaalbogen: de GM schrijft om de paar maanden een volgend hoofdstuk rond jouw bedrijf */
+function verhaalPrompt(s){
+  const V = s.verhaal || null, laatste = (s.keuzes_klaar || []).find(k => k.soort === "gmverhaal");
+  return `Je bent de Game Master van CHROME LEDGER, een cyberpunk-bedrijfssimulatie (Nederlands, droog, cynisch, corporate-noir). Schrijf het volgende hoofdstuk van een verhaal rond het bedrijf van de speler. Gebruik wat er echt is: de producten en diensten, de directie, de crew, de rivalen, de syndicaten, het nieuws. Geen losse grap: een verhaal met mensen, motieven en gevolgen.
+${V && !V.klaar ? `Lopende verhaallijn: "${V.boog}". Tot nu toe: ${V.samenvatting}${laatste ? ` De CEO koos vorige keer: "${laatste.gekozen}"${laatste.uitkomst ? ` (${laatste.uitkomst})` : ""}.` : ""} Schrijf hoofdstuk ${(V.hoofdstuk || 1) + 1}. Na 3 of 4 hoofdstukken sluit je af ("laatste": true).` : "Begin een nieuwe verhaallijn die 2 tot 4 hoofdstukken duurt."}
+Geef één keuze met 2 of 3 opties die echt verschillen. Effecten volgen deze grenzen: cash (-30..20), heat, reputation, morale (-10..10), invloed (0..10), zwart (-20..20), factions {straat|politie|stad|vakbond|nomaden: -10..10}, rivaal {"exacte rivaalnaam": {"relatie": -15..15}}, loyaliteit {"exacte naam directielid": -15..15}, "product": "exacte productnaam" met "populariteit": -25..25, of een kansworp {"kans": 5-95, "succes": {...}, "falen": {...}}. Een optie mag "kost" hebben (0-40).
+
+Stand: ${JSON.stringify({bedrijf: s.player.corp_name, land: homeLandNaam(s), datum: ym(s), cash: Math.round(s.cash), heat: Math.round(s.heat), reputatie: Math.round(s.reputation), morale: Math.round(s.morale),
+    producten: (s.producten || []).filter(p => p.status === "markt").map(p => ({naam: p.naam, vorm: p.soort || "product", pitch: (p.pitch || "").slice(0, 120), populariteit: p.pop})),
+    directie: s.npcs.map(n => `${n.name} (${n.role}, ${impression(n)})`), crew: (s.crew || []).map(m => `${m.naam} (${m.rol})`),
+    rivalen: s.rivals.map(r => `${r.name} (CEO ${r.ceo}, ${r.status}, relatie ${r.relatie})`), syndicaten: (s.gangs || []).filter(g => gangLanden(s, g).length).map(g => `${g.naam} (${g.leider}, ${g.deal || "geen afspraak"})`),
+    nieuws: (s.nieuws || []).slice(0, 5).map(n => n.kop)})}
+
+Antwoord met alleen JSON:
+{"boog": "titel van de verhaallijn", "samenvatting": "1-2 zinnen: wat er tot en met dit hoofdstuk gebeurd is", "laatste": false, "keuze": {"van": "wie de mail stuurt", "titel": "...", "tekst": "3-5 zinnen", "opties": [{"label": "...", "uitleg": "wat het kost en doet", "kost": 0, "effect": {}}]}}`;
+}
+async function verhaalBeurt(s){
+  if (!live() || !s || s.status !== "actief") return;
+  const n = maandenGespeeld(s); if (n < (s.flags.volgende_verhaal ?? 3) || (s.keuzes || []).some(k => k.soort === "gmverhaal")) return;
+  s.flags.volgende_verhaal = n + 2;
+  try {
+    const r = await G.sample.json(verhaalPrompt(s), {modelTier: "default"}); if (s !== G.game) return; const k = cleanKeuzeGM(r && r.keuze, s); if (!k.titel || k.opties.length < 2) return;
+    const boog = cStr(r.boog, 80) || "Een verhaal", nieuw = !s.verhaal || s.verhaal.klaar || s.verhaal.boog !== boog;
+    s.verhaal = {boog, samenvatting: cStr(r.samenvatting, 400), hoofdstuk: nieuw ? 1 : (s.verhaal.hoofdstuk || 1) + 1, klaar: !!r.laatste};
+    s.flags.volgende_verhaal = n + (s.verhaal.klaar ? RI(4, 6) : RI(2, 3));
+    const ctx = Ctx(); addKeuze(s, ctx, {...k, soort: "gmverhaal", gm: true, boog: `${boog} · hoofdstuk ${s.verhaal.hoofdstuk}`, standaard: k.opties.length - 1}); await persist(ctx);
+    toast(`Verhaal: ${k.titel}`); render();
+  } catch(e){ s.flags.volgende_verhaal = n + 2; }
 }
 
 function newGame(d){
@@ -3214,6 +3306,7 @@ function worldFacts(s){
     rivaal_producten: s.rivals.map(r => `${r.name}: ${(r.producten || []).map(p => `${p.naam} (${p.aard}, k${p.kwaliteit}, pop ${p.pop})`).join(", ")}`),
     producten: (s.producten || []).map(p => ({naam: p.naam, divisie: p.divisie, soort: p.aard || aardVan(p.type, p.naam), vorm: p.soort || "product", pitch: p.pitch || "", eigenschap: p.trait || null, prijs: p.prijs || "standaard", vraagfactor: vraagFactor(s, p.aard || aardVan(p.type, p.naam)), kwaliteit: p.kwaliteit, populariteit: p.pop, status: p.status, recensie: p.review ? p.review.sterren : null})), verwachte_aanslagen: (s.dreigingen || []).map(t => `${t.label} door ${t.van}`),
     crew: (s.crew || []).map(m => ({naam: m.naam, rol: m.rol, niveau: m.niveau, status: crewStatus(s, m), eigenschap: traitOf(m.trait).naam})), huurleger: s.huurleger, tijdperk: TIJDPERKEN[s.tijdperk || 0].naam, status: STATUS_LADDER[s.statusNiveau || 0][1],
+    verhaallijn: s.verhaal || null,
     wereldnieuws: (s.nieuws || []).slice(0, 8).map(n => `${n.m} ${n.kop}`), open_keuzes: (s.keuzes || []).map(k => k.titel),
     recente_mails: G.mails.slice(0, 8).map(m => `${m.datum} ${m.van}: ${m.onderwerp}`), logboek: s.log.slice(-10),
   };
@@ -3462,6 +3555,7 @@ const API = {
     try { await Store.backup(); } catch(e){}
     S.expect = true; const ctx = tick(s); const docs = await persist(ctx); S.expect = false;
     Store.slots().then(L => Store.saveSlots(L)).catch(() => {});
+    verhaalBeurt(s).catch(() => {});
     if (s.status !== "actief" && s.eind) await Store.addScore({id: G.gid + "-" + s.eind.datum, naam: s.player.corp_name, status: s.status, score: s.eind.score, datum: s.eind.datum, moeilijkheid: s.player.difficulty});
     return {ok: true, status: s.status, rapport_mail: docs[ctx.reportIndex] && docs[ctx.reportIndex].id};
   },
@@ -3483,6 +3577,7 @@ const API = {
   async "/api/invloed"(d){ const r = actInfluence(G.game, d.soort, d.doel); if (r.ok) await persist(); return {ok: r.ok, bericht: r.msg}; },
   async "/api/vloot"(d){ const r = d.zone ? actDeploy(G.game, d.zone, d.delta) : actShip(G.game); if (r.ok) await persist(); return {ok: r.ok, bericht: r.msg}; },
   async "/api/beveiliging"(){ const r = actDefense(G.game); if (r.ok) await persist(); return {ok: r.ok, bericht: r.msg}; },
+  async "/api/divisieconcept"(){ const s = G.game, ctx = Ctx(); const r = actDivisieConcept(s, ctx, G.divConcept); if (r.ok){ G.divConcept = null; await persist(ctx); } return {ok: r.ok, bericht: r.msg}; },
   async "/api/concept"(d){ const s = G.game, ctx = Ctx(); const r = actConcept(s, ctx, (G.concepten || {})[d.divisie]); if (r.ok){ delete G.concepten[d.divisie]; await persist(ctx); } return {ok: r.ok, bericht: r.msg}; },
   async "/api/product"(d){ const s = G.game, ctx = Ctx(); const r = actProduct(s, ctx, d.soort, d); if (r.ok) await persist(ctx); return {ok: r.ok, bericht: r.msg}; },
   async "/api/missie"(d){ const s = G.game, ctx = Ctx(); const r = actMissie(s, ctx, d.crew, d.missie, d.doel); if (r.ok) await persist(ctx); return {ok: r.ok, bericht: r.msg}; },
