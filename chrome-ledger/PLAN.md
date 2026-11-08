@@ -8,29 +8,49 @@ Dit plan wordt elke ronde bijgewerkt: wat af is gaat naar "Gedaan", nieuwe punte
 - **Eerlijk over de grenzen.** De testbots zijn geen spelers: ze negeren heat, breiden niet uit naar andere continenten en gebruiken de GM niet. Een goed bot-cijfer betekent niet dat het spel leuk is. De GM-functies zijn alleen met een nagebootste GM getest; echte speelervaring van de gebruiker weegt zwaarder dan elke meting.
 - **Niet doen:** engine.js opsplitsen in modules, tests in het artifact stoppen, nieuwe systemen bouwen terwijl een bestaand systeem onduidelijk is.
 
-## Waar het spel nu staat (3.8)
-Sterk: veel systemen, een echt einde met eerlijke score, de GM als ontwerper en verteller, saveslots, tests.
+## Waar het spel nu staat (3.10)
+Sterk: veel systemen, een echt einde met eerlijke score, de GM als ontwerper en verteller, saveslots, tests (ook online opslag).
 Zwak:
-1. **Balans is beter maar nog grof.** Moeilijkheid is nog vooral een kostenfactor. Op Casual eindigt nog 21% van de verstandige spellen in een razzia, wat te streng is voor Casual.
-2. **Nog veel tegelijk voor een nieuwe speler.** Twaalf tabs en veel knoppen; Eerste stappen en een rustigere inbox helpen, maar of het genoeg is weet ik pas na een playtest.
-3. **Online opslag is getest met een nagebootste database**, niet met de echte. Kleine verschillen in hoe de echte db werkt, merk ik pas als jij speelt.
-5. **Plannen tegen jou zijn nog sjablonen.** Vijf vaste soorten; de GM kleurt de tekst, maar bedenkt nog geen eigen soort plan. Pas na een playtest weten we of ze vaak genoeg of te vaak komen (nu ±1 per 14 maanden zodra iemand vijandig is).
+1. **Producten zijn nog abstract.** Een product is kwaliteit × populariteit × een vermenigvuldiger op de divisie-omzet. Je ziet geen prijs per stuk, afzet, marge, marktaandeel of capaciteit. De gebruiker wil het "realistischer en gedetailleerder".
+2. **De economie is een model op divisieniveau**, niet op productniveau: omzet komt van de divisie, producten tillen die op. Echte afzet × prijs vraagt een herbalans.
+3. **Balans:** Realistisch 43% winst (doel ±35%) sinds de koersen; Genadeloos vroege faillissementen; abonnementen, dochters en de GM niet op balans getest.
+4. **Nog niemand heeft het echt gespeeld sinds de ochtend.** Bots zijn geen spelers.
 
-## Open (in volgorde)
-### 3.9 Diepgang waar het al leeft
+## Roadmap (in volgorde)
+### 4.0 Echte producten (nu)
+- Productblad per product: 3 eigenschappen per soort (bv. wapen: vuurkracht, betrouwbaarheid, onopvallendheid; medisch: werkzaamheid, veiligheid, herstel), prijs per stuk, kostprijs, marge, afzet per maand, levensfase (introductie, groei, volwassen, verval) en verloop over 12 maanden.
+- Marktaandeel in het eigen segment, met de grootste concurrenten (rivaalproducten) erbij.
+- Productiecapaciteit als echte grens: groeit met het divisieniveau; wie meer vraag heeft dan capaciteit is uitverkocht en mist omzet. Uitbreiden kost geld.
+- Eerlijk: prijs, kostprijs en afzet zijn in 4.0 een uitsplitsing van de bestaande productomzet. Capaciteit is wel een echte nieuwe regel. Echte afzet × prijs volgt in 4.2.
 
-### Balans (vervolg)
-- Genadeloos: 8% gaat failliet vóór maand 30, met waarschuwing; nu ook concreet advies bij negatieve cash. Opnieuw bekijken na een playtest op Genadeloos. (8 nov)
-- Realistisch is met de koersen opgelopen naar 43% winst (doel ±35%): bijstellen, bv. iets zwakkere koersen of de eerste strategiedag pas na een jaar. (8 nov)
+### 4.1 Balans na 4.0
+- Realistisch terug naar ±35% (koersen en capaciteit meegerekend), een bot die abonnementen en capaciteit gebruikt, Genadeloos opnieuw meten.
 
-### Kleine punten
-- Plannen: jij kunt nog geen eigen plan tegen een rivaal opzetten (spiegelbeeld). Mogelijk 4.x. (8 nov)
+### 4.2 Echte afzet
+- Omzet van een product = afzet × prijs, kosten = afzet × kostprijs + vaste kosten. Prijs vrij instelbaar met prijsgevoeligheid per markt. De divisie levert basisomzet, producten de rest. Grote herbalans, gemeten.
 
-### Testinfrastructuur (doorlopend)
-- De testbot gebruikt geen abonnementen, dochters of de GM: die onderdelen zijn alleen functioneel getest, niet op balans. Een bot-variant die abonnementen kiest. (8 nov)
-- Tests mogen niet op toeval falen: concept.js viel om bij een terugroepactie (twee enen). Gerepareerd; andere tests nalopen op hetzelfde. (8 nov)
-- Expansie-bot in balans.js om hegemonie echt te meten.
-- tests/mensrun.js draaien in elke opruimronde en de screenshots bekijken.
+### 4.3 Toelevering en voorraad
+- Onderdelen en grondstoffen per soort via leveranciers (de bedrijven in de wereld). Tekorten bij oorlog, sancties of een failliete leverancier. Voorraad aanleggen of uitverkocht raken.
+
+### 4.4 Regionale markten
+- Producten verkopen per continent met eigen vraag; importheffingen en sancties uit wereldgebeurtenissen; een nieuwe markt openen kost vergunning en marketing.
+
+### 4.5 Realistische financiën
+- Balans (bezittingen en schulden), afschrijving op investeringen, kasstroomoverzicht, een kredietrating die je rente bepaalt, aandeelhouders die dividend verwachten.
+
+### 4.6 Mensen per divisie
+- Een hoofd per divisie met eigen eigenschappen, teams en salarisschalen per land, cao's.
+
+### 4.7 Onderzoek
+- Technologie per sector die eigenschappen van producten verbetert en nieuwe soorten producten vrijspeelt.
+
+### 4.8 Zelf plannen smeden
+- Het spiegelbeeld van Plannen tegen jou: over maanden een prijsoorlog, laster of overname tegen een rivaal opbouwen.
+
+### Doorlopend
+- Elke derde ronde een opruimronde met tests/mensrun.js en screenshots.
+- Genadeloos: 8% failliet vóór maand 30; opnieuw na een playtest.
+- Testinfrastructuur: expansie-bot voor hegemonie; tests mogen nooit op toeval falen.
 
 ## Gedaan
 - 3.10 Koers (strategiedag eens per jaar, 7 vaste koersen) en aanloop (geen vertrek in 6 maanden, geen verraad in 12). verhaal.js valt niet meer om op projectvertraging.
