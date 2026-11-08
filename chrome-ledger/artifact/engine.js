@@ -628,7 +628,7 @@ function tick(s){
 }
 
 /* ---------- de stad: elke game een andere kaart ---------- */
-const VERSION = "4.1.1";
+const VERSION = "4.1.2";
 const MAP_W = 1000, MAP_H = 680;
 const RIVAL_COLORS = ["#ff9a1f", "#3d7bff", "#c6ff2e", "#f2f2f2", "#9b5cff", "#ffd400", "#ff4d4d"];
 const ARCH = {
@@ -2370,7 +2370,7 @@ function actProduct(s, ctx, soort, a){
     if ((s.producten || []).some(p => p.naam === naam)) return {ok: false, msg: "Die naam bestaat al."};
     const p = mkProduct(s, d, naam, plan.kw, 0); p.status = "ontwikkeling"; p.eta = plan.maanden; p.schaal = a.schaal; p.focus = focus; p.aard = aardK || aardVan(d.type, naam); if (a.vorm === "abonnement") p.soort = "abonnement"; (s.producten ??= []).push(p);
     const K = devPlan(s, d, a.schaal, focus, p.aard).kansen; prodLog(p, s, `Ontwikkeling gestart (${PRODUCT_SCHAAL[a.schaal].label.toLowerCase()}, focus ${F.label.toLowerCase()})`);
-    msg = `${naam} in ontwikkeling bij ${divNaam(d)}: €${kost}k, ${plan.maanden} maanden. Bij de lancering: hit ${K.hit}%, gewoon ${K.gewoon}%, flop ${K.flop}%, terugroepactie ${K.terug}%.`;
+    msg = `${naam} in ontwikkeling bij ${divNaam(d)}: €${kost}k, ${plan.maanden} maanden. Bij de lancering: hit ${K.hit}%, gewoon ${K.gewoon}%, matig ${K.neutraal}%, flop ${K.flop}%, terugroepactie ${K.terug}%.`;
   } else {
     const p = (s.producten || []).find(x => x.id === a.id); if (!p) return {ok: false, msg: "Onbekend product."};
     if (soort === "campagne"){ if (p.status !== "markt") return {ok: false, msg: "Het staat niet op de markt."}; if (p.actie === m) return {ok: false, msg: "Deze maand al een campagne gehad."};
@@ -2399,17 +2399,18 @@ function productTick(s, ctx){
     if (p.status === "wachtrij") continue;
     if (p.status === "ontwikkeling"){
       if (--p.eta > 0) continue;
-      const r = lanceerWorp(s, d, p); addRoll(s, `Lancering ${p.naam}: ${r.txt} → ${r.crit ? "HIT" : r.ok ? "GELUKT" : r.blunder ? "TERUGGEROEPEN" : "FLOP"}`);
+      const r = lanceerWorp(s, d, p); addRoll(s, `Lancering ${p.naam}: ${r.txt} → ${r.crit ? "HIT" : r.ok ? "GELUKT" : r.neutraal ? "MATIG" : r.blunder ? "TERUGGEROEPEN" : "FLOP"}`);
       const sc = PRODUCT_SCHAAL[p.schaal || "klein"]; p.status = "markt"; p.sinds = ym(s); p.leeftijd = 0;
-      if (r.crit){ (s.stats ??= {}).hits = (s.stats.hits || 0) + 1; p.kwaliteit = clamp(p.kwaliteit + 1, 1, 5); p.pop = 85; mail(ctx, s, "Marketing", `${p.naam} is een hit`, `De lancering van ${p.naam} (${r.txt}) overtreft alles. Wachtlijsten, recensies, kopieën op de zwarte markt binnen een week.`, "NORMAAL"); news(s, `${p.naam} van ${s.player.corp_name} is een hit`, `Het nieuwe product van ${divNaam(d)} gaat de deur uit sneller dan het gemaakt wordt.`, "", "markt", true); }
+      if (r.crit){ (s.stats ??= {}).hits = (s.stats.hits || 0) + 1; if (r.nat) p.kwaliteit = clamp(p.kwaliteit + 1, 1, 5); p.pop = r.nat ? 85 : RI(72, 82); mail(ctx, s, "Marketing", `${p.naam} is een hit`, `De lancering van ${p.naam} (${r.txt}) overtreft alles. Wachtlijsten, recensies, kopieën op de zwarte markt binnen een week.`, "NORMAAL"); news(s, `${p.naam} van ${s.player.corp_name} is een hit`, `Het nieuwe product van ${divNaam(d)} gaat de deur uit sneller dan het gemaakt wordt.`, "", "markt", true); }
       else if (r.ok){ p.pop = RI(55, 72); mail(ctx, s, "Marketing", `${p.naam} gelanceerd`, `${p.naam} ligt in de winkels (${r.txt}). Goede start, populariteit ${p.pop}.`, "NORMAAL"); }
+      else if (r.neutraal){ p.pop = RI(38, 50); mail(ctx, s, "Marketing", `${p.naam}: rustige start`, `${p.naam} ligt in de winkels (${r.txt}). Geen hit, geen flop: populariteit ${p.pop}. Een campagne kan het een duw geven.`, "NORMAAL"); }
       else if (r.blunder){ s.producten = s.producten.filter(x => x !== p); s.reputation = clamp(s.reputation - 5); const k2 = r1(sc.kost * 0.3); s.cash = r1(s.cash - k2);
         mail(ctx, s, "Juridische Zaken", `Terugroepactie: ${p.naam}`, `${p.naam} (${r.txt}) blijkt een fout te hebben die we niet mochten missen. Alles moet terug. €${k2}k aan kosten, reputatie −5, en de pers heeft foto's.`, "KRITIEK"); ctx.rep.push(`Terugroepactie ${p.naam}`); continue; }
       else { (s.stats ??= {}).flops = (s.stats.flops || 0) + 1; p.pop = RI(15, 28) + (sc.flop || 0); p.kwaliteit = Math.max(1, p.kwaliteit - 1); mail(ctx, s, "Marketing", `${p.naam} flopt`, `De lancering van ${p.naam} (${r.txt}) valt tegen: populariteit ${p.pop}. Een campagne of een nieuwe versie kan het redden. Of je haalt het uit de markt.`, "HOOG"); ctx.rep.push(`${p.naam} flopt`); }
       if (heeftFocus(s, "merk")) p.pop = Math.round(clamp(p.pop + 6, 3, 95));
       if (isAbo(p)) p.abo = Math.round(p.pop * 0.5);
-      p.aard ??= aardVan(p.type, p.naam); p.prijs ??= "standaard"; if (p.trait === undefined){ const ft = focusTrait(p); p.trait = ft !== undefined ? ft : kiesTrait(p, r.crit, !r.ok); } maakReview(p);
-      prodLog(p, s, r.crit ? `Lancering: een hit (${p.review.sterren}★)` : r.ok ? `Gelanceerd (${p.review.sterren}★)` : `Lancering geflopt (${p.review.sterren}★)`); if (p.trait) prodLog(p, s, `Eigenschap: ${PRODUCT_TRAITS[p.trait].label}`); continue;
+      p.aard ??= aardVan(p.type, p.naam); p.prijs ??= "standaard"; if (p.trait === undefined){ const ft = focusTrait(p); p.trait = ft !== undefined ? ft : kiesTrait(p, r.crit, !r.ok && !r.neutraal); } maakReview(p);
+      prodLog(p, s, r.crit ? `Lancering: een hit (${p.review.sterren}★)` : r.ok ? `Gelanceerd (${p.review.sterren}★)` : r.neutraal ? `Rustige lancering (${p.review.sterren}★)` : `Lancering geflopt (${p.review.sterren}★)`); if (p.trait) prodLog(p, s, `Eigenschap: ${PRODUCT_TRAITS[p.trait].label}`); continue;
     }
     if (p.verbetering && --p.verbetering <= 0){ delete p.verbetering; const r = rol2d6(Math.ceil(d.level / 2), 8); addRoll(s, `Nieuwe versie ${p.naam}: ${r.txt} → ${r.ok ? "GELUKT" : "MISLUKT"}`);
       if (r.ok){ p.kwaliteit = clamp(p.kwaliteit + 1, 1, 5); p.pop = clamp(p.pop + 10, 0, 95); p.leeftijd = 0; maakReview(p); if (p.trait === "gevoelig") p.trait = null; prodLog(p, s, `Versie ${p.kwaliteit}`); mail(ctx, s, "R&D", `${p.naam} versie ${p.kwaliteit}`, `De nieuwe versie is klaar (${r.txt}). Kwaliteit ${p.kwaliteit}, en de klanten merken het.`, "NORMAAL"); }
@@ -2596,7 +2597,7 @@ function migrate21(s){
 /* ===================== 2.2 DOEL, SCORE EN EINDE ===================== */
 const SPEL_LENGTE = {kort: {label: "10 jaar", maanden: 120}, normaal: {label: "20 jaar", maanden: 240}, eindeloos: {label: "Eindeloos", maanden: 0}};
 const WIN_WAARDE = 8000, HEG_PCT = 60, HEG_N = 3, RIVAAL_DOEL = 3;
-const WIN_LENGTE = {kort: 0.65, normaal: 1.1, eindeloos: 1.6};
+const WIN_LENGTE = {kort: 0.75, normaal: 1.3, eindeloos: 1.8};
 const winWaardeVoor = lengte => Math.round(WIN_WAARDE * (WIN_LENGTE[lengte] || 1) / 100) * 100;
 const winWaarde = s => winWaardeVoor(s.player.lengte);
 const RIVAAL_MULT = {Casual: 0.85, Realistisch: 1, Genadeloos: 1.2};
@@ -2935,10 +2936,11 @@ const DEV_FOCUS = {
   veilig: {label: "Veilig", tekst: "Nooit een terugroepactie (wordt een flop), vaak duurzaam. Doel +1.", veilig: true, doel: 1},
 };
 function devKansen(bonus, doel, focus){
-  const F = DEV_FOCUS[focus] || DEV_FOCUS.standaard, critT = F.crit || 12, blT = F.veilig ? 1 : (F.blunder || 2); let hit = 0, ok = 0, flop = 0, terug = 0;
+  /* 4.1.2: hit vanaf doel+3, een neutrale band (matige start) tot doel−3, flop pas daaronder: de flopkans komt nooit boven 50% */
+  const F = DEV_FOCUS[focus] || DEV_FOCUS.standaard, critT = F.crit || 12, blT = F.veilig ? 1 : (F.blunder || 2); let hit = 0, ok = 0, neutraal = 0, flop = 0, terug = 0;
   for (let a = 1; a <= 6; a++) for (let b = 1; b <= 6; b++){ const t = a + b;
-    if (t >= critT) hit++; else if (t <= blT) terug++; else if (t + bonus >= doel) ok++; else flop++; }
-  const p = n => Math.round(n / 36 * 100); return {hit: p(hit), gewoon: p(ok), flop: p(flop), terug: p(terug)};
+    if (t >= critT || t + bonus >= doel + 3) hit++; else if (t <= blT) terug++; else if (t + bonus >= doel) ok++; else if (t + bonus >= doel - 3) neutraal++; else flop++; }
+  const p = n => Math.round(n / 36 * 100); return {hit: p(hit), gewoon: p(ok), neutraal: p(neutraal), flop: p(flop), terug: p(terug)};
 }
 function devPlan(s, d, schaal, focus, aard){
   const sc = PRODUCT_SCHAAL[schaal] || PRODUCT_SCHAAL.klein, F = DEV_FOCUS[focus] || DEV_FOCUS.standaard, k = productKans(s, d, schaal), dif = DIFF[s.player.difficulty] || 1;
@@ -2949,8 +2951,8 @@ function devPlan(s, d, schaal, focus, aard){
 }
 function lanceerWorp(s, d, p){
   const F = DEV_FOCUS[p.focus || "standaard"] || DEV_FOCUS.standaard, k = productKans(s, d, p.schaal || "klein"), doel = p.doelOverride || (k.doel + (F.doel || 0));
-  const a = d6(), b = d6(), t = a + b, crit = t >= (F.crit || 12), blunder = !F.veilig && t <= (F.blunder || 2), ok = crit || (!blunder && t + k.bonus >= doel);
-  return {ok, crit, blunder, txt: `${DICE[a - 1]}${DICE[b - 1]}${k.bonus ? ` +${k.bonus}` : ""} = ${t + k.bonus}, nodig ${doel}+${crit ? " · hit" : blunder ? " · blunder" : ""}`};
+  const a = d6(), b = d6(), t = a + b, blunder = !F.veilig && t <= (F.blunder || 2), crit = !blunder && (t >= (F.crit || 12) || t + k.bonus >= doel + 3), ok = crit || (!blunder && t + k.bonus >= doel), neutraal = !ok && !blunder && t + k.bonus >= doel - 3;
+  return {ok, crit, blunder, neutraal, nat: t >= (F.crit || 12), txt: `${DICE[a - 1]}${DICE[b - 1]}${k.bonus ? ` +${k.bonus}` : ""} = ${t + k.bonus}, nodig ${doel}+ (hit ${doel + 3}+)${crit ? " · hit" : blunder ? " · blunder" : neutraal ? " · matige start" : ""}`};
 }
 function focusTrait(p){
   if (p.focus === "goedkoop" && R() < 0.7) return "goedkoop";
@@ -3006,7 +3008,7 @@ const SPELREGELS = [
   ["Dobbelstenen", "Elke onzekere actie is 2d6 + bonus tegen een doel. Twee zessen lukt altijd, twee enen nooit. De kans die je vooraf ziet is de echte kans. Elke worp staat in Logboek → Dobbelstenen."],
   ["Morale en heat", "Morale onder 10, twee maanden lang: coup. Heat boven 90, twee maanden lang: razzia. Heat komt vooral uit riskante en illegale divisies (Smokkel, Cyberware, Private Security), die met elk niveau meer aandacht trekken; legale divisies trekken boven niveau 6 geen extra aandacht meer. Het overzicht laat zien waarom ze bewegen en waarschuwt ruim op tijd."],
   ["Stilstand", "Verkoopt een divisie een jaar lang niets, dan lopen klanten naar rivalen: de omzet zakt elke maand verder, tot −20%. Eén product op de markt stopt het meteen."],
-  ["Winnen", "Een bedrijfswaarde van €8.800k (10 jaar: €5.200k, eindeloos: €12.800k), 60% op drie continenten, of 3 van de 5 oorspronkelijke rivalen uitgeschakeld. Anders telt na de gekozen speellengte je score."],
+  ["Winnen", "Een bedrijfswaarde van €10.400k (10 jaar: €6.000k, eindeloos: €14.400k), 60% op drie continenten, of 3 van de 5 oorspronkelijke rivalen uitgeschakeld. Anders telt na de gekozen speellengte je score."],
   ["Score", "Bedrijfswaarde telt met de wortel (40 × √waarde), plus dominantie, reputatie, jaren, uitgeschakelde rivalen en status. Winnen ×1,25 plus tempo, termijn uitdienen ×1, verliezen ×0,75 en zonder de waarde van je bedrijf: een verlies scoort dus nooit hoger dan overleven met hetzelfde bedrijf."],
   ["Keuzes", "Keuzemails hebben knoppen; elke optie zegt wat ze kost en doet. Antwoord je niet, dan kiest het spel na twee maanden de standaardoptie."],
 ];
@@ -3070,7 +3072,7 @@ function actConcept(s, ctx, c){
   if (bezig) p.status = "wachtrij"; else { p.status = "ontwikkeling"; p.eta = c.maanden; }
   (s.producten ??= []).push(p); prodLog(p, s, `${CONCEPT_SOORT[c.soort]} ontworpen met de GM${bezig ? " (in de wachtrij)" : ""}`);
   const K = conceptKansen(s, c);
-  const msg = `${c.naam} ${bezig ? "staat in de wachtrij" : `is in ontwikkeling: €${kost}k, ${c.maanden} maand(en)`}. Bij de lancering: hit ${K.hit}%, gewoon ${K.gewoon}%, flop ${K.flop}%, terugroepactie ${K.terug}%.`;
+  const msg = `${c.naam} ${bezig ? "staat in de wachtrij" : `is in ontwikkeling: €${kost}k, ${c.maanden} maand(en)`}. Bij de lancering: hit ${K.hit}%, gewoon ${K.gewoon}%, matig ${K.neutraal}%, flop ${K.flop}%, terugroepactie ${K.terug}%.`;
   addLog(s, msg); return {ok: true, msg};
 }
 function gbEff(e, pid){ const o = {...(e || {})}; if (o.populariteit){ o.product = {[pid]: {pop: o.populariteit}}; delete o.populariteit; } if (o.succes) o.succes = gbEff(o.succes, pid); if (o.falen) o.falen = gbEff(o.falen, pid); return o; }
