@@ -8,18 +8,15 @@ Dit plan wordt elke ronde bijgewerkt: wat af is gaat naar "Gedaan", nieuwe punte
 - **Eerlijk over de grenzen.** De testbots zijn geen spelers: ze negeren heat, breiden niet uit naar andere continenten en gebruiken de GM niet. Een goed bot-cijfer betekent niet dat het spel leuk is. De GM-functies zijn alleen met een nagebootste GM getest; echte speelervaring van de gebruiker weegt zwaarder dan elke meting.
 - **Niet doen:** engine.js opsplitsen in modules, tests in het artifact stoppen, nieuwe systemen bouwen terwijl een bestaand systeem onduidelijk is.
 
-## Waar het spel nu staat (3.7)
+## Waar het spel nu staat (3.8)
 Sterk: veel systemen, een echt einde met eerlijke score, de GM als ontwerper en verteller, saveslots, tests.
 Zwak:
 1. **Balans is beter maar nog grof.** Moeilijkheid is nog vooral een kostenfactor. Op Casual eindigt nog 21% van de verstandige spellen in een razzia, wat te streng is voor Casual.
 2. **Nog veel tegelijk voor een nieuwe speler.** Twaalf tabs en veel knoppen; Eerste stappen en een rustigere inbox helpen, maar of het genoeg is weet ik pas na een playtest.
 3. **Online opslag is niet getest.** Mijn tests draaien alleen in browsermodus; de online modus (de db van het artifact) zie ik alleen als jij speelt.
-5. **De GM is nog een chatvenster.** Hij vertelt, maar plant niet: rivalen en syndicaten hebben geen eigen verhaal dat over maanden loopt.
+5. **Plannen tegen jou zijn nog sjablonen.** Vijf vaste soorten; de GM kleurt de tekst, maar bedenkt nog geen eigen soort plan. Pas na een playtest weten we of ze vaak genoeg of te vaak komen (nu ±1 per 14 maanden zodra iemand vijandig is).
 
 ## Open (in volgorde)
-### 3.8 De GM plant mee (volgende ronde)
-- Plannen van rivalen en syndicaten over meerdere maanden (GM schrijft het plan, de engine voert de stappen uit binnen grenzen, met een vaste versie als de GM niet live is). Je kunt ze ontdekken via crew of netwerk en verstoren.
-
 ### 3.9 Diepgang waar het al leeft
 - Abonnementen: prijsverhoging, gebeurtenis rond opzeggers, loyaliteitsprogramma.
 - Dochters-overzicht: overgenomen bedrijven bekijken en later alsnog samenvoegen of verkopen.
@@ -31,6 +28,7 @@ Zwak:
 - Genadeloos: vroegste dood in maand 16; bekijken of de eerste twee jaar daar eerlijk zijn. (8 nov)
 
 ### Kleine punten
+- Plannen: jij kunt nog geen eigen plan tegen een rivaal opzetten (spiegelbeeld). Mogelijk 4.x. (8 nov)
 - Ongelezen mail loopt op tot 50+ na een jaar spelen; een knop "alles gelezen" of automatisch archiveren van oude maandrapporten. (8 nov)
 - Ruimte voor de kaart op een laptop: het GM-venster valt over het zijpaneel van de kaart; misschien de kaart smaller maken zolang het venster open is. (8 nov)
 
@@ -41,6 +39,7 @@ Zwak:
 - Een "speel 24 maanden als mens"-run met screenshots per ronde, om zelf kritisch te kijken.
 
 ## Gedaan
+- 3.8 Plannen tegen jou: vijf soorten plannen van rivalen en syndicaten over zes maanden, ontdekken via crew en netwerk, verstoren/voorbereiden/laten, GM-tekst, kaart bij Rivalen, test plannen.js.
 - 3.7.1 De GM antwoordt altijd: snelknoppen met eigen antwoord zonder live GM, kaartnamen zonder overlap, kaart met het toetsenbord, geen dubbel advies.
 - 3.7 Rust en eerste stappen: kaart Eerste stappen, kleine meldingen in het maandrapport, statusbalk op de telefoon als raster, leesbare geselecteerde chips.
 - 3.6 Opslag die niet stil faalt: saves 75% kleiner, luide back-upfout, maximaal 6 lokale spellen, nooit het oude spel kwijt bij een nieuw spel, foutlog onder Logboek.

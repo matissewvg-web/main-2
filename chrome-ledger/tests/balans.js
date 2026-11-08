@@ -22,6 +22,7 @@ function kiesKeuzes(s, ctx, slim){
       else if (k.soort && k.soort.startsWith("gang_")) i = 1;
       else if (k.soort && k.soort.startsWith("special_")) i = k.opties.length - 1;
       else if (k.soort && k.soort.startsWith("prod_")) i = 1;
+      else if (k.soort && k.soort.startsWith("plan_")) i = s.cash > 60 ? 0 : 1;
       else if (KIES[k.soort] != null) i = KIES[k.soort];
       if (k.opties[i] && k.opties[i].kost && s.cash < k.opties[i].kost + 30) i = k.standaard || 0;
     }

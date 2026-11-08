@@ -2463,7 +2463,7 @@ function planTick(s, ctx, diff){
     if (p.stap >= p.stappen.length){
       const f = p.zacht ? 0.5 : 1, txt = PLAN_SOORT[p.soort].eind(s, p, f); s.plannen = s.plannen.filter(x => x !== p);
       const r = s.rivals.find(x => x.name === p.wie); if (r) remember(r, s, `${p.titel}: uitgevoerd`);
-      mail(ctx, s, p.ontdekt ? "Head of Security" : "Anoniem", p.ontdekt ? `${p.titel}: het is zover` : `Nu pas zien we het: ${p.titel.charAt(0).toLowerCase() + p.titel.slice(1)}`, `${txt}${p.zacht ? " We waren voorbereid: het had erger kunnen zijn." : ""}${p.ontdekt ? "" : " Niemand had het zien aankomen. Een speurder of fixer in je crew hoort zulke dingen eerder."}`, "HOOG");
+      mail(ctx, s, p.ontdekt ? "Head of Security" : "Anoniem", p.ontdekt ? `${p.titel}: het is zover` : `Te laat ontdekt: ${p.titel}`, `${txt}${p.zacht ? " We waren voorbereid: het had erger kunnen zijn." : ""}${p.ontdekt ? "" : " Niemand had het zien aankomen. Een speurder of fixer in je crew hoort zulke dingen eerder."}`, "HOOG");
       ctx.rep.push(`Plan uitgevoerd: ${p.titel}`); continue; }
     if (!p.ontdekt && R() < planKansOntdekt(s)){
       p.ontdekt = true; const kosten = r1(5 * omvang(s)), kans = snapKans(clamp(45 + ((s.crew || []).some(m => m.rol === "huurling") ? 10 : 0) + ((s.crew || []).some(m => m.rol === "speurder") ? 10 : 0) + (relV(s, "fixer") >= 30 ? 10 : 0), 20, 85));
