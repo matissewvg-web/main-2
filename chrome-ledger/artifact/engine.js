@@ -613,7 +613,7 @@ function tick(s){
 }
 
 /* ---------- de stad: elke game een andere kaart ---------- */
-const VERSION = "3.3";
+const VERSION = "3.3.1";
 const MAP_W = 1000, MAP_H = 680;
 const RIVAL_COLORS = ["#ff9a1f", "#3d7bff", "#c6ff2e", "#f2f2f2", "#9b5cff", "#ffd400", "#ff4d4d"];
 const ARCH = {
@@ -1444,7 +1444,7 @@ function bedrijfOpties(s, b){
     contract: {kost: r1(Math.max(6, b.waarde * 0.1)), bedrag: r1(clamp(b.waarde * 0.011, 0.8, 4.5)), kans: snapKans(Math.round(clamp(50 + b.relatie / 2 + (s.reputation - 30) / 3 - conc, 15, 95)))},
     koop: {kost: r1(b.waarde * 0.1 * 1.05), dividend: r1(b.waarde * 0.1 * 0.009)},
     verkoop: {opbrengst: r1(b.waarde * 0.1 * 0.95)},
-    overname: {kost: r1(b.waarde * (100 - b.aandeel) / 100 * 1.35 * dif), kans: snapKans(Math.round(clamp(40 + b.aandeel * 0.9 + b.relatie / 3 + (s.reputation - 30) / 4, 10, 95)))},
+    overname: {kost: r1(b.waarde * (100 - b.aandeel) / 100 * 1.35 * dif), kans: snapKans(Math.round(clamp(40 + b.aandeel * 0.9 + b.relatie / 3 + (s.reputation - 30) / 4, 10, 95))), koppel: koppelOpties(s, b).map(k => k.kort)},
   };
 }
 function integrateCompany(s, b){
@@ -1454,6 +1454,26 @@ function integrateCompany(s, b){
   else { d = s.divisions.reduce((a, x) => x.level < a.level ? x : a); d.level += lvl; txt = `${d.name || d.type} groeit naar L${d.level}`; }
   s.staff.count += 4 * lvl;
   return txt + `, +${4 * lvl} mensen`;
+}
+function koppelOpties(s, b){
+  const lvl = b.waarde > 220 ? 2 : 1, d = s.divisions.find(x => x.type === b.sector), out = [], bd = r1(b.waarde * 0.012), sg = r1(b.waarde * 0.75);
+  if (d) out.push({id: "samen", label: `Samenvoegen met ${divNaam(d)}`, kort: `samenvoegen met ${divNaam(d)} (+${lvl} niveau)`, uitleg: `${divNaam(d)} gaat van L${d.level} naar L${d.level + lvl}, +${4 * lvl} mensen, en hun bestseller komt in jouw productlijn. Het merk ${b.naam} verdwijnt.`});
+  if (s.divisions.length < 8) out.push({id: "eigen", label: `Eigen divisie ${b.naam}`, kort: `eigen divisie (${b.sector} L${lvl})`, uitleg: `${b.naam} wordt een aparte divisie (${b.sector}, L${lvl}) met +${4 * lvl} mensen en hun bestseller al op de markt. Een tak erbij, met eigen kosten en heat.`});
+  out.push({id: "dochter", label: "Als dochter laten draaien", kort: `dochter (+€${bd}k/mnd)`, uitleg: `${b.naam} blijft zelfstandig onder jouw vlag: elke maand +€${bd}k, geen extra kosten, heat of werk. Telt mee in je bedrijfswaarde.`});
+  out.push({id: "strip", label: "Opknippen en verkopen", kort: `opknippen (+€${sg}k nu)`, uitleg: `De delen apart verkopen: +€${sg}k nu. Reputatie −4, de bond −6, en het bedrijf is weg.`});
+  return out;
+}
+function koppelBedrijf(s, id, wijze){
+  const b = (s.bedrijven || []).find(x => x.id === id); if (!b) return "Dat bedrijf bestaat niet meer.";
+  const lvl = b.waarde > 220 ? 2 : 1, aard = aardVan(b.sector, "");
+  const best = d => { if ((s.producten || []).filter(p => p.divisie === divNaam(d) && p.status !== "teruggeroepen").length >= maxProducten(d)) return "";
+    const p = mkProduct(s, d, null, 2 + lvl, RI(40, 55)); p.aard = aard; p.prijs = "standaard"; maakReview(p); (s.producten ??= []).push(p); prodLog(p, s, `Overgenomen van ${b.naam}`); return `, met ${p.naam} meteen op de markt`; };
+  if (wijze === "samen"){ const d = s.divisions.find(x => x.type === b.sector);
+    if (d){ d.level = Math.min(12, d.level + lvl); s.staff.count += 4 * lvl; b.koppeling = "samen"; return `${b.naam} gaat op in ${divNaam(d)} (nu L${d.level})${best(d)}.`; } wijze = "eigen"; }
+  if (wijze === "eigen" && s.divisions.length < 8){ const naam = s.divisions.some(x => divNaam(x) === b.naam) ? `${b.naam} ${b.sector}` : b.naam, d = {name: naam, type: b.sector, level: lvl};
+    s.divisions.push(d); s.staff.count += 4 * lvl; b.koppeling = "eigen"; return `${naam} is een eigen divisie (${b.sector} L${lvl})${best(d)}.`; }
+  if (wijze === "strip"){ const g = r1(b.waarde * 0.75); s.cash = r1(s.cash + g); s.accounts.operationeel = s.cash; s.reputation = clamp(s.reputation - 4); shiftFaction(s, "vakbond", -6); b.koppeling = "strip"; b.waarde = 0; return `${b.naam} is opgeknipt en verkocht: +€${g}k.`; }
+  const bd = r1(b.waarde * 0.012); (s.streams ??= []).push({naam: "Dochter " + b.naam, bedrag: bd, sinds: ym(s)}); b.koppeling = "dochter"; return `${b.naam} draait als dochter: +€${bd}k per maand.`;
 }
 function actBedrijf(s, ctx, id, soort){
   const b = (s.bedrijven || []).find(x => x.id === id); if (!b) return {ok: false, msg: "Onbekend bedrijf."};
@@ -1487,7 +1507,10 @@ function actBedrijf(s, ctx, id, soort){
     if (ok){
       b.eigenaar = "player"; b.aandeel = 100;
       if (b.contract){ b.contract = false; s.streams = (s.streams || []).filter(x => x.naam !== "Contract " + b.naam); }
-      const t = integrateCompany(s, b); msg = `${b.naam} is van jou (worp ${roll.txt}): ${t}.`;
+      const ko = koppelOpties(s, b);
+      addKeuze(s, ctx, {soort: "koppel_" + b.id, van: "COO", titel: `${b.naam} is van ons. Hoe koppelen we het?`, tekst: `De handtekeningen staan. ${b.naam} (${b.sector}, ${landNaam(s, b.land)}, waarde €${Math.round(b.waarde)}k) is van ons. Nu de vraag wat we ermee doen.`,
+        opties: ko.map(k => ({label: k.label, uitleg: k.uitleg, eff: {integratie: {id: b.id, wijze: k.id}}})), standaard: 0});
+      msg = `${b.naam} is van jou (worp ${roll.txt}). Kies in het overzicht hoe je het koppelt: ${ko.map(k => k.kort).join(", ")}.`;
       news(s, `${s.player.corp_name} neemt ${b.naam} over`, `${b.naam} (${b.sector}, ${landNaam(s, b.land)}) gaat op in ${s.player.corp_name}.`, landNaam(s, b.land), "overname", true);
     } else {
       const back = r1(o.overname.kost * 0.85); s.cash = r1(s.cash + back); b.relatie = Math.round(clamp(b.relatie - 15, -100, 100));
@@ -1679,9 +1702,10 @@ function applyChoice(s, ctx, eff, out = []){
   if (eff.ontmasker) out.push(ontmasker(s, ctx, eff.ontmasker));
   if (eff.dreiging){ const t = (s.dreigingen || []).find(x => x.id === eff.dreiging.id); if (t){ if (eff.dreiging.annuleer) s.dreigingen = s.dreigingen.filter(x => x !== t); else t.extra = (t.extra || 0) + (eff.dreiging.extra || 0); } }
   for (const [id, o] of Object.entries(eff.product || {})){ const p = (s.producten || []).find(x => x.id === id); if (!p) continue;
-    if (o.pop) p.pop = Math.round(clamp(p.pop + o.pop, 3, 95)); if (o.prijs && PRIJS[o.prijs]) p.prijs = o.prijs; if (o.versie && !p.verbetering && p.kwaliteit < 5) p.verbetering = o.versie; }
+    if (o.pop) p.pop = Math.round(clamp(p.pop + o.pop, 3, 95)); if (o.pop && isAbo(p)) p.abo = r1(clamp((p.abo ?? p.pop) * (1 + o.pop / (o.pop < 0 ? 100 : 200)), 0, 140)); if (o.prijs && PRIJS[o.prijs]) p.prijs = o.prijs; if (o.versie && !p.verbetering && p.kwaliteit < 5) p.verbetering = o.versie; }
   if (eff.crew_vrij){ const m = (s.crew || []).find(x => x.id === eff.crew_vrij); if (m){ m.uit = null; m.loyaliteit = clamp(m.loyaliteit + 15); } }
   for (const [id, v] of Object.entries(eff.crew_loy || {})){ const m = (s.crew || []).find(x => x.id === id); if (m) m.loyaliteit = clamp(m.loyaliteit + v); }
+  if (eff.integratie) out.push(koppelBedrijf(s, eff.integratie.id, eff.integratie.wijze));
   if (eff.tekst) out.push(eff.tekst);
   return out;
 }
@@ -2299,7 +2323,7 @@ function mkProduct(s, d, naam, kw, pop){ return {id: "p" + hex8(), naam: naam ||
 const divNaam = d => d.name || d.type;
 const opMarkt = (s, d) => (s.producten || []).filter(p => p.divisie === divNaam(d) && p.status === "markt");
 const maxProducten = d => 2 + d.level;
-function productMult(s, d){ const ps = opMarkt(s, d); if (!ps.length) return 0.95; return clamp(0.88 + 0.06 * ps.reduce((a, p) => a + prodGewicht(p, s), 0), 0.7, 1.45); }
+function productMult(s, d){ const ps = opMarkt(s, d); if (!ps.length) return 0.95; return clamp(0.95 + 0.06 * ps.reduce((a, p) => a + prodGewicht(p, s), 0), 0.95, 1.45); }
 function productKans(s, d, schaal){ const sc = PRODUCT_SCHAAL[schaal]; const b = Math.ceil(d.level / 2) + ((s.crew || []).some(m => m.rol === "spindokter") ? 1 : 0); return {bonus: b, doel: sc.doel, kans: kans2d6(b, sc.doel)}; }
 function actProduct(s, ctx, soort, a){
   const pay = k => { if (s.cash < k) return false; s.cash = r1(s.cash - k); s.accounts.operationeel = s.cash; return true; };
@@ -2313,12 +2337,12 @@ function actProduct(s, ctx, soort, a){
     const kost = plan.kost, bezig = alle.some(p => p.status === "ontwikkeling");
     if (bezig){ if (alle.filter(p => p.status === "wachtrij").length >= 3) return {ok: false, msg: "De wachtrij is vol (3)."};
       const naamW = String(a.naam || "").trim().slice(0, 40) || nieuwProductNaam(s, d.type); if ((s.producten || []).some(p => p.naam === naamW)) return {ok: false, msg: "Die naam bestaat al."};
-      const q = mkProduct(s, d, naamW, plan.kw, 0); q.status = "wachtrij"; q.schaal = a.schaal; q.focus = focus; q.aard = aardK || aardVan(d.type, naamW); (s.producten ??= []).push(q);
+      const q = mkProduct(s, d, naamW, plan.kw, 0); q.status = "wachtrij"; q.schaal = a.schaal; q.focus = focus; q.aard = aardK || aardVan(d.type, naamW); if (a.vorm === "abonnement") q.soort = "abonnement"; (s.producten ??= []).push(q);
       const msgW = `${naamW} staat in de wachtrij van ${divNaam(d)}. Het start vanzelf als het vorige product gelanceerd is; dan wordt €${kost}k betaald.`; addLog(s, msgW); return {ok: true, msg: msgW}; }
     if (!pay(kost)) return {ok: false, msg: `Dit kost €${kost}k. Niet genoeg cash.`};
     const naam = String(a.naam || "").trim().slice(0, 40) || nieuwProductNaam(s, d.type);
     if ((s.producten || []).some(p => p.naam === naam)) return {ok: false, msg: "Die naam bestaat al."};
-    const p = mkProduct(s, d, naam, plan.kw, 0); p.status = "ontwikkeling"; p.eta = plan.maanden; p.schaal = a.schaal; p.focus = focus; p.aard = aardK || aardVan(d.type, naam); (s.producten ??= []).push(p);
+    const p = mkProduct(s, d, naam, plan.kw, 0); p.status = "ontwikkeling"; p.eta = plan.maanden; p.schaal = a.schaal; p.focus = focus; p.aard = aardK || aardVan(d.type, naam); if (a.vorm === "abonnement") p.soort = "abonnement"; (s.producten ??= []).push(p);
     const K = devPlan(s, d, a.schaal, focus, p.aard).kansen; prodLog(p, s, `Ontwikkeling gestart (${PRODUCT_SCHAAL[a.schaal].label.toLowerCase()}, focus ${F.label.toLowerCase()})`);
     msg = `${naam} in ontwikkeling bij ${divNaam(d)}: €${kost}k, ${plan.maanden} maanden. Bij de lancering: hit ${K.hit}%, gewoon ${K.gewoon}%, flop ${K.flop}%, terugroepactie ${K.terug}%.`;
   } else {
@@ -2353,6 +2377,7 @@ function productTick(s, ctx){
       else if (r.blunder){ s.producten = s.producten.filter(x => x !== p); s.reputation = clamp(s.reputation - 5); const k2 = r1(sc.kost * 0.3); s.cash = r1(s.cash - k2);
         mail(ctx, s, "Juridische Zaken", `Terugroepactie: ${p.naam}`, `${p.naam} (${r.txt}) blijkt een fout te hebben die we niet mochten missen. Alles moet terug. €${k2}k aan kosten, reputatie −5, en de pers heeft foto's.`, "KRITIEK"); ctx.rep.push(`Terugroepactie ${p.naam}`); continue; }
       else { (s.stats ??= {}).flops = (s.stats.flops || 0) + 1; p.pop = RI(15, 28) + (sc.flop || 0); p.kwaliteit = Math.max(1, p.kwaliteit - 1); mail(ctx, s, "Marketing", `${p.naam} flopt`, `De lancering van ${p.naam} (${r.txt}) valt tegen: populariteit ${p.pop}. Een campagne of een nieuwe versie kan het redden. Of je haalt het uit de markt.`, "HOOG"); ctx.rep.push(`${p.naam} flopt`); }
+      if (isAbo(p)) p.abo = Math.round(p.pop * 0.5);
       p.aard ??= aardVan(p.type, p.naam); p.prijs ??= "standaard"; if (p.trait === undefined){ const ft = focusTrait(p); p.trait = ft !== undefined ? ft : kiesTrait(p, r.crit, !r.ok); } maakReview(p);
       prodLog(p, s, r.crit ? `Lancering: een hit (${p.review.sterren}★)` : r.ok ? `Gelanceerd (${p.review.sterren}★)` : `Lancering geflopt (${p.review.sterren}★)`); if (p.trait) prodLog(p, s, `Eigenschap: ${PRODUCT_TRAITS[p.trait].label}`); continue;
     }
@@ -2362,6 +2387,7 @@ function productTick(s, ctx){
     p.leeftijd = (p.leeftijd || 0) + 1;
     const idx = ((s.sectoren || {})[p.type] || {idx: 100}).idx, tgt = 28 + p.kwaliteit * 8 + (PRIJS[p.prijs || "standaard"] || PRIJS.standaard).pop + (idx - 100) / 3 - Math.max(0, p.leeftijd - 24) * (p.trait === "verslavend" || p.soort === "abonnement" ? 0.25 : 0.8) + ((((s.vraag || {})[p.aard] || {}).idx || 100) - 100) / 6;
     p.pop = Math.round(clamp(p.pop + (tgt - p.pop) * 0.08 + U(-2, 2), p.trait === "cult" ? 35 : 3, 95));
+    if (isAbo(p)) aboTick(s, p);
     if (p.trait === "gevoelig" && p.leeftijd % 3 === 0 && !p.verbetering) p.pop = Math.max(3, p.pop - 5);
   }
 
@@ -2544,9 +2570,17 @@ function aardVan(type, naam){
   if (/smokkel|zwart|contraband/i.test(t)) return "smokkel";
   return "consument";
 }
+/* 3.3.1: abonnementen draaien op abonnees, niet op populariteit */
+const isAbo = p => !!p && p.soort === "abonnement";
+function bereik(p){ return isAbo(p) && p.abo != null ? clamp(Math.round(p.abo), 0, 110) : p.pop; }
+function aboChurn(p){ const pr = ({premium: 0.012, budget: -0.008})[p.prijs || "standaard"] || 0;
+  return clamp(0.055 - 0.007 * p.kwaliteit + pr + (p.trait === "gevoelig" ? 0.01 : 0) - (p.trait === "verslavend" ? 0.015 : 0) - (p.trait === "cult" ? 0.01 : 0), 0.012, 0.09); }
+function aboTick(s, p){ if (p.abo == null) p.abo = Math.round(p.pop * 0.8);
+  const vf = vraagFactor(s, p.aard || aardVan(p.type, p.naam)), inn = r1(p.pop / 100 * (4 + Math.max(0, 8 - (p.leeftijd || 0)) * 0.5) * vf), uit = r1(p.abo * aboChurn(p));
+  p.abo = r1(clamp(p.abo - uit + inn, 0, 140)); p.aboIn = inn; p.aboUit = uit; }
 const PRIJS = {budget: {label: "Budget", pop: 12, gewicht: 0.8, rep: -0.05}, standaard: {label: "Standaard", pop: 0, gewicht: 1, rep: 0}, premium: {label: "Premium", pop: -10, gewicht: 1.35, rep: 0.1}};
-const prodGewicht = (p, s) => p.kwaliteit * p.pop / 100 * (PRIJS[p.prijs || "standaard"] || PRIJS.standaard).gewicht * (s ? vraagFactor(s, p.aard || aardVan(p.type, p.naam)) : 1) * (p.trait === "goedkoop" ? 1.15 : 1);
-const prodSterkte = p => p.pop / 100 * (0.5 + p.kwaliteit * 0.15);
+const prodGewicht = (p, s) => p.kwaliteit * bereik(p) / 100 * (PRIJS[p.prijs || "standaard"] || PRIJS.standaard).gewicht * (s ? vraagFactor(s, p.aard || aardVan(p.type, p.naam)) : 1) * (p.trait === "goedkoop" ? 1.15 : 1);
+const prodSterkte = p => bereik(p) / 100 * (0.5 + p.kwaliteit * 0.15);
 function prodEffecten(p){ const A = PRODUCT_AARD[p.aard || "consument"] || PRODUCT_AARD.consument, f = prodSterkte(p), out = {};
   for (const [k2, v] of Object.entries(p.eigenEff || A.eff)) out[k2] = Math.round(v * f * 10) / 10; const pr = (PRIJS[p.prijs || "standaard"] || {}).rep || 0; if (pr) out.reputation = Math.round(((out.reputation || 0) + pr) * 10) / 10;
   for (const [k2, v] of Object.entries(traitEffecten(p))) out[k2] = Math.round(((out[k2] || 0) + v) * 10) / 10; return out; }
@@ -3304,7 +3338,7 @@ function worldFacts(s){
     bedrijven_in_de_wereld: (s.bedrijven || []).map(b => ({naam: b.naam, sector: b.sector, land: b.land, waarde: Math.round(b.waarde), eigenaar: b.eigenaar, jouw_aandeel: b.aandeel, contract: b.contract})),
     onderwereld: (s.gangs || []).map(g => ({naam: g.naam, leider: g.leider, relatie: g.relatie, afspraak: g.deal, gebied: g.gebied})),
     rivaal_producten: s.rivals.map(r => `${r.name}: ${(r.producten || []).map(p => `${p.naam} (${p.aard}, k${p.kwaliteit}, pop ${p.pop})`).join(", ")}`),
-    producten: (s.producten || []).map(p => ({naam: p.naam, divisie: p.divisie, soort: p.aard || aardVan(p.type, p.naam), vorm: p.soort || "product", pitch: p.pitch || "", eigenschap: p.trait || null, prijs: p.prijs || "standaard", vraagfactor: vraagFactor(s, p.aard || aardVan(p.type, p.naam)), kwaliteit: p.kwaliteit, populariteit: p.pop, status: p.status, recensie: p.review ? p.review.sterren : null})), verwachte_aanslagen: (s.dreigingen || []).map(t => `${t.label} door ${t.van}`),
+    producten: (s.producten || []).map(p => ({naam: p.naam, divisie: p.divisie, soort: p.aard || aardVan(p.type, p.naam), vorm: p.soort || "product", pitch: p.pitch || "", eigenschap: p.trait || null, prijs: p.prijs || "standaard", vraagfactor: vraagFactor(s, p.aard || aardVan(p.type, p.naam)), kwaliteit: p.kwaliteit, populariteit: p.pop, abonnees_k: isAbo(p) ? Math.round(p.abo || 0) : undefined, status: p.status, recensie: p.review ? p.review.sterren : null})), verwachte_aanslagen: (s.dreigingen || []).map(t => `${t.label} door ${t.van}`),
     crew: (s.crew || []).map(m => ({naam: m.naam, rol: m.rol, niveau: m.niveau, status: crewStatus(s, m), eigenschap: traitOf(m.trait).naam})), huurleger: s.huurleger, tijdperk: TIJDPERKEN[s.tijdperk || 0].naam, status: STATUS_LADDER[s.statusNiveau || 0][1],
     verhaallijn: s.verhaal || null,
     wereldnieuws: (s.nieuws || []).slice(0, 8).map(n => `${n.m} ${n.kop}`), open_keuzes: (s.keuzes || []).map(k => k.titel),

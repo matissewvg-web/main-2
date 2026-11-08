@@ -138,6 +138,11 @@ h2::after{content:"";flex:1;height:1px;background:linear-gradient(90deg,var(--li
 .opt:hover{box-shadow:inset 0 0 0 1px var(--amber)}
 .opt .t{font-weight:700;letter-spacing:.04em}
 .opt .u{font-size:14px;color:var(--muted)}
+.starter{border:1px dashed var(--line);padding:10px 12px;margin-top:4px}
+.gmfab{position:fixed;right:18px;bottom:62px;z-index:40;width:56px;height:56px;border-radius:50%;background:var(--panel2);color:var(--cyan);border:1px solid var(--cyan);font-weight:700;letter-spacing:.08em;box-shadow:0 0 18px rgba(5,217,232,.35);cursor:pointer}
+.gmfab .gmdot{position:absolute;top:6px;right:6px;width:10px;height:10px;border-radius:50%;background:var(--amber)}
+.gmpanel{position:fixed;right:16px;bottom:56px;top:96px;width:min(420px,calc(100vw - 32px));z-index:45;display:flex;flex-direction:column;background:var(--panel2);box-shadow:inset 0 0 0 1px var(--cyan),0 10px 40px rgba(0,0,0,.6)}
+@media (max-width:700px){.gmpanel{left:8px;right:8px;width:auto;top:64px;bottom:48px}.gmfab{right:12px;bottom:56px}}
 .opt .keff{font-size:13px;color:var(--text);opacity:.85;margin-top:2px;font-family:var(--mono)}
 .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
 .spread{display:flex;justify-content:space-between;align-items:center;gap:10px}
@@ -612,7 +617,7 @@ function render(){
       `<button class="${S.view===n[0]?"on":""}" data-view="${n[0]}"><span><span class="ix">${String(++i).padStart(2,"0")}</span>${n[1]}</span>${n[2]}</button>`).join(""); })()}
       <div class="sys">VERSIE <span class="on">${VERSION}</span><br>OPSLAG <span class="on">● ${G.mode==="db"?"ONLINE":"BROWSER"}</span><br>GM <span class="${G.sample&&!G.sampleOff?"on":""}">● ${G.sample&&!G.sampleOff?"LIVE":"VIA CHAT"}</span><br>HULP <button data-a="help">? regels en toetsen</button><br>EFFECTEN <button data-a="effecten">${S.rustig ? "UIT" : "AAN"}</button><br>GELUID <button data-a="sound">${S.sound?"AAN":"UIT"}</button></div></nav>
     <main id="main">${over ? gameOver() : (VIEWS[S.view] || VIEWS.overzicht)()}</main>
-  </div>${S.help ? helpOverlay() : ""}`;
+  </div>${S.help ? helpOverlay() : ""}${S.view === "comms" ? "" : gmDock(st)}`;
   afterRender();
   restoreUI(_ui);
 }
@@ -899,7 +904,7 @@ function wereldVM(s){
   const sect = Object.entries(s.sectoren || {}).map(([t, x]) => ({naam: t, idx: Math.round(x.idx), trend: Math.round(x.trend * 1000) / 10, hist: x.hist || [], mijn: s.divisions.some(d => d.type === t), mult: Math.round(sectorMult(s, t) * 100)}));
   const mods = s.districts.filter(d => d.mod).map(d => ({id: d.id, naam: d.name, f: d.mod.f, m: d.mod.m, why: d.mod.why, mijn: d.control === "player"}));
   const vraag = Object.entries(s.vraag || {}).map(([a, x]) => ({aard: a, label: PRODUCT_AARD[a].label, idx: Math.round(x.idx), trend: Math.round(x.trend * 1000) / 10, hist: x.hist || [], reden: x.reden || "", aanbod: aanbod(s, a), factor: vraagFactor(s, a), mijn: (s.producten || []).some(p => p.status === "markt" && (p.aard || aardVan(p.type, p.naam)) === a)})).sort((a, b) => b.mijn - a.mijn || b.idx - a.idx);
-  const catalogus = [...(s.producten || []).filter(p => p.status === "markt").map(p => ({naam: p.naam, aard: p.aard || aardVan(p.type, p.naam), kwaliteit: p.kwaliteit, pop: p.pop, eigenaar: "jij", kleur: "#05d9e8", trait: p.trait ? PRODUCT_TRAITS[p.trait].label : "", prijs: p.prijs || "standaard"})),
+  const catalogus = [...(s.producten || []).filter(p => p.status === "markt").map(p => ({naam: p.naam, aard: p.aard || aardVan(p.type, p.naam), kwaliteit: p.kwaliteit, pop: bereik(p), eigenaar: "jij", kleur: "#05d9e8", trait: p.trait ? PRODUCT_TRAITS[p.trait].label : "", prijs: p.prijs || "standaard"})),
     ...s.rivals.flatMap(r => (r.producten || []).map(p => ({naam: p.naam, aard: p.aard, kwaliteit: p.kwaliteit, pop: p.pop, eigenaar: r.name, kleur: ownerColor(s, r.name), trait: "", prijs: ""})))].sort((a, b) => b.pop * b.kwaliteit - a.pop * a.kwaliteit);
   return {catalogus, vraag, nieuws: (s.nieuws || []).slice(0, 40), bedrijven: bed, rang: rank, sectoren: sect, mods, plek: (rank.find(x => x.soort === "speler") || {}).plek, totaal: rank.length};
 }
@@ -983,6 +988,7 @@ function setupBonus(homeD){
     <p class="dim" style="font-size:13px;margin:6px 0 0">Elk soort land geeft een ander voordeel: havens, financiële centra, datavalleien, sloppen. Klik verschillende landen aan om ze te vergelijken.</p>` : "";
 }
 const VERSIES = [
+  ["3.3.1", "Na de playtest", ["Abonnementen draaien op abonnees in plaats van populariteit: aantrekkingskracht bepaalt hoeveel klanten er bijkomen, kwaliteit en prijs hoeveel er opzeggen. Ze groeien trager maar blijven. Ook bij Handmatig kun je nu een abonnement kiezen.", "Overnames: vooraf zie je wat je krijgt, en na een geslaagd bod kies je zelf hoe je het koppelt: samenvoegen met je divisie, een eigen divisie, als dochter laten draaien of opknippen en verkopen. Een overgenomen bedrijf brengt zijn bestseller mee.", "Een lege divisie legt uit hoe ze geld maakt en geeft twee startideeën met één klik: snel een veilig product, of een abonnement opbouwen.", "De GM zit op elk scherm: de knop GM rechtsonder (of toets G) opent het gesprek zonder dat je je scherm verlaat."]],
   ["3.3", "De GM ontwerpt en vertelt", ["Een nieuwe divisie of eigen bedrijfstak beschrijf je in je eigen woorden. De GM kiest een bestaande soort of verzint een nieuwe met eigen cijfers, ontwerpt het eerste product of de eerste dienst (start vanzelf bij de opening) en schrijft een openingsverhaal met keuzes.", "Verhaalbogen: om de paar maanden schrijft de GM een volgend hoofdstuk rond jouw bedrijf, met je echte producten, mensen, crew, rivalen en syndicaten. Je keuze bepaalt het volgende hoofdstuk; na 3 of 4 hoofdstukken sluit de boog af en begint er later een nieuwe.", "De engine bewaakt alle grenzen en gooit de dobbelstenen. Zonder live GM blijven de vaste gebeurtenissen en de keuzelijst onder Handmatig gewoon werken."]],
   ["3.2.1", "Eerlijker begin", ["Een startend bedrijf werd door facturen, gebeurtenissen, chaos, aanslagen, prijsoorlogen en beschermgeld net zo hard geraakt als een megacorporatie: gemiddeld €9,7k per maand buiten het maandresultaat om, terwijl een starter €5-8k netto verdient. Die posten schalen nu mee met je omzet (×0,35 tot ×2).", "Gevolg in de balanstest (40 spellen, Realistisch): de verstandige bot gaat niet meer binnen 2 jaar failliet en wint vaker (±43%), na gemiddeld ruim tien jaar."]],
   ["3.2", "Jij beschrijft, de GM ontwerpt", ["Iets nieuws maken begint nu met jouw eigen woorden: een product, een dienst, een abonnement of een netwerk. De GM ontwerpt het: naam, vorm, doelgroep, markt, kosten, duur, moeilijkheid, wat het per maand met de wereld doet, en 2 of 3 eigen verhaallijnen die later met juist dat ding gebeuren.", "De engine bewaakt de grenzen en gooit de dobbelstenen: kwaliteit kan niet hoger dan het geld toelaat, en de kans die je ziet is de echte.", "Abonnementen verouderen nauwelijks. De keuzemenu's van vroeger staan nog onder Handmatig, voor als de GM niet live is."]],
@@ -1093,12 +1099,13 @@ function bedrijfCard(b){
   return `<div class="card"><div class="spread"><h3>${esc(b.naam)}</h3><span class="tag">${esc(b.sector)}</span></div>
     <p class="muted" style="margin:2px 0 8px">${esc(b.landNaam)}, ${esc(b.continent)} · CEO ${esc(b.ceo)}</p>
     <dl class="kv"><dt>Waarde</dt><dd>${eur(b.waarde)} <span style="color:${b.trend >= 0 ? "var(--green)" : "var(--red)"}">${b.trend >= 0 ? "▲" : "▼"}${Math.abs(b.trend)}%</span></dd><dt>Jouw belang</dt><dd>${b.aandeel}%</dd><dt>Relatie</dt><dd>${b.relatie}</dd><dt>Contract</dt><dd>${b.contract ? "loopt" : "nee"}</dd></dl>
+    <p class="dim" style="font-size:13px;margin:8px 0 0">Drie manieren om aan ${esc(b.naam)} te verdienen: een <b>contract</b> (vast bedrag per maand, het blijft van hen), <b>aandelen</b> (dividend, en een later overnamebod wordt kansrijker), of een <b>overname</b> (het wordt van jou en je kiest hoe je het aan je bedrijf koppelt).</p>
     <div class="opts" style="margin-top:10px">
       <div class="opt"><div><div class="t">Zakendiner · €${o.diner.kost}k</div><div class="u">${esc(o.diner.uitleg)}</div></div><button class="btn sm" data-a="bedrijf" data-id="${b.id}" data-s="diner" ${b.actie === st.maand ? "disabled" : ""}>Doen</button></div>
       <div class="opt"><div><div class="t">Leveringscontract · ${eur(o.contract.kost)}</div><div class="u">Kans ${o.contract.kans}%. Lukt het: +${eur(o.contract.bedrag)} per maand, zolang het bedrijf zelfstandig blijft. Terugverdiend in ±${Math.round(o.contract.kost / o.contract.bedrag)} mnd.</div></div><button class="btn sm primary" data-a="bedrijf" data-id="${b.id}" data-s="contract" ${b.contract ? "disabled" : ""}>Bod doen</button></div>
       <div class="opt"><div><div class="t">10% aandelen kopen · ${eur(o.koop.kost)}</div><div class="u">+${eur(o.koop.dividend)} dividend per maand; de waarde beweegt mee met het bedrijf. Kopen rivalen het op, dan word je uitgekocht met 30% premie.</div></div><button class="btn sm" data-a="bedrijf" data-id="${b.id}" data-s="koop" ${b.aandeel >= 40 ? "disabled" : ""}>Kopen</button></div>
       ${b.aandeel ? `<div class="opt"><div><div class="t">10% verkopen · +${eur(o.verkoop.opbrengst)}</div><div class="u">Geld nu, minder dividend.</div></div><button class="btn sm" data-a="bedrijf" data-id="${b.id}" data-s="verkoop">Verkopen</button></div>` : ""}
-      <div class="opt"><div><div class="t">Overnemen · ${eur(o.overname.kost)}</div><div class="u">Kans ${o.overname.kans}% (hoger met meer aandelen en een betere relatie). Lukt het: een divisie ${esc(b.sector)} erbij of een niveau hoger, plus mensen. Mislukt: 15% van het bod weg.</div></div><button class="btn sm warn" data-a="bedrijf" data-id="${b.id}" data-s="overname">Bod doen</button></div>
+      <div class="opt"><div><div class="t">Overnemen · ${eur(o.overname.kost)}</div><div class="u">Kans ${o.overname.kans}% (hoger met meer aandelen en een betere relatie). Lukt het, dan kies jij hoe je het koppelt: ${esc(o.overname.koppel.join(" · "))}. Mislukt: 15% van het bod weg.</div></div><button class="btn sm warn" data-a="bedrijf" data-id="${b.id}" data-s="overname">Bod doen</button></div>
     </div></div>`;
 }
 
@@ -1168,7 +1175,7 @@ function productVM(s){
   return s.divisions.map(d => { const nm = divNaam(d), ps = (s.producten || []).filter(p => p.divisie === nm), markt = ps.filter(p => p.status === "markt");
     const tot = markt.reduce((a, p) => a + prodGewicht(p, s), 0) || 1, omz = (s.divomzet || {})[nm] || 0;
     return {naam: nm, type: d.type, level: d.level, mult: Math.round(productMult(s, d) * 100), max: maxProducten(d), vol: ps.filter(p => p.status !== "teruggeroepen").length >= maxProducten(d), bezig: ps.some(p => p.status === "ontwikkeling"), rijVol: ps.filter(p => p.status === "wachtrij").length >= 3,
-      producten: ps.map(p => { const aard = p.aard || aardVan(p.type, p.naam); return {...p, aard, vraagF: vraagFactor(s, aard), traitLabel: p.trait ? PRODUCT_TRAITS[p.trait].label : "", traitTekst: p.trait ? PRODUCT_TRAITS[p.trait].tekst : "", traitGoed: p.trait ? PRODUCT_TRAITS[p.trait].goed : true, aardLabel: (PRODUCT_AARD[aard] || {}).label, aardTekst: (PRODUCT_AARD[aard] || {}).tekst, prijs: p.prijs || "standaard", eff: p.status === "markt" ? prodEffecten({...p, aard}) : {}, omzet: p.status === "markt" ? r1(omz * prodGewicht(p, s) / tot) : 0}; }),
+      producten: ps.map(p => { const aard = p.aard || aardVan(p.type, p.naam); return {...p, aard, vraagF: vraagFactor(s, aard), traitLabel: p.trait ? PRODUCT_TRAITS[p.trait].label : "", traitTekst: p.trait ? PRODUCT_TRAITS[p.trait].tekst : "", traitGoed: p.trait ? PRODUCT_TRAITS[p.trait].goed : true, aardLabel: (PRODUCT_AARD[aard] || {}).label, aardTekst: (PRODUCT_AARD[aard] || {}).tekst, prijs: p.prijs || "standaard", eff: p.status === "markt" ? prodEffecten({...p, aard}) : {}, bereik: bereik(p), churn: isAbo(p) ? Math.round(aboChurn(p) * 1000) / 10 : null, omzet: p.status === "markt" ? r1(omz * prodGewicht(p, s) / tot) : 0}; }),
       schalen: Object.entries(PRODUCT_SCHAAL).map(([k2, sc]) => ({id: k2, label: sc.label})),
       dev: (() => { const sel = Object.assign({schaal: "klein", focus: "standaard", aard: aardVan(d.type, "")}, (S.devSel || {})[nm] || {}); return {sel, plan: devPlan(s, d, sel.schaal, sel.focus, sel.aard)}; })(),
       voorstel: nieuwProductNaam(s, d.type)}; });
@@ -1201,27 +1208,45 @@ function conceptBlok(d){
   return `<div class="conceptin"><textarea id="pc_${esc(d.naam)}" rows="2" aria-label="beschrijf wat je wilt maken" placeholder="Wat wil je maken? In je eigen woorden: een product, een dienst, een abonnement. Bijv.: een Trauma Team-abonnement, gewapende ambulances die binnen drie minuten bij een klant zijn."></textarea>
     <div class="row" style="gap:8px"><button class="btn sm primary" data-a="concept" data-div="${esc(d.naam)}" ${bezig || !live() ? "disabled" : ""}>${bezig ? "De GM denkt…" : "De GM werkt het uit"}</button>${live() ? '<span class="dim" style="font-size:13px">Jij beschrijft, de GM ontwerpt, de engine gooit.</span>' : '<span class="dim" style="font-size:13px">De GM is niet live: gebruik Handmatig hieronder.</span>'}</div></div>`;
 }
+function starterBlok(d){
+  const s = G.game, dv = s.divisions.find(x => divNaam(x) === d.naam); if (!dv) return "";
+  const a = aardVan(dv.type, ""), pv = devPlan(s, dv, "klein", "veilig", a), pa = devPlan(s, dv, "klein", "standaard", a), lukt = K => K.hit + K.gewoon;
+  return `<div class="starter"><p style="margin:0 0 6px"><b>Nog niets te verkopen.</b> <span class="muted">Zo werkt het: de divisie zelf levert omzet per niveau. Zonder producten draait ze op ×0,95; elk product tilt dat op, tot ×1,45. Je betaalt één keer om iets te ontwikkelen, daarna verkoopt het elke maand.</span></p>
+    <div class="opts">
+      <div class="opt"><div><div class="t">Snel iets verkopen · €${pv.kost}k</div><div class="u">Klein, veilig product: ${pv.maanden} mnd, kwaliteit ${pv.kw}. Lukt in ${lukt(pv.kansen)}% van de gevallen, nooit een terugroepactie.</div></div><button class="btn sm primary" data-a="starter" data-div="${esc(d.naam)}" data-f="veilig" data-v="product">Starten</button></div>
+      <div class="opt"><div><div class="t">Een abonnement opbouwen · €${pa.kost}k</div><div class="u">Vaste klanten die elke maand betalen. Groeit trager, maar blijft. ${pa.maanden} mnd, kwaliteit ${pa.kw}, lukt in ${lukt(pa.kansen)}%.</div></div><button class="btn sm" data-a="starter" data-div="${esc(d.naam)}" data-f="standaard" data-v="abonnement">Starten</button></div>
+    </div><p class="dim" style="font-size:13px;margin:6px 0 0">Iets eigens? Beschrijf het hieronder en de GM ontwerpt het.</p></div>`;
+}
+function gmDock(st){
+  const c = st.contacten.find(x => x.key === "gm"); if (!c) return "";
+  if (!S.gmDock) return `<button class="gmfab" data-a="gmdock" title="De GM (G)" aria-label="De GM openen">GM${c.open || c.bezig ? '<i class="gmdot"></i>' : ""}</button>`;
+  const ch = G.chats.gm, msgs = (ch ? ch.berichten : []).slice(-30).map(b => bubble(b, c)).join("") || `<div class="empty" style="text-transform:none;letter-spacing:0">Ik ben de GM. Zeg in je eigen woorden wat er moet gebeuren. Ik zeg wat het kost en wat de kans is, jij zegt ja of nee, en de dobbelstenen beslissen.<br><br>Bijv.: “Koop de havenmeester van Rotterdam om, max €10k.” of “Wat moet ik nu doen?”</div>`;
+  return `<aside class="gmpanel" aria-label="De GM"><div class="chead"><div><b>De GM</b><div class="crol">${live() ? "live · ontwerpt, vertelt en zegt wat het kost" : "niet live: berichten wachten tot je Claude in de chat vraagt"}</div></div><button class="btn sm" data-a="gmdock" aria-label="GM sluiten">✕</button></div>
+    <div class="chatlog" id="gmlog" aria-live="polite">${msgs}</div>
+    <div class="cinput"><textarea id="gmtxt" rows="2" placeholder="Zeg het tegen de GM…" aria-label="bericht aan de GM"></textarea><button class="btn primary" data-a="gmsend">Stuur</button></div></aside>`;
+}
 function pfilterOk(aard){ const f = S.pfilter || "alle"; return f === "alle" || f === aard; }
 function pfilterChips(st){ const f = S.pfilter || "alle"; return `<div class="chips" style="margin:0 0 10px"><span class="kpi" style="margin-right:4px">SOORT</span>${[["alle", "Alle"], ...Object.entries(PRODUCT_AARD).map(([k3, x]) => [k3, x.label])].map(([k3, l]) => `<button class="chip ${f === k3 ? "on" : ""}" data-a="pfilter" data-f="${k3}">${esc(l)}</button>`).join("")}</div>`; }
 function productSection(st){
   const P = st.productlijn, kw = n => `<span class="mono" style="color:var(--cyan)">${"◆".repeat(n)}${"◇".repeat(5 - n)}</span>`;
   return `<h2>Productlijn</h2>
-  <p class="muted" style="font-size:13.5px;margin:-4px 0 10px">Wat elke divisie verkoopt. Elk product heeft een aard met eigen gevolgen: wapens geven macht en heat, medische producten reputatie, data invloed, smokkelwaar zwart geld. Producten krijgen recensies en eigen gebeurtenissen (misbruik, bijwerkingen, namaak, viraal), en jij kiest de prijs: budget is populairder, premium levert per klant meer op. Kwaliteit × populariteit bepaalt hoeveel de divisie opbrengt: een sterke lineup tilt de omzet tot +45%, een lege of verouderde lineup drukt hem tot −30%. Producten verouderen na twee jaar; een nieuwe versie of campagne houdt ze fris. Bij elke lancering gooit de engine 2d6: hit, gewoon, flop of terugroepactie.</p>
+  <p class="muted" style="font-size:13.5px;margin:-4px 0 10px">Wat elke divisie verkoopt. Elk product heeft een aard met eigen gevolgen: wapens geven macht en heat, medische producten reputatie, data invloed, smokkelwaar zwart geld. Producten krijgen recensies en eigen gebeurtenissen (misbruik, bijwerkingen, namaak, viraal), en jij kiest de prijs: budget is populairder, premium levert per klant meer op. Kwaliteit × populariteit bepaalt hoeveel de divisie opbrengt: zonder producten draait een divisie op ×0,95, elk product tilt dat op, tot ×1,45 voor een sterke lineup. Een product kost je dus nooit omzet, alleen een zwak product levert weinig op. Producten verouderen na twee jaar; een nieuwe versie of campagne houdt ze fris. Bij elke lancering gooit de engine 2d6: hit, gewoon, flop of terugroepactie. Abonnementen werken anders: ze draaien op abonnees. Aantrekkingskracht bepaalt hoeveel nieuwe klanten er elke maand bijkomen, kwaliteit en prijs hoeveel er opzeggen. Ze groeien trager, maar een slechte maand kost je niet meteen je omzet.</p>
   ${pfilterChips(st)}
   <div class="grid g2">${P.map(d => `<div class="card"><div class="spread"><h3>${esc(d.naam)}</h3><span class="tag ${d.mult >= 100 ? "ok" : "HOOG"}">omzet ×${(d.mult / 100).toFixed(2)}</span></div>
     <div class="muted" style="font-size:13px;margin-bottom:6px">${esc(d.type)} · L${d.level} · ${d.producten.length}/${d.max} producten</div>
     <div class="plist">${d.producten.filter(p => pfilterOk(p.aard)).map(p => `<div class="prow ${p.status}"><div><b>${esc(p.naam)}</b> ${p.status === "wachtrij" ? `<span class="tag">wachtrij${p.betaald ? " · betaald" : ""}</span>` : p.status === "ontwikkeling" ? `<span class="tag cyan">in ontwikkeling · ${p.eta} mnd</span>` : p.verbetering ? `<span class="tag cyan">nieuwe versie · ${p.verbetering} mnd</span>` : ""}
-        <div class="dim" style="font-size:13px">${kw(p.kwaliteit)} · ${p.status === "markt" ? `populariteit ${p.pop} · ≈€${p.omzet}k/mnd · sinds ${esc(p.sinds)}` : `verwachte kwaliteit ${p.kwaliteit}${p.status === "wachtrij" ? " · start als de vorige klaar is" : ""}`}</div>
-        ${p.status === "markt" ? `<div class="bar" style="margin-top:4px"><i style="width:${p.pop}%"></i></div>` : ""}
+        <div class="dim" style="font-size:13px">${kw(p.kwaliteit)} · ${p.status === "markt" ? `${p.churn != null ? `${Math.round(p.abo ?? p.pop)}k abonnees (+${p.aboIn ?? "?"}k / −${p.aboUit ?? "?"}k per mnd, ${p.churn}% zegt op) · aantrekkingskracht ${p.pop}` : `populariteit ${p.pop}`} · ≈€${p.omzet}k/mnd · sinds ${esc(p.sinds)}` : `verwachte kwaliteit ${p.kwaliteit}${p.status === "wachtrij" ? " · start als de vorige klaar is" : ""}`}</div>
+        ${p.status === "markt" ? `<div class="bar" style="margin-top:4px"><i style="width:${Math.min(100, p.bereik)}%"></i></div>` : ""}
         ${p.pitch ? `<div class="cpitch small">${esc(p.pitch)}</div>` : ""}
         <div class="ptags">${p.soort && p.soort !== "product" ? `<span class="tag cyan">${esc(CONCEPT_SOORT[p.soort] || "")}</span>` : ""}<span class="tag" title="${esc(p.aardTekst || "")}">${esc(p.aardLabel || "")}</span>${p.traitLabel ? `<span class="tag ${p.traitGoed ? "ok" : "HOOG"}" title="${esc(p.traitTekst)}">${esc(p.traitLabel)}</span>` : ""}${p.status === "markt" ? `<span class="pe ${p.vraagF >= 1 ? "good" : "bad"}" title="vraag en aanbod in deze markt">markt ×${p.vraagF.toFixed(2)}</span>` : ""}${Object.entries(p.eff || {}).filter(([, v]) => v).map(([k3, v]) => `<span class="pe ${(k3 === "heat" ? v < 0 : v > 0) ? "good" : "bad"}">${v > 0 ? "+" : ""}${v} ${({macht: "macht", heat: "heat", reputation: "reputatie", invloed: "invloed", zwart: "zwart €k", straat: "straat", politie: "politie", stad: "overheid", vakbond: "bond", morale: "morale"})[k3] || k3}${k3 === "macht" ? "" : "/mnd"}</span>`).join("")}
           ${p.review ? `<span class="rev" title="${esc(p.review.bron)}">${"★".repeat(p.review.sterren)}${"☆".repeat(5 - p.review.sterren)} <i>${esc(p.review.tekst)}</i> <span class="dim">${esc(p.review.bron)}</span></span>` : ""}${p.omzetTotaal ? `<span class="dim">totaal €${Math.round(p.omzetTotaal)}k omgezet</span>` : ""}</div>
         ${(p.log || []).length ? `<div class="plog">${p.log.slice(0, 3).map(x => `<span><span class="mono">${esc(x.m)}</span> ${esc(x.tekst)}</span>`).join("")}</div>` : ""}
         ${p.status === "markt" ? `<div class="prijzen">${Object.entries(PRIJS).map(([k3, x]) => `<button class="chip ${p.prijs === k3 ? "on" : ""}" data-a="prod" data-s="prijs" data-p="${k3}" data-id="${p.id}" title="populariteit ${x.pop >= 0 ? "+" : ""}${x.pop}, omzet per klant ×${x.gewicht}">${x.label}</button>`).join("")}</div>` : ""}</div>
-      ${p.status === "markt" ? `<div class="row" style="gap:4px;flex-wrap:nowrap"><button class="btn sm" data-a="prod" data-s="campagne" data-id="${p.id}" title="€3k, populariteit +12">Campagne · €3k</button>${p.kwaliteit < 5 && !p.verbetering ? `<button class="btn sm" data-a="prod" data-s="verbeter" data-id="${p.id}" title="2 maanden, 2d6 tegen 8">Versie ${p.kwaliteit + 1}</button>` : ""}<button class="btn sm danger" data-a="prod" data-s="stop" data-id="${p.id}" aria-label="uit de markt halen">✕</button></div>` : p.status === "wachtrij" ? `<button class="btn sm danger" data-a="prod" data-s="stop" data-id="${p.id}" aria-label="uit de wachtrij halen">✕</button>` : ""}</div>`).join("") || '<p class="dim">Nog geen producten: deze divisie draait op ×0,95. Start je eerste productlijn hieronder, of vraag de Assistent.</p>'}</div>
+      ${p.status === "markt" ? `<div class="row" style="gap:4px;flex-wrap:nowrap"><button class="btn sm" data-a="prod" data-s="campagne" data-id="${p.id}" title="€3k, populariteit +12">Campagne · €3k</button>${p.kwaliteit < 5 && !p.verbetering ? `<button class="btn sm" data-a="prod" data-s="verbeter" data-id="${p.id}" title="2 maanden, 2d6 tegen 8">Versie ${p.kwaliteit + 1}</button>` : ""}<button class="btn sm danger" data-a="prod" data-s="stop" data-id="${p.id}" aria-label="uit de markt halen">✕</button></div>` : p.status === "wachtrij" ? `<button class="btn sm danger" data-a="prod" data-s="stop" data-id="${p.id}" aria-label="uit de wachtrij halen">✕</button>` : ""}</div>`).join("") || (d.producten.length ? '<p class="dim">Geen producten van deze soort in deze divisie.</p>' : starterBlok(d))}</div>
     ${d.vol || d.rijVol ? `<p class="dim" style="font-size:13px;margin:8px 0 0">${d.vol ? "Lineup vol (inclusief wachtrij). Haal iets uit de markt of breid de divisie uit." : "De wachtrij is vol."}</p>` : `<div class="devbox"><div class="kpi" style="margin-bottom:6px">IETS NIEUWS${d.bezig ? " · KOMT IN DE WACHTRIJ" : ""}</div>${conceptBlok(d)}<details class="handmatig" ${live() ? "" : "open"}><summary>Handmatig, zonder GM</summary><div class="newprod"><input type="text" id="pn_${esc(d.naam)}" placeholder="${esc(d.voorstel)}" aria-label="naam nieuw product">
       <select id="pa_${esc(d.naam)}" data-dev="${esc(d.naam)}" data-k="aard" aria-label="soort product">${Object.entries(PRODUCT_AARD).map(([k3, x]) => `<option value="${k3}" ${d.dev.sel.aard === k3 ? "selected" : ""}>${esc(x.label)}</option>`).join("")}</select>
       <select id="pf_${esc(d.naam)}" data-dev="${esc(d.naam)}" data-k="focus" aria-label="focus">${Object.entries(DEV_FOCUS).map(([k3, x]) => `<option value="${k3}" ${d.dev.sel.focus === k3 ? "selected" : ""}>Focus: ${esc(x.label)}</option>`).join("")}</select>
+      <select id="pv_${esc(d.naam)}" aria-label="vorm"><option value="product">Vorm: product</option><option value="abonnement">Vorm: abonnement</option></select>
       <select id="ps_${esc(d.naam)}" data-dev="${esc(d.naam)}" data-k="schaal" aria-label="schaal">${d.schalen.map(sc => `<option value="${sc.id}" ${d.dev.sel.schaal === sc.id ? "selected" : ""}>${esc(sc.label)}</option>`).join("")}</select>
       <button class="btn sm primary" data-a="prodnew" data-div="${esc(d.naam)}">${d.bezig ? "In de wachtrij" : "Ontwikkelen"}</button></div>
       <div class="devplan"><span>€${d.dev.plan.kost}k · ${d.dev.plan.maanden} mnd · kwaliteit ${d.dev.plan.kw}</span><span class="mono">2d6${d.dev.plan.bonus ? "+" + d.dev.plan.bonus : ""} ≥ ${d.dev.plan.doel}</span>
@@ -1596,7 +1621,7 @@ function setupView(){
 
 /* ---------- sneltoetsen ---------- */
 const NAVKEYS = ["overzicht", "inbox", "comms", "mensen", "crew", "wereld", "kaart", "bedrijf", "financien", "rivalen", "onderwereld", "logboek"];
-const HOTKEYS = [["1 – 9, 0, −, =", "Naar tab 1 tot 12 (de nummers staan in het menu)"], ["N", "Volgende maand"], ["A", "Assistent openen"], ["/", "Zoeken in de inbox"],
+const HOTKEYS = [["1 – 9, 0, −, =", "Naar tab 1 tot 12 (de nummers staan in het menu)"], ["N", "Volgende maand"], ["A", "Assistent openen"], ["G", "De GM openen of sluiten, op elk scherm"], ["/", "Zoeken in de inbox"],
   ["J / K", "Volgende / vorige mail"], ["R", "Mail beantwoorden"], ["E", "Mail archiveren"], ["C", "Nieuwe mail"], ["M", "Kaartmodus wisselen (op de kaart)"],
   ["Esc", "Sluiten: mail, chat, selectie of dit venster"], ["?", "Dit overzicht"]];
 function helpOverlay(){
@@ -1613,6 +1638,7 @@ document.addEventListener("keydown", e => {
     if (S.help){ S.help = false; render(); return; }
     if (typing){ tg.blur(); return; }
     if (S.compose || S.mailBody){ S.compose = null; S.mailBody = null; render(); return; }
+    if (S.gmDock){ S.gmDock = false; render(); return; }
     if (S.chatOpen){ S.chatOpen = false; render(); return; }
     if (S.dist || S.zone || S.bedrijf){ S.dist = S.zone = S.bedrijf = null; render(); }
     return;
@@ -1635,6 +1661,7 @@ document.addEventListener("keydown", e => {
   if (k2 === "?"){ S.help = !S.help; render(); return; }
   if (k2 === "n"){ e.preventDefault(); if (st.status === "actief") doTick(false); return; }
   if (k2 === "a"){ S.view = "comms"; S.chat = "gm"; S.chatOpen = true; render(); document.getElementById("chattxt")?.focus({preventScroll: true}); e.preventDefault(); return; }
+  if (k2 === "g"){ e.preventDefault(); S.gmDock = !S.gmDock; render(); if (S.gmDock) document.getElementById("gmtxt")?.focus({preventScroll: true}); return; }
   if (k2 === "/"){ e.preventDefault(); if (S.view !== "inbox") goView("inbox"); document.getElementById("q")?.focus(); return; }
   if (k2 === "c"){ e.preventDefault(); document.querySelector('[data-a="compose"]') ? document.querySelector('[data-a="compose"]').click() : (goView("inbox"), document.querySelector('[data-a="compose"]')?.click()); return; }
   if (S.view === "inbox" && (k2 === "j" || k2 === "k")){
@@ -1678,6 +1705,9 @@ document.addEventListener("click", async e => {
       delete S.keep.ordertxt; S.view = "comms"; S.chat = "gm"; S.chatOpen = true; localSet("view","comms"); render(); chatSend("gm", txt); return; }
     case "chatwith": S.view = "comms"; S.chat = t.dataset.key; S.chatOpen = true; localSet("view","comms"); render(); document.getElementById("chattxt")?.focus({preventScroll: true}); return;
     case "closechat": S.chatOpen = false; render(); return;
+    case "gmdock": S.gmDock = !S.gmDock; render(); if (S.gmDock) document.getElementById("gmtxt")?.focus({preventScroll: true}); return;
+    case "gmsend": { const el = document.getElementById("gmtxt"), txt = el && el.value; if (!txt || !txt.trim()) return; el.value = ""; delete S.keep.gmtxt; chatSend("gm", txt); return; }
+    case "starter": return act("/api/product", {soort: "ontwikkel", divisie: t.dataset.div, schaal: "klein", focus: t.dataset.f, vorm: t.dataset.v});
     case "chatsend": { const el = document.getElementById("chattxt"), txt = el && el.value; if (!txt || !txt.trim()) return;
       el.value = ""; delete S.keep.chattxt; chatSend(S.chat || "gm", txt); return; }
     case "pyes": case "pno": {
@@ -1711,7 +1741,7 @@ document.addEventListener("click", async e => {
       if (S.sound) sweep(); return act("/api/rivaal", {naam: t.dataset.n, soort: t.dataset.k, district: val("ovd")}); }
     case "keuze": return act("/api/keuze", {id: t.dataset.id, i: +t.dataset.i});
     case "prod": if (t.dataset.s === "prijs") return act("/api/product", {soort: "prijs", id: t.dataset.id, prijs: t.dataset.p}, {silent: true}); if (t.dataset.s === "stop" && !await ask("Uit de markt halen?", "Het product verdwijnt uit de lineup. Dat maakt ruimte voor iets nieuws.", "Uit de markt", true)) return; return act("/api/product", {soort: t.dataset.s, id: t.dataset.id});
-    case "prodnew": { const dv = t.dataset.div, el = document.getElementById("pn_" + dv), sc = document.getElementById("ps_" + dv), pa = document.getElementById("pa_" + dv), pf = document.getElementById("pf_" + dv); const r = await act("/api/product", {soort: "ontwikkel", divisie: dv, naam: el && el.value, schaal: sc && sc.value, aard: pa && pa.value, focus: pf && pf.value}); if (r && r.ok && el) el.value = ""; return; }
+    case "prodnew": { const dv = t.dataset.div, el = document.getElementById("pn_" + dv), sc = document.getElementById("ps_" + dv), pa = document.getElementById("pa_" + dv), pf = document.getElementById("pf_" + dv); const r = await act("/api/product", {soort: "ontwikkel", divisie: dv, naam: el && el.value, schaal: sc && sc.value, aard: pa && pa.value, focus: pf && pf.value, vorm: (document.getElementById("pv_" + dv) || {}).value}); if (r && r.ok && el) el.value = ""; return; }
     case "concept": { const dv = t.dataset.div, oud = (G.concepten || {})[dv], tekst = t.dataset.opnieuw && oud ? oud.vraagVan : val("pc_" + dv);
       (S.conceptBezig ??= {})[dv] = true; render(); const r = await gmConcept(dv, tekst); S.conceptBezig[dv] = false; if (!r.ok && oud) G.concepten[dv] = oud; toast(r.bericht, !r.ok); render(); return; }
     case "divconcept": { const tekst = t.dataset.opnieuw && G.divConcept ? G.divConcept.vraagVan : val("dc_txt"), oud = G.divConcept; S.divBezig = true; render();
@@ -1802,7 +1832,7 @@ document.addEventListener("click", async e => {
 });
 document.addEventListener("change", e => { const t = e.target; if (t && t.dataset && t.dataset.dev){ (S.devSel ??= {})[t.dataset.dev] = {...((S.devSel || {})[t.dataset.dev] || {}), [t.dataset.k]: t.value}; render(); } });
 document.addEventListener("keydown", e => {
-  if (e.target && e.target.id === "chattxt" && e.key === "Enter" && !e.shiftKey && !e.isComposing){ e.preventDefault(); document.querySelector('[data-a="chatsend"]')?.click(); }
+  if (e.target && (e.target.id === "chattxt" || e.target.id === "gmtxt") && e.key === "Enter" && !e.shiftKey && !e.isComposing){ e.preventDefault(); document.querySelector(e.target.id === "gmtxt" ? '[data-a="gmsend"]' : '[data-a="chatsend"]')?.click(); }
 });
 document.addEventListener("input", e => { if (e.target.id === "q"){ S.q = e.target.value; const pos = e.target.selectionStart; render(); const q = document.getElementById("q"); q.focus(); q.setSelectionRange(pos,pos); } });
 
@@ -1837,6 +1867,7 @@ function afterRender(){
   document.querySelectorAll("main h1").forEach(h => { h.classList.add("glitch"); h.dataset.text = h.textContent; });
   updateTicker();
   if (S.decrypt){ S.decrypt = false; scramble(document.getElementById("subj")); }
+  const gl = document.getElementById("gmlog"); if (gl) gl.scrollTop = gl.scrollHeight;
 }
 let tickerKey = "";
 function updateTicker(){
