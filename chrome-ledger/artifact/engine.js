@@ -113,7 +113,7 @@ function remember(r, s, txt){ r.memory.push(`${ym(s)}: ${txt}`); r.memory = r.me
 /* ---------- mails: de engine verzamelt, de opslag schrijft weg ---------- */
 function Ctx(){ return {mails: [], rep: []}; }
 function mail(ctx, s, van, onderwerp, body, prio = "NORMAAL"){
-  if (prio === "LAAG" && ctx.inTick){ (ctx.klein ??= []).push({van, onderwerp, body}); return; }
+  if ((prio === "LAAG" || prio === "NORMAAL") && ctx.inTick && !/^(Maandrapport|Gewonnen|Uw termijn)/.test(onderwerp)){ (ctx.klein ??= []).push({van, onderwerp, body}); return; }   /* 4.3: gewone meldingen in het maandrapport */
   ctx.mails.push({datum: ym(s), van, aan: s.player.title || "CEO", onderwerp, prio, body});
 }
 
@@ -133,11 +133,11 @@ const EVENTS = [
    from: "HR", subject: "Een toptalent solliciteert", prio: "NORMAAL", body: "Een ex-onderzoeker van een rivaal wil bij ons werken. Salaris is niet laag. Motieven ook niet duidelijk."},
   {id: "schandaal", prob: 0.05, when: s => s.heat > 25, effect: {reputation: -10, heat: 5},
    from: "PR", subject: "Journalist weet iets", prio: "HOOG", body: "Een freelancer belt over een 'patroon in de cijfers'. We kunnen bellen, betalen of zwijgen. Alle drie hebben een prijs."},
-  {id: "sabotage", prob: 0.06, when: s => s.rivals.some(r => r.aggression > 0.5), effect: {cash: -20, morale: -3},
+  {id: "sabotage", prob: 0.035, when: s => s.rivals.some(r => r.aggression > 0.5), effect: {cash: -12, morale: -3},
    from: "Anoniem", subject: "Brand in magazijn", prio: "HOOG", body: "Geen dodelijke slachtoffers. Wel een brief: 'dit was maar een proefrun.'"},
 ];
 function eventProb(s, e, diff){
-  let p = e.prob * diff;
+  let p = e.prob * diff * 0.6;   /* 4.3: minder gebeurtenissen */
   if (e.id === "staking") p *= faction(s, "vakbond") < -30 ? 1.5 : faction(s, "vakbond") > 30 ? 0.6 : 1;
   if (e.id === "audit") p *= faction(s, "politie") > 30 ? 0.5 : faction(s, "politie") < -30 ? 1.4 : 1;
   if (e.id === "audit" && relV(s, "politie") >= 50) p *= 0.6;
@@ -319,7 +319,7 @@ function npcTick(s, ctx){
     ctx.rep.push(`${n.name} (${n.role}) neemt ontslag`);
   }
   if (s.flags.cfo_manipuleert && R() < 0.5) s.cash = r1(s.cash - U(1, 4));
-  if (s.flags.pr_lekt && R() < 0.25){
+  if (s.flags.pr_lekt && R() < 0.12){
     s.reputation = clamp(s.reputation - 3);
     mail(ctx, s, "Journalist", "Vraag om reactie", "Ik heb interne notulen van uw laatste directievergadering. Wilt u reageren voor publicatie? Morgen gaat het online.", "HOOG");
   }
@@ -330,7 +330,7 @@ function npcTick(s, ctx){
 }
 
 function chaosTick(s, ctx, diff){
-  if (R() > 0.35) return;
+  if (R() > 0.2) return;
   const n = faction(s, "nomaden"), contract = s.flags.nomad_contract === true, broken = !!s.flags.nomad_contract_gebroken;
   const table = [["nomaden_konvooi", 3], ["nomaden_ruil", 2], ["nomaden_conflict", n < 10 ? (broken ? 5 : 2) : 0], ["nomaden_eis", contract ? 3 : 0],
     ["cyberpsycho", s.divisions.some(d => d.type === "Cyberware") ? 2 : 0.5], ["spookzending", 1.5], ["heimwee_ai", 1], ["sekte_roest", 0],
@@ -492,6 +492,8 @@ function tick(s){
     const c = t.cost * 0.85 * d.level * diff * divCostMult(s, d.type);
     rev += r; cost += c; heatAdd += t.heat * Math.pow(t.heat <= 1 ? Math.min(d.level, 6) : d.level, 0.75) * 0.5;
     lines.push(`| ${d.name || d.type} (${d.type} L${d.level}) | ${r1(r)} | ${r1(c)} |`); (s.divomzet ??= {})[d.name || d.type] = r1(r);
+    const mk = opMarkt(s, d); if (mk.length){ let po = 0; for (const p of mk){ const o = prodOmzet(s, p) * eff; (s.prodomzet ??= {})[p.id] = r1(o); po += o; }
+      rev += po; cost += po * PROD_KOST; lines.push(`| Producten ${d.name || d.type} (${mk.length}) | ${r1(po)} | ${r1(po * PROD_KOST)} |`); }
   }
   for (const d of s.districts) if (d.control === "player"){ rev += incOf(d) * U(0.85, 1.15); cost += d.upkeep; }
   let streamRev = 0; for (const x of s.streams || []) streamRev += x.bedrag * (0.75 + 0.35 * s.morale / 100) * sf * U(0.85, 1.12);
@@ -628,7 +630,7 @@ function tick(s){
 }
 
 /* ---------- de stad: elke game een andere kaart ---------- */
-const VERSION = "4.2";
+const VERSION = "4.3";
 const MAP_W = 1000, MAP_H = 680;
 const RIVAL_COLORS = ["#ff9a1f", "#3d7bff", "#c6ff2e", "#f2f2f2", "#9b5cff", "#ffd400", "#ff4d4d"];
 const ARCH = {
@@ -1734,7 +1736,10 @@ function ontmasker(s, ctx, name){
 }
 
 /* keuzes: mails met knoppen. De engine voert ze uit; geen GM nodig */
+const FLAVOR_KEUZE = new Set(["opslag", "cao", "klant", "subsidie", "sponsor", "interview", "data", "tip", "vreemdeling", "sekte", "klokkenluider", "isra_vracht", "diner_rivaal", "diner"]);
+const mndNr = m => { const [y, mo] = String(m || "0-0").split("-").map(Number); return y * 12 + mo; };
 function addKeuze(s, ctx, k){
+  if (FLAVOR_KEUZE.has(k.soort)){ const last = s.flags.flavor_keuze; if (last && mndNr(ym(s)) - mndNr(last) < 2) return k; s.flags.flavor_keuze = ym(s); }   /* 4.3: kleine keuzes hoogstens één per twee maanden */
   k.id = "k" + hex8(); k.verloopt = plusMonths(s, 2); k.sinds = ym(s);
   for (const o of k.opties) o.kost = r1(o.kost || 0);
   (s.keuzes ??= []).push(k);
@@ -1977,12 +1982,12 @@ function gangTick(s, ctx, diff){
     const lands = gangLanden(s, g); if (!lands.length) continue;
     if (g.deal === "bescherming"){ fee += gangFee(s, g); continue; }
     if (g.deal === "partner"){ zw += gangPartner(s, g); s.heat = clamp(s.heat + 0.5 * lands.length); shiftFaction(s, "politie", -0.5); continue; }
-    if (incident) continue;
+    if (incident || (g.rust && mndNr(ym(s)) - mndNr(g.rust) < 4)) continue;   /* 4.3: na een incident vier maanden rust */
     const pw = Math.min(0.6, playerPower(s) / 150);
     for (const {id, v} of lands){
-      const p = v / 350 * (g.deal === "oorlog" ? 2.2 : 1) * diff * (1 - pw);
+      const p = v / 700 * (g.deal === "oorlog" ? 2.2 : 1) * diff * (1 - pw);
       if (R() >= p) continue;
-      incident = true; const d = s.districts.find(x => x.id === id), dmg = r1(clamp(v / 5, 3, 18) * diff * clamp(omvang(s), 0.5, 2.5)), b = r1(clamp(v / 4, 3, 20) * diff * clamp(omvang(s), 0.5, 2.5)), k2 = uitrokenKans(s, g, id);
+      incident = true; g.rust = ym(s); const d = s.districts.find(x => x.id === id), dmg = r1(clamp(v / 5, 3, 18) * diff * clamp(omvang(s), 0.5, 2.5)), b = r1(clamp(v / 4, 3, 20) * diff * clamp(omvang(s), 0.5, 2.5)), k2 = uitrokenKans(s, g, id);
       if (g.deal === "oorlog" || (s.keuzes || []).some(x => x.soort === "gang_" + g.id)){
         s.cash = r1(s.cash - dmg); s.morale = clamp(s.morale - 2);
         mail(ctx, s, "Head of Security", `${g.naam} slaat toe in ${d.name}`, `Een overval op onze vestiging in ${d.name}. €${dmg}k schade, mensen zijn bang. ${g.naam} laat weten dat dit pas het begin is.`, "KRITIEK");
@@ -2379,9 +2384,9 @@ const PRODUCT_NAMEN = {
   "Orbitaal": ["Satellietdienst", "Microzwaartekracht-lab", "Orbitale opslag", "Lanceerslot"],
 };
 const PRODUCT_WOORDEN = [
-  [/wapen|arms|defensi|munitie|geweer|militair/i, ["Pistool P9", "Smartgun S-3", "Railgun Donder", "Monodraad-mes", "Drone-geweer DG", "Pantservest K4", "Granaatwerper GL-6"]],
+  [/wapen|weapon|arms|gun|firearm|ammo|munitie|munition|defensi|defen[cs]e|geweer|rifle|militair|military/i, ["Pistool P9", "Smartgun S-3", "Railgun Donder", "Monodraad-mes", "Drone-geweer DG", "Pantservest K4", "Granaatwerper GL-6"]],
   [/drone/i, ["Bezorgdrone B1", "Bewakingsdrone Oog", "Zwermset 12", "Vrachtdrone Ezel", "Racedrone Spits"]],
-  [/drug|pharma|medic|zorg|kliniek/i, ["Pijnstiller Nul", "Slaapmiddel Zacht", "Focuspil F", "Kliniekpakket", "Stimulant Rood"]],
+  [/drug|pharma|medic|zorg|kliniek|clinic|health|trauma|ambulance/i, ["Pijnstiller Nul", "Slaapmiddel Zacht", "Focuspil F", "Kliniekpakket", "Stimulant Rood"]],
   [/auto|voertuig|motor|vervoer|taxi/i, ["Stadsauto Mier", "Pantserwagen", "Motor Kraai", "Robottaxi", "Vrachtwagen Os"]],
   [/voed|food|eten|drank|restaur/i, ["Synthvlees", "Eiwitreep", "Energiedrank Volt", "Algenburger", "Kweekvis"]],
   [/mode|kleding|textiel/i, ["Lichtjas", "Kogelwerend pak", "Neonlijn", "Slimme stof", "Streetlijn"]],
@@ -2401,7 +2406,10 @@ const divNaam = d => d.name || d.type;
 const opMarkt = (s, d) => (s.producten || []).filter(p => p.divisie === divNaam(d) && p.status === "markt");
 const maxProducten = d => 2 + d.level;
 const leegStraf = d => clamp(((d.leeg || 0) - 12) * 0.006, 0, 0.2);
-function productMult(s, d){ const ps = opMarkt(s, d); if (!ps.length) return Math.round((0.95 - leegStraf(d)) * 100) / 100; return clamp(0.95 + 0.06 * ps.reduce((a, p) => a + prodGewicht(p, s), 0), 0.95, 1.45); }
+function productMult(s, d){ const ps = opMarkt(s, d); if (!ps.length) return Math.round((0.95 - leegStraf(d)) * 100) / 100; return 1; }
+/* 4.3: elk product levert zijn eigen omzet; productie kost 30% daarvan */
+const PROD_KOST = 0.4;
+function prodOmzet(s, p){ const d = s.divisions.find(x => divNaam(x) === p.divisie); if (!d) return 0; return (5 + 3 * Math.pow(d.level, 0.8)) * prodGewicht(p, s) * 0.13; }
 function productKans(s, d, schaal){ const sc = PRODUCT_SCHAAL[schaal]; const b = Math.ceil(d.level / 2) + ((s.crew || []).some(m => m.rol === "spindokter") ? 1 : 0); return {bonus: b, doel: sc.doel, kans: kans2d6(b, sc.doel)}; }
 function actProduct(s, ctx, soort, a){
   const pay = k => { if (s.cash < k) return false; s.cash = r1(s.cash - k); s.accounts.operationeel = s.cash; return true; };
@@ -2582,7 +2590,7 @@ function dreigTick(s, ctx, diff){
   s.dreigingen ??= [];
   for (const t of [...s.dreigingen]) if (t.maand <= ym(s)) resolveDreiging(s, ctx, t, diff);
   const vijand = s.rivals.filter(r => r.status === "oorlog" || r.relatie < -30), gangs = (s.gangs || []).filter(g => g.deal === "oorlog");
-  const p = 0.04 + 0.05 * vijand.length + 0.05 * gangs.length + (s.statusNiveau || 0) * 0.025 + (s.heat > 50 ? 0.04 : 0);
+  const p = 0.025 + 0.035 * vijand.length + 0.035 * gangs.length + (s.statusNiveau || 0) * 0.02 + (s.heat > 50 ? 0.03 : 0);   /* 4.2.1: minder aanslagen */
   if (maandenGespeeld(s) < 3 || R() > p * diff) return;
   const kandidaten = [...vijand.map(r => [{soort: "rivaal", r}, 3]), ...gangs.map(g => [{soort: "gang", g}, 2]), ...s.rivals.filter(r => !vijand.includes(r)).map(r => [{soort: "rivaal", r}, 0.5]), [{soort: "onbekend"}, 1]];
   const o = wpick(kandidaten), ty = wpick(DREIG.filter(x => !x.when || x.when(s)).map(x => [x, x.w]));
@@ -2615,7 +2623,7 @@ function resolveDreiging(s, ctx, t, diff){
     ctx.rep.push(`Aanslag van ${t.van} afgeslagen`); return;
   }
   let txt;
-  if (t.type === "sabotage"){ const l = r1(RI(6, 14) * diff * clamp(omvang(s), 0.5, 3)); s.cash = r1(s.cash - l); const pr = CH((s.producten || []).filter(p => p.status === "markt")); if (pr) pr.pop = Math.max(3, pr.pop - 10);
+  if (t.type === "sabotage"){ const l = r1(RI(4, 10) * diff * clamp(omvang(s), 0.5, 3)); s.cash = r1(s.cash - l); const pr = CH((s.producten || []).filter(p => p.status === "markt")); if (pr) pr.pop = Math.max(3, pr.pop - 10);
     txt = `Brand in een productiehal: €${l}k schade${pr ? `, en ${pr.naam} is een maand slecht leverbaar (populariteit −10)` : ""}.`; }
   else if (t.type === "data"){ const d = CH(s.divisions); const l = r1(RI(2, 5)); s.cash = r1(s.cash - l); if (d && s.market[d.type]) s.market[d.type].player *= 0.9; if (rv && d && s.market[d.type]) s.market[d.type].rivals[rv.name] = (s.market[d.type].rivals[rv.name] || 0) + 0.02;
     txt = `Klantdata en ontwerpen van ${d ? divNaam(d) : "het bedrijf"} zijn gestolen. Marktaandeel −10%, €${l}k aan herstel.`; }
@@ -2735,9 +2743,13 @@ const SECTOR_AARD = {"Biotech": "medisch", "Cyberware": "implantaat", "Logistiek
 function aardVan(type, naam){
   if (SECTOR_AARD[type]) return SECTOR_AARD[type];
   const t = `${type} ${naam || ""}`;
-  if (/wapen|arms|defensi|munitie|geweer|pistool|militair/i.test(t)) return "wapen";
-  if (/drug|pharma|medic|zorg|kliniek|bio/i.test(t)) return "medisch";
-  if (/drone|bewak|beveilig|security/i.test(t)) return "beveiliging";
+  if (/wapen|weapon|arms|gun|firearm|ammo|munitie|munition|defensi|defen[cs]e|geweer|pistool|rifle|militair|military/i.test(t)) return "wapen";
+  if (/implant|cyber|prothes|neur|chrome|chroom/i.test(t)) return "implantaat";
+  if (/logist|transport|freight|shipping|cargo|vracht|haven/i.test(t)) return "logistiek";
+  if (/financ|bank|crypto|invest|verzeker|insurance/i.test(t)) return "financieel";
+  if (/orbit|space|ruimte|satelliet|satellite|raket|rocket/i.test(t)) return "orbitaal";
+  if (/drug|pharma|medic|zorg|kliniek|clinic|health|bio|trauma|ambulance/i.test(t)) return "medisch";
+  if (/drone|bewak|beveilig|security|guard|merc|huurling/i.test(t)) return "beveiliging";
   if (/data|media|game|ai|software|stream|nieuws/i.test(t)) return "data";
   if (/smokkel|zwart|contraband/i.test(t)) return "smokkel";
   return "consument";
@@ -2771,7 +2783,7 @@ function hashN(str, i){ let h = 7; for (const ch of String(str) + ":" + i) h = (
 function prodSpecs(p){ const names = SPECS[p.aard] || SPECS.consument, F = {kwaliteit: [1, 1, 1], veilig: [0, 2, 0], snel: [0, -1, 0], goedkoop: [-1, -1, 0], innovatief: [2, -1, 0]}[p.focus] || [0, 0, 0];
   return names.map((n, i) => ({naam: n, v: clamp(Math.round(p.kwaliteit * 1.6 + (hashN(p.id, i) % 5) - 2 + F[i] + (p.trait === "duurzaam" && i === 1 ? 1 : 0)), 1, 10)})); }
 const stukPrijs = p => Math.round((STUK[p.aard] || STUK.consument).prijs * (PRIJS_STUK[p.prijs || "standaard"] || 1) * (0.8 + p.kwaliteit * 0.08));
-const kostPrijs = p => Math.round((STUK[p.aard] || STUK.consument).prijs * (0.32 + p.kwaliteit * 0.05) * (p.trait === "goedkoop" ? 0.85 : 1));
+const kostPrijs = p => Math.round(stukPrijs(p) * PROD_KOST);
 function levensfase(p){
   if (p.status !== "markt") return p.status === "ontwikkeling" ? "In ontwikkeling" : "Wachtrij";
   const h = p.hist || [], trend = h.length >= 3 ? h[h.length - 1].pop - h[h.length - 3].pop : 0, l = p.leeftijd || 0;
@@ -2789,7 +2801,7 @@ function segment(s, p){
 }
 function prodDetail(s, p, omzet){
   const abo = isAbo(p) && p.abo, cap = prodCap(s, p), vraag = bereik(p);
-  const sp = abo ? Math.max(1, Math.round(omzet * 1000 / Math.max(1, p.abo * 10))) : stukPrijs(p), kp = abo ? Math.round(sp * (0.34 - p.kwaliteit * 0.02)) : kostPrijs(p), afzet = abo ? Math.round(p.abo * 10) : omzet > 0 ? Math.round(omzet * 1000 / sp) : 0;
+  const sp = abo ? Math.max(1, Math.round(omzet * 1000 / Math.max(1, p.abo * 10))) : stukPrijs(p), kp = abo ? Math.round(sp * PROD_KOST) : kostPrijs(p), afzet = abo ? Math.round(p.abo * 10) : omzet > 0 ? Math.round(omzet * 1000 / sp) : 0;
   return {specs: prodSpecs(p), eenheid: abo ? "abonnees" : (STUK[p.aard] || STUK.consument).eenheid, perMaand: !!abo, stukPrijs: sp, kostPrijs: kp, marge: Math.round((sp - kp) / sp * 100), afzet, fase: levensfase(p),
     cap, vraag: Math.round(vraag), uitverkocht: vraag > cap, gemist: vraag > cap ? Math.round((vraag - cap) / vraag * 100) : 0, capKost: capKost(s, p), seg: segment(s, p), hist: (p.hist || []).slice(-12)};
 }
@@ -2813,8 +2825,8 @@ function productEffectTick(s){
   for (const p of (s.producten || []).filter(x => x.status === "markt")){
     p.aard ??= aardVan(p.type, p.naam); p.prijs ??= "standaard";
     for (const [k2, v] of Object.entries(prodEffecten(p))) tot[k2] = (tot[k2] || 0) + v;
-    { const omz = ((s.divomzet || {})[p.divisie] || 0) * prodGewicht(p, s) / Math.max(0.01, (s.producten || []).filter(x => x.divisie === p.divisie && x.status === "markt").reduce((a, x) => a + prodGewicht(x, s), 0)); p.hist = [...(p.hist || []), {m: ym(s), pop: Math.round(bereik(p)), omzet: r1(omz)}].slice(-12); }
-    p.omzetTotaal = r1((p.omzetTotaal || 0) + ((s.divomzet || {})[p.divisie] || 0) * prodGewicht(p, s) / Math.max(0.01, (s.producten || []).filter(x => x.divisie === p.divisie && x.status === "markt").reduce((a, x) => a + prodGewicht(x, s), 0)));
+    { const omz = (s.prodomzet || {})[p.id] || 0; p.hist = [...(p.hist || []), {m: ym(s), pop: Math.round(bereik(p)), omzet: r1(omz)}].slice(-12); }
+    p.omzetTotaal = r1((p.omzetTotaal || 0) + ((s.prodomzet || {})[p.id] || 0));
   }
   if (tot.reputation) s.reputation = clamp(s.reputation + tot.reputation);
   if (tot.heat) s.heat = clamp(s.heat + tot.heat);
@@ -3237,7 +3249,7 @@ function newGame(d){
   let doctrine = (d.doctrine || []).filter(x => DT[x]);
   if (d.eigen && String(d.eigen.naam || "").trim()){
     const pr = PRESETS[d.eigen.profiel] || PRESETS.gebalanceerd, r = addCustomType(s, d.eigen.naam, pr, d.eigen.omschrijving);
-    if (r.ok) doctrine = [r.naam, ...doctrine];
+    if (r.ok) doctrine = [r.naam];   /* 4.2.1: een eigen soort is je enige startdivisie */
   }
   doctrine = doctrine.slice(0, 2); if (!doctrine.length) doctrine.push("Logistiek");
   p.doctrine = doctrine.join(" + ");

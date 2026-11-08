@@ -23,7 +23,7 @@ Werkwijze: elk uur een ronde (automatisch). Grote punten zijn verdeeld in stappe
 | Versie | Wat | Rondes | Status |
 |---|---|---|---|
 | 4.2 | Levende bedrijvenwereld | 1 | klaar |
-| 4.3 | Echte afzet en prijs | 3 | volgende |
+| 4.3 | Echte afzet en prijs | 3 | stap 1 klaar (producten eigen omzet), stap 2-3 volgende |
 | 4.4 | Geavanceerd productontwerp | 3 | |
 | 4.5 | Kwaliteit en aansprakelijkheid | 2 | |
 | 4.6 | Marketing en distributie | 2 | |
@@ -38,7 +38,7 @@ Werkwijze: elk uur een ronde (automatisch). Grote punten zijn verdeeld in stappe
 | 5.0 | Klanten komen naar jou (B2B-orders) | 3 | |
 
 ### 4.3 Echte afzet en prijs (volgende)
-- Stap 1: omzet van een product = afzet × prijs; kosten = afzet × kostprijs + vaste kosten. De divisie levert een basisomzet, producten de rest. Bestaande spellen worden omgerekend.
+- Stap 1 (klaar in 4.3, na playtest): producten hebben een eigen omzet en 40% productiekosten bovenop de basisomzet van de divisie.
 - Stap 2: prijs vrij instelbaar (schuif in euro's per stuk) met prijsgevoeligheid per markt: te duur kost afzet, te goedkoop kost marge.
 - Stap 3: klantsegmenten per soort (bv. medisch: ziekenhuizen, rijke particulieren, straatklinieken) met eigen budget, omvang en voorkeur voor eigenschappen. Herbalans, gemeten met 150 spellen.
 
@@ -75,6 +75,7 @@ Werkwijze: elk uur een ronde (automatisch). Grote punten zijn verdeeld in stappe
 - Testinfrastructuur: expansie-bot voor hegemonie; tests mogen nooit op toeval falen.
 
 ## Gedaan
+- 4.3 (na playtest: "producten leveren te weinig op, te veel events en keuzes"): producten eigen omzet en kosten, minder gebeurtenissen/chaos/aanslagen/syndicaatrekeningen, kleine keuzes max 1 per 2 maanden, gewone meldingen in het rapport (2,6 → 1,6 mails/maand), eigen soort = enige startdivisie, Engelse namen herkend. Realistisch 38%.
 - 4.2 Levende bedrijvenwereld: maandelijks oprichtingen (naamgenerator per sector), faillissementen na drie slechte maanden, fusies, nieuwe namen, beursgangen, schandalen, CEO-wissels; koers en geschiedenis per bedrijf; contracten verhuizen mee. Test wereld.js.
 - Roadmap: 5.0 Klanten komen naar jou (B2B-orders, aanbestedingen, raamcontracten, riskante klanten) toegevoegd op verzoek (8 nov).
 - Roadmap uitgebreid (8 nov, op verzoek: "diepere productdetails, advanced"): 4.2 echte afzet en prijs met segmenten, 4.3 geavanceerd productontwerp, 4.4 kwaliteit en aansprakelijkheid, 4.5 marketing en distributie, 4.6 patenten, 4.7 productdashboard, 4.8 toelevering.
