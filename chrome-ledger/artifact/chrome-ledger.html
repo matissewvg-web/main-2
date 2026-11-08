@@ -140,6 +140,7 @@ h2::after{content:"";flex:1;height:1px;background:linear-gradient(90deg,var(--li
 .opt .u{font-size:14px;color:var(--muted)}
 .starter{border:1px dashed var(--line);padding:10px 12px;margin-top:4px}
 .stappen{margin-bottom:14px;box-shadow:inset 0 0 0 1px var(--cyan)}
+.gmsnel{display:flex;flex-wrap:wrap;gap:6px;padding:8px 12px;border-top:1px solid var(--line)}.gmsnel .chip{font-size:12.5px;padding:4px 9px}
 .stapl{list-style:none;margin:8px 0 0;padding:0;display:grid;gap:8px}
 .stapl li{display:grid;grid-template-columns:22px minmax(0,1fr) auto;gap:10px;align-items:center}
 .stapl .vink{width:20px;height:20px;border:1px solid var(--line2);display:grid;place-items:center;color:var(--green);font-weight:700}
@@ -718,7 +719,7 @@ inbox(){
     <div class="ilist">
       <div class="itools"><input type="text" id="q" placeholder="Zoeken in mail…" value="${esc(S.q)}">
         <div class="tabs">${tab("alles","Alles")}${tab("ongelezen","Ongelezen")}${tab("belangrijk","Belangrijk")}${tab("verzonden","Verzonden")}${tab("archief","Archief")}</div></div>
-      <div class="mails">${list.length ? list.map(m => `<button class="mail ${m.gelezen?"":"unread"} ${sel&&sel.id===m.id?"sel":""}" data-open="${esc(m.id)}">
+      <div class="mails">${list.length ? list.map(m => `<button class="mail ${m.gelezen?"":"unread"} ${sel&&sel.id===m.id?"sel":""}" data-open="${esc(m.id)}" ${sel&&sel.id===m.id?'aria-current="true"':""} aria-label="${m.gelezen?"":"Ongelezen: "}${esc(m.onderwerp)}, van ${esc(m.van)}">
           <div class="from"><b>${esc(m.uit ? "Aan: " + (m.aan || "") : m.van)}</b><span class="mono dim" style="font-size:13px">${esc(m.datum)}</span></div>
           <div class="subj">${m.keuze?'<span class="tag HOOG">keuze</span> ':m.voorstel?'<span class="tag HOOG">voorstel</span> ':m.prio!=="NORMAAL"?`<span class="tag ${m.prio}">${m.prio}</span> `:""}${m.uit&&m.wacht?'<span class="tag cyan">wacht</span> ':""}${esc(m.onderwerp)}</div>
           <div class="prev">${esc(m.preview)}</div></button>`).join("") : '<div class="empty">Geen mail hier.</div>'}</div>
@@ -995,6 +996,7 @@ function setupBonus(homeD){
     <p class="dim" style="font-size:13px;margin:6px 0 0">Elk soort land geeft een ander voordeel: havens, financiële centra, datavalleien, sloppen. Klik verschillende landen aan om ze te vergelijken.</p>` : "";
 }
 const VERSIES = [
+  ["3.7.1", "De GM antwoordt altijd", ["Snelknoppen in het GM-venster: Wat nu?, Vat mijn maand samen, Hoe sta ik ervoor? en Wat kost het om… Is de GM niet live, dan antwoordt het spel zelf uit de cijfers, zodat de knoppen altijd iets opleveren.", "Kaart: namen die elkaar raken worden weggelaten (je eigen gebieden en de geselecteerde eerst); inzoomen maakt de letters kleiner zodat er meer namen passen. Gebieden zijn met Tab en Enter te bedienen.", "Wat nu? herhaalt niet meer wat Eerste stappen al zegt."]],
   ["3.7", "Rust en eerste stappen", ["Een kaart Eerste stappen in het overzicht: vijf concrete dingen voor je eerste maanden (eerste product, crew aan het werk, een contract, de GM iets vragen, je eerste maand), met een knop naar de juiste plek. Ze verdwijnt als alles af is, of met Verbergen.", "Kleine meldingen (stroomstoringen, marktgeruchten, konvooien, kleine incidenten) komen niet meer als losse mail maar onderaan het maandrapport onder Ook deze maand.", "Telefoon: de statusbalk is een raster van drie kolommen in plaats van een rij die afkapt, en tekst op een geselecteerde chip blijft leesbaar."]],
   ["3.6", "Opslag die niet stil faalt", ["Saves zijn ongeveer 75% kleiner: de wereldkaart wordt bij het laden opnieuw opgebouwd in plaats van elke maand mee bewaard. Daardoor passen er veel meer spellen en back-ups in je browser.", "Een mislukte back-up meldt zich nu luid (melding en opslagkaart) in plaats van stil te falen.", "Maximaal 6 spellen in de browser, met een duidelijke melding. Kan je huidige spel niet apart bewaard worden, dan start er geen nieuw spel, zodat je nooit iets kwijtraakt.", "Foutlog onder Logboek → Opslag: vangnetten die vroeger fouten stil inslikten, schrijven ze nu op."]],
   ["3.5", "Druk uit de wereld", ["Heat komt vooral uit riskante en illegale divisies: legale divisies (Biotech, Logistiek, Media & Data, Financieel) trekken boven niveau 6 geen extra aandacht meer. Een groot legaal bedrijf werd vroeger vroeg of laat onvermijdelijk opgepakt.", "Stilstand kost klanten: verkoopt een divisie een jaar lang niets, dan zakt haar omzet elke maand verder, tot −20%, en krijg je daar een mail over. Niets doen is daardoor ook op Casual niet meer veilig.", "Meldingen verschijnen boven de GM-knop in plaats van eroverheen."]],
@@ -1234,6 +1236,7 @@ function gmDock(st){
   const ch = G.chats.gm, msgs = (ch ? ch.berichten : []).slice(-30).map(b => bubble(b, c)).join("") || `<div class="empty" style="text-transform:none;letter-spacing:0">Ik ben de GM. Zeg in je eigen woorden wat er moet gebeuren. Ik zeg wat het kost en wat de kans is, jij zegt ja of nee, en de dobbelstenen beslissen.<br><br>Bijv.: “Koop de havenmeester van Rotterdam om, max €10k.” of “Wat moet ik nu doen?”</div>`;
   return `<aside class="gmpanel" aria-label="De GM"><div class="chead"><div><b>De GM</b><div class="crol">${live() ? "live · ontwerpt, vertelt en zegt wat het kost" : "niet live: berichten wachten tot je Claude in de chat vraagt"}</div></div><button class="btn sm" data-a="gmdock" aria-label="GM sluiten">✕</button></div>
     <div class="chatlog" id="gmlog" aria-live="polite">${msgs}</div>
+    <div class="gmsnel">${[["watnu", "Wat nu?"], ["maand", "Vat mijn maand samen"], ["stand", "Hoe sta ik ervoor?"]].map(([k, l]) => `<button class="chip" data-a="gmsnel" data-k="${k}">${l}</button>`).join("")}<button class="chip" data-a="gmprefill">Wat kost het om…</button></div>
     <div class="cinput"><textarea id="gmtxt" rows="2" placeholder="Zeg het tegen de GM…" aria-label="bericht aan de GM"></textarea><button class="btn primary" data-a="gmsend">Stuur</button></div></aside>`;
 }
 function pfilterOk(aard){ const f = S.pfilter || "alle"; return f === "alle" || f === aard; }
@@ -1494,9 +1497,10 @@ function mapSvg(M, sel, selZone){
   const pts = p => p.map(q => q[0] + "," + q[1]).join(" "), world = M.kind === "wereld", real = !!M.frame;
   const zoneShapes = M.zones.map(z => `<g class="zone ${selZone === z.id ? "sel" : ""}" data-zone="${z.id}">
       ${(z.polys || [z.poly]).map(pp => `<polygon points="${pts(pp)}" fill="${z.kleur || "transparent"}" fill-opacity="${z.kleur ? (M.mode === "zee" ? .5 : .22) : 1}"/><polygon points="${pts(pp)}" fill="url(#hatch)" opacity="${z.kleur ? .9 : 0}"/><polygon class="zline" points="${pts(pp)}" fill="none"/>`).join("")}</g>`).join("");
-  const zoneLabels = M.zones.map(z => { const ships = z.vloten ? Object.entries(z.vloten) : [];
-    return `<text x="${z.lx}" y="${z.ly}" text-anchor="middle" class="zn">${esc(z.naam.toUpperCase())}</text>
-      <text x="${z.lx}" y="${z.ly + 13}" text-anchor="middle" class="zd" fill="${z.kleur || "#9ff5e6"}">${z.dominant ? `${esc(z.shares[0].naam === "jij" ? "JIJ" : z.shares[0].naam.split(" ")[0].toUpperCase())} ${z.shares[0].pct}%` : (z.shares.length ? "BETWIST" : "VRIJ WATER")}${ships.length ? " · " + ships.map(([o, n]) => `⛴${n}`).join(" ") : ""}</text>`; }).join("");
+  const zoneLabelsF = (zf, boxes) => M.zones.map(z => { const ships = z.vloten ? Object.entries(z.vloten) : [], fz = 8.5 * zf, w = z.naam.length * fz * 1.0 + 8, bx = [z.lx - w / 2, z.ly - fz, z.lx + w / 2, z.ly + 13 * zf];
+    if (real && boxes.some(b => bx[0] < b[2] && bx[2] > b[0] && bx[1] < b[3] && bx[3] > b[1]) && selZone !== z.id) return ""; if (real) boxes.push(bx);
+    return `<text x="${z.lx}" y="${z.ly}" text-anchor="middle" class="zn"${real ? ` style="font-size:${fz.toFixed(1)}px"` : ""}>${esc(z.naam.toUpperCase())}</text>
+      <text x="${z.lx}" y="${z.ly + 13 * zf}" text-anchor="middle" class="zd"${real ? ` style="font-size:${(7 * zf).toFixed(1)}px"` : ""} fill="${z.kleur || "#9ff5e6"}">${z.dominant ? `${esc(z.shares[0].naam === "jij" ? "JIJ" : z.shares[0].naam.split(" ")[0].toUpperCase())} ${z.shares[0].pct}%` : (z.shares.length ? "BETWIST" : "VRIJ WATER")}${ships.length ? " · " + ships.map(([o, n]) => `⛴${n}`).join(" ") : ""}</text>`; }).join("");
   const grid = real ? `<g clip-path="url(#frameclip)">${Array.from({length: 11}, (_, i) => `<line x1="${(i + 1) * M.w / 12}" y1="0" x2="${(i + 1) * M.w / 12}" y2="${M.h}" class="gl"/>`).join("")}${Array.from({length: 6}, (_, i) => `<line x1="0" y1="${(i + 1) * M.h / 7}" x2="${M.w}" y2="${(i + 1) * M.h / 7}" class="gl"/>`).join("")}</g>` : "";
   const land = real ? "" : world ? M.continents.map(c => `<polygon points="${pts(c.poly)}" fill="#0d0820" stroke="#5b8cff" stroke-opacity=".6" stroke-width="2"/>`).join("") : `<polygon points="${pts(M.land)}" fill="#0d0820" stroke="#5b8cff" stroke-opacity=".55" stroke-width="2"/>`;
   const neutralFill = real ? "#b8155c" : "#1b1236", neutralStroke = real ? "#3a0420" : "#3b2a6b";
@@ -1509,8 +1513,13 @@ function mapSvg(M, sel, selZone){
     else if (M.mode === "onderwereld"){ fillC = c.gang ? c.gang.kleur : "#22102e"; fo = c.gang ? .2 + .75 * c.gang.v / 100 : .9; }
     const shape = c.d ? `<path d="${c.d}" fill="${fillC}" fill-opacity="${fo}" stroke="${real ? "#12030c" : own ? c.fill : neutralStroke}" fill-rule="evenodd"/>`
       : `<polygon points="${pts(c.poly)}" fill="${own ? c.fill : neutralFill}" fill-opacity="${fo}" stroke="${own ? c.fill : neutralStroke}"/>`;
-    return `<g class="dist ${c.own === "player" ? "player" : own ? "rival" : ""} ${c.reach ? "reach" : ""} ${sel === c.id ? "sel" : ""}" data-dist="${c.id}">${shape}</g>`; }).join("");
-  const labels = M.cells.map(c => `<g class="lbl"><text x="${c.cx}" y="${c.cy - 2}" text-anchor="middle" class="dn">${esc((c.kort || c.naam).toUpperCase())}</text>
+    return `<g class="dist ${c.own === "player" ? "player" : own ? "rival" : ""} ${c.reach ? "reach" : ""} ${sel === c.id ? "sel" : ""}" data-dist="${c.id}" role="button" tabindex="0" aria-label="${esc(c.naam)}${c.own === "player" ? ", jouw gebied" : own ? ", van een rivaal" : ""}">${shape}</g>`; }).join("");
+  /* 3.7.1: labels die elkaar raken worden weggelaten (belangrijkste eerst); inzoomen maakt de letters kleiner, zodat er meer passen */
+  const zf = real ? 1 / Math.sqrt(S.view === "kaart" ? (S.zoom || 1) : 1) : 1, fs = 8.5 * zf, boxes = [], zicht = new Set();
+  const prio = c => (sel === c.id ? 20 : 0) + (c.own === "player" ? 8 : 0) + (c.home ? 6 : 0) + (c.hq ? 4 : 0) + (c.own && c.own !== "neutral" ? 2 : 0) + (c.inc || 0) / 100;
+  for (const c of M.cells.slice().sort((a, b) => prio(b) - prio(a))){ const w = (c.kort || c.naam).length * fs * 0.68 + 3, bx = [c.cx - w / 2, c.cy - 2 - fs, c.cx + w / 2, c.cy];
+    if (real && boxes.some(b => bx[0] < b[2] && bx[2] > b[0] && bx[1] < b[3] && bx[3] > b[1])) continue; boxes.push(bx); zicht.add(c.id); }
+  const labels = M.cells.map(c => `<g class="lbl">${zicht.has(c.id) ? `<text x="${c.cx}" y="${c.cy - 2}" text-anchor="middle" class="dn"${real ? ` style="font-size:${fs.toFixed(1)}px"` : ""}>${esc((c.kort || c.naam).toUpperCase())}</text>` : ""}
       <text x="${c.cx}" y="${c.cy + 9}" text-anchor="middle" class="di">${c.home ? "⌂" : ""}${c.hq ? "★" : ""}${c.haven ? "⚓" : ""}${c.bezig ? "◷" : ""}</text></g>`).join("");
   const domLabels = M.mode === "dominantie" && M.contLbl ? M.contLbl.map(l => `<text x="${l.x}" y="${l.y - 14}" text-anchor="middle" class="domlbl">${esc(l.naam.toUpperCase())}</text><text x="${l.x}" y="${l.y}" text-anchor="middle" class="domlbl big" fill="${l.top ? l.top.kleur : "#fff"}">${l.top ? `${esc(l.top.naam)} ${l.top.pct}%` : "NIEMAND"}</text>`).join("") : "";
   const contLabels = world && !real ? M.continents.map(c => `<text x="${c.lx}" y="${c.ly}" text-anchor="middle" class="cn">${esc(c.naam.toUpperCase())}</text>`).join("") : "";
@@ -1523,7 +1532,7 @@ function mapSvg(M, sel, selZone){
         <clipPath id="frameclip"><path d="M${M.frame.map(p => p[0] + " " + p[1]).join("L")}Z"/></clipPath>`
       : `<linearGradient id="seag" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#060d2b"/><stop offset=".5" stop-color="#0b1a49"/><stop offset="1" stop-color="#060d2b"/></linearGradient>`}</defs>
     ${sea}${grid}
-    <g ${real ? 'clip-path="url(#frameclip)"' : ""}>${zoneShapes}</g>${land}${real ? `<g clip-path="url(#frameclip)">${cells}</g>` : cells}${M.mode === "dominantie" ? domLabels : labels}${contLabels}${zoneLabels}
+    <g ${real ? 'clip-path="url(#frameclip)"' : ""}>${zoneShapes}</g>${land}${real ? `<g clip-path="url(#frameclip)">${cells}</g>` : cells}${M.mode === "dominantie" ? domLabels : labels}${contLabels}${zoneLabelsF(zf, boxes)}
     ${real ? `<path d="M${M.frame.map(p => p[0] + " " + p[1]).join("L")}Z" fill="none" stroke="#3ff5d0" stroke-opacity=".55" stroke-width="2"/>` : ""}
     <text x="${M.w - 14}" y="${M.h - 10}" text-anchor="end" class="cityname">${world ? "CHROME LEDGER" : esc(M.city.toUpperCase())}</text>
   </svg>`;
@@ -1732,6 +1741,8 @@ document.addEventListener("click", async e => {
       delete S.keep.ordertxt; S.view = "comms"; S.chat = "gm"; S.chatOpen = true; localSet("view","comms"); render(); chatSend("gm", txt); return; }
     case "chatwith": S.view = "comms"; S.chat = t.dataset.key; S.chatOpen = true; localSet("view","comms"); render(); document.getElementById("chattxt")?.focus({preventScroll: true}); return;
     case "closechat": S.chatOpen = false; render(); return;
+    case "gmsnel": return gmSnel(t.dataset.k);
+    case "gmprefill": { const el = document.getElementById("gmtxt"); if (el){ el.value = "Wat kost het om "; el.focus(); el.setSelectionRange(el.value.length, el.value.length); } return; }
     case "stappenweg": if (G.game){ G.game.flags.stappen_weg = true; await Store.saveGame(); } render(); return;
     case "gmdock": S.gmDock = !S.gmDock; render(); if (S.gmDock) document.getElementById("gmtxt")?.focus({preventScroll: true}); return;
     case "gmsend": { const el = document.getElementById("gmtxt"), txt = el && el.value; if (!txt || !txt.trim()) return; el.value = ""; delete S.keep.gmtxt; chatSend("gm", txt); return; }
@@ -1860,6 +1871,7 @@ document.addEventListener("click", async e => {
 });
 document.addEventListener("change", e => { const t = e.target; if (t && t.dataset && t.dataset.dev){ (S.devSel ??= {})[t.dataset.dev] = {...((S.devSel || {})[t.dataset.dev] || {}), [t.dataset.k]: t.value}; render(); } });
 document.addEventListener("keydown", e => {
+  if ((e.key === "Enter" || e.key === " ") && e.target && e.target.matches && e.target.matches("g[data-dist][tabindex]")){ e.preventDefault(); e.target.dispatchEvent(new MouseEvent("click", {bubbles: true})); return; }
   if (e.target && (e.target.id === "chattxt" || e.target.id === "gmtxt") && e.key === "Enter" && !e.shiftKey && !e.isComposing){ e.preventDefault(); document.querySelector(e.target.id === "gmtxt" ? '[data-a="gmsend"]' : '[data-a="chatsend"]')?.click(); }
 });
 document.addEventListener("input", e => { if (e.target.id === "q"){ S.q = e.target.value; const pos = e.target.selectionStart; render(); const q = document.getElementById("q"); q.focus(); q.setSelectionRange(pos,pos); } });

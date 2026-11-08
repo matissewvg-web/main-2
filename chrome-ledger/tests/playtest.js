@@ -46,6 +46,17 @@ const html = '<!doctype html><html><head><meta charset=utf8></head><body>' + fs.
   ok(/Kies in het overzicht hoe je het koppelt/.test(ov.bericht), "bericht legt uit wat er nu gebeurt");
   const na = await p.evaluate(async id => { const s = G.game, k = s.keuzes.find(x => x.id === id), i = k.opties.findIndex(o => /Eigen divisie|Samenvoegen/.test(o.label)); const r = await API["/api/keuze"]({id, i}); return {r: r.bericht, divs: s.divisions.map(d => `${d.name || d.type} L${d.level}`), prod: s.producten.map(x => x.naam + ":" + x.status)}; }, ov.id);
   ok(na.prod.length >= 2 && /meteen op de markt/.test(na.r), "koppelen brengt de bestseller mee: " + JSON.stringify(na));
+  // kaart: labels mogen niet overlappen, gebieden met het toetsenbord
+  for (const z of [1, 3]){
+    await p.evaluate(z => { S.view = "kaart"; S.zoom = z; render(); }, z); await p.waitForTimeout(250);
+    const ov = await p.evaluate(() => { const r = [...document.querySelectorAll("svg.map .lbl .dn, svg.map .zn")].map(t => t.getBoundingClientRect()).filter(b => b.width); let n = 0;
+      for (let i = 0; i < r.length; i++) for (let j = i + 1; j < r.length; j++){ const a = r[i], b = r[j]; if (a.left < b.right - 1 && a.right > b.left + 1 && a.top < b.bottom - 1 && a.bottom > b.top + 1) n++; } return {labels: r.length, overlap: n}; });
+    ok(ov.overlap === 0 && ov.labels > 10, `kaartlabels overlappen niet bij zoom ${z}: ` + JSON.stringify(ov));
+    if (out && z === 3) await p.screenshot({path: out + "/kaart-zoom3.png"});
+  }
+  await p.evaluate(() => { S.zoom = 1; S.dist = null; render(); document.querySelector("g[data-dist][tabindex]").focus(); }); await p.keyboard.press("Enter"); await p.waitForTimeout(200);
+  ok(await p.evaluate(() => !!S.dist), "een gebied kiezen met Enter werkt");
+  await p.evaluate(() => { S.dist = null; render(); });
   // GM op elk scherm
   await p.evaluate(() => { S.view = "kaart"; render(); });
   ok(await p.$(".gmfab") != null, "GM-knop op de kaart");
@@ -55,6 +66,12 @@ const html = '<!doctype html><html><head><meta charset=utf8></head><body>' + fs.
   const gm = await p.evaluate(() => (G.chats.gm || {berichten: []}).berichten.map(b => b.van + ":" + (b.tekst || b.status)));
   ok(gm.some(x => /^ik:Wat moet ik nu doen/.test(x)), "bericht komt in het GM-gesprek: " + JSON.stringify(gm.slice(-2)));
   if (out) await p.screenshot({path: out + "/gm-dock.png"});
+  await p.click('[data-a=gmsnel][data-k=watnu]'); await p.waitForTimeout(250);
+  const snel = await p.evaluate(() => G.chats.gm.berichten.slice(-1)[0]);
+  ok(snel && snel.van === "zij" && /Uit de cijfers/.test(snel.tekst) && /1\./.test(snel.tekst), "Wat nu? antwoordt ook zonder live GM: " + (snel && snel.tekst || "").slice(0, 90));
+  await p.click('[data-a=gmsnel][data-k=stand]'); await p.waitForTimeout(250);
+  ok(/Dichtst bij winst/.test(await p.evaluate(() => G.chats.gm.berichten.slice(-1)[0].tekst)), "Hoe sta ik ervoor? geeft de stand");
+  if (out) await p.screenshot({path: out + "/gm-snel.png"});
   await p.keyboard.press("Escape"); await p.keyboard.press("Escape"); await p.waitForTimeout(150); ok(!(await p.$(".gmpanel")), "Esc sluit de GM");
   await p.setViewportSize({width: 390, height: 844}); await p.evaluate(() => { S.gmDock = false; S.view = "overzicht"; render(); window.scrollTo(0, 0); }); await p.waitForTimeout(200);
   const stats = await p.$$eval(".stats .stat", e => e.map(x => { const r = x.getBoundingClientRect(); return [Math.round(r.left), Math.round(r.right), x.querySelector(".v").scrollWidth <= x.querySelector(".v").clientWidth + 1]; }));

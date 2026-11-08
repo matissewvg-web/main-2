@@ -17,12 +17,7 @@ Zwak:
 5. **De GM is nog een chatvenster.** Hij vertelt, maar plant niet: rivalen en syndicaten hebben geen eigen verhaal dat over maanden loopt.
 
 ## Open (in volgorde)
-### Nog over uit 3.7
-- Kaartlabels in Europa overlappen bij inzoomen; aria in inbox en kaart.
-- "Wat nu?" herhaalt soms wat Eerste stappen al zegt (eerste product): dubbel weglaten zolang de stappenkaart staat. (8 nov)
-
-### 3.8 De GM plant mee
-- Snelknoppen in het GM-venster: "Wat nu?", "Wat kost dit?", "Vat mijn maand samen".
+### 3.8 De GM plant mee (volgende ronde)
 - Plannen van rivalen en syndicaten over meerdere maanden (GM schrijft het plan, de engine voert de stappen uit binnen grenzen, met een vaste versie als de GM niet live is). Je kunt ze ontdekken via crew of netwerk en verstoren.
 
 ### 3.9 Diepgang waar het al leeft
@@ -35,6 +30,10 @@ Zwak:
 - Lonen en huur per tijdperk laten stijgen, zodat de late game ook druk heeft. (8 nov)
 - Genadeloos: vroegste dood in maand 16; bekijken of de eerste twee jaar daar eerlijk zijn. (8 nov)
 
+### Kleine punten
+- Ongelezen mail loopt op tot 50+ na een jaar spelen; een knop "alles gelezen" of automatisch archiveren van oude maandrapporten. (8 nov)
+- Ruimte voor de kaart op een laptop: het GM-venster valt over het zijpaneel van de kaart; misschien de kaart smaller maken zolang het venster open is. (8 nov)
+
 ### Testinfrastructuur (doorlopend)
 - Tests mogen niet op toeval falen: concept.js viel om bij een terugroepactie (twee enen). Gerepareerd; andere tests nalopen op hetzelfde. (8 nov)
 - Een test voor de online modus met een nagebootste db, zodat opslaan, wisselen van spel en back-ups daar ook gecontroleerd worden. (8 nov)
@@ -42,6 +41,7 @@ Zwak:
 - Een "speel 24 maanden als mens"-run met screenshots per ronde, om zelf kritisch te kijken.
 
 ## Gedaan
+- 3.7.1 De GM antwoordt altijd: snelknoppen met eigen antwoord zonder live GM, kaartnamen zonder overlap, kaart met het toetsenbord, geen dubbel advies.
 - 3.7 Rust en eerste stappen: kaart Eerste stappen, kleine meldingen in het maandrapport, statusbalk op de telefoon als raster, leesbare geselecteerde chips.
 - 3.6 Opslag die niet stil faalt: saves 75% kleiner, luide back-upfout, maximaal 6 lokale spellen, nooit het oude spel kwijt bij een nieuw spel, foutlog onder Logboek.
 - 3.5 Druk uit de wereld: heat-plafond voor legale divisies, stilstand kost klanten, toasts boven de GM-knop. Bot opent geen riskante divisies meer bij hoge heat.

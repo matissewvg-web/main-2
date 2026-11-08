@@ -626,7 +626,7 @@ function tick(s){
 }
 
 /* ---------- de stad: elke game een andere kaart ---------- */
-const VERSION = "3.7";
+const VERSION = "3.7.1";
 const MAP_W = 1000, MAP_H = 680;
 const RIVAL_COLORS = ["#ff9a1f", "#3d7bff", "#c6ff2e", "#f2f2f2", "#9b5cff", "#ffd400", "#ff4d4d"];
 const ARCH = {
@@ -2829,7 +2829,7 @@ function adviezen(s){
   const out = [], add = (prio, tekst, view) => out.push({prio, tekst, view});
   const markt = (s.producten || []).filter(p => p.status === "markt"), dev = (s.producten || []).filter(p => p.status === "ontwikkeling" || p.status === "wachtrij");
   const net = ((s.history || []).slice(-1)[0] || {}).netto;
-  if (!markt.length && !dev.length) add(10, "Je verkoopt nog niets. Start je eerste product bij Bedrijf → Productlijn: klein kost €5k en is in 2 maanden klaar, en een divisie met producten verdient meer.", "bedrijf");
+  if (!markt.length && !dev.length && (s.flags.stappen_weg || maandenGespeeld(s) >= 8)) add(10, "Je verkoopt nog niets. Start je eerste product bij Bedrijf → Productlijn: klein kost €5k en is in 2 maanden klaar, en een divisie met producten verdient meer.", "bedrijf");
   else for (const d of s.divisions) if (!(s.producten || []).some(p => p.divisie === divNaam(d))) add((d.leeg || 0) > 12 ? 9 : 7, (d.leeg || 0) > 12 ? `${divNaam(d)} verkoopt al ${d.leeg} maanden niets: klanten lopen weg, omzet ×${productMult(s, d).toFixed(2)}. Start een product bij Bedrijf → Productlijn.` : `${divNaam(d)} heeft geen producten en draait op ×0,95; na een jaar zonder producten lopen klanten weg. Start er een bij Bedrijf → Productlijn.`, "bedrijf");
   if ((s.keuzes || []).length) add(9, `${s.keuzes.length} beslissing(en) wachten op je. Zonder antwoord kiest het spel na twee maanden zelf, meestal niet in jouw voordeel.`, "overzicht");
   if (net != null && net < 0 && s.cash > 0) add(9, `Je verloor vorige maand €${Math.abs(net)}k. Met €${Math.round(s.cash)}k in kas heb je nog ±${Math.max(1, Math.round(s.cash / -net))} maanden. Snij in crew, personeel of projecten, of lanceer een product.`, "financien");
@@ -3474,6 +3474,21 @@ async function executeProposal(p){
 /* ---------- chat ---------- */
 const YES = /^\s*(ja|jep|jawel|yes|ok[eé]?|akkoord|doe maar|doen|deal|prima|goed zo)\b/i, NO = /^\s*(nee|neen|no|niet doen|laat maar|stop|liever niet)\b/i;
 function openProposal(ch){ for (let i = ch.berichten.length - 1; i >= 0; i--){ const b = ch.berichten[i]; if (b.voorstel && b.vstatus === "open") return b; if (b.van === "ik") return null; } return null; }
+const GM_SNEL = {watnu: "Wat moet ik nu doen? Geef de drie belangrijkste dingen, met wat het kost en waarom.", maand: "Vat mijn laatste maand samen: wat ging goed, wat ging fout, waar moet ik op letten?", stand: "Hoe sta ik ervoor tegenover mijn rivalen en de doelen?"};
+function lokaalAntwoord(s, soort){
+  if (soort === "watnu"){ const A = adviezen(s).slice(0, 3); return A.length ? "Uit de cijfers (de GM is niet live): " + A.map((a, i) => `${i + 1}. ${a.tekst}`).join(" ") : "Uit de cijfers: niets dringends. Bouw door waar je sterk staat."; }
+  if (soort === "maand"){ const r = s.laatste_rapport; if (!r || !r.maand) return "Er is nog geen maand gespeeld. Klik Volgende maand (toets N)."; const g = (r.gebeurd || []).slice(0, 6);
+    return `Uit het rapport van ${r.maand} (de GM is niet live): omzet €${r.omzet}k, kosten €${r.kosten}k, netto ${r.netto >= 0 ? "+" : "−"}€${Math.abs(r.netto)}k. ${g.length ? "Gebeurd: " + g.join("; ") + "." : "Verder rustig."} Heat ${Math.round(s.heat)}, morale ${Math.round(s.morale)}, cash €${Math.round(s.cash)}k.`; }
+  const D = doelen(s).filter(d => d.id !== "termijn").sort((a, b) => b.pct - a.pct)[0]; let plek = ""; try { plek = `Je staat ${wereldVM(s).plek}e op de ranglijst. `; } catch(e){ foutLog("stand voor de GM", e); }
+  const r0 = s.rivals.slice().sort((a, b) => rivalPower(s, b) - rivalPower(s, a))[0];
+  return `Uit de cijfers (de GM is niet live): ${plek}Dichtst bij winst: ${D.naam} (${D.pct}%, ${D.nu}).${r0 ? ` Sterkste rivaal: ${r0.name} (${r0.status === "oorlog" ? "in oorlog met je" : "relatie " + Math.round(r0.relatie || 0)}).` : ""} Bedrijfswaarde €${Math.round(playerValue(s))}k.`;
+}
+async function gmSnel(soort){
+  const s = G.game; if (!s || !GM_SNEL[soort]) return; if (live()) return chatSend("gm", GM_SNEL[soort]);
+  const c = contacts(s).find(x => x.key === "gm"), ch = chatOf(c), t = Date.now();
+  ch.berichten.push({id: "b" + uid(), van: "ik", tekst: GM_SNEL[soort], t, maand: ym(s)}, {id: "b" + uid(), van: "zij", tekst: lokaalAntwoord(s, soort), t: t + 1, status: "ok", maand: ym(s), systeem: true});
+  await Store.putChat(ch); render();
+}
 async function chatSend(key, text){
   const s = G.game, c = contacts(s).find(x => x.key === key); text = String(text || "").trim();
   if (!c || !text) return;
