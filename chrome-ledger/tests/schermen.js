@@ -25,6 +25,11 @@ const html = '<!doctype html><html><head><meta charset=utf8><meta name=viewport 
   const pc = await p.$('[data-a=prod][data-s=prijs][data-p=premium]'); if (pc){ await pc.click(); await p.waitForTimeout(200); log.push('prijs: ' + await p.evaluate(() => G.game.producten.filter(x => x.status === "markt").map(x => x.naam + " " + x.prijs).join(", "))); }
   await p.evaluate(() => { const h = [...document.querySelectorAll('main h2')].find(x => /Productlijn/i.test(x.textContent)); window.scrollTo(0, h.getBoundingClientRect().top + scrollY - 80); }); await p.waitForTimeout(150);
   await p.screenshot({ path: dir + '/b-producten.png' });
+  // 4.3: productblad met prijsschuif; schuif verplaatsen toont een voorbeeld zonder iets te veranderen
+  const ds = await p.$('[data-a=prodsheet]'); if (ds){ await ds.click(); await p.waitForTimeout(200); const sl = await p.$('input[data-prijs]');
+    if (sl){ const voor = await p.evaluate(() => G.game.producten.find(x => x.status === "markt").prijsF); await sl.evaluate(el => { el.value = 150; el.dispatchEvent(new Event("input", {bubbles: true})); });
+      log.push('prijsschuif: ' + await p.evaluate(() => document.querySelector('[id^=pp_]').textContent) + ' · onveranderd ' + (await p.evaluate(() => G.game.producten.find(x => x.status === "markt").prijsF) === voor));
+      const bl = await p.$('.prodblad'); await bl.scrollIntoViewIfNeeded(); await bl.screenshot({ path: dir + '/b-prijs.png' }); } else log.push('prijsschuif: ONTBREEKT'); }
   await p.evaluate(() => { S.view = "overzicht"; render(); window.scrollTo(0, 0); }); await p.waitForTimeout(200); await p.screenshot({ path: dir + '/c-overzicht.png', fullPage: true });
   // back-ups
   await p.evaluate(() => { S.view = "logboek"; render(); }); await p.click('[data-a=backups]'); await p.waitForTimeout(300);

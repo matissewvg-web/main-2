@@ -492,8 +492,8 @@ function tick(s){
     const c = t.cost * 0.85 * d.level * diff * divCostMult(s, d.type);
     rev += r; cost += c; heatAdd += t.heat * Math.pow(t.heat <= 1 ? Math.min(d.level, 6) : d.level, 0.75) * 0.5;
     lines.push(`| ${d.name || d.type} (${d.type} L${d.level}) | ${r1(r)} | ${r1(c)} |`); (s.divomzet ??= {})[d.name || d.type] = r1(r);
-    const mk = opMarkt(s, d); if (mk.length){ let po = 0; for (const p of mk){ const o = prodOmzet(s, p) * eff; (s.prodomzet ??= {})[p.id] = r1(o); po += o; }
-      rev += po; cost += po * PROD_KOST; lines.push(`| Producten ${d.name || d.type} (${mk.length}) | ${r1(po)} | ${r1(po * PROD_KOST)} |`); }
+    const mk = opMarkt(s, d); if (mk.length){ let po = 0; let pk = 0; for (const p of mk){ const o = prodOmzet(s, p) * eff; (s.prodomzet ??= {})[p.id] = r1(o); po += o; pk += prodKost(p, o); }
+      rev += po; cost += pk; lines.push(`| Producten ${d.name || d.type} (${mk.length}) | ${r1(po)} | ${r1(pk)} |`); }
   }
   for (const d of s.districts) if (d.control === "player"){ rev += incOf(d) * U(0.85, 1.15); cost += d.upkeep; }
   let streamRev = 0; for (const x of s.streams || []) streamRev += x.bedrag * (0.75 + 0.35 * s.morale / 100) * sf * U(0.85, 1.12);
@@ -630,7 +630,7 @@ function tick(s){
 }
 
 /* ---------- de stad: elke game een andere kaart ---------- */
-const VERSION = "4.3";
+const VERSION = "4.3.2";
 const MAP_W = 1000, MAP_H = 680;
 const RIVAL_COLORS = ["#ff9a1f", "#3d7bff", "#c6ff2e", "#f2f2f2", "#9b5cff", "#ffd400", "#ff4d4d"];
 const ARCH = {
@@ -1783,7 +1783,7 @@ function applyChoice(s, ctx, eff, out = []){
   if (eff.ontmasker) out.push(ontmasker(s, ctx, eff.ontmasker));
   if (eff.dreiging){ const t = (s.dreigingen || []).find(x => x.id === eff.dreiging.id); if (t){ if (eff.dreiging.annuleer) s.dreigingen = s.dreigingen.filter(x => x !== t); else t.extra = (t.extra || 0) + (eff.dreiging.extra || 0); } }
   for (const [id, o] of Object.entries(eff.product || {})){ const p = (s.producten || []).find(x => x.id === id); if (!p) continue;
-    if (o.abo && isAbo(p)) p.abo = r1(clamp((p.abo || 0) * (1 + o.abo / 100), 0, 140)); if (o.pop) p.pop = Math.round(clamp(p.pop + o.pop, 3, 95)); if (o.pop && isAbo(p)) p.abo = r1(clamp((p.abo ?? p.pop) * (1 + o.pop / (o.pop < 0 ? 100 : 200)), 0, 140)); if (o.prijs && PRIJS[o.prijs]) p.prijs = o.prijs; if (o.versie && !p.verbetering && p.kwaliteit < 5) p.verbetering = o.versie; }
+    if (o.abo && isAbo(p)) p.abo = r1(clamp((p.abo || 0) * (1 + o.abo / 100), 0, 140)); if (o.pop) p.pop = Math.round(clamp(p.pop + o.pop, 3, 95)); if (o.pop && isAbo(p)) p.abo = r1(clamp((p.abo ?? p.pop) * (1 + o.pop / (o.pop < 0 ? 100 : 200)), 0, 140)); if (o.prijs && PRIJS[o.prijs]){ p.prijs = o.prijs; p.prijsF = Math.max(prijsF(p), PRIJS_F[o.prijs]); } if (o.versie && !p.verbetering && p.kwaliteit < 5) p.verbetering = o.versie; }
   if (eff.crew_vrij){ const m = (s.crew || []).find(x => x.id === eff.crew_vrij); if (m){ m.uit = null; m.loyaliteit = clamp(m.loyaliteit + 15); } }
   for (const [id, v] of Object.entries(eff.crew_loy || {})){ const m = (s.crew || []).find(x => x.id === id); if (m) m.loyaliteit = clamp(m.loyaliteit + v); }
   if (eff.plan) planActie(s, eff.plan, out);
@@ -2409,7 +2409,20 @@ const leegStraf = d => clamp(((d.leeg || 0) - 12) * 0.006, 0, 0.2);
 function productMult(s, d){ const ps = opMarkt(s, d); if (!ps.length) return Math.round((0.95 - leegStraf(d)) * 100) / 100; return 1; }
 /* 4.3: elk product levert zijn eigen omzet; productie kost 30% daarvan */
 const PROD_KOST = 0.4;
+/* 4.3 stap 2: vrije prijs. prijsF = prijs ten opzichte van de standaardprijs (0,6 tot 1,8). Een duurder product verkoopt minder
+   (prijsgevoeligheid per markt; hogere kwaliteit maakt klanten minder gevoelig), de kostprijs per stuk blijft gelijk. */
+const ELAST = {wapen: 0.95, medisch: 0.6, implantaat: 0.85, data: 1.3, beveiliging: 0.7, smokkel: 0.75, logistiek: 1.35, financieel: 1.2, orbitaal: 0.7, consument: 1.55};
+const PRIJS_F = {budget: 0.8, standaard: 1, premium: 1.35}, PRIJS_MIN = 0.6, PRIJS_MAX = 1.8;
+const prijsF = p => clamp(p.prijsF ?? PRIJS_F[p.prijs || "standaard"] ?? 1, PRIJS_MIN, PRIJS_MAX);
+const prijsLabel = f => f <= 0.85 ? "budget" : f >= 1.25 ? "premium" : "standaard";
+const elast = p => Math.round((ELAST[p.aard || aardVan(p.type, p.naam)] ?? 1.2) * clamp(1.2 - 0.05 * (p.kwaliteit || 3), 0.9, 1.15) * 100) / 100;
+const volF = p => clamp(Math.exp(-elast(p) * (prijsF(p) - 1)), 0.15, 1.6);
+const prodKost = (p, omzet) => omzet * PROD_KOST / prijsF(p);
+function prijsProef(s, p, f){ const q = {...p, prijsF: clamp(f, PRIJS_MIN, PRIJS_MAX)}, o = prodOmzet(s, q); return {f: q.prijsF, stukPrijs: stukPrijs(q), omzet: r1(o), winst: r1(o - prodKost(q, o)), w: o - prodKost(q, o), vraag: Math.round(vraagNa(q)), cap: prodCap(s, q), churn: isAbo(q) ? Math.round(aboChurn(q) * 1000) / 10 : null}; }
+function besteprijs(s, p){ let best = null; for (let f = PRIJS_MIN; f <= PRIJS_MAX + 1e-9; f += 0.05){ const x = prijsProef(s, p, Math.round(f * 100) / 100); if (!best || x.w > best.w + 1e-6) best = x; } return best; }
 function prodOmzet(s, p){ const d = s.divisions.find(x => divNaam(x) === p.divisie); if (!d) return 0; return (5 + 3 * Math.pow(d.level, 0.8)) * prodGewicht(p, s) * 0.13; }
+/* vraag na de prijs: losse producten verkopen minder bij een hogere prijs; bij abonnementen werkt de prijs via opzeggers en nieuwe klanten */
+const vraagNa = p => isAbo(p) ? bereik(p) : bereik(p) * volF(p);
 function productKans(s, d, schaal){ const sc = PRODUCT_SCHAAL[schaal]; const b = Math.ceil(d.level / 2) + ((s.crew || []).some(m => m.rol === "spindokter") ? 1 : 0); return {bonus: b, doel: sc.doel, kans: kans2d6(b, sc.doel)}; }
 function actProduct(s, ctx, soort, a){
   const pay = k => { if (s.cash < k) return false; s.cash = r1(s.cash - k); s.accounts.operationeel = s.cash; return true; };
@@ -2437,8 +2450,8 @@ function actProduct(s, ctx, soort, a){
       if (!pay(3)) return {ok: false, msg: "Een campagne kost €3k."}; p.actie = m; p.pop = clamp(p.pop + 12, 0, 95); msg = `Campagne voor ${p.naam}: populariteit nu ${p.pop}.`; }
     else if (soort === "verbeter"){ if (p.status !== "markt") return {ok: false, msg: "Het staat niet op de markt."}; if (p.kwaliteit >= 5) return {ok: false, msg: "Beter wordt het niet."}; if (p.verbetering) return {ok: false, msg: "Er loopt al een verbetering."};
       const kost = r1(8 * dif); if (!pay(kost)) return {ok: false, msg: `Een nieuwe versie kost €${kost}k.`}; p.verbetering = 2; msg = `Versie ${p.kwaliteit + 1} van ${p.naam} in ontwikkeling: €${kost}k, 2 maanden.`; }
-    else if (soort === "prijs"){ const rr = actPrijs(s, p.id, a.prijs); if (rr.ok) prodLog(p, s, `Prijs: ${PRIJS[a.prijs].label.toLowerCase()}`); return rr; }
-    else if (soort === "capaciteit"){ if (p.status !== "markt") return {ok: false, msg: "Het staat niet op de markt."}; const k = capKost(s, p); if (!pay(k)) return {ok: false, msg: `Productie uitbreiden kost €${k}k.`}; p.capExtra = (p.capExtra || 0) + 15; msg = `Productielijn van ${p.naam} uitgebreid: capaciteit nu ${prodCap(s, p)} (vraag ${Math.round(bereik(p))}).`; }
+    else if (soort === "prijs"){ const rr = actPrijs(s, p.id, a.f != null ? +a.f : a.prijs); if (rr.ok) prodLog(p, s, `Prijs: €${stukPrijs(p).toLocaleString("nl-NL")} per ${isAbo(p) ? "abonnee" : "stuk"} (${PRIJS[p.prijs].label.toLowerCase()})`); return rr; }
+    else if (soort === "capaciteit"){ if (p.status !== "markt") return {ok: false, msg: "Het staat niet op de markt."}; const k = capKost(s, p); if (!pay(k)) return {ok: false, msg: `Productie uitbreiden kost €${k}k.`}; p.capExtra = (p.capExtra || 0) + 15; msg = `Productielijn van ${p.naam} uitgebreid: capaciteit nu ${prodCap(s, p)} (vraag ${Math.round(vraagNa(p))}).`; }
     else if (soort === "loyaliteit"){ if (!isAbo(p)) return {ok: false, msg: "Alleen voor abonnementen."}; p.loyaal = !p.loyaal; msg = p.loyaal ? `Loyaliteitsprogramma voor ${p.naam}: €${loyKost(p)}k per maand, opzeggers −1,2 procentpunt.` : `Loyaliteitsprogramma van ${p.naam} gestopt.`; }
     else if (soort === "stop"){ s.producten = s.producten.filter(x => x !== p); msg = `${p.naam} is uit de markt gehaald.`; }
     else return {ok: false, msg: "Onbekende actie."};
@@ -2476,7 +2489,7 @@ function productTick(s, ctx){
       if (r.ok){ p.kwaliteit = clamp(p.kwaliteit + 1, 1, 5); p.pop = clamp(p.pop + 10, 0, 95); p.leeftijd = 0; maakReview(p); if (p.trait === "gevoelig") p.trait = null; prodLog(p, s, `Versie ${p.kwaliteit}`); mail(ctx, s, "R&D", `${p.naam} versie ${p.kwaliteit}`, `De nieuwe versie is klaar (${r.txt}). Kwaliteit ${p.kwaliteit}, en de klanten merken het.`, "NORMAAL"); }
       else mail(ctx, s, "R&D", `Nieuwe versie ${p.naam} mislukt`, `Het ontwikkelteam kreeg het niet werkend (${r.txt}). Het geld is op, het product blijft zoals het was.`, "HOOG"); }
     p.leeftijd = (p.leeftijd || 0) + 1;
-    const idx = ((s.sectoren || {})[p.type] || {idx: 100}).idx, tgt = 28 + p.kwaliteit * 8 + (PRIJS[p.prijs || "standaard"] || PRIJS.standaard).pop + (idx - 100) / 3 - Math.max(0, p.leeftijd - 24) * (p.trait === "verslavend" || p.soort === "abonnement" ? 0.25 : 0.8) + ((((s.vraag || {})[p.aard] || {}).idx || 100) - 100) / 6;
+    const idx = ((s.sectoren || {})[p.type] || {idx: 100}).idx, tgt = 28 + p.kwaliteit * 8 + (idx - 100) / 3 - Math.max(0, p.leeftijd - 24) * (p.trait === "verslavend" || p.soort === "abonnement" ? 0.25 : 0.8) + ((((s.vraag || {})[p.aard] || {}).idx || 100) - 100) / 6;
     p.pop = Math.round(clamp(p.pop + (tgt - p.pop) * 0.08 + U(-2, 2), p.trait === "cult" ? 35 : 3, 95));
     if (isAbo(p)) aboTick(s, p, ctx);
     if (p.trait === "gevoelig" && p.leeftijd % 3 === 0 && !p.verbetering) p.pop = Math.max(3, p.pop - 5);
@@ -2757,7 +2770,7 @@ function aardVan(type, naam){
 /* 3.3.1: abonnementen draaien op abonnees, niet op populariteit */
 const isAbo = p => !!p && p.soort === "abonnement";
 function bereik(p){ return isAbo(p) && p.abo != null ? clamp(Math.round(p.abo), 0, 110) : p.pop; }
-function aboChurn(p){ const pr = ({premium: 0.012, budget: -0.008})[p.prijs || "standaard"] || 0;
+function aboChurn(p){ const pr = clamp((prijsF(p) - 1) * 0.03 * elast(p), -0.01, 0.03);
   return clamp(0.055 - 0.007 * p.kwaliteit + pr - (p.loyaal ? 0.012 : 0) - (G.game && heeftFocus(G.game, "abo") ? 0.006 : 0) + (p.trait === "gevoelig" ? 0.01 : 0) - (p.trait === "verslavend" ? 0.015 : 0) - (p.trait === "cult" ? 0.01 : 0), 0.012, 0.09); }
 const loyKost = p => r1(0.5 + (p.abo || 0) / 50);
 function aboTick(s, p, ctx){ if (p.abo == null) p.abo = Math.round(p.pop * 0.8);
@@ -2767,7 +2780,7 @@ function aboTick(s, p, ctx){ if (p.abo == null) p.abo = Math.round(p.pop * 0.8);
       {label: `Tegenbod · €${tb}k`, kost: tb, uitleg: "Een korting voor wie blijft. Bijna iedereen blijft (−2%).", eff: {product: {[p.id]: {abo: -2}}}},
       {label: `Gratis maand voor iedereen · −€${gm}k`, uitleg: "Een maand inkomsten weg, maar maar 4% vertrekt en het product wordt populairder (+5).", eff: {cash: -gm, product: {[p.id]: {abo: -4, pop: 5}}}},
       {label: "Laten gaan", uitleg: "Ongeveer 12% van je abonnees vertrekt.", eff: {product: {[p.id]: {abo: -12}}}}], standaard: 2}); }
-  const vf = vraagFactor(s, p.aard || aardVan(p.type, p.naam)), inn = r1(p.pop / 100 * (4 + Math.max(0, 8 - (p.leeftijd || 0)) * 0.5) * vf), uit = r1(p.abo * aboChurn(p));
+  const vf = vraagFactor(s, p.aard || aardVan(p.type, p.naam)), inn = r1(p.pop / 100 * (4 + Math.max(0, 8 - (p.leeftijd || 0)) * 0.5) * vf * volF(p)), uit = r1(p.abo * aboChurn(p));
   p.abo = r1(clamp(p.abo - uit + inn, 0, 140)); p.aboIn = inn; p.aboUit = uit; }
 const PRIJS = {budget: {label: "Budget", pop: 12, gewicht: 0.8, rep: -0.05}, standaard: {label: "Standaard", pop: 0, gewicht: 1, rep: 0}, premium: {label: "Premium", pop: -10, gewicht: 1.35, rep: 0.1}};
 
@@ -2778,19 +2791,19 @@ const STUK = {wapen: {eenheid: "stuks", prijs: 320}, medisch: {eenheid: "doses",
 const SPECS = {wapen: ["Vuurkracht", "Betrouwbaarheid", "Onopvallendheid"], medisch: ["Werkzaamheid", "Veiligheid", "Herstel"], implantaat: ["Prestatie", "Afstoting", "Levensduur"],
   data: ["Bereik", "Nauwkeurigheid", "Privacy"], beveiliging: ["Reactietijd", "Dekking", "Discretie"], smokkel: ["Snelheid", "Onzichtbaarheid", "Volume"], logistiek: ["Snelheid", "Betrouwbaarheid", "Bereik"],
   financieel: ["Rendement", "Risico", "Gemak"], orbitaal: ["Lading", "Precisie", "Kosten"], consument: ["Design", "Gemak", "Duurzaamheid"]};
-const PRIJS_STUK = {budget: 0.75, standaard: 1, premium: 1.5};
 function hashN(str, i){ let h = 7; for (const ch of String(str) + ":" + i) h = (h * 31 + ch.charCodeAt(0)) | 0; return Math.abs(h); }
 function prodSpecs(p){ const names = SPECS[p.aard] || SPECS.consument, F = {kwaliteit: [1, 1, 1], veilig: [0, 2, 0], snel: [0, -1, 0], goedkoop: [-1, -1, 0], innovatief: [2, -1, 0]}[p.focus] || [0, 0, 0];
   return names.map((n, i) => ({naam: n, v: clamp(Math.round(p.kwaliteit * 1.6 + (hashN(p.id, i) % 5) - 2 + F[i] + (p.trait === "duurzaam" && i === 1 ? 1 : 0)), 1, 10)})); }
-const stukPrijs = p => Math.round((STUK[p.aard] || STUK.consument).prijs * (PRIJS_STUK[p.prijs || "standaard"] || 1) * (0.8 + p.kwaliteit * 0.08));
-const kostPrijs = p => Math.round(stukPrijs(p) * PROD_KOST);
+const basisPrijs = p => (STUK[p.aard] || STUK.consument).prijs * (0.8 + p.kwaliteit * 0.08);
+const stukPrijs = p => Math.round(basisPrijs(p) * prijsF(p));
+const kostPrijs = p => Math.round(basisPrijs(p) * PROD_KOST);
 function levensfase(p){
   if (p.status !== "markt") return p.status === "ontwikkeling" ? "In ontwikkeling" : "Wachtrij";
   const h = p.hist || [], trend = h.length >= 3 ? h[h.length - 1].pop - h[h.length - 3].pop : 0, l = p.leeftijd || 0;
   if (l < 3) return "Introductie"; if (l > 30 || (trend <= -6 && l >= 12)) return "Verval"; if (trend >= 4 && l < 18) return "Groei"; return "Volwassen"; }
 /* capaciteit: hoeveel van de vraag je kunt leveren, in dezelfde schaal als populariteit (0-100). Een echte grens. */
 function prodCap(s, p){ const d = s.divisions.find(x => divNaam(x) === p.divisie); return Math.round(clamp(60 + 6 * ((d && d.level) || 1) + (p.capExtra || 0), 45, 130)); }
-const effBereik = (p, s) => s ? Math.min(bereik(p), prodCap(s, p)) : bereik(p);
+const effBereik = (p, s) => s ? Math.min(vraagNa(p), prodCap(s, p)) : vraagNa(p);
 const capKost = (s, p) => r1((5 + (p.capExtra || 0) / 5) * (DIFF[s.player.difficulty] || 1));
 function segment(s, p){
   const a = p.aard || aardVan(p.type, p.naam), mijn = (s.producten || []).filter(x => x.status === "markt" && (x.aard || aardVan(x.type, x.naam)) === a);
@@ -2800,15 +2813,15 @@ function segment(s, p){
   return {aandeel: pc(eigen.find(x => x.id === p.id) || {w: 0}), concurrenten: rival.sort((x, y) => y.w - x.w).slice(0, 3).map(x => ({naam: x.naam, wie: x.wie, pct: pc(x)})), spelers: alle.length};
 }
 function prodDetail(s, p, omzet){
-  const abo = isAbo(p) && p.abo, cap = prodCap(s, p), vraag = bereik(p);
-  const sp = abo ? Math.max(1, Math.round(omzet * 1000 / Math.max(1, p.abo * 10))) : stukPrijs(p), kp = abo ? Math.round(sp * PROD_KOST) : kostPrijs(p), afzet = abo ? Math.round(p.abo * 10) : omzet > 0 ? Math.round(omzet * 1000 / sp) : 0;
+  const abo = isAbo(p) && p.abo, cap = prodCap(s, p), vraag = vraagNa(p);
+  const sp = abo ? Math.max(1, Math.round(omzet * 1000 / Math.max(1, p.abo * 10))) : stukPrijs(p), kp = abo ? Math.round(sp * PROD_KOST / prijsF(p)) : kostPrijs(p), afzet = abo ? Math.round(p.abo * 10) : omzet > 0 ? Math.round(omzet * 1000 / sp) : 0;
   return {specs: prodSpecs(p), eenheid: abo ? "abonnees" : (STUK[p.aard] || STUK.consument).eenheid, perMaand: !!abo, stukPrijs: sp, kostPrijs: kp, marge: Math.round((sp - kp) / sp * 100), afzet, fase: levensfase(p),
-    cap, vraag: Math.round(vraag), uitverkocht: vraag > cap, gemist: vraag > cap ? Math.round((vraag - cap) / vraag * 100) : 0, capKost: capKost(s, p), seg: segment(s, p), hist: (p.hist || []).slice(-12)};
+    cap, vraag: Math.round(vraag), uitverkocht: vraag > cap, gemist: vraag > cap ? Math.round((vraag - cap) / vraag * 100) : 0, capKost: capKost(s, p), seg: segment(s, p), hist: (p.hist || []).slice(-12), prijsF: prijsF(p), elast: elast(p), beste: p.status === "markt" ? besteprijs(s, p) : null};
 }
-const prodGewicht = (p, s) => p.kwaliteit * effBereik(p, s) / 100 * (PRIJS[p.prijs || "standaard"] || PRIJS.standaard).gewicht * (s ? vraagFactor(s, p.aard || aardVan(p.type, p.naam)) : 1) * (p.trait === "goedkoop" ? 1.15 : 1);
+const prodGewicht = (p, s) => p.kwaliteit * effBereik(p, s) / 100 * prijsF(p) * (s ? vraagFactor(s, p.aard || aardVan(p.type, p.naam)) : 1) * (p.trait === "goedkoop" ? 1.15 : 1);
 const prodSterkte = p => bereik(p) / 100 * (0.5 + p.kwaliteit * 0.15);
 function prodEffecten(p){ const A = PRODUCT_AARD[p.aard || "consument"] || PRODUCT_AARD.consument, f = prodSterkte(p), out = {};
-  for (const [k2, v] of Object.entries(p.eigenEff || A.eff)) out[k2] = Math.round(v * f * 10) / 10; const pr = (PRIJS[p.prijs || "standaard"] || {}).rep || 0; if (pr) out.reputation = Math.round(((out.reputation || 0) + pr) * 10) / 10;
+  for (const [k2, v] of Object.entries(p.eigenEff || A.eff)) out[k2] = Math.round(v * f * 10) / 10; const pr = ((PRIJS[p.prijs || "standaard"] || {}).rep || 0) + (prijsF(p) > 1.5 ? -0.25 : 0); if (pr) out.reputation = Math.round(((out.reputation || 0) + pr) * 10) / 10;
   for (const [k2, v] of Object.entries(traitEffecten(p))) out[k2] = Math.round(((out[k2] || 0) + v) * 10) / 10; return out; }
 const productMacht = s => Math.round((s.producten || []).filter(p => p.status === "markt").reduce((a, p) => a + (prodEffecten(p).macht || 0), 0));
 const REVIEW_TEKST = {
@@ -2881,11 +2894,12 @@ function productEventTick(s, ctx){
   k.soort = "prod_" + p.id; addKeuze(s, ctx, k); prodLog(p, s, k.titel);
 }
 function actPrijs(s, id, prijs){
-  const p = (s.producten || []).find(x => x.id === id); if (!p || !PRIJS[prijs]) return {ok: false, msg: "Onbekend."};
-  if (p.prijs === prijs) return {ok: false, msg: "Dat is al de prijs."};
-  const was = PRIJS[p.prijs || "standaard"], ORDE = ["budget", "standaard", "premium"], duurder = ORDE.indexOf(prijs) > ORDE.indexOf(p.prijs || "standaard"); p.prijs = prijs; p.pop = clamp(p.pop - was.pop + PRIJS[prijs].pop, 3, 95);
-  let weg = 0; if (isAbo(p) && duurder && p.abo){ weg = r1(p.abo * 0.08); p.abo = r1(p.abo - weg); }
-  const msg = `${p.naam} gaat naar ${PRIJS[prijs].label.toLowerCase()}. ${isAbo(p) ? `${weg ? `${Math.round(weg * 10)} abonnees zeggen meteen op na de prijsverhoging. ` : ""}Opzeggers nu ${Math.round(aboChurn(p) * 1000) / 10}% per maand.` : `Populariteit nu ${p.pop}.`}`; addLog(s, msg); return {ok: true, msg};
+  const p = (s.producten || []).find(x => x.id === id); if (!p) return {ok: false, msg: "Onbekend."};
+  const nf = typeof prijs === "number" ? prijs : PRIJS_F[prijs]; if (nf == null || !isFinite(nf)) return {ok: false, msg: "Onbekende prijs."};
+  const oud = prijsF(p), f = Math.round(clamp(nf, PRIJS_MIN, PRIJS_MAX) * 100) / 100; if (Math.abs(f - oud) < 0.005) return {ok: false, msg: "Dat is al de prijs."};
+  p.prijsF = f; p.prijs = prijsLabel(f);
+  let weg = 0; if (isAbo(p) && f > oud && p.abo){ weg = r1(p.abo * clamp((f - oud) * 0.25 * elast(p), 0, 0.2)); p.abo = r1(p.abo - weg); }
+  const verschil = Math.round((f - oud) * 100), msg = `${p.naam}: prijs naar €${stukPrijs(p).toLocaleString("nl-NL")} per ${isAbo(p) ? "abonnee per maand" : "stuk"} (${verschil > 0 ? "+" : ""}${verschil}% van de standaardprijs). ${isAbo(p) ? `${weg ? `${Math.round(weg * 10)} abonnees zeggen meteen op. ` : ""}Opzeggers nu ${Math.round(aboChurn(p) * 1000) / 10}% per maand.` : `Vraag nu ${Math.round(vraagNa(p))} (capaciteit ${prodCap(s, p)}).`}`; addLog(s, msg); return {ok: true, msg};
 }
 
 /* ===================== 3.0 VRAAG EN AANBOD, PRODUCTEIGENSCHAPPEN, PRODUCTGESCHIEDENIS ===================== */
@@ -3041,7 +3055,7 @@ function adviezen(s){
   else for (const d of s.divisions) if (!(s.producten || []).some(p => p.divisie === divNaam(d))) add((d.leeg || 0) > 12 ? 9 : 7, (d.leeg || 0) > 12 ? `${divNaam(d)} verkoopt al ${d.leeg} maanden niets: klanten lopen weg, omzet ×${productMult(s, d).toFixed(2)}. Start een product bij Bedrijf → Productlijn.` : `${divNaam(d)} heeft geen producten en draait op ×0,95; na een jaar zonder producten lopen klanten weg. Start er een bij Bedrijf → Productlijn.`, "bedrijf");
   if (s.cash < 0){ const nog = Math.max(1, 3 - (s.flags.negatieve_cash_maanden || 0)), dochter = (s.bedrijven || []).some(b => b.eigenaar === "player" && b.koppeling === "dochter"), aand = (s.bedrijven || []).some(b => !b.eigenaar && b.aandeel > 0);
     add(12, `Cash is negatief: nog ${nog} maand(en) tot faillissement. Snel geld: een lening (Financiën, tot €${Math.max(0, Math.round(loanCap(s)))}k)${s.accounts.zwart > 0 ? `, zwart geld overboeken (€${Math.round(s.accounts.zwart)}k)` : ""}${dochter ? ", een dochter verkopen (Bedrijf)" : ""}${aand ? ", aandelen verkopen (Wereld)" : ""}, of kosten schrappen: personeel, crew of een project.`, "financien"); }
-  for (const p of markt){ const cap = prodCap(s, p), v = bereik(p); if (v > cap){ add(7, `${p.naam} is uitverkocht: ${Math.round((v - cap) / v * 100)}% van de vraag levert niets op. Productie uitbreiden kost €${capKost(s, p)}k (Bedrijf → Productlijn → Details).`, "bedrijf"); break; } }
+  for (const p of markt){ const cap = prodCap(s, p), v = vraagNa(p); if (v > cap){ add(7, `${p.naam} is uitverkocht: ${Math.round((v - cap) / v * 100)}% van de vraag levert niets op. Productie uitbreiden kost €${capKost(s, p)}k (Bedrijf → Productlijn → Details).`, "bedrijf"); break; } }
   if ((s.keuzes || []).length) add(9, `${s.keuzes.length} beslissing(en) wachten op je. Zonder antwoord kiest het spel na twee maanden zelf, meestal niet in jouw voordeel.`, "overzicht");
   if (net != null && net < -1 && s.cash > 0 && s.cash / -net < 24) add(9, `Je verloor vorige maand €${Math.abs(net)}k. Met €${Math.round(s.cash)}k in kas heb je nog ±${Math.max(1, Math.round(s.cash / -net))} maanden. Snij in crew, personeel of projecten, of lanceer een product.`, "financien");
   if (s.staff.count < staffNeed(s)) add(8, `Onderbezet: ${s.staff.count} mensen voor ${staffNeed(s)} plekken. Divisies draaien op halve kracht en morale lijdt. Neem ${staffNeed(s) - s.staff.count} mensen aan bij Bedrijf (€0,4k p.p.).`, "bedrijf");

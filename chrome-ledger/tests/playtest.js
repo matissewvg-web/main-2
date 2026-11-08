@@ -44,7 +44,19 @@ const html = '<!doctype html><html><head><meta charset=utf8></head><body>' + fs.
     let k = null; for (let i = 0; i < 400 && !k; i++){ aboTick(G.game, x, Ctx()); k = G.game.keuzes.find(y => y.soort === "abo_" + x.id); }
     return {c0, c1, kost, a0, a1, keuze: k && k.opties.map(o => o.label)}; });
   ok(loy.c1 < loy.c0 && loy.kost > 0, "loyaliteitsprogramma verlaagt opzeggers en kost geld: " + JSON.stringify([loy.c0, loy.c1, loy.kost]));
-  ok(loy.a1 < loy.a0 && Math.abs(loy.a0 * 0.92 - loy.a1) < 0.2, "prijsverhoging kost 8% abonnees: " + JSON.stringify([loy.a0, loy.a1]));
+  ok(loy.a1 < loy.a0 * 0.97 && loy.a1 > loy.a0 * 0.85, "prijsverhoging naar premium kost 3-15% abonnees: " + JSON.stringify([loy.a0, loy.a1]));
+  // 4.3 stap 2: vrije prijs met prijsgevoeligheid (deterministisch, geen worpen)
+  const prijs = await p.evaluate(async () => { const s = G.game, d = s.divisions[0], q = {id: "tp", naam: "Testding", divisie: divNaam(d), type: d.type, aard: "consument", kwaliteit: 3, pop: 50, status: "markt", soort: "product", leeftijd: 5};
+    const a = prijsProef(s, q, 1), b = prijsProef(s, q, 1.5), c = prijsProef(s, q, 0.7), best = besteprijs(s, q), m1 = prijsProef(s, {...q, aard: "medisch"}, 1), m = prijsProef(s, {...q, aard: "medisch"}, 1.5);
+    const u1 = prijsProef(s, {...q, pop: 95}, 1), u2 = prijsProef(s, {...q, pop: 95}, 1.1);
+    const x = G.game.producten[0], r = await API["/api/product"]({soort: "prijs", id: x.id, f: 1.3}), f1 = x.prijsF, l1 = x.prijs, r2 = await API["/api/product"]({soort: "prijs", id: x.id, f: 9});
+    return {a, b, c, best, m1, m, u1, u2, ok: r.ok, f: f1, label: l1, f2: G.game.producten[0].prijsF, ok2: r2.ok}; });
+  ok(prijs.b.vraag < prijs.a.vraag && prijs.c.vraag > prijs.a.vraag, "duurder verkoopt minder, goedkoper meer: " + JSON.stringify([prijs.c.vraag, prijs.a.vraag, prijs.b.vraag]));
+  ok(prijs.b.stukPrijs > prijs.a.stukPrijs && prijs.c.stukPrijs < prijs.a.stukPrijs, "stukprijs volgt de schuif");
+  ok(prijs.best.winst >= prijs.a.winst && prijs.best.winst >= prijs.b.winst && prijs.best.winst >= prijs.c.winst, "beste prijs geeft de meeste winst: " + JSON.stringify(prijs.best));
+  ok(prijs.b.winst < prijs.a.winst && prijs.m.winst > prijs.m1.winst, "consumenten haken af bij 150%, medische klanten betalen het: " + JSON.stringify([prijs.a.winst, prijs.b.winst, prijs.m1.winst, prijs.m.winst]));
+  ok(prijs.u2.omzet > prijs.u1.omzet, "uitverkocht: een hogere prijs kost geen afzet: " + JSON.stringify([prijs.u1, prijs.u2]));
+  ok(prijs.ok && prijs.f === 1.3 && prijs.label === "premium" && prijs.f2 === 1.8, "prijs exact instellen, begrensd op 180%: " + JSON.stringify([prijs.f, prijs.label, prijs.f2]));
   ok(loy.keuze && loy.keuze.length === 3, "concurrent lokt abonnees weg: keuze " + JSON.stringify(loy.keuze));
   // overname en koppelen
   const ov = await p.evaluate(async () => { const s = G.game, bd = s.bedrijven.find(x => !x.eigenaar && x.sector === "Biotech") || s.bedrijven.find(x => !x.eigenaar); bd.relatie = 100; bd.aandeel = 30; s.reputation = 90;
