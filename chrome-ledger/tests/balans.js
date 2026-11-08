@@ -89,13 +89,14 @@ async function run(strat, n, diff){
   for (let i = 0; i < n; i++){
     const {s} = newGame({corp_name: "Bot " + i, doctrine: docs[i % docs.length], home: homes[i % homes.length], difficulty: diff, kapitaal: "normaal", lengte: LENGTE, ontslag: "normaal", bonus: "geen", ethiek: "normaal"});
     G.game = s; const ctx = Ctx();
-    let derde = 0, weg = 0;
+    let derde = 0, weg = 0, prS = 0, dvS = 0, nP = 0, nM = 0;
     while (s.status === "actief" && maandenGespeeld(s) < 300){
       if (maandenGespeeld(s) % 6 === 0){ const cp = contPcts(s); derde = Math.max(derde, (cp[2] || {pct: 0}).pct); weg = Math.max(weg, rivalenWeg(s).weg); }
       try { if (strat === "passief") passief(s, ctx); else verstandig(s, ctx, strat === "agressief"); } catch(e){ out.push({fout: String(e && e.stack || e).slice(0, 300)}); break; }
       tick(s); ctx.mails.length = 0;
+      { const mk = (s.producten || []).filter(x => x.status === "markt"); prS += mk.reduce((t, x) => t + ((s.prodomzet || {})[x.id] || 0), 0); dvS += s.divisions.reduce((t, d) => t + ((s.divomzet || {})[d.name || d.type] || 0), 0); nP += mk.length; nM++; }
     }
-    out.push({status: s.status, maanden: maandenGespeeld(s), waarde: playerValue(s), cash: Math.round(s.cash), score: s.eind ? s.eind.score : null, derde, weg, heatGesch: (s.history || []).slice(-8).map(h => Math.round(h.heat)), heatDelen: s.gezondheid && s.gezondheid.heat && s.gezondheid.heat.delen, divs: s.divisions.map(d => d.type + d.level).join(","), morale: Math.round(s.morale), heat: Math.round(s.heat)});
+    out.push({prodPct: Math.round(prS / Math.max(1, prS + dvS) * 100), prodN: Math.round(nP / Math.max(1, nM) * 10) / 10, status: s.status, maanden: maandenGespeeld(s), waarde: playerValue(s), cash: Math.round(s.cash), score: s.eind ? s.eind.score : null, derde, weg, heatGesch: (s.history || []).slice(-8).map(h => Math.round(h.heat)), heatDelen: s.gezondheid && s.gezondheid.heat && s.gezondheid.heat.delen, divs: s.divisions.map(d => d.type + d.level).join(","), morale: Math.round(s.morale), heat: Math.round(s.heat)});
   }
   return out;
 }
@@ -118,6 +119,7 @@ async function run(strat, n, diff){
     console.log("  einde:  ", Object.entries(eind).sort((a, b) => b[1] - a[1]).map(([k, v]) => `${k} ${Math.round(v / ok.length * 100)}%`).join(" · "));
     console.log("  maanden: mediaan", med(ok.map(r => r.maanden)), "· min", Math.min(...ok.map(r => r.maanden)), "· max", Math.max(...ok.map(r => r.maanden)));
     console.log("  waarde:  mediaan", med(ok.map(r => r.waarde)), "· max", Math.max(...ok.map(r => r.waarde)));
+    console.log("  producten: mediaan aandeel in divisie-omzet", med(ok.map(r => r.prodPct)) + "% · gemiddeld", med(ok.map(r => r.prodN)), "op de markt");
     console.log("  score:   mediaan", med(ok.map(r => r.score || 0)), "· max", Math.max(...ok.map(r => r.score || 0)));
     console.log("  hegemonie: mediaan beste 3e continent", med(ok.map(r => r.derde)) + "% · ≥60%:", ok.filter(r => r.derde >= 60).length, "· ≥80%:", ok.filter(r => r.derde >= 80).length, "| rivalen weg: mediaan", med(ok.map(r => r.weg)), "· max", Math.max(...ok.map(r => r.weg)));
     const per = {}; for (const r of ok) (per[r.status.startsWith("OVERWINNING") ? "winst" : r.status] ??= []).push(r.score || 0);

@@ -29,7 +29,9 @@ const html = '<!doctype html><html><head><meta charset=utf8><meta name=viewport 
   const ds = await p.$('[data-a=prodsheet]'); if (ds){ await ds.click(); await p.waitForTimeout(200); const sl = await p.$('input[data-prijs]');
     if (sl){ const voor = await p.evaluate(() => G.game.producten.find(x => x.status === "markt").prijsF); await sl.evaluate(el => { el.value = 150; el.dispatchEvent(new Event("input", {bubbles: true})); });
       log.push('prijsschuif: ' + await p.evaluate(() => document.querySelector('[id^=pp_]').textContent) + ' · onveranderd ' + (await p.evaluate(() => G.game.producten.find(x => x.status === "markt").prijsF) === voor));
-      const bl = await p.$('.prodblad'); await bl.scrollIntoViewIfNeeded(); await bl.screenshot({ path: dir + '/b-prijs.png' }); } else log.push('prijsschuif: ONTBREEKT'); }
+      const bl = await p.$('.prodblad'); await bl.scrollIntoViewIfNeeded(); await bl.screenshot({ path: dir + '/b-prijs.png' });
+      const vs = p.viewportSize(); await p.setViewportSize({width: 390, height: 900}); await p.waitForTimeout(200); await p.evaluate(() => { const t = document.getElementById('toast'); if (t) t.style.display = 'none'; const k = document.getElementById('ticker'); if (k) k.style.display = 'none'; }); const bm = await p.$('.prodblad'); await bm.scrollIntoViewIfNeeded(); await bm.screenshot({ path: dir + '/b-prijs-m.png' });
+      log.push('productblad 390px scrollW ' + await p.evaluate(() => document.documentElement.scrollWidth) + ' · segmenten ' + await p.evaluate(() => document.querySelectorAll('.prodblad .segrow').length)); await p.setViewportSize(vs); await p.evaluate(() => { const t = document.getElementById('toast'); if (t) t.style.display = ''; const k = document.getElementById('ticker'); if (k) k.style.display = ''; }); } else log.push('prijsschuif: ONTBREEKT'); }
   await p.evaluate(() => { S.view = "overzicht"; render(); window.scrollTo(0, 0); }); await p.waitForTimeout(200); await p.screenshot({ path: dir + '/c-overzicht.png', fullPage: true });
   // back-ups
   await p.evaluate(() => { S.view = "logboek"; render(); }); await p.click('[data-a=backups]'); await p.waitForTimeout(300);

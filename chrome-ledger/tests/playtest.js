@@ -56,6 +56,14 @@ const html = '<!doctype html><html><head><meta charset=utf8></head><body>' + fs.
   ok(prijs.best.winst >= prijs.a.winst && prijs.best.winst >= prijs.b.winst && prijs.best.winst >= prijs.c.winst, "beste prijs geeft de meeste winst: " + JSON.stringify(prijs.best));
   ok(prijs.b.winst < prijs.a.winst && prijs.m.winst > prijs.m1.winst, "consumenten haken af bij 150%, medische klanten betalen het: " + JSON.stringify([prijs.a.winst, prijs.b.winst, prijs.m1.winst, prijs.m.winst]));
   ok(prijs.u2.omzet > prijs.u1.omzet, "uitverkocht: een hogere prijs kost geen afzet: " + JSON.stringify([prijs.u1, prijs.u2]));
+  // 4.3.3: klantsegmenten (deterministisch)
+  const seg = await p.evaluate(() => { const q = {id: "ts", naam: "Testdosis", type: "Biotech", aard: "medisch", kwaliteit: 3, pop: 50, status: "markt", soort: "product", leeftijd: 5};
+    const laag = segmenten({...q, prijsF: 0.7}).rows, hoog = segmenten({...q, prijsF: 1.6}).rows, som = laag.reduce((t, x) => t + x.pct, 0);
+    const straatL = laag.find(x => x.naam === "Straatklinieken").pct, straatH = hoog.find(x => x.naam === "Straatklinieken").pct, rijkL = laag.find(x => x.naam === "Rijke particulieren").pct, rijkH = hoog.find(x => x.naam === "Rijke particulieren").pct;
+    const alle = Object.keys(SEGMENTEN).every(a => SEGMENTEN[a].length === 3 && Math.abs(SEGMENTEN[a].reduce((t, x) => t + x[1], 0) - 1) < 1e-9 && SEGMENTEN[a].every(x => SPECS[a][x[3]]));
+    return {som, straatL, straatH, rijkL, rijkH, alle}; });
+  ok(seg.alle && seg.som >= 99 && seg.som <= 101, "elk soort heeft drie segmenten die samen de markt vormen");
+  ok(seg.straatH < seg.straatL && seg.rijkH > seg.rijkL, "hoge prijs: straatklinieken haken af, rijke particulieren blijven: " + JSON.stringify(seg));
   ok(prijs.ok && prijs.f === 1.3 && prijs.label === "premium" && prijs.f2 === 1.8, "prijs exact instellen, begrensd op 180%: " + JSON.stringify([prijs.f, prijs.label, prijs.f2]));
   ok(loy.keuze && loy.keuze.length === 3, "concurrent lokt abonnees weg: keuze " + JSON.stringify(loy.keuze));
   // overname en koppelen

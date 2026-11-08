@@ -2407,8 +2407,8 @@ const opMarkt = (s, d) => (s.producten || []).filter(p => p.divisie === divNaam(
 const maxProducten = d => 2 + d.level;
 const leegStraf = d => clamp(((d.leeg || 0) - 12) * 0.006, 0, 0.2);
 function productMult(s, d){ const ps = opMarkt(s, d); if (!ps.length) return Math.round((0.95 - leegStraf(d)) * 100) / 100; return 1; }
-/* 4.3: elk product levert zijn eigen omzet; productie kost 30% daarvan */
-const PROD_KOST = 0.4;
+/* 4.3: elk product levert zijn eigen omzet; productie kost een vaste prijs per stuk (PROD_KOST × de standaardprijs) */
+const PROD_KOST = 0.45;
 /* 4.3 stap 2: vrije prijs. prijsF = prijs ten opzichte van de standaardprijs (0,6 tot 1,8). Een duurder product verkoopt minder
    (prijsgevoeligheid per markt; hogere kwaliteit maakt klanten minder gevoelig), de kostprijs per stuk blijft gelijk. */
 const ELAST = {wapen: 0.95, medisch: 0.6, implantaat: 0.85, data: 1.3, beveiliging: 0.7, smokkel: 0.75, logistiek: 1.35, financieel: 1.2, orbitaal: 0.7, consument: 1.55};
@@ -2416,11 +2416,28 @@ const PRIJS_F = {budget: 0.8, standaard: 1, premium: 1.35}, PRIJS_MIN = 0.6, PRI
 const prijsF = p => clamp(p.prijsF ?? PRIJS_F[p.prijs || "standaard"] ?? 1, PRIJS_MIN, PRIJS_MAX);
 const prijsLabel = f => f <= 0.85 ? "budget" : f >= 1.25 ? "premium" : "standaard";
 const elast = p => Math.round((ELAST[p.aard || aardVan(p.type, p.naam)] ?? 1.2) * clamp(1.2 - 0.05 * (p.kwaliteit || 3), 0.9, 1.15) * 100) / 100;
-const volF = p => clamp(Math.exp(-elast(p) * (prijsF(p) - 1)), 0.15, 1.6);
+/* 4.3.3: klantsegmenten. Elk soort product heeft drie groepen klanten met een eigen deel van de markt, een eigen prijsgevoeligheid (em × de basis)
+   en een eigenschap waar ze op letten (index in SPECS). Een product dat op die eigenschap uitblinkt verkoopt meer in dat segment. */
+const SEGMENTEN = {
+  wapen: [["Legers en staten", 0.35, 0.6, 0], ["Bendes en huurlingen", 0.4, 1.2, 2], ["Particulieren", 0.25, 1.4, 1]],
+  medisch: [["Ziekenhuizen", 0.45, 0.6, 1], ["Rijke particulieren", 0.3, 0.4, 2], ["Straatklinieken", 0.25, 2.0, 0]],
+  implantaat: [["Corporate elite", 0.3, 0.4, 0], ["Klinieken", 0.45, 1.0, 1], ["Ripperdocs op straat", 0.25, 1.8, 2]],
+  data: [["Corporaties", 0.45, 0.7, 1], ["Overheden", 0.25, 0.8, 0], ["Consumenten", 0.3, 1.6, 2]],
+  beveiliging: [["Corporaties", 0.45, 0.8, 1], ["Rijke particulieren", 0.3, 0.6, 2], ["Gemeenten", 0.25, 1.4, 0]],
+  smokkel: [["Syndicaten", 0.45, 0.8, 2], ["Zwarte markt", 0.35, 1.3, 1], ["Nomaden", 0.2, 1.0, 0]],
+  logistiek: [["Webwinkels", 0.45, 1.4, 0], ["Industrie", 0.35, 0.8, 1], ["Overheid", 0.2, 0.7, 2]],
+  financieel: [["Particulieren", 0.5, 1.3, 2], ["MKB", 0.3, 1.0, 1], ["Vermogenden", 0.2, 0.5, 0]],
+  orbitaal: [["Satellietbedrijven", 0.45, 0.8, 1], ["Staten", 0.3, 0.6, 0], ["Start-ups", 0.25, 1.6, 2]],
+  consument: [["Massamarkt", 0.55, 1.4, 1], ["Trendvolgers", 0.25, 0.8, 0], ["Bewuste kopers", 0.2, 0.9, 2]]};
+function segmenten(p){ const a = p.aard || aardVan(p.type, p.naam), specs = prodSpecs({...p, aard: a}), gem = specs.reduce((t, x) => t + x.v, 0) / 3, E = elast(p), f = prijsF(p);
+  const rows = (SEGMENTEN[a] || SEGMENTEN.consument).map(([naam, aandeel, em, v]) => { const fit = clamp(1 + (specs[v].v - gem) * 0.07, 0.75, 1.3), vol = aandeel * fit * Math.exp(-E * em * (f - 1));
+    return {naam, aandeel, em, wil: specs[v].naam, score: specs[v].v, fit: Math.round(fit * 100) / 100, gevoelig: Math.round(E * em * 100) / 100, vol}; });
+  const tot = rows.reduce((t, x) => t + x.vol, 0) || 1; for (const r of rows) r.pct = Math.round(r.vol / tot * 100); return {rows, tot}; }
+const volF = p => clamp(segmenten(p).tot, 0.15, 1.6);
 const prodKost = (p, omzet) => omzet * PROD_KOST / prijsF(p);
 function prijsProef(s, p, f){ const q = {...p, prijsF: clamp(f, PRIJS_MIN, PRIJS_MAX)}, o = prodOmzet(s, q); return {f: q.prijsF, stukPrijs: stukPrijs(q), omzet: r1(o), winst: r1(o - prodKost(q, o)), w: o - prodKost(q, o), vraag: Math.round(vraagNa(q)), cap: prodCap(s, q), churn: isAbo(q) ? Math.round(aboChurn(q) * 1000) / 10 : null}; }
 function besteprijs(s, p){ let best = null; for (let f = PRIJS_MIN; f <= PRIJS_MAX + 1e-9; f += 0.05){ const x = prijsProef(s, p, Math.round(f * 100) / 100); if (!best || x.w > best.w + 1e-6) best = x; } return best; }
-function prodOmzet(s, p){ const d = s.divisions.find(x => divNaam(x) === p.divisie); if (!d) return 0; return (5 + 3 * Math.pow(d.level, 0.8)) * prodGewicht(p, s) * 0.13; }
+function prodOmzet(s, p){ const d = s.divisions.find(x => divNaam(x) === p.divisie); if (!d) return 0; return (5 + 3 * Math.pow(d.level, 0.8)) * prodGewicht(p, s) * 0.17; }
 /* vraag na de prijs: losse producten verkopen minder bij een hogere prijs; bij abonnementen werkt de prijs via opzeggers en nieuwe klanten */
 const vraagNa = p => isAbo(p) ? bereik(p) : bereik(p) * volF(p);
 function productKans(s, d, schaal){ const sc = PRODUCT_SCHAAL[schaal]; const b = Math.ceil(d.level / 2) + ((s.crew || []).some(m => m.rol === "spindokter") ? 1 : 0); return {bonus: b, doel: sc.doel, kans: kans2d6(b, sc.doel)}; }
@@ -2785,9 +2802,9 @@ function aboTick(s, p, ctx){ if (p.abo == null) p.abo = Math.round(p.pop * 0.8);
 const PRIJS = {budget: {label: "Budget", pop: 12, gewicht: 0.8, rep: -0.05}, standaard: {label: "Standaard", pop: 0, gewicht: 1, rep: 0}, premium: {label: "Premium", pop: -10, gewicht: 1.35, rep: 0.1}};
 
 /* ===================== 4.0 ECHTE PRODUCTEN: eigenschappen, prijs per stuk, marge, afzet, levensfase, marktaandeel, capaciteit ===================== */
-const STUK = {wapen: {eenheid: "stuks", prijs: 320}, medisch: {eenheid: "doses", prijs: 45}, implantaat: {eenheid: "implantaten", prijs: 1600}, data: {eenheid: "licenties", prijs: 14},
-  beveiliging: {eenheid: "diensten", prijs: 380}, smokkel: {eenheid: "ladingen", prijs: 260}, logistiek: {eenheid: "zendingen", prijs: 38}, financieel: {eenheid: "rekeningen", prijs: 9},
-  orbitaal: {eenheid: "ladingplaatsen", prijs: 8500}, consument: {eenheid: "stuks", prijs: 24}};
+const STUK = {wapen: {eenheid: "stuks", prijs: 320}, medisch: {eenheid: "doses", prijs: 20}, implantaat: {eenheid: "implantaten", prijs: 1600}, data: {eenheid: "licenties", prijs: 6},
+  beveiliging: {eenheid: "diensten", prijs: 380}, smokkel: {eenheid: "ladingen", prijs: 260}, logistiek: {eenheid: "zendingen", prijs: 9}, financieel: {eenheid: "rekeningen", prijs: 4},
+  orbitaal: {eenheid: "ladingplaatsen", prijs: 8500}, consument: {eenheid: "stuks", prijs: 12}};
 const SPECS = {wapen: ["Vuurkracht", "Betrouwbaarheid", "Onopvallendheid"], medisch: ["Werkzaamheid", "Veiligheid", "Herstel"], implantaat: ["Prestatie", "Afstoting", "Levensduur"],
   data: ["Bereik", "Nauwkeurigheid", "Privacy"], beveiliging: ["Reactietijd", "Dekking", "Discretie"], smokkel: ["Snelheid", "Onzichtbaarheid", "Volume"], logistiek: ["Snelheid", "Betrouwbaarheid", "Bereik"],
   financieel: ["Rendement", "Risico", "Gemak"], orbitaal: ["Lading", "Precisie", "Kosten"], consument: ["Design", "Gemak", "Duurzaamheid"]};
@@ -2816,7 +2833,7 @@ function prodDetail(s, p, omzet){
   const abo = isAbo(p) && p.abo, cap = prodCap(s, p), vraag = vraagNa(p);
   const sp = abo ? Math.max(1, Math.round(omzet * 1000 / Math.max(1, p.abo * 10))) : stukPrijs(p), kp = abo ? Math.round(sp * PROD_KOST / prijsF(p)) : kostPrijs(p), afzet = abo ? Math.round(p.abo * 10) : omzet > 0 ? Math.round(omzet * 1000 / sp) : 0;
   return {specs: prodSpecs(p), eenheid: abo ? "abonnees" : (STUK[p.aard] || STUK.consument).eenheid, perMaand: !!abo, stukPrijs: sp, kostPrijs: kp, marge: Math.round((sp - kp) / sp * 100), afzet, fase: levensfase(p),
-    cap, vraag: Math.round(vraag), uitverkocht: vraag > cap, gemist: vraag > cap ? Math.round((vraag - cap) / vraag * 100) : 0, capKost: capKost(s, p), seg: segment(s, p), hist: (p.hist || []).slice(-12), prijsF: prijsF(p), elast: elast(p), beste: p.status === "markt" ? besteprijs(s, p) : null};
+    cap, vraag: Math.round(vraag), uitverkocht: vraag > cap, gemist: vraag > cap ? Math.round((vraag - cap) / vraag * 100) : 0, capKost: capKost(s, p), seg: segment(s, p), hist: (p.hist || []).slice(-12), prijsF: prijsF(p), elast: elast(p), segmenten: segmenten(p).rows.map(({vol, ...r}) => r), beste: p.status === "markt" ? besteprijs(s, p) : null};
 }
 const prodGewicht = (p, s) => p.kwaliteit * effBereik(p, s) / 100 * prijsF(p) * (s ? vraagFactor(s, p.aard || aardVan(p.type, p.naam)) : 1) * (p.trait === "goedkoop" ? 1.15 : 1);
 const prodSterkte = p => bereik(p) / 100 * (0.5 + p.kwaliteit * 0.15);

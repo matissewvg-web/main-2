@@ -23,7 +23,7 @@ Werkwijze: elk uur een ronde (automatisch). Grote punten zijn verdeeld in stappe
 | Versie | Wat | Rondes | Status |
 |---|---|---|---|
 | 4.2 | Levende bedrijvenwereld | 1 | klaar |
-| 4.3 | Echte afzet en prijs | 3 | stap 1-2 klaar (eigen omzet, vrije prijs), stap 3 volgende |
+| 4.3 | Echte afzet en prijs | 3 | klaar (4.3, 4.3.2, 4.3.3); volgende ronde is een opruimronde |
 | 4.4 | Geavanceerd productontwerp | 3 | |
 | 4.5 | Kwaliteit en aansprakelijkheid | 2 | |
 | 4.6 | Marketing en distributie | 2 | |
@@ -40,7 +40,7 @@ Werkwijze: elk uur een ronde (automatisch). Grote punten zijn verdeeld in stappe
 ### 4.3 Echte afzet en prijs (volgende)
 - Stap 1 (klaar in 4.3, na playtest): producten hebben een eigen omzet en 40% productiekosten bovenop de basisomzet van de divisie.
 - Stap 2 (klaar in 4.3.2): prijsschuif 60-180% met prijsgevoeligheid per markt, vaste kostprijs per stuk, beste-prijsknop, woekerprijs kost reputatie.
-- Stap 3: klantsegmenten per soort (bv. medisch: ziekenhuizen, rijke particulieren, straatklinieken) met eigen budget, omvang en voorkeur voor eigenschappen. Herbalans, gemeten met 150 spellen.
+- Stap 3 (klaar in 4.3.3): drie klantsegmenten per soort met marktdeel, prijsgevoeligheid en voorkeurseigenschap; producten 38% van de omzet (was 32%), productie 45%, lagere stukprijzen voor realistische aantallen. Balans 41% → 43%.
 
 ### 4.4 Geavanceerd productontwerp
 - Eigenschappen tellen echt: elk segment weegt de drie eigenschappen anders; jouw score tegen concurrerende producten bepaalt je aandeel per segment.
@@ -75,9 +75,12 @@ Werkwijze: elk uur een ronde (automatisch). Grote punten zijn verdeeld in stappe
 - Testinfrastructuur: expansie-bot voor hegemonie; tests mogen nooit op toeval falen.
 - (8 nov, kritische blik) **Bedragen per product zijn nog te klein om echt te voelen**: een logistiek product in het eerste jaar verkoopt ±18 zendingen voor €0,9k per maand. Dat is precies de klacht uit de playtest ("geen realistische bedragen"). In stap 3 de aantallen opschalen (honderden tot duizenden per maand, lagere prijs per stuk waar dat past) zonder de economie te verschuiven.
 - (8 nov) Grootste verliesoorzaak van de verstandige bot op Realistisch is razzia/vervolging (37%), niet faillissement (3%). Heat is voor een voorzichtige speler misschien te streng, of de bot negeert heat te veel: nagaan met een speler, niet alleen met de bot.
+- (8 nov, laat) Segmenten tellen al voor afzet en prijs, maar rivalen hebben nog geen eigen segmentkeuze en de bot kijkt er niet naar. 4.4 (eigenschappen per segment, varianten) bouwt hierop: dan pas wordt "voor wie maak je dit?" een echte keuze.
+- (8 nov, laat) Productomzet blijft klein naast de basisomzet van een divisie (een product €1-3k tegen een divisie €8-15k). De omzet volledig naar producten verschuiven raakt de start (die draait zonder producten) en vraagt een eigen ronde met metingen.
 - (8 nov) plannen.js gaf in één van zes runs een FOUT die daarna niet terugkwam: zoeken welke controle op toeval leunt.
 
 ## Gedaan
+- 4.3.3 Klanten en echte aantallen (8 nov, laat): segmenten per soort, Details → Klanten (op 390 px als lijst, een tabel paste niet), productomzet ×1,31 met productie 45%, stukprijzen omlaag. balans.js meet nu het productaandeel. Twee vaste tests voor segmenten.
 - 4.3.2 Zelf je prijs bepalen (8 nov, avond): prijsschuif met live voorbeeld in het productblad, prijsgevoeligheid per markt en kwaliteit, kostprijs per stuk vast, uitverkocht = gratis prijsruimte, abonnementen via instroom en opzeggers. Productgebeurtenissen die naar premium zetten werden eerst een val (bot 44% → 34%); gevoeligheid verzacht, daarna 42%. Zes vaste tests in playtest.js, schermtest met schuif.
 - 4.3 (na playtest: "producten leveren te weinig op, te veel events en keuzes"): producten eigen omzet en kosten, minder gebeurtenissen/chaos/aanslagen/syndicaatrekeningen, kleine keuzes max 1 per 2 maanden, gewone meldingen in het rapport (2,6 → 1,6 mails/maand), eigen soort = enige startdivisie, Engelse namen herkend. Realistisch 38%.
 - 4.2 Levende bedrijvenwereld: maandelijks oprichtingen (naamgenerator per sector), faillissementen na drie slechte maanden, fusies, nieuwe namen, beursgangen, schandalen, CEO-wissels; koers en geschiedenis per bedrijf; contracten verhuizen mee. Test wereld.js.
