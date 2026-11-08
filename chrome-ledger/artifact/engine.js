@@ -626,7 +626,7 @@ function tick(s){
 }
 
 /* ---------- de stad: elke game een andere kaart ---------- */
-const VERSION = "3.9";
+const VERSION = "3.9.1";
 const MAP_W = 1000, MAP_H = 680;
 const RIVAL_COLORS = ["#ff9a1f", "#3d7bff", "#c6ff2e", "#f2f2f2", "#9b5cff", "#ffd400", "#ff4d4d"];
 const ARCH = {
@@ -1373,7 +1373,7 @@ function sectorBonus(s, type){
   for (const d of s.districts) if (d.control === "player" && (ARCH_SECTOR[d.arch] || []).includes(type)) n++;
   return 1 + ((b && b.sector[type]) || 0) + Math.min(0.2, n * 0.04);
 }
-const loonMult = s => (startBonus(s) || {}).loon || 1;
+const loonMult = s => ((startBonus(s) || {}).loon || 1) * (1 + 0.06 * (s.tijdperk || 0));   /* 3.9.1: lonen stijgen 6% per tijdperk */
 function vestigingMult(s){ let m = (startBonus(s) || {}).vestiging || 1; if (relV(s, "stad") >= 50) m *= 0.85; return m; }
 const incOf = d => d.income * (d.mod ? d.mod.f : 1);
 const landNaam = (s, id) => (s.districts.find(d => d.id === id) || {}).name || id;

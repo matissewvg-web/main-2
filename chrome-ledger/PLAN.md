@@ -13,7 +13,7 @@ Sterk: veel systemen, een echt einde met eerlijke score, de GM als ontwerper en 
 Zwak:
 1. **Balans is beter maar nog grof.** Moeilijkheid is nog vooral een kostenfactor. Op Casual eindigt nog 21% van de verstandige spellen in een razzia, wat te streng is voor Casual.
 2. **Nog veel tegelijk voor een nieuwe speler.** Twaalf tabs en veel knoppen; Eerste stappen en een rustigere inbox helpen, maar of het genoeg is weet ik pas na een playtest.
-3. **Online opslag is niet getest.** Mijn tests draaien alleen in browsermodus; de online modus (de db van het artifact) zie ik alleen als jij speelt.
+3. **Online opslag is getest met een nagebootste database**, niet met de echte. Kleine verschillen in hoe de echte db werkt, merk ik pas als jij speelt.
 5. **Plannen tegen jou zijn nog sjablonen.** Vijf vaste soorten; de GM kleurt de tekst, maar bedenkt nog geen eigen soort plan. Pas na een playtest weten we of ze vaak genoeg of te vaak komen (nu ±1 per 14 maanden zodra iemand vijandig is).
 
 ## Open (in volgorde)
@@ -21,7 +21,6 @@ Zwak:
 - Bedrijfsfocus: een kleine boom met keuzes die elke paar maanden een vaste bonus geven.
 
 ### Balans (vervolg)
-- Lonen en huur per tijdperk laten stijgen, zodat de late game ook druk heeft. (8 nov)
 - Genadeloos: vroegste dood in maand 16; bekijken of de eerste twee jaar daar eerlijk zijn. (8 nov)
 
 ### Kleine punten
@@ -30,11 +29,11 @@ Zwak:
 ### Testinfrastructuur (doorlopend)
 - De testbot gebruikt geen abonnementen, dochters of de GM: die onderdelen zijn alleen functioneel getest, niet op balans. Een bot-variant die abonnementen kiest. (8 nov)
 - Tests mogen niet op toeval falen: concept.js viel om bij een terugroepactie (twee enen). Gerepareerd; andere tests nalopen op hetzelfde. (8 nov)
-- Een test voor de online modus met een nagebootste db, zodat opslaan, wisselen van spel en back-ups daar ook gecontroleerd worden. (8 nov)
 - Expansie-bot in balans.js om hegemonie echt te meten.
 - Een "speel 24 maanden als mens"-run met screenshots per ronde, om zelf kritisch te kijken.
 
 ## Gedaan
+- 3.9.1 Online-test met nagebootste db (alles groen), lonen +6% per tijdperk.
 - 3.9 Abonnementen (loyaliteit, prijsverhoging, weglokken) en een overzicht van je dochters met opnemen of verkopen.
 - 3.8.1 Opruimen: automatisch archiveren van oude rapporten en afgehandelde keuzes, GM-venster duwt de inhoud opzij, Casual minder heat (razzia 22% → 13%, winst 87%: aan de makkelijke kant, bewust).
 - 3.8 Plannen tegen jou: vijf soorten plannen van rivalen en syndicaten over zes maanden, ontdekken via crew en netwerk, verstoren/voorbereiden/laten, GM-tekst, kaart bij Rivalen, test plannen.js.
