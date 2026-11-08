@@ -5,6 +5,7 @@
 De hoofdversie draait als artifact in de browser, ook op je gsm: `artifact/chrome-ledger.html` (scherm), `artifact/engine.js` (spelregels, opslag, acties) en `artifact/world-data.js` (kaartdata), gepubliceerd op https://claude.ai/artifact/G1Mgzkv5m1xg2BVrcuvUCq. Je bouwt een megacorporatie op de echte wereldkaart in cyberpunkstijl (Natural Earth-grenzen, 43 speelbare gebieden, 16 zeezones) en kiest bij de start op welk continent en in welk gebied je begint. Op zee bouw je eskaders en verdeel je ze over de zeezones: wie het overwicht heeft, verdient eraan en bereikt elke kust; in oorlog volgen zeeslagen en konvooiaanvallen. De kaartdata wordt gebouwd met `artifact/build-world.js`. Verder: rivalen met een eigen economie (oorlog, vrede, handel, districten ruilen), chat en mail met iedereen in de stad, personeel, eigen bedrijfssoorten en een live GM die kosten en kansen bepaalt; de engine gooit de dobbelsteen. Je spel wordt online bewaard en is alleen voor jou.
 
 ### Versies
+- **3.6 Opslag die niet stil faalt:** saves zijn ±75% kleiner (de wereldkaart wordt bij het laden uit de wereldgegevens opgebouwd; gemeten 121 KB → 30 KB bij de start). Een mislukte back-up meldt zich luid, maximaal 6 spellen in de browser, en als je huidige spel niet apart bewaard kan worden start er geen nieuw spel. Vangnetten schrijven naar een foutlog onder Logboek.
 - **3.5 Druk uit de wereld:** legale divisies trekken boven niveau 6 geen extra heat meer (voorheen werd elk groot bedrijf vroeg of laat opgepakt); een divisie die een jaar niets verkoopt verliest klanten, tot −20% omzet. Gemeten (verstandige bot, 150 spellen Realistisch / 100 andere): Casual 79% winst, Realistisch 42% winst en 23% razzia (was 35% en 38%), Genadeloos 12%. Passief op Casual haalt nog 64% de termijn (was bijna altijd). Een deel van de razzia-daling komt van de testbot, die nu geen riskante divisies meer opent als hij al heat heeft.
 - **3.4 Eerlijk einde:** de winstdrempel hangt af van de speellengte (€4.800k / €8.000k / €12.000k). Hegemonie is 60% op drie continenten en Marktmeester is 3 van de 5 oorspronkelijke rivalen uitschakelen; voorheen viel in 100% van de testspellen alleen de economische overwinning. Score: waarde telt als 40 × √waarde, plus tempo bij snel winnen; verliezen kost de waarde van je bedrijf en geeft ×0,75. Gemeten mediaan (verstandige bot, Realistisch): winst 7104, termijn 5018, razzia 863, failliet 300. Handgecontroleerd: overgenomen op €7.900k scoort 885, de termijn halen op €4.000k scoort 3.910.
 - **3.3.1 Na de playtest:** abonnementen draaien op abonnees (aantrekkingskracht bepaalt de instroom, kwaliteit en prijs de opzeggers; trager maar stabieler). Na een geslaagde overname kies je hoe je het koppelt: samenvoegen, eigen divisie, dochter of opknippen; het bedrijf brengt zijn bestseller mee. Een lege divisie legt uit hoe ze geld maakt en geeft twee startideeën met één klik. De GM zit op elk scherm (knop GM of toets G). Fout opgelost: een zwak eerste product verlaagde de omzet onder die van een lege divisie.
@@ -20,13 +21,14 @@ De hoofdversie draait als artifact in de browser, ook op je gsm: `artifact/chrom
 - **1.2 Mensen:** relaties met netwerk en directie, met acties zonder Assistent (diner, cadeau, gunst, druk). Drempels geven gunsten en vaste voordelen. Keuzemails met knoppen in plaats van losse flavor-mails.
 - **1.1 Wereld:** wereldnieuws, ranglijst van alle bedrijven met waarde, markten per sector, 25 bedrijven voor contracten, aandelen en overnames, gebeurtenissen per land, startvoordeel per soort land en "wat het oplevert" per gebied.
 
-Gepland: 3.6 opslag en foutlog, 3.7 bedrijfsfocus, 3.8 onderzoek, 3.9 meer comfort.
+Gepland: zie `PLAN.md`.
 
 ### Tests
 - `node chrome-ledger/tests/balans.js 150 Realistisch [kort|normaal|eindeloos]` speelt 150 spellen per strategie (passief, verstandig, agressief) en toont eindes, speelduur, waarde, score per einde, hoe ver spelers komen richting hegemonie en hoeveel rivalen ze uitschakelen.
 - `node chrome-ledger/tests/concept.js` test GM-concepten met een nagebootste GM (ontwerp, grenzen, opzetten, lancering, eigen verhaallijn).
 - `node chrome-ledger/tests/verhaal.js` test de GM-divisie en de verhaalbogen met een nagebootste GM.
 - `node chrome-ledger/tests/playtest.js` test abonnees, overname koppelen, startideeën en het GM-venster.
+- `node chrome-ledger/tests/opslag.js` test compacte saves, herladen, een mislukte back-up, de foutlog, export en het maximum van 6 spellen.
 - `node chrome-ledger/tests/spellen.js` test de saveslots (maken, wisselen, hernoemen, verwijderen, herladen).
 - `node chrome-ledger/tests/schermen.js chrome-ledger/artifact/chrome-ledger.html <map>` klikt de belangrijkste schermen door op desktop en mobiel en maakt screenshots.
 

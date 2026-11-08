@@ -8,25 +8,21 @@ Dit plan wordt elke ronde bijgewerkt: wat af is gaat naar "Gedaan", nieuwe punte
 - **Eerlijk over de grenzen.** De testbots zijn geen spelers: ze negeren heat, breiden niet uit naar andere continenten en gebruiken de GM niet. Een goed bot-cijfer betekent niet dat het spel leuk is. De GM-functies zijn alleen met een nagebootste GM getest; echte speelervaring van de gebruiker weegt zwaarder dan elke meting.
 - **Niet doen:** engine.js opsplitsen in modules, tests in het artifact stoppen, nieuwe systemen bouwen terwijl een bestaand systeem onduidelijk is.
 
-## Waar het spel nu staat (3.5)
+## Waar het spel nu staat (3.6)
 Sterk: veel systemen, een echt einde met eerlijke score, de GM als ontwerper en verteller, saveslots, tests.
 Zwak:
 1. **Balans is beter maar nog grof.** Moeilijkheid is nog vooral een kostenfactor. Op Casual eindigt nog 21% van de verstandige spellen in een razzia, wat te streng is voor Casual.
 2. **Te veel tegelijk voor een nieuwe speler.** Twaalf tabs, tientallen knoppen, een volle inbox. De eerste tien minuten zijn zwaar; "starten zonder basis is wazig" zei de playtest.
-3. **Opslag en fouten zijn stil.** Een mislukte back-up of een fout in een vangnet merk je niet.
+3. **Online opslag is niet getest.** Mijn tests draaien alleen in browsermodus; de online modus (de db van het artifact) zie ik alleen als jij speelt.
 4. **Telefoon** is bruikbaar maar krap: statusbalk kapt af, toasts vallen over de GM-knop.
 5. **De GM is nog een chatvenster.** Hij vertelt, maar plant niet: rivalen en syndicaten hebben geen eigen verhaal dat over maanden loopt.
 
 ## Open (in volgorde)
-### 3.6 Opslag en fouten
-- `backup()` faalt luid (toast + opslagkaart), maximaal 6 lokale slots met een duidelijke melding.
-- Kleinere saves: de vaste wereld niet in elke save; meten vóór en na (135 KB start, 194 KB na 20 jaar).
-- De 19 lege catch-blokken schrijven naar een foutlog onder Logboek.
-
 ### 3.7 Rust en eerste stappen (opruimronde)
 - Eerste stappen: een kaart voor de eerste drie maanden met 4 concrete stappen (eerste product, crew inzetten, een contract, volgende maand), die verdwijnt als ze af zijn.
 - Inbox rustiger: kleine meldingen gebundeld in het maandrapport.
-- Telefoon: statusbalk, roze-op-cyaan chip, toasts boven de GM-knop.
+- Telefoon: statusbalk, roze-op-cyaan chip.
+- Een nieuw spel begint met tientallen ongelezen mails (48 in de test na een paar maanden): het eerste wat je ziet is een berg. (8 nov)
 - Kaartlabels in Europa; aria in inbox en kaart.
 
 ### 3.8 De GM plant mee
@@ -44,10 +40,12 @@ Zwak:
 - Genadeloos: vroegste dood in maand 16; bekijken of de eerste twee jaar daar eerlijk zijn. (8 nov)
 
 ### Testinfrastructuur (doorlopend)
+- Een test voor de online modus met een nagebootste db, zodat opslaan, wisselen van spel en back-ups daar ook gecontroleerd worden. (8 nov)
 - Expansie-bot in balans.js om hegemonie echt te meten.
 - Een "speel 24 maanden als mens"-run met screenshots per ronde, om zelf kritisch te kijken.
 
 ## Gedaan
+- 3.6 Opslag die niet stil faalt: saves 75% kleiner, luide back-upfout, maximaal 6 lokale spellen, nooit het oude spel kwijt bij een nieuw spel, foutlog onder Logboek.
 - 3.5 Druk uit de wereld: heat-plafond voor legale divisies, stilstand kost klanten, toasts boven de GM-knop. Bot opent geen riskante divisies meer bij hoge heat.
 - 3.4 Eerlijk einde: winstdrempel per speellengte, haalbare hegemonie en Marktmeester, score met wortel van de waarde, verlies nooit boven overleven.
 - 3.3.1 Na de playtest: abonnees, overname koppelen, startideeën, GM-venster op elk scherm.
