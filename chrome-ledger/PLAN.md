@@ -62,12 +62,21 @@ Zwak:
 ### 4.13 Zelf plannen smeden
 - Het spiegelbeeld van Plannen tegen jou: over maanden een prijsoorlog, laster of overname tegen een rivaal opbouwen.
 
+### 5.0 Klanten komen naar jou (B2B-orders)
+- Bedrijven in de wereld, rivalen, staten en syndicaten sturen je inkoopaanvragen voor je producten of diensten: hoeveel, welke eigenschappen (minimaal), welke prijs, welke deadline en welke voorwaarden.
+- Jij kiest: accepteren, onderhandelen (een worp over prijs of termijn, met relatie en reputatie als bonus) of afwijzen. Leveren gaat uit je productiecapaciteit en voorraad (koppeling met 4.0 en 4.8); te laat leveren kost een boete en reputatie, goed leveren geeft vervolgorders.
+- Aanbestedingen: een grote order waar rivalen ook op bieden; jouw prijs, eigenschappen en reputatie tegen die van hen.
+- Raamcontracten: een vaste klant die elke maand afneemt, met een looptijd en heronderhandeling.
+- Riskante klanten: een syndicaat of een staat onder sancties biedt het dubbele; dat geeft geld, heat en soms gevolgen.
+- Is de GM live, dan schrijft hij de klant en het verhaal achter de order; de engine bewaakt aantallen, prijzen en boetes, en heeft vaste aanvragen als de GM niet live is.
+
 ### Doorlopend
 - Elke derde ronde een opruimronde met tests/mensrun.js en screenshots.
 - Genadeloos: 8% failliet vóór maand 30; opnieuw na een playtest.
 - Testinfrastructuur: expansie-bot voor hegemonie; tests mogen nooit op toeval falen.
 
 ## Gedaan
+- Roadmap: 5.0 Klanten komen naar jou (B2B-orders, aanbestedingen, raamcontracten, riskante klanten) toegevoegd op verzoek (8 nov).
 - Roadmap uitgebreid (8 nov, op verzoek: "diepere productdetails, advanced"): 4.2 echte afzet en prijs met segmenten, 4.3 geavanceerd productontwerp, 4.4 kwaliteit en aansprakelijkheid, 4.5 marketing en distributie, 4.6 patenten, 4.7 productdashboard, 4.8 toelevering.
 - 4.1.1 Kaart Nieuw sinds je vorige bezoek. Terugkerende rondes gepauzeerd op 8 nov (20:45 UTC): de gebruiker gaat spelen. Hervatten met de feedback uit die speelronde bovenaan.
 - 4.1 Balans: winstdrempel +10%, eerste strategiedag na een jaar, krappere startcapaciteit, bot breidt capaciteit uit. Realistisch 47% → 34%. Productblad op 390 px gecontroleerd, Verval pas na een jaar.
