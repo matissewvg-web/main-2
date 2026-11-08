@@ -789,7 +789,7 @@ bedrijf(){
   const eff = Math.round((p.count >= st.nodig ? 1 : 0.45 + 0.55 * p.count / st.nodig) * 100);
   const eigen = st.soorten.filter(x => x.eigen);
   return `<h1>Bedrijf</h1>
-  ${dochtersCard(st)}
+  ${focusCard(st)}${dochtersCard(st)}
   <h2>Divisies</h2><div class="grid g3">${st.divisies.map(d => `<div class="card">
       <div class="spread"><h3>${esc(d.naam)}</h3><span class="tag cyan">L${d.level}</span></div>
       <div class="muted" style="font-size:14px">${esc(d.type)}${d.eigen?' <span class="tag">eigen soort</span>':""} · marktaandeel ~${d.aandeel}%</div>
@@ -1000,6 +1000,7 @@ function setupBonus(homeD){
     <p class="dim" style="font-size:13px;margin:6px 0 0">Elk soort land geeft een ander voordeel: havens, financiële centra, datavalleien, sloppen. Klik verschillende landen aan om ze te vergelijken.</p>` : "";
 }
 const VERSIES = [
+  ["3.10", "Koers en aanloop", ["Bedrijfsfocus: eens per jaar (de eerste keer na zes maanden) een strategiedag. Je kiest uit drie koersen er één die blijft: Lean, Juristen in huis, Merkbouwer, Talentmagneet, Snelle R&D, Abonnementshuis of Huisbankier. Je koers staat bovenaan bij Bedrijf.", "Aanloop: in je eerste half jaar vertrekt niemand uit je directie, en in je eerste jaar wordt niemand verrader. In een testrun begon iemand al in maand 4 te lekken, voor je je mensen kende."]],
   ["3.9.2", "Na een speelronde van twee jaar", ["Wat nu? waarschuwt als je reputatie maanden achter elkaar zakt terwijl journalisten interne stukken citeren: misschien lekt iemand uit je directie, en een speurder kan dat uitzoeken. In een testrun zakte de reputatie ongemerkt van 30 naar 10.", "Is je cash negatief, dan zegt Wat nu? hoeveel maanden je nog hebt tot het faillissement en waar je snel geld vandaan haalt.", "Mail ouder dan zes maanden zonder open keuze gaat vanzelf naar het archief."]],
   ["3.9.1", "Online getest, late druk", ["De online opslag (zoals in claude.ai) heeft nu een eigen test met een nagebootste database: compacte saves, geen eindeloze save-lus, herladen, back-ups, inbox opruimen, spellen wisselen en chats. Alles slaagde.", "Lonen stijgen 6% per tijdperk, zodat ook een groot bedrijf in de late game moet blijven opletten."]],
   ["3.9", "Abonnementen en dochters", ["Abonnementen: een loyaliteitsprogramma (vaste kosten per maand, minder opzeggers), een prijsverhoging kost meteen 8% van je abonnees, en soms lokt een concurrent je abonnees weg: tegenbod, gratis maand of laten gaan.", "Je dochters: overgenomen bedrijven die als dochter draaien staan nu bovenaan bij Bedrijf. Je kunt ze later alsnog opnemen in je bedrijf of verkopen voor 90% van hun waarde."]],
@@ -1024,7 +1025,7 @@ const VERSIES = [
   ["1.1", "Wereld", ["Nieuwe tab Wereld: wereldnieuws, een ranglijst van alle bedrijven met waarde en markten per sector.", "25 bedrijven verspreid over de wereld: zakendiner, leveringscontract, aandelen met dividend of een overname.", "Gebeurtenissen per land en continent (stormen, staatsgrepen, handelsakkoorden) veranderen tijdelijk wat gebieden opleveren.", "Startvoordeel per soort land, een eigen stad voor je hoofdkantoor, en per gebied op de kaart: wat het oplevert.", "Geruchten en marktberichten staan in het nieuws in plaats van in je inbox."]],
   ["1.0", "Echte wereld", ["Echte wereldkaart, dominantie per continent en zee, eskaders, rivalen met oorlog en handel, blijvende inkomstenbronnen."]],
 ];
-const PLANNING = [["3.10", "Bedrijfsfocus: een kleine boom met keuzes die elke paar maanden een vaste bonus geven."], ["4.0", "Onderzoek: technologie per sector, betere divisies en nieuwe producten."]];
+const PLANNING = [["4.0", "Onderzoek: technologie per sector, betere divisies en nieuwe producten."], ["4.x", "Zelf een plan tegen een rivaal opzetten, het spiegelbeeld van Plannen tegen jou."]];
 function versieCard(){
   const vrs = ([v, t, l]) => `<div style="margin:8px 0"><b class="mono" style="color:var(--cyan)">${v}</b> <b>${esc(t)}</b><ul class="ylist">${l.map(x => `<li>${esc(x)}</li>`).join("")}</ul></div>`;
   return `<div class="card" style="margin-top:16px"><h3>Versies</h3>${VERSIES.slice(0, 2).map(vrs).join("")}<details><summary class="muted" style="cursor:pointer;margin:6px 0">Oudere versies (${VERSIES.length - 2})</summary>${VERSIES.slice(2).map(vrs).join("")}</details>
@@ -1335,6 +1336,11 @@ function naamModal(titel, waarde){
     m.addEventListener("keydown", e => { if (e.key === "Enter") done(inp().value); if (e.key === "Escape") done(null); });
     document.body.appendChild(m); inp().focus(); inp().select();
   });
+}
+function focusCard(st){
+  const F = st.focus || [];
+  return `<div class="card" style="margin-bottom:14px"><div class="spread"><h3>Koers</h3><span class="dim" style="font-size:13px">volgende strategiedag over ${st.volgendeFocus} maand(en)</span></div>
+    ${F.length ? `<div class="ptags" style="margin-top:6px">${F.map(f => `<span class="tag cyan" title="${esc(f.tekst)}">${esc(f.naam)}</span> <span class="dim" style="font-size:13px">${esc(f.tekst)}</span>`).join("<br>")}</div>` : '<p class="muted" style="font-size:13.5px;margin:4px 0 0">Eens per jaar houdt de raad een strategiedag. Dan kies je uit drie koersen er één die blijft, zoals Lean (−5% kosten) of Juristen in huis (−10% heat).</p>'}</div>`;
 }
 function dochtersCard(st){
   const L = st.dochters || []; if (!L.length) return "";
