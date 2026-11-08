@@ -13,16 +13,11 @@ Sterk: veel systemen, een echt einde met eerlijke score, de GM als ontwerper en 
 Zwak:
 1. **Producten zijn nog abstract.** Een product is kwaliteit × populariteit × een vermenigvuldiger op de divisie-omzet. Je ziet geen prijs per stuk, afzet, marge, marktaandeel of capaciteit. De gebruiker wil het "realistischer en gedetailleerder".
 2. **De economie is een model op divisieniveau**, niet op productniveau: omzet komt van de divisie, producten tillen die op. Echte afzet × prijs vraagt een herbalans.
-3. **Balans:** Realistisch 43% winst (doel ±35%) sinds de koersen; Genadeloos vroege faillissementen; abonnementen, dochters en de GM niet op balans getest.
+3. **Balans:** op doel sinds 4.1 (Casual 86%, Realistisch 34%, Genadeloos 11%), maar abonnementen, dochters en de GM zijn niet op balans getest.
 4. **Nog niemand heeft het echt gespeeld sinds de ochtend.** Bots zijn geen spelers.
 
 ## Roadmap (in volgorde)
-### 4.1 Balans na 4.0 (volgende)
-- Realistisch staat op 46% (doel ±35%): koersen zwakker of later, capaciteit krapper bij de start? Meten met 150 spellen.
-- Een bot die abonnementen en capaciteit gebruikt; Genadeloos opnieuw meten.
-- Productblad op de telefoon controleren (smalle kolommen).
-
-### 4.2 Echte afzet
+### 4.2 Echte afzet (volgende)
 - Omzet van een product = afzet × prijs, kosten = afzet × kostprijs + vaste kosten. Prijs vrij instelbaar met prijsgevoeligheid per markt. De divisie levert basisomzet, producten de rest. Grote herbalans, gemeten.
 
 ### 4.3 Toelevering en voorraad
@@ -49,6 +44,7 @@ Zwak:
 - Testinfrastructuur: expansie-bot voor hegemonie; tests mogen nooit op toeval falen.
 
 ## Gedaan
+- 4.1 Balans: winstdrempel +10%, eerste strategiedag na een jaar, krappere startcapaciteit, bot breidt capaciteit uit. Realistisch 47% → 34%. Productblad op 390 px gecontroleerd, Verval pas na een jaar.
 - 4.0 Echte producten: productblad (eigenschappen, prijs/kostprijs/marge, afzet, levensfase, marktaandeel, 12 maanden omzet), capaciteit als echte grens met uitbreiden, abonnees als echte aantallen. Uitroepen in Wat nu? bij uitverkocht.
 - 3.10 Koers (strategiedag eens per jaar, 7 vaste koersen) en aanloop (geen vertrek in 6 maanden, geen verraad in 12). verhaal.js valt niet meer om op projectvertraging.
 - 3.9.2 Na een mensrun: advies bij zakkende reputatie (lek), bij negatieve cash (hoeveel maanden, waar snel geld), oude mail naar archief, geen absurde speelruimte-melding meer. tests/mensrun.js toegevoegd.

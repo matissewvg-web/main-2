@@ -628,7 +628,7 @@ function tick(s){
 }
 
 /* ---------- de stad: elke game een andere kaart ---------- */
-const VERSION = "4.0";
+const VERSION = "4.1";
 const MAP_W = 1000, MAP_H = 680;
 const RIVAL_COLORS = ["#ff9a1f", "#3d7bff", "#c6ff2e", "#f2f2f2", "#9b5cff", "#ffd400", "#ff4d4d"];
 const ARCH = {
@@ -2519,7 +2519,7 @@ const FOCUS = {
 };
 const heeftFocus = (s, id) => (s.focus || []).includes(id);
 function focusTick(s, ctx){
-  const mg = maandenGespeeld(s); if (mg < 6 || mg % 12 !== 6 || (s.keuzes || []).some(k => k.soort === "focus")) return;
+  const mg = maandenGespeeld(s); if (mg < 12 || mg % 12 !== 0 || (s.keuzes || []).some(k => k.soort === "focus")) return;
   const vrij = Object.keys(FOCUS).filter(k => !heeftFocus(s, k)); if (!vrij.length) return;
   const keus = []; while (keus.length < Math.min(3, vrij.length)){ const k = CH(vrij); if (!keus.includes(k)) keus.push(k); }
   addKeuze(s, ctx, {soort: "focus", van: "Raad van Bestuur", titel: "Strategiedag: welke koers houden we vast?", tekst: `Eens per jaar kiest de raad één koers die blijft. Je hebt er nu ${(s.focus || []).length}${(s.focus || []).length ? ": " + s.focus.map(k => FOCUS[k].naam).join(", ") : ""}. Kies er een bij.`,
@@ -2596,7 +2596,7 @@ function migrate21(s){
 /* ===================== 2.2 DOEL, SCORE EN EINDE ===================== */
 const SPEL_LENGTE = {kort: {label: "10 jaar", maanden: 120}, normaal: {label: "20 jaar", maanden: 240}, eindeloos: {label: "Eindeloos", maanden: 0}};
 const WIN_WAARDE = 8000, HEG_PCT = 60, HEG_N = 3, RIVAAL_DOEL = 3;
-const WIN_LENGTE = {kort: 0.6, normaal: 1, eindeloos: 1.5};
+const WIN_LENGTE = {kort: 0.65, normaal: 1.1, eindeloos: 1.6};
 const winWaardeVoor = lengte => Math.round(WIN_WAARDE * (WIN_LENGTE[lengte] || 1) / 100) * 100;
 const winWaarde = s => winWaardeVoor(s.player.lengte);
 const RIVAAL_MULT = {Casual: 0.85, Realistisch: 1, Genadeloos: 1.2};
@@ -2722,9 +2722,9 @@ const kostPrijs = p => Math.round((STUK[p.aard] || STUK.consument).prijs * (0.32
 function levensfase(p){
   if (p.status !== "markt") return p.status === "ontwikkeling" ? "In ontwikkeling" : "Wachtrij";
   const h = p.hist || [], trend = h.length >= 3 ? h[h.length - 1].pop - h[h.length - 3].pop : 0, l = p.leeftijd || 0;
-  if (l < 3) return "Introductie"; if (l > 30 || trend <= -6) return "Verval"; if (trend >= 4 && l < 18) return "Groei"; return "Volwassen"; }
+  if (l < 3) return "Introductie"; if (l > 30 || (trend <= -6 && l >= 12)) return "Verval"; if (trend >= 4 && l < 18) return "Groei"; return "Volwassen"; }
 /* capaciteit: hoeveel van de vraag je kunt leveren, in dezelfde schaal als populariteit (0-100). Een echte grens. */
-function prodCap(s, p){ const d = s.divisions.find(x => divNaam(x) === p.divisie); return Math.round(clamp(70 + 6 * ((d && d.level) || 1) + (p.capExtra || 0), 50, 130)); }
+function prodCap(s, p){ const d = s.divisions.find(x => divNaam(x) === p.divisie); return Math.round(clamp(60 + 6 * ((d && d.level) || 1) + (p.capExtra || 0), 45, 130)); }
 const effBereik = (p, s) => s ? Math.min(bereik(p), prodCap(s, p)) : bereik(p);
 const capKost = (s, p) => r1((5 + (p.capExtra || 0) / 5) * (DIFF[s.player.difficulty] || 1));
 function segment(s, p){
@@ -3006,7 +3006,7 @@ const SPELREGELS = [
   ["Dobbelstenen", "Elke onzekere actie is 2d6 + bonus tegen een doel. Twee zessen lukt altijd, twee enen nooit. De kans die je vooraf ziet is de echte kans. Elke worp staat in Logboek → Dobbelstenen."],
   ["Morale en heat", "Morale onder 10, twee maanden lang: coup. Heat boven 90, twee maanden lang: razzia. Heat komt vooral uit riskante en illegale divisies (Smokkel, Cyberware, Private Security), die met elk niveau meer aandacht trekken; legale divisies trekken boven niveau 6 geen extra aandacht meer. Het overzicht laat zien waarom ze bewegen en waarschuwt ruim op tijd."],
   ["Stilstand", "Verkoopt een divisie een jaar lang niets, dan lopen klanten naar rivalen: de omzet zakt elke maand verder, tot −20%. Eén product op de markt stopt het meteen."],
-  ["Winnen", "Een bedrijfswaarde van €8.000k (10 jaar: €4.800k, eindeloos: €12.000k), 60% op drie continenten, of 3 van de 5 oorspronkelijke rivalen uitgeschakeld. Anders telt na de gekozen speellengte je score."],
+  ["Winnen", "Een bedrijfswaarde van €8.800k (10 jaar: €5.200k, eindeloos: €12.800k), 60% op drie continenten, of 3 van de 5 oorspronkelijke rivalen uitgeschakeld. Anders telt na de gekozen speellengte je score."],
   ["Score", "Bedrijfswaarde telt met de wortel (40 × √waarde), plus dominantie, reputatie, jaren, uitgeschakelde rivalen en status. Winnen ×1,25 plus tempo, termijn uitdienen ×1, verliezen ×0,75 en zonder de waarde van je bedrijf: een verlies scoort dus nooit hoger dan overleven met hetzelfde bedrijf."],
   ["Keuzes", "Keuzemails hebben knoppen; elke optie zegt wat ze kost en doet. Antwoord je niet, dan kiest het spel na twee maanden de standaardoptie."],
 ];
@@ -3770,7 +3770,7 @@ function vm(){
     invloedActies: INFLUENCE, factieNamen: Object.keys(s.factions), rivaalNamen: s.rivals.map(r => r.name),
     leenruimte: loanCap(s), nieuwe_divisie_kost: newDivCost(s), divisie_types: allTypes(s), contract: s.flags.nomad_contract,
     dochters: (s.bedrijven || []).filter(b => b.eigenaar === "player" && b.koppeling === "dochter").map(b => ({id: b.id, naam: b.naam, sector: b.sector, land: landNaam(s, b.land), waarde: Math.round(b.waarde), bedrag: ((s.streams || []).find(x => x.naam === "Dochter " + b.naam) || {}).bedrag || 0, verkoop: r1(b.waarde * 0.9), samen: s.divisions.some(d => d.type === b.sector) ? `samenvoegen met ${divNaam(s.divisions.find(d => d.type === b.sector))}` : `eigen divisie (${b.sector})`})),
-    focus: (s.focus || []).map(k => ({naam: FOCUS[k].naam, tekst: FOCUS[k].tekst})), volgendeFocus: (() => { const mg = maandenGespeeld(s); return mg < 6 ? 6 - mg : (12 - ((mg - 6) % 12)) % 12 || 12; })(),
+    focus: (s.focus || []).map(k => ({naam: FOCUS[k].naam, tekst: FOCUS[k].tekst})), volgendeFocus: (() => { const mg = maandenGespeeld(s); return mg < 12 ? 12 - mg : (12 - (mg % 12)) % 12 || 12; })(),
     plannen: (s.plannen || []).filter(p => p.ontdekt).map(p => ({titel: p.titel, wie: p.wie, stap: p.stap, van: p.stappen.length, stappen: p.stappen, wanneer: p.volgende, zacht: !!p.zacht, eind: PLAN_SOORT[p.soort].eindTekst, motief: p.motief || ""})),
     adviezen: adviezen(s), doelen: doelen(s), scoreNu: score(s), lengte: spelLengte(s), gezondheid: s.gezondheid || null, eind: s.eind || null,
     crewv: crewVM(s), tijd: tijdVM(s), productlijn: productVM(s), projectRisico: projectRisico(s),
