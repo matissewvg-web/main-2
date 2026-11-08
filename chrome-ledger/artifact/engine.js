@@ -2378,7 +2378,7 @@ function actProduct(s, ctx, soort, a){
     else if (soort === "verbeter"){ if (p.status !== "markt") return {ok: false, msg: "Het staat niet op de markt."}; if (p.kwaliteit >= 5) return {ok: false, msg: "Beter wordt het niet."}; if (p.verbetering) return {ok: false, msg: "Er loopt al een verbetering."};
       const kost = r1(8 * dif); if (!pay(kost)) return {ok: false, msg: `Een nieuwe versie kost €${kost}k.`}; p.verbetering = 2; msg = `Versie ${p.kwaliteit + 1} van ${p.naam} in ontwikkeling: €${kost}k, 2 maanden.`; }
     else if (soort === "prijs"){ const rr = actPrijs(s, p.id, a.prijs); if (rr.ok) prodLog(p, s, `Prijs: ${PRIJS[a.prijs].label.toLowerCase()}`); return rr; }
-    else if (soort === "capaciteit"){ if (p.status !== "markt") return {ok: false, msg: "Het staat niet op de markt."}; const k = capKost(s, p); if (!pay(k)) return {ok: false, msg: `Productie uitbreiden kost €${k}k.`}; p.capExtra = (p.capExtra || 0) + 15; delete p.uitverkochtGemeld; msg = `Productielijn van ${p.naam} uitgebreid: capaciteit nu ${prodCap(s, p)} (vraag ${Math.round(bereik(p))}).`; }
+    else if (soort === "capaciteit"){ if (p.status !== "markt") return {ok: false, msg: "Het staat niet op de markt."}; const k = capKost(s, p); if (!pay(k)) return {ok: false, msg: `Productie uitbreiden kost €${k}k.`}; p.capExtra = (p.capExtra || 0) + 15; msg = `Productielijn van ${p.naam} uitgebreid: capaciteit nu ${prodCap(s, p)} (vraag ${Math.round(bereik(p))}).`; }
     else if (soort === "loyaliteit"){ if (!isAbo(p)) return {ok: false, msg: "Alleen voor abonnementen."}; p.loyaal = !p.loyaal; msg = p.loyaal ? `Loyaliteitsprogramma voor ${p.naam}: €${loyKost(p)}k per maand, opzeggers −1,2 procentpunt.` : `Loyaliteitsprogramma van ${p.naam} gestopt.`; }
     else if (soort === "stop"){ s.producten = s.producten.filter(x => x !== p); msg = `${p.naam} is uit de markt gehaald.`; }
     else return {ok: false, msg: "Onbekende actie."};
@@ -2698,7 +2698,7 @@ const loyKost = p => r1(0.5 + (p.abo || 0) / 50);
 function aboTick(s, p, ctx){ if (p.abo == null) p.abo = Math.round(p.pop * 0.8);
   if (p.loyaal){ const k = loyKost(p); s.cash = r1(s.cash - k); s.accounts.operationeel = s.cash; }
   if (ctx && p.abo > 15 && R() < 0.03 && !(s.keuzes || []).some(k => k.soort === "abo_" + p.id)){ const tb = r1(2 + p.abo / 20), gm = r1(p.abo / 12);
-    addKeuze(s, ctx, {soort: "abo_" + p.id, van: "Klantenservice", titel: `Een concurrent lokt abonnees van ${p.naam} weg`, tekst: `Een rivaal biedt onze ${Math.round(p.abo)}k abonnees drie maanden gratis als ze overstappen. De opzeggingen lopen al binnen.`, opties: [
+    addKeuze(s, ctx, {soort: "abo_" + p.id, van: "Klantenservice", titel: `Een concurrent lokt abonnees van ${p.naam} weg`, tekst: `Een rivaal biedt onze ${Math.round(p.abo * 10)} abonnees drie maanden gratis als ze overstappen. De opzeggingen lopen al binnen.`, opties: [
       {label: `Tegenbod · €${tb}k`, kost: tb, uitleg: "Een korting voor wie blijft. Bijna iedereen blijft (−2%).", eff: {product: {[p.id]: {abo: -2}}}},
       {label: `Gratis maand voor iedereen · −€${gm}k`, uitleg: "Een maand inkomsten weg, maar maar 4% vertrekt en het product wordt populairder (+5).", eff: {cash: -gm, product: {[p.id]: {abo: -4, pop: 5}}}},
       {label: "Laten gaan", uitleg: "Ongeveer 12% van je abonnees vertrekt.", eff: {product: {[p.id]: {abo: -12}}}}], standaard: 2}); }
@@ -2707,9 +2707,9 @@ function aboTick(s, p, ctx){ if (p.abo == null) p.abo = Math.round(p.pop * 0.8);
 const PRIJS = {budget: {label: "Budget", pop: 12, gewicht: 0.8, rep: -0.05}, standaard: {label: "Standaard", pop: 0, gewicht: 1, rep: 0}, premium: {label: "Premium", pop: -10, gewicht: 1.35, rep: 0.1}};
 
 /* ===================== 4.0 ECHTE PRODUCTEN: eigenschappen, prijs per stuk, marge, afzet, levensfase, marktaandeel, capaciteit ===================== */
-const STUK = {wapen: {eenheid: "stuks", prijs: 1200}, medisch: {eenheid: "behandelingen", prijs: 450}, implantaat: {eenheid: "implantaten", prijs: 3800}, data: {eenheid: "licenties", prijs: 90},
-  beveiliging: {eenheid: "contracten", prijs: 2500}, smokkel: {eenheid: "ladingen", prijs: 900}, logistiek: {eenheid: "zendingen", prijs: 180}, financieel: {eenheid: "rekeningen", prijs: 60},
-  orbitaal: {eenheid: "lanceringen", prijs: 40000}, consument: {eenheid: "stuks", prijs: 140}};
+const STUK = {wapen: {eenheid: "stuks", prijs: 320}, medisch: {eenheid: "doses", prijs: 45}, implantaat: {eenheid: "implantaten", prijs: 1600}, data: {eenheid: "licenties", prijs: 14},
+  beveiliging: {eenheid: "diensten", prijs: 380}, smokkel: {eenheid: "ladingen", prijs: 260}, logistiek: {eenheid: "zendingen", prijs: 38}, financieel: {eenheid: "rekeningen", prijs: 9},
+  orbitaal: {eenheid: "ladingplaatsen", prijs: 8500}, consument: {eenheid: "stuks", prijs: 24}};
 const SPECS = {wapen: ["Vuurkracht", "Betrouwbaarheid", "Onopvallendheid"], medisch: ["Werkzaamheid", "Veiligheid", "Herstel"], implantaat: ["Prestatie", "Afstoting", "Levensduur"],
   data: ["Bereik", "Nauwkeurigheid", "Privacy"], beveiliging: ["Reactietijd", "Dekking", "Discretie"], smokkel: ["Snelheid", "Onzichtbaarheid", "Volume"], logistiek: ["Snelheid", "Betrouwbaarheid", "Bereik"],
   financieel: ["Rendement", "Risico", "Gemak"], orbitaal: ["Lading", "Precisie", "Kosten"], consument: ["Design", "Gemak", "Duurzaamheid"]};
@@ -2735,8 +2735,9 @@ function segment(s, p){
   return {aandeel: pc(eigen.find(x => x.id === p.id) || {w: 0}), concurrenten: rival.sort((x, y) => y.w - x.w).slice(0, 3).map(x => ({naam: x.naam, wie: x.wie, pct: pc(x)})), spelers: alle.length};
 }
 function prodDetail(s, p, omzet){
-  const sp = stukPrijs(p), kp = kostPrijs(p), afzet = omzet > 0 ? Math.round(omzet * 1000 / sp) : 0, cap = prodCap(s, p), vraag = bereik(p);
-  return {specs: prodSpecs(p), eenheid: (STUK[p.aard] || STUK.consument).eenheid, stukPrijs: sp, kostPrijs: kp, marge: Math.round((sp - kp) / sp * 100), afzet, fase: levensfase(p),
+  const abo = isAbo(p) && p.abo, cap = prodCap(s, p), vraag = bereik(p);
+  const sp = abo ? Math.max(1, Math.round(omzet * 1000 / Math.max(1, p.abo * 10))) : stukPrijs(p), kp = abo ? Math.round(sp * (0.34 - p.kwaliteit * 0.02)) : kostPrijs(p), afzet = abo ? Math.round(p.abo * 10) : omzet > 0 ? Math.round(omzet * 1000 / sp) : 0;
+  return {specs: prodSpecs(p), eenheid: abo ? "abonnees" : (STUK[p.aard] || STUK.consument).eenheid, perMaand: !!abo, stukPrijs: sp, kostPrijs: kp, marge: Math.round((sp - kp) / sp * 100), afzet, fase: levensfase(p),
     cap, vraag: Math.round(vraag), uitverkocht: vraag > cap, gemist: vraag > cap ? Math.round((vraag - cap) / vraag * 100) : 0, capKost: capKost(s, p), seg: segment(s, p), hist: (p.hist || []).slice(-12)};
 }
 const prodGewicht = (p, s) => p.kwaliteit * effBereik(p, s) / 100 * (PRIJS[p.prijs || "standaard"] || PRIJS.standaard).gewicht * (s ? vraagFactor(s, p.aard || aardVan(p.type, p.naam)) : 1) * (p.trait === "goedkoop" ? 1.15 : 1);
@@ -2759,7 +2760,7 @@ function productEffectTick(s){
   for (const p of (s.producten || []).filter(x => x.status === "markt")){
     p.aard ??= aardVan(p.type, p.naam); p.prijs ??= "standaard";
     for (const [k2, v] of Object.entries(prodEffecten(p))) tot[k2] = (tot[k2] || 0) + v;
-    { const omz = ((s.divomzet || {})[p.divisie] || 0) * prodGewicht(p, s) / Math.max(0.01, (s.producten || []).filter(x => x.divisie === p.divisie && x.status === "markt").reduce((a, x) => a + prodGewicht(x, s), 0)); p.hist = [...(p.hist || []), {m: ym(s), pop: Math.round(bereik(p)), omzet: r1(omz)}].slice(-12); if (bereik(p) > prodCap(s, p) && !p.uitverkochtGemeld){ p.uitverkochtGemeld = true; (s.flags.uitverkocht_mail ??= []).push(p.naam); } }
+    { const omz = ((s.divomzet || {})[p.divisie] || 0) * prodGewicht(p, s) / Math.max(0.01, (s.producten || []).filter(x => x.divisie === p.divisie && x.status === "markt").reduce((a, x) => a + prodGewicht(x, s), 0)); p.hist = [...(p.hist || []), {m: ym(s), pop: Math.round(bereik(p)), omzet: r1(omz)}].slice(-12); }
     p.omzetTotaal = r1((p.omzetTotaal || 0) + ((s.divomzet || {})[p.divisie] || 0) * prodGewicht(p, s) / Math.max(0.01, (s.producten || []).filter(x => x.divisie === p.divisie && x.status === "markt").reduce((a, x) => a + prodGewicht(x, s), 0)));
   }
   if (tot.reputation) s.reputation = clamp(s.reputation + tot.reputation);
@@ -2819,7 +2820,7 @@ function actPrijs(s, id, prijs){
   if (p.prijs === prijs) return {ok: false, msg: "Dat is al de prijs."};
   const was = PRIJS[p.prijs || "standaard"], ORDE = ["budget", "standaard", "premium"], duurder = ORDE.indexOf(prijs) > ORDE.indexOf(p.prijs || "standaard"); p.prijs = prijs; p.pop = clamp(p.pop - was.pop + PRIJS[prijs].pop, 3, 95);
   let weg = 0; if (isAbo(p) && duurder && p.abo){ weg = r1(p.abo * 0.08); p.abo = r1(p.abo - weg); }
-  const msg = `${p.naam} gaat naar ${PRIJS[prijs].label.toLowerCase()}. ${isAbo(p) ? `${weg ? `${weg}k abonnees zeggen meteen op na de prijsverhoging. ` : ""}Opzeggers nu ${Math.round(aboChurn(p) * 1000) / 10}% per maand.` : `Populariteit nu ${p.pop}.`}`; addLog(s, msg); return {ok: true, msg};
+  const msg = `${p.naam} gaat naar ${PRIJS[prijs].label.toLowerCase()}. ${isAbo(p) ? `${weg ? `${Math.round(weg * 10)} abonnees zeggen meteen op na de prijsverhoging. ` : ""}Opzeggers nu ${Math.round(aboChurn(p) * 1000) / 10}% per maand.` : `Populariteit nu ${p.pop}.`}`; addLog(s, msg); return {ok: true, msg};
 }
 
 /* ===================== 3.0 VRAAG EN AANBOD, PRODUCTEIGENSCHAPPEN, PRODUCTGESCHIEDENIS ===================== */
@@ -2974,6 +2975,7 @@ function adviezen(s){
   else for (const d of s.divisions) if (!(s.producten || []).some(p => p.divisie === divNaam(d))) add((d.leeg || 0) > 12 ? 9 : 7, (d.leeg || 0) > 12 ? `${divNaam(d)} verkoopt al ${d.leeg} maanden niets: klanten lopen weg, omzet ×${productMult(s, d).toFixed(2)}. Start een product bij Bedrijf → Productlijn.` : `${divNaam(d)} heeft geen producten en draait op ×0,95; na een jaar zonder producten lopen klanten weg. Start er een bij Bedrijf → Productlijn.`, "bedrijf");
   if (s.cash < 0){ const nog = Math.max(1, 3 - (s.flags.negatieve_cash_maanden || 0)), dochter = (s.bedrijven || []).some(b => b.eigenaar === "player" && b.koppeling === "dochter"), aand = (s.bedrijven || []).some(b => !b.eigenaar && b.aandeel > 0);
     add(12, `Cash is negatief: nog ${nog} maand(en) tot faillissement. Snel geld: een lening (Financiën, tot €${Math.max(0, Math.round(loanCap(s)))}k)${s.accounts.zwart > 0 ? `, zwart geld overboeken (€${Math.round(s.accounts.zwart)}k)` : ""}${dochter ? ", een dochter verkopen (Bedrijf)" : ""}${aand ? ", aandelen verkopen (Wereld)" : ""}, of kosten schrappen: personeel, crew of een project.`, "financien"); }
+  for (const p of markt){ const cap = prodCap(s, p), v = bereik(p); if (v > cap){ add(7, `${p.naam} is uitverkocht: ${Math.round((v - cap) / v * 100)}% van de vraag levert niets op. Productie uitbreiden kost €${capKost(s, p)}k (Bedrijf → Productlijn → Details).`, "bedrijf"); break; } }
   if ((s.keuzes || []).length) add(9, `${s.keuzes.length} beslissing(en) wachten op je. Zonder antwoord kiest het spel na twee maanden zelf, meestal niet in jouw voordeel.`, "overzicht");
   if (net != null && net < -1 && s.cash > 0 && s.cash / -net < 24) add(9, `Je verloor vorige maand €${Math.abs(net)}k. Met €${Math.round(s.cash)}k in kas heb je nog ±${Math.max(1, Math.round(s.cash / -net))} maanden. Snij in crew, personeel of projecten, of lanceer een product.`, "financien");
   if (s.staff.count < staffNeed(s)) add(8, `Onderbezet: ${s.staff.count} mensen voor ${staffNeed(s)} plekken. Divisies draaien op halve kracht en morale lijdt. Neem ${staffNeed(s) - s.staff.count} mensen aan bij Bedrijf (€0,4k p.p.).`, "bedrijf");
@@ -3512,7 +3514,7 @@ function worldFacts(s){
     bedrijven_in_de_wereld: (s.bedrijven || []).map(b => ({naam: b.naam, sector: b.sector, land: b.land, waarde: Math.round(b.waarde), eigenaar: b.eigenaar, jouw_aandeel: b.aandeel, contract: b.contract})),
     onderwereld: (s.gangs || []).map(g => ({naam: g.naam, leider: g.leider, relatie: g.relatie, afspraak: g.deal, gebied: g.gebied})),
     rivaal_producten: s.rivals.map(r => `${r.name}: ${(r.producten || []).map(p => `${p.naam} (${p.aard}, k${p.kwaliteit}, pop ${p.pop})`).join(", ")}`),
-    producten: (s.producten || []).map(p => ({naam: p.naam, divisie: p.divisie, soort: p.aard || aardVan(p.type, p.naam), vorm: p.soort || "product", pitch: p.pitch || "", eigenschap: p.trait || null, prijs: p.prijs || "standaard", vraagfactor: vraagFactor(s, p.aard || aardVan(p.type, p.naam)), kwaliteit: p.kwaliteit, populariteit: p.pop, abonnees_k: isAbo(p) ? Math.round(p.abo || 0) : undefined, status: p.status, recensie: p.review ? p.review.sterren : null})), verwachte_aanslagen: (s.dreigingen || []).map(t => `${t.label} door ${t.van}`),
+    producten: (s.producten || []).map(p => ({naam: p.naam, divisie: p.divisie, soort: p.aard || aardVan(p.type, p.naam), vorm: p.soort || "product", pitch: p.pitch || "", eigenschap: p.trait || null, prijs: p.prijs || "standaard", vraagfactor: vraagFactor(s, p.aard || aardVan(p.type, p.naam)), kwaliteit: p.kwaliteit, populariteit: p.pop, abonnees: isAbo(p) ? Math.round((p.abo || 0) * 10) : undefined, status: p.status, recensie: p.review ? p.review.sterren : null})), verwachte_aanslagen: (s.dreigingen || []).map(t => `${t.label} door ${t.van}`),
     crew: (s.crew || []).map(m => ({naam: m.naam, rol: m.rol, niveau: m.niveau, status: crewStatus(s, m), eigenschap: traitOf(m.trait).naam})), huurleger: s.huurleger, tijdperk: TIJDPERKEN[s.tijdperk || 0].naam, status: STATUS_LADDER[s.statusNiveau || 0][1],
     verhaallijn: s.verhaal || null,
     wereldnieuws: (s.nieuws || []).slice(0, 8).map(n => `${n.m} ${n.kop}`), open_keuzes: (s.keuzes || []).map(k => k.titel),

@@ -17,14 +17,10 @@ Zwak:
 4. **Nog niemand heeft het echt gespeeld sinds de ochtend.** Bots zijn geen spelers.
 
 ## Roadmap (in volgorde)
-### 4.0 Echte producten (nu)
-- Productblad per product: 3 eigenschappen per soort (bv. wapen: vuurkracht, betrouwbaarheid, onopvallendheid; medisch: werkzaamheid, veiligheid, herstel), prijs per stuk, kostprijs, marge, afzet per maand, levensfase (introductie, groei, volwassen, verval) en verloop over 12 maanden.
-- Marktaandeel in het eigen segment, met de grootste concurrenten (rivaalproducten) erbij.
-- Productiecapaciteit als echte grens: groeit met het divisieniveau; wie meer vraag heeft dan capaciteit is uitverkocht en mist omzet. Uitbreiden kost geld.
-- Eerlijk: prijs, kostprijs en afzet zijn in 4.0 een uitsplitsing van de bestaande productomzet. Capaciteit is wel een echte nieuwe regel. Echte afzet × prijs volgt in 4.2.
-
-### 4.1 Balans na 4.0
-- Realistisch terug naar ±35% (koersen en capaciteit meegerekend), een bot die abonnementen en capaciteit gebruikt, Genadeloos opnieuw meten.
+### 4.1 Balans na 4.0 (volgende)
+- Realistisch staat op 46% (doel ±35%): koersen zwakker of later, capaciteit krapper bij de start? Meten met 150 spellen.
+- Een bot die abonnementen en capaciteit gebruikt; Genadeloos opnieuw meten.
+- Productblad op de telefoon controleren (smalle kolommen).
 
 ### 4.2 Echte afzet
 - Omzet van een product = afzet × prijs, kosten = afzet × kostprijs + vaste kosten. Prijs vrij instelbaar met prijsgevoeligheid per markt. De divisie levert basisomzet, producten de rest. Grote herbalans, gemeten.
@@ -53,6 +49,7 @@ Zwak:
 - Testinfrastructuur: expansie-bot voor hegemonie; tests mogen nooit op toeval falen.
 
 ## Gedaan
+- 4.0 Echte producten: productblad (eigenschappen, prijs/kostprijs/marge, afzet, levensfase, marktaandeel, 12 maanden omzet), capaciteit als echte grens met uitbreiden, abonnees als echte aantallen. Uitroepen in Wat nu? bij uitverkocht.
 - 3.10 Koers (strategiedag eens per jaar, 7 vaste koersen) en aanloop (geen vertrek in 6 maanden, geen verraad in 12). verhaal.js valt niet meer om op projectvertraging.
 - 3.9.2 Na een mensrun: advies bij zakkende reputatie (lek), bij negatieve cash (hoeveel maanden, waar snel geld), oude mail naar archief, geen absurde speelruimte-melding meer. tests/mensrun.js toegevoegd.
 - 3.9.1 Online-test met nagebootste db (alles groen), lonen +6% per tijdperk.
