@@ -17,25 +17,49 @@ Zwak:
 4. **Nog niemand heeft het echt gespeeld sinds de ochtend.** Bots zijn geen spelers.
 
 ## Roadmap (in volgorde)
-### 4.2 Echte afzet (volgende)
-- Omzet van een product = afzet × prijs, kosten = afzet × kostprijs + vaste kosten. Prijs vrij instelbaar met prijsgevoeligheid per markt. De divisie levert basisomzet, producten de rest. Grote herbalans, gemeten.
+### 4.2 Echte afzet en prijs (volgende)
+- Omzet van een product = afzet × prijs; kosten = afzet × kostprijs + vaste kosten. De divisie levert een basisomzet, producten de rest.
+- Prijs vrij instelbaar (schuif in euro's per stuk) in plaats van drie standen, met prijsgevoeligheid per markt: te duur kost afzet, te goedkoop kost marge.
+- Klantsegmenten per soort (bv. medisch: ziekenhuizen, rijke particulieren, straatklinieken) met eigen budget, omvang en voorkeur voor eigenschappen.
+- Grote herbalans, gemeten met 150 spellen; bestaande spellen worden omgerekend.
 
-### 4.3 Toelevering en voorraad
-- Onderdelen en grondstoffen per soort via leveranciers (de bedrijven in de wereld). Tekorten bij oorlog, sancties of een failliete leverancier. Voorraad aanleggen of uitverkocht raken.
+### 4.3 Geavanceerd productontwerp
+- Eigenschappen tellen echt: elk segment weegt de drie eigenschappen anders, en jouw score tegen die van concurrerende producten bepaalt je marktaandeel per segment.
+- Onderdelenlijst (bill of materials): 3-4 onderdelen per product met eigen kosten en leverancier; de kostprijs is de som daarvan plus arbeid.
+- Varianten binnen een productlijn (Basis, Pro, Elite) met eigen prijs, eigenschappen en doelgroep.
+- Prototype en bètatest vóór de lancering: kost tijd en geld, verlaagt de flopkans en laat je de eigenschappen nog bijstellen.
+- Opvolger plannen: een nieuwe generatie neemt klanten over van de oude in plaats van ernaast te concurreren (kannibalisatie).
 
-### 4.4 Regionale markten
+### 4.4 Kwaliteit en aansprakelijkheid
+- Defectpercentage per product (hangt af van kwaliteit, focus en onderdelen), garantiekosten per maand, terugroepacties die uit defecten volgen in plaats van uit één worp.
+- Keuring en certificering per markt (medisch, implantaten, wapens): kost tijd, zonder keuring mag je in sommige landen niet verkopen, of alleen via de zwarte markt.
+
+### 4.5 Marketing en distributie
+- Marketingkanalen met eigen bereik, kosten en doelgroep: reclame, influencers, beurzen, fluistercampagne op straat.
+- Distributiekanalen: eigen winkels, groothandel, online, zwarte markt; elk met eigen marge, bereik en heat.
+
+### 4.6 Patenten en namaak
+- Patent aanvragen op een eigenschap; rivalen die namaken kun je aanklagen (worp, kosten, duur). Rivalen patenteren ook, en jij kunt erop stuiten.
+
+### 4.7 Productdashboard
+- Per product grafieken over tijd: afzet, prijs, marktaandeel, marge, defecten; vergelijking naast je sterkste concurrent; export als tekst.
+
+### 4.8 Toelevering en voorraad
+- Onderdelen uit 4.3 via leveranciers (de bedrijven in de wereld); tekorten bij oorlog, sancties of een failliete leverancier; voorraad aanleggen of uitverkocht raken.
+
+### 4.9 Regionale markten
 - Producten verkopen per continent met eigen vraag; importheffingen en sancties uit wereldgebeurtenissen; een nieuwe markt openen kost vergunning en marketing.
 
-### 4.5 Realistische financiën
+### 4.10 Realistische financiën
 - Balans (bezittingen en schulden), afschrijving op investeringen, kasstroomoverzicht, een kredietrating die je rente bepaalt, aandeelhouders die dividend verwachten.
 
-### 4.6 Mensen per divisie
+### 4.11 Mensen per divisie
 - Een hoofd per divisie met eigen eigenschappen, teams en salarisschalen per land, cao's.
 
-### 4.7 Onderzoek
-- Technologie per sector die eigenschappen van producten verbetert en nieuwe soorten producten vrijspeelt.
+### 4.12 Onderzoek
+- Technologie per sector die eigenschappen van producten verbetert (koppelt aan 4.3), betere onderdelen en nieuwe soorten producten vrijspeelt.
 
-### 4.8 Zelf plannen smeden
+### 4.13 Zelf plannen smeden
 - Het spiegelbeeld van Plannen tegen jou: over maanden een prijsoorlog, laster of overname tegen een rivaal opbouwen.
 
 ### Doorlopend
@@ -44,6 +68,7 @@ Zwak:
 - Testinfrastructuur: expansie-bot voor hegemonie; tests mogen nooit op toeval falen.
 
 ## Gedaan
+- Roadmap uitgebreid (8 nov, op verzoek: "diepere productdetails, advanced"): 4.2 echte afzet en prijs met segmenten, 4.3 geavanceerd productontwerp, 4.4 kwaliteit en aansprakelijkheid, 4.5 marketing en distributie, 4.6 patenten, 4.7 productdashboard, 4.8 toelevering.
 - 4.1.1 Kaart Nieuw sinds je vorige bezoek. Terugkerende rondes gepauzeerd op 8 nov (20:45 UTC): de gebruiker gaat spelen. Hervatten met de feedback uit die speelronde bovenaan.
 - 4.1 Balans: winstdrempel +10%, eerste strategiedag na een jaar, krappere startcapaciteit, bot breidt capaciteit uit. Realistisch 47% → 34%. Productblad op 390 px gecontroleerd, Verval pas na een jaar.
 - 4.0 Echte producten: productblad (eigenschappen, prijs/kostprijs/marge, afzet, levensfase, marktaandeel, 12 maanden omzet), capaciteit als echte grens met uitbreiden, abonnees als echte aantallen. Uitroepen in Wat nu? bij uitverkocht.
