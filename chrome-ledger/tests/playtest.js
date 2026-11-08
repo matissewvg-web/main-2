@@ -38,6 +38,14 @@ const html = '<!doctype html><html><head><meta charset=utf8></head><body>' + fs.
   const rij = await p.evaluate(() => [...document.querySelectorAll(".prow .dim")].map(x => x.textContent).find(t => /abonnees/.test(t)) || "");
   ok(/k abonnees \(\+[\d.]+k \/ −[\d.]+k per mnd, [\d.]+% zegt op\)/.test(rij), "productlijn toont abonnees: " + rij.slice(0, 120));
   if (out){ await p.evaluate(() => { const el = [...document.querySelectorAll(".prow")].find(x => /abonnees/.test(x.textContent)); window.scrollTo(0, el.getBoundingClientRect().top + scrollY - 200); }); await p.waitForTimeout(150); await p.screenshot({path: out + "/abonnement.png"}); }
+  // 3.9: loyaliteit, prijsverhoging, concurrent die abonnees weglokt
+  const loy = await p.evaluate(async () => { const x = G.game.producten[0], c0 = aboChurn(x); await API["/api/product"]({soort: "loyaliteit", id: x.id}); const c1 = aboChurn(x), cash0 = G.game.cash; aboTick(G.game, x, Ctx()); const kost = r1(cash0 - G.game.cash);
+    const a0 = x.abo; await API["/api/product"]({soort: "prijs", id: x.id, prijs: "premium"}); const a1 = x.abo;
+    let k = null; for (let i = 0; i < 400 && !k; i++){ aboTick(G.game, x, Ctx()); k = G.game.keuzes.find(y => y.soort === "abo_" + x.id); }
+    return {c0, c1, kost, a0, a1, keuze: k && k.opties.map(o => o.label)}; });
+  ok(loy.c1 < loy.c0 && loy.kost > 0, "loyaliteitsprogramma verlaagt opzeggers en kost geld: " + JSON.stringify([loy.c0, loy.c1, loy.kost]));
+  ok(loy.a1 < loy.a0 && Math.abs(loy.a0 * 0.92 - loy.a1) < 0.2, "prijsverhoging kost 8% abonnees: " + JSON.stringify([loy.a0, loy.a1]));
+  ok(loy.keuze && loy.keuze.length === 3, "concurrent lokt abonnees weg: keuze " + JSON.stringify(loy.keuze));
   // overname en koppelen
   const ov = await p.evaluate(async () => { const s = G.game, bd = s.bedrijven.find(x => !x.eigenaar && x.sector === "Biotech") || s.bedrijven.find(x => !x.eigenaar); bd.relatie = 100; bd.aandeel = 30; s.reputation = 90;
     let r; for (let i = 0; i < 30; i++){ s.cash = 5000; r = await API["/api/bedrijf"]({id: bd.id, soort: "overname"}); if (bd.eigenaar === "player") break; }
@@ -46,6 +54,11 @@ const html = '<!doctype html><html><head><meta charset=utf8></head><body>' + fs.
   ok(/Kies in het overzicht hoe je het koppelt/.test(ov.bericht), "bericht legt uit wat er nu gebeurt");
   const na = await p.evaluate(async id => { const s = G.game, k = s.keuzes.find(x => x.id === id), i = k.opties.findIndex(o => /Eigen divisie|Samenvoegen/.test(o.label)); const r = await API["/api/keuze"]({id, i}); return {r: r.bericht, divs: s.divisions.map(d => `${d.name || d.type} L${d.level}`), prod: s.producten.map(x => x.naam + ":" + x.status)}; }, ov.id);
   ok(na.prod.length >= 2 && /meteen op de markt/.test(na.r), "koppelen brengt de bestseller mee: " + JSON.stringify(na));
+  // 3.9: dochters
+  const dt = await p.evaluate(async () => { const s = G.game, b = s.bedrijven.find(x => !x.eigenaar); b.eigenaar = "player"; b.aandeel = 100; koppelBedrijf(s, b.id, "dochter"); S.view = "bedrijf"; render();
+    const zicht = /Je dochters/.test(document.querySelector("main").textContent), stream0 = s.streams.some(x => x.naam === "Dochter " + b.naam), cash0 = s.cash;
+    const r = await API["/api/dochter"]({id: b.id, actie: "verkoop"}); return {zicht, stream0, na: s.streams.some(x => x.naam === "Dochter " + b.naam), winst: r1(s.cash - cash0), eigenaar: b.eigenaar, r: r.bericht}; });
+  ok(dt.zicht && dt.stream0 && !dt.na && dt.winst > 0 && !dt.eigenaar, "dochter zichtbaar en te verkopen: " + JSON.stringify(dt));
   // kaart: labels mogen niet overlappen, gebieden met het toetsenbord
   for (const z of [1, 3]){
     await p.evaluate(z => { S.view = "kaart"; S.zoom = z; render(); }, z); await p.waitForTimeout(250);

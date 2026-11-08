@@ -18,8 +18,6 @@ Zwak:
 
 ## Open (in volgorde)
 ### 3.9 Diepgang waar het al leeft
-- Abonnementen: prijsverhoging, gebeurtenis rond opzeggers, loyaliteitsprogramma.
-- Dochters-overzicht: overgenomen bedrijven bekijken en later alsnog samenvoegen of verkopen.
 - Bedrijfsfocus: een kleine boom met keuzes die elke paar maanden een vaste bonus geven.
 
 ### Balans (vervolg)
@@ -30,12 +28,14 @@ Zwak:
 - Plannen: jij kunt nog geen eigen plan tegen een rivaal opzetten (spiegelbeeld). Mogelijk 4.x. (8 nov)
 
 ### Testinfrastructuur (doorlopend)
+- De testbot gebruikt geen abonnementen, dochters of de GM: die onderdelen zijn alleen functioneel getest, niet op balans. Een bot-variant die abonnementen kiest. (8 nov)
 - Tests mogen niet op toeval falen: concept.js viel om bij een terugroepactie (twee enen). Gerepareerd; andere tests nalopen op hetzelfde. (8 nov)
 - Een test voor de online modus met een nagebootste db, zodat opslaan, wisselen van spel en back-ups daar ook gecontroleerd worden. (8 nov)
 - Expansie-bot in balans.js om hegemonie echt te meten.
 - Een "speel 24 maanden als mens"-run met screenshots per ronde, om zelf kritisch te kijken.
 
 ## Gedaan
+- 3.9 Abonnementen (loyaliteit, prijsverhoging, weglokken) en een overzicht van je dochters met opnemen of verkopen.
 - 3.8.1 Opruimen: automatisch archiveren van oude rapporten en afgehandelde keuzes, GM-venster duwt de inhoud opzij, Casual minder heat (razzia 22% → 13%, winst 87%: aan de makkelijke kant, bewust).
 - 3.8 Plannen tegen jou: vijf soorten plannen van rivalen en syndicaten over zes maanden, ontdekken via crew en netwerk, verstoren/voorbereiden/laten, GM-tekst, kaart bij Rivalen, test plannen.js.
 - 3.7.1 De GM antwoordt altijd: snelknoppen met eigen antwoord zonder live GM, kaartnamen zonder overlap, kaart met het toetsenbord, geen dubbel advies.
