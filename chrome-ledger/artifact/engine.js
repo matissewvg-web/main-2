@@ -134,6 +134,8 @@ function eventProb(s, e, diff){
   if (e.id === "schandaal" && relV(s, "pers") >= 50) p *= 0.5;
   return p;
 }
+/* omvang van het bedrijf: schade en rekeningen schalen mee, zodat een starter niet als een megacorp geraakt wordt */
+const omvang = s => clamp((((s.history || []).slice(-1)[0]) || {omzet: 30}).omzet / 50, 0.35, 2);
 function applyEffect(s, eff){
   s.cash = r1(s.cash + (eff.cash || 0) + s.cash * (eff.cash_pct || 0));
   for (const k of ["heat", "morale", "reputation"]) if (k in eff) s[k] = clamp(s[k] + eff[k]);
@@ -168,7 +170,7 @@ function invoice(s, payee, amount, due, note, tag = "vast"){
   s.invoices.push({id: hex8(), payee, amount: r1(amount), due_in: due, note, tag, overdue: 0, auto_pay: true});
 }
 function invoicesTick(s, ctx, diff){
-  const scale = 0.45 * Math.sqrt(Math.max(1, s.divisions.length));
+  const scale = 0.6 * omvang(s);
   for (const [p, lo, hi, note] of RECURRING) if (R() < 0.4) invoice(s, p, U(lo, hi) * scale * diff, 2, note);
   if (R() < 0.25){
     const payee = CH(["Beveiligingsbureau Falk", "Consultants Merrick & Zoon", "Overheid: leges en heffingen", "Schadeherstel BV 'Snelle Jan'", "Cleaning crew (geen vragen)"]);
@@ -326,7 +328,7 @@ function chaosTick(s, ctx, diff){
   for (const [k, w] of table){ x -= w; if (w && x <= 0){ pick = k; break; } }
   const dist = CH(s.districts).name;
   const eff = ({cash = 0, rep = 0, mor = 0, heat = 0, nom = 0} = {}) => {
-    s.cash = r1(s.cash + cash * diff); s.reputation = clamp(s.reputation + rep); s.morale = clamp(s.morale + mor);
+    s.cash = r1(s.cash + cash * diff * (cash < 0 ? omvang(s) : 1)); s.reputation = clamp(s.reputation + rep); s.morale = clamp(s.morale + mor);
     s.heat = clamp(s.heat + heat); shiftFaction(s, "nomaden", nom);
   };
   const M = (v, o, b, p = "NORMAAL") => mail(ctx, s, v, o, b, p);
@@ -535,7 +537,7 @@ function tick(s){
       } else if (move === "spionage"){
         mail(ctx, s, "Head of Security", `Spionageactiviteit door ${r.name}?`, "Ongeautoriseerde toegang tot een testserver. Ik kan het niet bewijzen. Nog niet.");
         s.flags["spionage_" + r.name] = played;
-      } else if (move === "prijsoorlog"){ s.cash = r1(s.cash - RI(3, 10) * diff); r.cash = r1(r.cash - RI(3, 10)); rep.push(`Prijsoorlog met ${r.name}`); }
+      } else if (move === "prijsoorlog"){ s.cash = r1(s.cash - RI(3, 10) * diff * omvang(s)); r.cash = r1(r.cash - RI(3, 10)); rep.push(`Prijsoorlog met ${r.name}`); }
       else if (move === "lobby"){ s.reputation = clamp(s.reputation - 2); rep.push(`${r.name} lobbyt tegen je`); }
     }
   }
@@ -547,7 +549,7 @@ function tick(s){
 
   for (const e of EVENTS){
     if (e.when(s) && R() < eventProb(s, e, diff)){
-      applyEffect(s, e.effect);
+      applyEffect(s, {...e.effect, cash: (e.effect.cash || 0) * omvang(s)});
       const dist = CH(s.districts).name, subj = e.subject.replace("{district}", dist);
       mail(ctx, s, e.from, subj, e.body, e.prio); rep.push(`Event: ${subj}`);
     }
@@ -611,7 +613,7 @@ function tick(s){
 }
 
 /* ---------- de stad: elke game een andere kaart ---------- */
-const VERSION = "3.2";
+const VERSION = "3.2.1";
 const MAP_W = 1000, MAP_H = 680;
 const RIVAL_COLORS = ["#ff9a1f", "#3d7bff", "#c6ff2e", "#f2f2f2", "#9b5cff", "#ffd400", "#ff4d4d"];
 const ARCH = {
@@ -1175,7 +1177,7 @@ function rivalAI(s, ctx, diff){
         r.cash = r1(r.cash - w.kost * 0.7);
         if (hit){
           let txt;
-          if (kind === "sabotage"){ const l = r1(U(10, 22) * diff); s.cash = r1(s.cash - l); s.morale = clamp(s.morale - 3); txt = `Sabotage door ${r.name}: brand in een loods, €${l}k schade.`; }
+          if (kind === "sabotage"){ const l = r1(U(10, 22) * diff * clamp(omvang(s), 0.5, 3)); s.cash = r1(s.cash - l); s.morale = clamp(s.morale - 3); txt = `Sabotage door ${r.name}: brand in een loods, €${l}k schade.`; }
           else if (kind === "hack"){ const l = r1(U(6, 14) * diff); s.cash = r1(s.cash - l); for (const d of s.divisions) if (s.market[d.type]) s.market[d.type].player *= 0.93; txt = `${r.name} heeft onze systemen gekraakt. €${l}k weg en klanten twijfelen.`; }
           else if (kind === "smaad"){ s.reputation = clamp(s.reputation - 5); txt = `Een lastercampagne van ${r.name} raakt onze reputatie.`; }
           else { const d = CH(mine); d.control = r.name; txt = `${r.name} heeft ${d.name} ingenomen. Onze mensen zijn eruit gezet.`; }
@@ -1809,7 +1811,7 @@ function genGangs(s){
 }
 const gangKracht = g => Math.round(15 + Object.values(g.gebied).reduce((a, v) => a + v, 0) / 8);
 const gangLanden = (s, g) => Object.entries(g.gebied).filter(([id, v]) => v >= 15 && (s.districts.find(d => d.id === id) || {}).control === "player").map(([id, v]) => ({id, v}));
-const gangFee = (s, g) => r1(Math.max(1, gangLanden(s, g).reduce((a, x) => a + x.v, 0) / 20) * (DIFF[s.player.difficulty] || 1));
+const gangFee = (s, g) => r1(Math.max(0.5, gangLanden(s, g).reduce((a, x) => a + x.v, 0) / 20 * clamp(omvang(s), 0.5, 2.5)) * (DIFF[s.player.difficulty] || 1));
 const gangPartner = (s, g) => r1(gangLanden(s, g).reduce((a, x) => a + x.v, 0) / 28);
 function gangOf(s, land){ let best = null; for (const g of s.gangs || []){ const v = g.gebied[land] || 0; if (v > (best ? best.v : 0)) best = {g, v}; } return best; }
 function uitrokenKans(s, g, land){ return snapKans(Math.round(clamp(45 + (playerPower(s) - gangKracht(g)) * 1.2 - (g.gebied[land] || 0) / 4, 10, 85))); }
@@ -1878,7 +1880,7 @@ function gangTick(s, ctx, diff){
     for (const {id, v} of lands){
       const p = v / 350 * (g.deal === "oorlog" ? 2.2 : 1) * diff * (1 - pw);
       if (R() >= p) continue;
-      incident = true; const d = s.districts.find(x => x.id === id), dmg = r1(clamp(v / 5, 3, 18) * diff), b = r1(clamp(v / 4, 3, 20) * diff), k2 = uitrokenKans(s, g, id);
+      incident = true; const d = s.districts.find(x => x.id === id), dmg = r1(clamp(v / 5, 3, 18) * diff * clamp(omvang(s), 0.5, 2.5)), b = r1(clamp(v / 4, 3, 20) * diff * clamp(omvang(s), 0.5, 2.5)), k2 = uitrokenKans(s, g, id);
       if (g.deal === "oorlog" || (s.keuzes || []).some(x => x.soort === "gang_" + g.id)){
         s.cash = r1(s.cash - dmg); s.morale = clamp(s.morale - 2);
         mail(ctx, s, "Head of Security", `${g.naam} slaat toe in ${d.name}`, `Een overval op onze vestiging in ${d.name}. €${dmg}k schade, mensen zijn bang. ${g.naam} laat weten dat dit pas het begin is.`, "KRITIEK");
@@ -2421,7 +2423,7 @@ function resolveDreiging(s, ctx, t, diff){
     ctx.rep.push(`Aanslag van ${t.van} afgeslagen`); return;
   }
   let txt;
-  if (t.type === "sabotage"){ const l = r1(RI(6, 14) * diff); s.cash = r1(s.cash - l); const pr = CH((s.producten || []).filter(p => p.status === "markt")); if (pr) pr.pop = Math.max(3, pr.pop - 10);
+  if (t.type === "sabotage"){ const l = r1(RI(6, 14) * diff * clamp(omvang(s), 0.5, 3)); s.cash = r1(s.cash - l); const pr = CH((s.producten || []).filter(p => p.status === "markt")); if (pr) pr.pop = Math.max(3, pr.pop - 10);
     txt = `Brand in een productiehal: €${l}k schade${pr ? `, en ${pr.naam} is een maand slecht leverbaar (populariteit −10)` : ""}.`; }
   else if (t.type === "data"){ const d = CH(s.divisions); const l = r1(RI(2, 5)); s.cash = r1(s.cash - l); if (d && s.market[d.type]) s.market[d.type].player *= 0.9; if (rv && d && s.market[d.type]) s.market[d.type].rivals[rv.name] = (s.market[d.type].rivals[rv.name] || 0) + 0.02;
     txt = `Klantdata en ontwerpen van ${d ? divNaam(d) : "het bedrijf"} zijn gestolen. Marktaandeel −10%, €${l}k aan herstel.`; }
