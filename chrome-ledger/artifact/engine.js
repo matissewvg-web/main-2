@@ -613,7 +613,7 @@ function tick(s){
 }
 
 /* ---------- de stad: elke game een andere kaart ---------- */
-const VERSION = "3.3.1";
+const VERSION = "3.4";
 const MAP_W = 1000, MAP_H = 680;
 const RIVAL_COLORS = ["#ff9a1f", "#3d7bff", "#c6ff2e", "#f2f2f2", "#9b5cff", "#ffd400", "#ff4d4d"];
 const ARCH = {
@@ -2482,34 +2482,40 @@ function migrate21(s){
 
 /* ===================== 2.2 DOEL, SCORE EN EINDE ===================== */
 const SPEL_LENGTE = {kort: {label: "10 jaar", maanden: 120}, normaal: {label: "20 jaar", maanden: 240}, eindeloos: {label: "Eindeloos", maanden: 0}};
-const WIN_WAARDE = 8000;
+const WIN_WAARDE = 8000, HEG_PCT = 60, HEG_N = 3, RIVAAL_DOEL = 3;
+const WIN_LENGTE = {kort: 0.6, normaal: 1, eindeloos: 1.5};
+const winWaardeVoor = lengte => Math.round(WIN_WAARDE * (WIN_LENGTE[lengte] || 1) / 100) * 100;
+const winWaarde = s => winWaardeVoor(s.player.lengte);
 const RIVAAL_MULT = {Casual: 0.85, Realistisch: 1, Genadeloos: 1.2};
 const SCORE_MULT = {Casual: 0.8, Realistisch: 1, Genadeloos: 1.4};
 const spelLengte = s => (SPEL_LENGTE[s.player.lengte] || SPEL_LENGTE.normaal).maanden;
 function contPcts(s){ return regionDominance(s).map(r => ({naam: r.naam, pct: (r.shares.find(x => x.o === "player") || {}).pct || 0})).sort((a, b) => b.pct - a.pct); }
 function rivalenWeg(s){ const st = s.flags.start_rivalen || []; return {weg: st.filter(n => !s.rivals.some(r => r.name === n)).length, van: st.length}; }
 function doelen(s){
-  const w = playerValue(s), cp = contPcts(s), heg = cp.filter(c => c.pct >= 80).length, rw = rivalenWeg(s), L = spelLengte(s), n = maandenGespeeld(s);
+  const w = playerValue(s), WW = winWaarde(s), cp = contPcts(s), heg = cp.filter(c => c.pct >= HEG_PCT).length, rw = rivalenWeg(s), RD = Math.min(RIVAAL_DOEL, rw.van), L = spelLengte(s), n = maandenGespeeld(s);
   const out = [
-    {id: "economisch", naam: "Economische overwinning", tekst: `Bedrijfswaarde van €${WIN_WAARDE}k`, pct: Math.round(clamp(w / WIN_WAARDE * 100, 0, 100)), klaar: w >= WIN_WAARDE, nu: `€${Math.round(w)}k`},
-    {id: "hegemonie", naam: "Hegemonie", tekst: "80% of meer op drie continenten", pct: Math.round(clamp(cp.slice(0, 3).reduce((a, c) => a + Math.min(80, c.pct), 0) / 240 * 100, 0, 100)), klaar: heg >= 3, nu: cp.slice(0, 3).map(c => `${c.naam} ${c.pct}%`).join(", ")},
-    {id: "uitschakeling", naam: "De laatste corporatie", tekst: `Alle ${rw.van} oorspronkelijke rivalen uitgeschakeld`, pct: rw.van ? Math.round(rw.weg / rw.van * 100) : 0, klaar: rw.van > 0 && rw.weg >= rw.van, nu: `${rw.weg} van ${rw.van}`},
+    {id: "economisch", naam: "Economische overwinning", tekst: `Bedrijfswaarde van €${WW}k`, pct: Math.round(clamp(w / WW * 100, 0, 100)), klaar: w >= WW, nu: `€${Math.round(w)}k`},
+    {id: "hegemonie", naam: "Hegemonie", tekst: `${HEG_PCT}% of meer op ${HEG_N} continenten`, pct: Math.round(clamp(cp.slice(0, HEG_N).reduce((a, c) => a + Math.min(HEG_PCT, c.pct), 0) / (HEG_PCT * HEG_N) * 100, 0, 100)), klaar: heg >= HEG_N, nu: cp.slice(0, 3).map(c => `${c.naam} ${c.pct}%`).join(", ")},
+    {id: "uitschakeling", naam: "Marktmeester", tekst: `${RD} van de ${rw.van} oorspronkelijke rivalen uitgeschakeld (overgenomen, failliet of kapotgemaakt)`, pct: RD ? Math.round(clamp(rw.weg / RD, 0, 1) * 100) : 0, klaar: RD > 0 && rw.weg >= RD, nu: `${rw.weg} van ${RD}`},
   ];
   if (L) out.push({id: "termijn", naam: "Einde van de termijn", tekst: `Na ${L / 12} jaar telt je score`, pct: Math.round(clamp(n / L * 100, 0, 100)), klaar: n >= L, nu: `nog ${Math.max(0, L - n)} maanden`});
   return out;
 }
 function score(s, einde){
   const cp = contPcts(s), rw = rivalenWeg(s);
-  const dom = cp.reduce((a, c) => a + (c.pct >= 80 ? 300 : c.pct >= 50 ? 150 : c.pct >= 25 ? 50 : 0), 0);
-  const delen = [["Bedrijfswaarde", Math.round(Math.max(0, playerValue(s)))], ["Dominantie", dom], ["Reputatie", Math.round(s.reputation * 5)],
-    ["Jaren overleefd", Math.round(maandenGespeeld(s) / 12 * 40)], ["Rivalen uitgeschakeld", rw.weg * 250], ["Status", (s.statusNiveau || 0) * 100]];
+  /* 3.4: waarde telt met de wortel, zodat de rest meetelt; wie verliest, verliest ook de waarde van zijn bedrijf */
+  const dom = cp.reduce((a, c) => a + (c.pct >= 80 ? 400 : c.pct >= HEG_PCT ? 250 : c.pct >= 25 ? 60 : 0), 0), n = maandenGespeeld(s);
+  const verloren = !!einde && !einde.startsWith("OVERWINNING") && einde !== "EINDE TERMIJN", gewonnen = !!einde && einde.startsWith("OVERWINNING");
+  const L = spelLengte(s) || 240, delen = [[verloren ? "Bedrijfswaarde (verloren met het bedrijf)" : "Bedrijfswaarde (40 × √waarde)", verloren ? 0 : Math.round(40 * Math.sqrt(Math.max(0, playerValue(s))))], ["Dominantie", dom], ["Reputatie", Math.round(s.reputation * 6)],
+    ["Jaren overleefd", Math.round(n / 12 * 60)], ["Rivalen uitgeschakeld", rw.weg * 300], ["Status", (s.statusNiveau || 0) * 120]];
+  if (gewonnen && n < L) delen.push(["Tempo (maanden voor het einde × 6)", (L - n) * 6]);
   const basis = delen.reduce((a, [, v]) => a + v, 0), mult = SCORE_MULT[s.player.difficulty] || 1;
-  const eind = !einde ? 1 : einde.startsWith("OVERWINNING") ? 1.25 : einde === "EINDE TERMIJN" ? 1 : 0.6;
+  const eind = !einde ? 1 : gewonnen ? 1.25 : einde === "EINDE TERMIJN" ? 1 : 0.75;
   return {delen, basis, mult, eind, totaal: Math.round(basis * mult * eind)};
 }
 function eindCheck(s){
   const d = doelen(s).find(x => x.klaar && x.id !== "termijn");
-  if (d) return "OVERWINNING: " + d.naam.toUpperCase();
+  if (d) return "OVERWINNING: " + ({economisch: "ECONOMISCHE MACHT", hegemonie: "HEGEMONIE", uitschakeling: "MARKTMEESTER"}[d.id] || d.naam.toUpperCase());
   if (doelen(s).some(x => x.id === "termijn" && x.klaar)) return "EINDE TERMIJN";
   return "actief";
 }
@@ -2837,7 +2843,8 @@ const SPELREGELS = [
   ["Geld", "Omzet komt uit divisies (hoger niveau = meer), producten (kwaliteit × populariteit × markt), gebieden, contracten en klussen. Kosten: divisies, lonen, crew, rente, projecten en winstbelasting. Drie maanden rood = failliet."],
   ["Dobbelstenen", "Elke onzekere actie is 2d6 + bonus tegen een doel. Twee zessen lukt altijd, twee enen nooit. De kans die je vooraf ziet is de echte kans. Elke worp staat in Logboek → Dobbelstenen."],
   ["Morale en heat", "Morale onder 10, twee maanden lang: coup. Heat boven 90, twee maanden lang: razzia. Het overzicht laat zien waarom ze bewegen en waarschuwt ruim op tijd."],
-  ["Winnen", "€8.000k bedrijfswaarde, 80% op drie continenten, of alle oorspronkelijke rivalen uitgeschakeld. Anders telt na de gekozen speellengte je score."],
+  ["Winnen", "Een bedrijfswaarde van €8.000k (10 jaar: €4.800k, eindeloos: €12.000k), 60% op drie continenten, of 3 van de 5 oorspronkelijke rivalen uitgeschakeld. Anders telt na de gekozen speellengte je score."],
+  ["Score", "Bedrijfswaarde telt met de wortel (40 × √waarde), plus dominantie, reputatie, jaren, uitgeschakelde rivalen en status. Winnen ×1,25 plus tempo, termijn uitdienen ×1, verliezen ×0,75 en zonder de waarde van je bedrijf: een verlies scoort dus nooit hoger dan overleven met hetzelfde bedrijf."],
   ["Keuzes", "Keuzemails hebben knoppen; elke optie zegt wat ze kost en doet. Antwoord je niet, dan kiest het spel na twee maanden de standaardoptie."],
 ];
 

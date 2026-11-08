@@ -4,14 +4,15 @@
 const { chromium } = require("playwright");
 const fs = require("fs"), path = require("path");
 const DIR = path.join(__dirname, "..", "artifact");
-const N = +(process.argv[2] || 20), DIFF = process.argv[3] || "Realistisch";
+const N = +(process.argv[2] || 20), DIFF = process.argv[3] || "Realistisch", LENGTE = process.argv[4] || "normaal";
 
 function pagina(){
   const html = fs.readFileSync(path.join(DIR, "chrome-ledger.html"), "utf8");
   return '<!doctype html><html><head><meta charset=utf8></head><body>' + html + "</body></html>";
 }
 
-const STRATEGIE = `
+const STRATEGIE = `const LENGTE = "${LENGTE}";
+
 const KIES = {headhunt: 1, opslag: 1, cao: 0, klant: 0, subsidie: 0, sponsor: 1, interview: 0, data: 1, tip: 0, vreemdeling: 1, sekte: 1, klokkenluider: 0, isra_vracht: 1, diner_rivaal: 0};
 function kiesKeuzes(s, ctx, slim){
   for (const k of [...(s.keuzes || [])]){
@@ -84,13 +85,15 @@ async function run(strat, n, diff){
   const homes = ["BNL", "USA", "JPN", "BRA", "NGA", "ARB", "AUS", "DEU", "IND", "MEX"], docs = [["Logistiek"], ["Biotech"], ["Cyberware"], ["Financieel"], ["Media & Data"], ["Private Security", "Smokkel"]];
   const out = [];
   for (let i = 0; i < n; i++){
-    const {s} = newGame({corp_name: "Bot " + i, doctrine: docs[i % docs.length], home: homes[i % homes.length], difficulty: diff, kapitaal: "normaal", lengte: "normaal", ontslag: "normaal", bonus: "geen", ethiek: "normaal"});
+    const {s} = newGame({corp_name: "Bot " + i, doctrine: docs[i % docs.length], home: homes[i % homes.length], difficulty: diff, kapitaal: "normaal", lengte: LENGTE, ontslag: "normaal", bonus: "geen", ethiek: "normaal"});
     G.game = s; const ctx = Ctx();
+    let derde = 0, weg = 0;
     while (s.status === "actief" && maandenGespeeld(s) < 300){
+      if (maandenGespeeld(s) % 6 === 0){ const cp = contPcts(s); derde = Math.max(derde, (cp[2] || {pct: 0}).pct); weg = Math.max(weg, rivalenWeg(s).weg); }
       try { if (strat === "passief") passief(s, ctx); else verstandig(s, ctx, strat === "agressief"); } catch(e){ out.push({fout: String(e && e.stack || e).slice(0, 300)}); break; }
       tick(s); ctx.mails.length = 0;
     }
-    out.push({status: s.status, maanden: maandenGespeeld(s), waarde: playerValue(s), cash: Math.round(s.cash), score: s.eind ? s.eind.score : null, morale: Math.round(s.morale), heat: Math.round(s.heat)});
+    out.push({status: s.status, maanden: maandenGespeeld(s), waarde: playerValue(s), cash: Math.round(s.cash), score: s.eind ? s.eind.score : null, derde, weg, morale: Math.round(s.morale), heat: Math.round(s.heat)});
   }
   return out;
 }
@@ -114,6 +117,9 @@ async function run(strat, n, diff){
     console.log("  maanden: mediaan", med(ok.map(r => r.maanden)), "· min", Math.min(...ok.map(r => r.maanden)), "· max", Math.max(...ok.map(r => r.maanden)));
     console.log("  waarde:  mediaan", med(ok.map(r => r.waarde)), "· max", Math.max(...ok.map(r => r.waarde)));
     console.log("  score:   mediaan", med(ok.map(r => r.score || 0)), "· max", Math.max(...ok.map(r => r.score || 0)));
+    console.log("  hegemonie: mediaan beste 3e continent", med(ok.map(r => r.derde)) + "% · ≥60%:", ok.filter(r => r.derde >= 60).length, "· ≥80%:", ok.filter(r => r.derde >= 80).length, "| rivalen weg: mediaan", med(ok.map(r => r.weg)), "· max", Math.max(...ok.map(r => r.weg)));
+    const per = {}; for (const r of ok) (per[r.status.startsWith("OVERWINNING") ? "winst" : r.status] ??= []).push(r.score || 0);
+    console.log("  score per einde:", Object.entries(per).map(([k, v]) => `${k} ${med(v)}`).join(" · "));
     const err = res.filter(r => r.fout); if (err.length) console.log("  FOUTEN:", err.length, err[0].fout);
   }
   if (fouten.length) console.log("\nPAGINAFOUTEN:", fouten.slice(0, 5));
