@@ -5,6 +5,7 @@
 De hoofdversie draait als artifact in de browser, ook op je gsm: `artifact/chrome-ledger.html` (scherm), `artifact/engine.js` (spelregels, opslag, acties) en `artifact/world-data.js` (kaartdata), gepubliceerd op https://claude.ai/artifact/G1Mgzkv5m1xg2BVrcuvUCq. Je bouwt een megacorporatie op de echte wereldkaart in cyberpunkstijl (Natural Earth-grenzen, 43 speelbare gebieden, 16 zeezones) en kiest bij de start op welk continent en in welk gebied je begint. Op zee bouw je eskaders en verdeel je ze over de zeezones: wie het overwicht heeft, verdient eraan en bereikt elke kust; in oorlog volgen zeeslagen en konvooiaanvallen. De kaartdata wordt gebouwd met `artifact/build-world.js`. Verder: rivalen met een eigen economie (oorlog, vrede, handel, districten ruilen), chat en mail met iedereen in de stad, personeel, eigen bedrijfssoorten en een live GM die kosten en kansen bepaalt; de engine gooit de dobbelsteen. Je spel wordt online bewaard en is alleen voor jou.
 
 ### Versies
+- **4.2 Levende bedrijvenwereld:** elke maand kunnen bedrijven opgericht worden (namen per sector), failliet gaan, fuseren, een nieuwe naam of CEO krijgen, naar de beurs gaan of in een schandaal belanden. Koers en geschiedenis per bedrijf; contracten verhuizen mee bij een nieuwe naam of fusie. Gemeten over 10 jaar: ±25 oprichtingen en ±25 faillissementen, 17-33 bedrijven tegelijk. Realistisch: 27% winst (150 spellen).
 - **4.1.2 Eerlijkere lanceringen:** vijf uitkomsten (hit vanaf doel+3, gewoon, matig, flop pas ruim onder je doel, terugroepactie); flopkans nooit boven 50%. Winstdrempel omhoog naar €10.400k (20 jaar). Gemeten: Realistisch 30%, Casual 83%, Genadeloos 6%.
 - **4.1.1 Wat is er nieuw:** kaart in het overzicht met wat er nieuw is sinds je vorige bezoek.
 - **4.1 Balans:** winstdrempel 10% hoger (€8.800k bij 20 jaar, €5.200k bij 10 jaar, €12.800k eindeloos), eerste strategiedag na een jaar, krappere capaciteit bij de start; de testbot breidt capaciteit uit als hij uitverkocht is. Gemeten: Realistisch 34% winst (150 spellen, was 47%), Casual 86%, Genadeloos 11%, 10 jaar 28% (100 spellen). Levensfase Verval pas na een jaar.
@@ -44,6 +45,7 @@ Gepland: zie `PLAN.md`.
 - `node chrome-ledger/tests/plannen.js` test de plannen van rivalen (start, verrassing, ontdekken, voorbereiden, verstoren, GM-tekst, 120 maanden).
 - `node chrome-ledger/tests/online.js` test de online opslag met een nagebootste database (compacte saves, geen save-lus, herladen, back-ups, inbox, spellen, chats).
 - `node chrome-ledger/tests/mensrun.js <map>` speelt 24 maanden zoals een mens en maakt screenshots na 3, 12 en 24 maanden, om zelf kritisch naar te kijken.
+- `node chrome-ledger/tests/wereld.js` test de levende bedrijvenwereld over 10 jaar.
 - `node chrome-ledger/tests/spellen.js` test de saveslots (maken, wisselen, hernoemen, verwijderen, herladen).
 - `node chrome-ledger/tests/schermen.js chrome-ledger/artifact/chrome-ledger.html <map>` klikt de belangrijkste schermen door op desktop en mobiel en maakt screenshots.
 

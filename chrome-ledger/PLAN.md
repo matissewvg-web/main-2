@@ -16,66 +16,66 @@ Zwak:
 3. **Balans:** op doel sinds 4.1 (Casual 86%, Realistisch 34%, Genadeloos 11%), maar abonnementen, dochters en de GM zijn niet op balans getest.
 4. **Nog niemand heeft het echt gespeeld sinds de ochtend.** Bots zijn geen spelers.
 
-## Roadmap (in volgorde)
-### 4.2 Echte afzet en prijs (volgende)
-- Omzet van een product = afzet × prijs; kosten = afzet × kostprijs + vaste kosten. De divisie levert een basisomzet, producten de rest.
-- Prijs vrij instelbaar (schuif in euro's per stuk) in plaats van drie standen, met prijsgevoeligheid per markt: te duur kost afzet, te goedkoop kost marge.
-- Klantsegmenten per soort (bv. medisch: ziekenhuizen, rijke particulieren, straatklinieken) met eigen budget, omvang en voorkeur voor eigenschappen.
-- Grote herbalans, gemeten met 150 spellen; bestaande spellen worden omgerekend.
+## Roadmap
 
-### 4.3 Geavanceerd productontwerp
-- Eigenschappen tellen echt: elk segment weegt de drie eigenschappen anders, en jouw score tegen die van concurrerende producten bepaalt je marktaandeel per segment.
-- Onderdelenlijst (bill of materials): 3-4 onderdelen per product met eigen kosten en leverancier; de kostprijs is de som daarvan plus arbeid.
-- Varianten binnen een productlijn (Basis, Pro, Elite) met eigen prijs, eigenschappen en doelgroep.
-- Prototype en bètatest vóór de lancering: kost tijd en geld, verlaagt de flopkans en laat je de eigenschappen nog bijstellen.
-- Opvolger plannen: een nieuwe generatie neemt klanten over van de oude in plaats van ernaast te concurreren (kannibalisatie).
+Werkwijze: elk uur een ronde (automatisch). Grote punten zijn verdeeld in stappen van één ronde. Elke derde ronde is een opruimronde (bugs, teksten, schermen, tests/mensrun.js). Feedback uit een echte speelronde gaat altijd voor.
 
-### 4.4 Kwaliteit en aansprakelijkheid
-- Defectpercentage per product (hangt af van kwaliteit, focus en onderdelen), garantiekosten per maand, terugroepacties die uit defecten volgen in plaats van uit één worp.
-- Keuring en certificering per markt (medisch, implantaten, wapens): kost tijd, zonder keuring mag je in sommige landen niet verkopen, of alleen via de zwarte markt.
+| Versie | Wat | Rondes | Status |
+|---|---|---|---|
+| 4.2 | Levende bedrijvenwereld | 1 | klaar |
+| 4.3 | Echte afzet en prijs | 3 | volgende |
+| 4.4 | Geavanceerd productontwerp | 3 | |
+| 4.5 | Kwaliteit en aansprakelijkheid | 2 | |
+| 4.6 | Marketing en distributie | 2 | |
+| 4.7 | Patenten en namaak | 1 | |
+| 4.8 | Productdashboard | 1 | |
+| 4.9 | Toelevering en voorraad | 2 | |
+| 4.10 | Regionale markten | 2 | |
+| 4.11 | Realistische financiën | 2 | |
+| 4.12 | Mensen per divisie | 2 | |
+| 4.13 | Onderzoek | 2 | |
+| 4.14 | Zelf plannen smeden | 1 | |
+| 5.0 | Klanten komen naar jou (B2B-orders) | 3 | |
 
-### 4.5 Marketing en distributie
-- Marketingkanalen met eigen bereik, kosten en doelgroep: reclame, influencers, beurzen, fluistercampagne op straat.
-- Distributiekanalen: eigen winkels, groothandel, online, zwarte markt; elk met eigen marge, bereik en heat.
+### 4.3 Echte afzet en prijs (volgende)
+- Stap 1: omzet van een product = afzet × prijs; kosten = afzet × kostprijs + vaste kosten. De divisie levert een basisomzet, producten de rest. Bestaande spellen worden omgerekend.
+- Stap 2: prijs vrij instelbaar (schuif in euro's per stuk) met prijsgevoeligheid per markt: te duur kost afzet, te goedkoop kost marge.
+- Stap 3: klantsegmenten per soort (bv. medisch: ziekenhuizen, rijke particulieren, straatklinieken) met eigen budget, omvang en voorkeur voor eigenschappen. Herbalans, gemeten met 150 spellen.
 
-### 4.6 Patenten en namaak
-- Patent aanvragen op een eigenschap; rivalen die namaken kun je aanklagen (worp, kosten, duur). Rivalen patenteren ook, en jij kunt erop stuiten.
+### 4.4 Geavanceerd productontwerp
+- Eigenschappen tellen echt: elk segment weegt de drie eigenschappen anders; jouw score tegen concurrerende producten bepaalt je aandeel per segment.
+- Onderdelenlijst: 3-4 onderdelen per product met kosten en leverancier; kostprijs = onderdelen + arbeid.
+- Varianten (Basis, Pro, Elite) met eigen prijs, eigenschappen en doelgroep. Prototype en bètatest vóór de lancering. Opvolgers die klanten overnemen van de oude versie.
 
-### 4.7 Productdashboard
-- Per product grafieken over tijd: afzet, prijs, marktaandeel, marge, defecten; vergelijking naast je sterkste concurrent; export als tekst.
+### 4.5 Kwaliteit en aansprakelijkheid
+- Defectpercentage per product, garantiekosten, terugroepacties uit defecten in plaats van één worp. Keuring per markt (medisch, implantaten, wapens).
 
-### 4.8 Toelevering en voorraad
-- Onderdelen uit 4.3 via leveranciers (de bedrijven in de wereld); tekorten bij oorlog, sancties of een failliete leverancier; voorraad aanleggen of uitverkocht raken.
+### 4.6 Marketing en distributie
+- Marketingkanalen (reclame, influencers, beurzen, fluistercampagne) en verkoopkanalen (eigen winkels, groothandel, online, zwarte markt) met eigen bereik, marge en heat.
 
-### 4.9 Regionale markten
-- Producten verkopen per continent met eigen vraag; importheffingen en sancties uit wereldgebeurtenissen; een nieuwe markt openen kost vergunning en marketing.
+### 4.7 Patenten en namaak
+- Patent op een eigenschap; namakers aanklagen; rivalen patenteren ook.
 
-### 4.10 Realistische financiën
-- Balans (bezittingen en schulden), afschrijving op investeringen, kasstroomoverzicht, een kredietrating die je rente bepaalt, aandeelhouders die dividend verwachten.
+### 4.8 Productdashboard
+- Grafieken per product over tijd (afzet, prijs, aandeel, marge, defecten), naast je sterkste concurrent.
 
-### 4.11 Mensen per divisie
-- Een hoofd per divisie met eigen eigenschappen, teams en salarisschalen per land, cao's.
+### 4.9 Toelevering en voorraad
+- Onderdelen via leveranciers (de bedrijven in de wereld, die nu ook failliet kunnen gaan of fuseren); tekorten bij oorlog of sancties; voorraad.
 
-### 4.12 Onderzoek
-- Technologie per sector die eigenschappen van producten verbetert (koppelt aan 4.3), betere onderdelen en nieuwe soorten producten vrijspeelt.
-
-### 4.13 Zelf plannen smeden
-- Het spiegelbeeld van Plannen tegen jou: over maanden een prijsoorlog, laster of overname tegen een rivaal opbouwen.
+### 4.10 Regionale markten · 4.11 Realistische financiën · 4.12 Mensen per divisie · 4.13 Onderzoek · 4.14 Zelf plannen smeden
+- Zie de beschrijvingen in eerdere versies van dit plan; ze schuiven op zonder inhoudelijke wijziging.
 
 ### 5.0 Klanten komen naar jou (B2B-orders)
-- Bedrijven in de wereld, rivalen, staten en syndicaten sturen je inkoopaanvragen voor je producten of diensten: hoeveel, welke eigenschappen (minimaal), welke prijs, welke deadline en welke voorwaarden.
-- Jij kiest: accepteren, onderhandelen (een worp over prijs of termijn, met relatie en reputatie als bonus) of afwijzen. Leveren gaat uit je productiecapaciteit en voorraad (koppeling met 4.0 en 4.8); te laat leveren kost een boete en reputatie, goed leveren geeft vervolgorders.
-- Aanbestedingen: een grote order waar rivalen ook op bieden; jouw prijs, eigenschappen en reputatie tegen die van hen.
-- Raamcontracten: een vaste klant die elke maand afneemt, met een looptijd en heronderhandeling.
-- Riskante klanten: een syndicaat of een staat onder sancties biedt het dubbele; dat geeft geld, heat en soms gevolgen.
-- Is de GM live, dan schrijft hij de klant en het verhaal achter de order; de engine bewaakt aantallen, prijzen en boetes, en heeft vaste aanvragen als de GM niet live is.
+- Inkoopaanvragen van bedrijven, rivalen, staten en syndicaten (aantal, eigenschappen, prijs, deadline); accepteren, onderhandelen of afwijzen; leveren uit capaciteit en voorraad; boetes bij te laat; aanbestedingen tegen rivalen; raamcontracten; riskante klanten. De GM schrijft de klant en het verhaal.
 
 ### Doorlopend
-- Elke derde ronde een opruimronde met tests/mensrun.js en screenshots.
-- Genadeloos: 8% failliet vóór maand 30; opnieuw na een playtest.
+- Balans: Realistisch 27-30% winst na 4.1.2 en 4.2 (doel ±35%): opnieuw bekijken na 4.3, want echte afzet verschuift alles.
+- Faillissementen van wereldbedrijven kosten de speler soms een contract; nagaan of dat te vaak gebeurt.
+- Genadeloos: vroege faillissementen; opnieuw na een playtest.
 - Testinfrastructuur: expansie-bot voor hegemonie; tests mogen nooit op toeval falen.
 
 ## Gedaan
+- 4.2 Levende bedrijvenwereld: maandelijks oprichtingen (naamgenerator per sector), faillissementen na drie slechte maanden, fusies, nieuwe namen, beursgangen, schandalen, CEO-wissels; koers en geschiedenis per bedrijf; contracten verhuizen mee. Test wereld.js.
 - Roadmap: 5.0 Klanten komen naar jou (B2B-orders, aanbestedingen, raamcontracten, riskante klanten) toegevoegd op verzoek (8 nov).
 - Roadmap uitgebreid (8 nov, op verzoek: "diepere productdetails, advanced"): 4.2 echte afzet en prijs met segmenten, 4.3 geavanceerd productontwerp, 4.4 kwaliteit en aansprakelijkheid, 4.5 marketing en distributie, 4.6 patenten, 4.7 productdashboard, 4.8 toelevering.
 - 4.1.1 Kaart Nieuw sinds je vorige bezoek. Terugkerende rondes gepauzeerd op 8 nov (20:45 UTC): de gebruiker gaat spelen. Hervatten met de feedback uit die speelronde bovenaan.

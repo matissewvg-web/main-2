@@ -571,7 +571,7 @@ function tick(s){
   s.accounts.operationeel = s.cash;
   lingeringTick(s, ctx, diff); invoicesTick(s, ctx, diff); marketTick(s, ctx); factionTick(s, ctx);
   npcTick(s, ctx); nomadDemandTick(s, ctx); chaosTick(s, ctx, diff); rumorTick(s, ctx); arcsTick(s, ctx, diff);
-  sectorTick(s); regionTick(s, ctx); bedrijfTick(s, ctx); peopleTick(s, ctx, diff);
+  sectorTick(s); regionTick(s, ctx); bedrijfTick(s, ctx); bedrijfLeven(s, ctx); peopleTick(s, ctx, diff);
   specialTick(s, ctx); productTick(s, ctx); { const pe = productEffectTick(s); if (pe.heat) gz.hDelen.push(["Producten", r1(pe.heat)]); if (pe.morale) gz.mDelen.push(["Producten", r1(pe.morale)]); } productEventTick(s, ctx); vraagTick(s); rivalProductTick(s); wereldInvloedProducten(s); eraTick(s, ctx); if (s.date.month === 12) jaarTick(s, ctx); marktTick(s); klusTick(s);
   s.accounts.operationeel = s.cash; s.hidden_truth = s.hidden_truth.slice(-30);
 
@@ -628,7 +628,7 @@ function tick(s){
 }
 
 /* ---------- de stad: elke game een andere kaart ---------- */
-const VERSION = "4.1.2";
+const VERSION = "4.2";
 const MAP_W = 1000, MAP_H = 680;
 const RIVAL_COLORS = ["#ff9a1f", "#3d7bff", "#c6ff2e", "#f2f2f2", "#9b5cff", "#ffd400", "#ff4d4d"];
 const ARCH = {
@@ -1542,12 +1542,65 @@ function actBedrijf(s, ctx, id, soort){
   } else return {ok: false, msg: "Onbekende actie."};
   addLog(s, msg); return {ok: true, msg};
 }
+
+/* ===================== 4.2 LEVENDE BEDRIJVENWERELD: oprichtingen, faillissementen, fusies, nieuwe namen, beursgangen, schandalen ===================== */
+const NAAM_A = ["Neo", "Vanta", "Kairo", "Helio", "Obsidian", "Nova", "Quanta", "Ardent", "Cobalt", "Lumen", "Strata", "Vector", "Argent", "Halcyon", "Onyx", "Sable", "Tessel", "Umbra", "Zenith", "Kite",
+  "Orchid", "Basalt", "Ember", "Fathom", "Glint", "Ion", "Juno", "Mantis", "Nimbus", "Prism", "Rook", "Solace", "Talon", "Vesper", "Wren", "Axiom", "Bramble", "Corvid", "Drift", "Echo"];
+const NAAM_B = {"Logistiek": ["Freight", "Haulage", "Lines", "Cargo", "Routes", "Shipping"], "Biotech": ["Bio", "Genomics", "Labs", "Cellworks", "Therapeutics", "Pharma"], "Cyberware": ["Dynamics", "Neural", "Ortho", "Synthetics", "Kinetics", "Augment"],
+  "Media & Data": ["Media", "Signal", "Data", "Feed", "Broadcast", "Analytics"], "Private Security": ["Guard", "Shield", "Sentinel", "Watch", "Defense", "Response"], "Financieel": ["Capital", "Trust", "Ledger", "Bancorp", "Holdings", "Partners"],
+  "Smokkel": ["Trading", "Imports", "Exchange", "Brokers", "Supply", "Transit"]};
+function bedrijfNaam(s, sector){
+  const used = new Set([...(s.bedrijven || []).map(b => b.naam), ...s.rivals.map(r => r.name)]), B = NAAM_B[sector] || ["Group", "Works", "Systems", "Industries"];
+  for (let i = 0; i < 60; i++){ const n = `${CH(NAAM_A)} ${CH(B)}`; if (!used.has(n)) return n; }
+  return `${CH(NAAM_A)} ${CH(B)} ${RI(2, 99)}`;
+}
+const bLog = (b, s, t) => { (b.log ??= []).unshift({m: ym(s), t}); b.log = b.log.slice(0, 8); };
+function hernoemStroom(s, oud, nieuw){ for (const x of s.streams || []) if (x.naam === "Contract " + oud) x.naam = "Contract " + nieuw; }
+function bedrijfLeven(s, ctx){
+  const B = (s.bedrijven ??= []), vrij = () => B.filter(b => !b.eigenaar), mg = maandenGespeeld(s);
+  for (const b of B){ b.groei = r1(clamp((b.groei ?? U(-0.015, 0.015)) * 0.92 + U(-0.011, 0.01), -0.05, 0.05) * 1000) / 1000; b.piek = Math.max(b.piek || 0, b.waarde); b.zwak = (b.waarde < 38 || b.waarde < b.piek * 0.4) && !b.eigenaar ? (b.zwak || 0) + 1 : 0; }
+  // faillissement: drie maanden onder water
+  for (const b of B.filter(x => x.zwak >= 3 && !x.eigenaar)){
+    s.bedrijven = s.bedrijven.filter(x => x !== b); if (b.contract) s.streams = (s.streams || []).filter(x => x.naam !== "Contract " + b.naam);
+    (s.stats ??= {}).failliet = (s.stats.failliet || 0) + 1; (s.wereldJaar ??= {})[s.date.year] = {...((s.wereldJaar || {})[s.date.year] || {}), failliet: (((s.wereldJaar || {})[s.date.year] || {}).failliet || 0) + 1};
+    news(s, `${b.naam} failliet`, `${b.naam} (${b.sector}) houdt op te bestaan.${b.aandeel ? ` Jouw ${b.aandeel}% is niets meer waard.` : ""}${b.contract ? " Je leveringscontract vervalt." : ""}`, landNaam(s, b.land), "markt", !!(b.aandeel || b.contract));
+    if (b.aandeel || b.contract) ctx.rep.push(`${b.naam} failliet`); }
+  // oprichtingen: de wereld blijft tussen ±20 en 36 bedrijven
+  if (B.length < 20 || (B.length < 36 && R() < 0.06)){ const sec = CH(allTypes(s).filter(t => NAAM_B[t]).concat(["Financieel"])), land = CH(s.districts.filter(d => d.id !== s.player.home_district)), naam = bedrijfNaam(s, sec);
+    const b = {id: "b" + hex8(), naam, sector: sec, land: land.id, ceo: CH(CEO_NAMEN), waarde: r1(RI(45, 110) * (1 + (s.tijdperk || 0) * 0.3)), vorige: 0, relatie: RI(0, 20), aandeel: 0, eigenaar: null, contract: false, actie: null, startup: true, groei: r1(U(0.005, 0.03) * 1000) / 1000, sinds: ym(s)};
+    b.vorige = b.waarde; bLog(b, s, "Opgericht"); s.bedrijven.push(b); (s.wereldJaar ??= {})[s.date.year] = {...((s.wereldJaar || {})[s.date.year] || {}), nieuw: (((s.wereldJaar || {})[s.date.year] || {}).nieuw || 0) + 1};
+    news(s, `Nieuwkomer: ${naam}`, `Een jong bedrijf in ${sec}, uit ${land.name}. Klein, snel en te koop voor wie er vroeg bij is.`, land.continent, "markt"); }
+  if (mg < 3) return;
+  const V = vrij(); if (!V.length) return;
+  const x = R();
+  if (x < 0.04){ // nieuwe naam
+    const b = CH(V), oud = b.naam; b.naam = bedrijfNaam(s, b.sector); hernoemStroom(s, oud, b.naam); bLog(b, s, `Nieuwe naam (heette ${oud})`);
+    news(s, `${oud} heet voortaan ${b.naam}`, `Na een herstructurering gaat ${oud} verder als ${b.naam}. Zelfde mensen, nieuwe brochure.`, landNaam(s, b.land), "markt", !!(b.aandeel || b.contract)); }
+  else if (x < 0.07){ // fusie in dezelfde sector
+    const a = CH(V), part = V.filter(y => y !== a && y.sector === a.sector);
+    if (part.length){ const b = CH(part), nieuw = R() < 0.5 ? bedrijfNaam(s, a.sector) : a.naam, oudA = a.naam;
+      let extra = ""; if (b.aandeel){ const p = r1(b.waarde * b.aandeel / 100 * 1.15); s.cash = r1(s.cash + p); extra = ` Jouw ${b.aandeel}% in ${b.naam} is uitgekocht voor €${p}k.`; ctx.rep.push(`Fusie: belang in ${b.naam} uitgekocht (+€${p}k)`); }
+      if (b.contract){ hernoemStroom(s, b.naam, nieuw); a.contract = true; extra += ` Je contract met ${b.naam} loopt door bij ${nieuw}.`; }
+      if (a.naam !== nieuw) hernoemStroom(s, a.naam, nieuw);
+      a.waarde = r1((a.waarde + b.waarde) * 1.05); a.naam = nieuw; a.relatie = Math.round((a.relatie + b.relatie) / 2); s.bedrijven = s.bedrijven.filter(y => y !== b);
+      bLog(a, s, `Fusie: ${oudA} + ${b.naam}${nieuw !== oudA ? ` → ${nieuw}` : ""}`);
+      news(s, `Fusie: ${oudA} en ${b.naam}`, `Samen verder als ${nieuw}, met een waarde van ±€${Math.round(a.waarde)}k.${extra}`, landNaam(s, a.land), "overname", !!extra); } }
+  else if (x < 0.09){ // beursgang
+    const b = V.filter(y => !y.beurs && y.waarde > 140).sort((p, q) => q.waarde - p.waarde)[0];
+    if (b){ b.beurs = true; b.waarde = r1(b.waarde * 1.25); b.groei = Math.round(((b.groei || 0) + 0.01) * 1000) / 1000; bLog(b, s, "Naar de beurs"); news(s, `${b.naam} gaat naar de beurs`, `De koers opent 25% boven verwachting. Aandelen kopen is nu duurder; wie al een belang had, is rijker.`, landNaam(s, b.land), "markt", !!b.aandeel); } }
+  else if (x < 0.12){ // schandaal
+    const b = CH(V); b.waarde = r1(b.waarde * 0.75); b.groei = Math.round((Math.min(b.groei || 0, 0) - 0.015) * 1000) / 1000; bLog(b, s, "Schandaal");
+    news(s, `Schandaal bij ${b.naam}`, CH([`Een klokkenluider spreekt over vervalste cijfers.`, `Een product van ${b.naam} blijkt mensen ziek te maken.`, `De CEO is gearresteerd op een vliegveld.`]) + ` De waarde zakt met een kwart.`, landNaam(s, b.land), "markt", !!(b.aandeel || b.contract)); }
+  else if (x < 0.15){ // nieuwe CEO
+    const b = CH(V), oud = b.ceo; b.ceo = CH(CEO_NAMEN.filter(n => n !== oud)); b.relatie = Math.round(b.relatie * 0.5); b.groei = Math.round(((b.groei || 0) + U(-0.01, 0.015)) * 1000) / 1000; bLog(b, s, `Nieuwe CEO: ${b.ceo}`);
+    if (b.contract || b.aandeel || Math.abs(b.relatie) > 10) news(s, `Nieuwe CEO bij ${b.naam}`, `${oud} vertrekt, ${b.ceo} neemt het over. Wat jullie samen hadden opgebouwd, moet opnieuw.`, landNaam(s, b.land), "mensen"); }
+}
 function bedrijfTick(s, ctx){
   let div = 0;
   for (const b of s.bedrijven || []){
     const d = s.districts.find(x => x.id === b.land), sx = (s.sectoren || {})[b.sector];
     b.vorige = b.waarde;
-    b.waarde = r1(Math.max(25, b.waarde * (1 + (sx ? sx.trend * 0.8 : 0) + U(-0.03, 0.036) + ((d && d.mod ? d.mod.f : 1) - 1) * 0.08)));
+    b.waarde = r1(Math.max(25, b.waarde * (1 + (sx ? sx.trend * 0.8 : 0) + (b.groei || 0) + U(-0.025, 0.025) + ((d && d.mod ? d.mod.f : 1) - 1) * 0.08)));
     if (b.aandeel && b.eigenaar !== "player") div += b.waarde * 0.009 * b.aandeel / 100;
     b.relatie = Math.round(b.relatie * 0.97 + (b.contract ? 1 : 0));
   }
@@ -2050,11 +2103,10 @@ function jaarTick(s, ctx){
   // directie wordt ambitieuzer
   for (const n of s.npcs) n.ambition = clamp(n.ambition + RI(1, 5));
   // zwakke bedrijven vallen om, nieuwe komen op
-  for (const b of [...(s.bedrijven || [])]) if (!b.eigenaar && b.waarde < 40 && R() < 0.5){
+  for (const b of []) if (!b.eigenaar && b.waarde < 40 && R() < 0.5){   /* 4.2: faillissementen en oprichtingen gaan nu maandelijks in bedrijfLeven */
     s.bedrijven = s.bedrijven.filter(x => x !== b); if (b.contract) s.streams = (s.streams || []).filter(x => x.naam !== "Contract " + b.naam);
     let extra = ""; if (b.aandeel){ extra = ` Jouw ${b.aandeel}% is niets meer waard.`; }
     news(s, `${b.naam} failliet`, `${b.naam} houdt op te bestaan.${extra}`, landNaam(s, b.land), "markt", !!(b.aandeel || b.contract)); }
-  nieuweStartups(s, R() < 0.6 ? 1 : 0);
 }
 
 /* ===================== 2.0 CREW: specialisten op de loonlijst ===================== */
