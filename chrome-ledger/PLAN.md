@@ -23,14 +23,11 @@ Zwak:
 - Bedrijfsfocus: een kleine boom met keuzes die elke paar maanden een vaste bonus geven.
 
 ### Balans (vervolg)
-- Casual: razzia's (21%) te vaak voor het makkelijkste niveau; heat sneller laten zakken op Casual? Meten. (8 nov)
 - Lonen en huur per tijdperk laten stijgen, zodat de late game ook druk heeft. (8 nov)
 - Genadeloos: vroegste dood in maand 16; bekijken of de eerste twee jaar daar eerlijk zijn. (8 nov)
 
 ### Kleine punten
 - Plannen: jij kunt nog geen eigen plan tegen een rivaal opzetten (spiegelbeeld). Mogelijk 4.x. (8 nov)
-- Ongelezen mail loopt op tot 50+ na een jaar spelen; een knop "alles gelezen" of automatisch archiveren van oude maandrapporten. (8 nov)
-- Ruimte voor de kaart op een laptop: het GM-venster valt over het zijpaneel van de kaart; misschien de kaart smaller maken zolang het venster open is. (8 nov)
 
 ### Testinfrastructuur (doorlopend)
 - Tests mogen niet op toeval falen: concept.js viel om bij een terugroepactie (twee enen). Gerepareerd; andere tests nalopen op hetzelfde. (8 nov)
@@ -39,6 +36,7 @@ Zwak:
 - Een "speel 24 maanden als mens"-run met screenshots per ronde, om zelf kritisch te kijken.
 
 ## Gedaan
+- 3.8.1 Opruimen: automatisch archiveren van oude rapporten en afgehandelde keuzes, GM-venster duwt de inhoud opzij, Casual minder heat (razzia 22% → 13%, winst 87%: aan de makkelijke kant, bewust).
 - 3.8 Plannen tegen jou: vijf soorten plannen van rivalen en syndicaten over zes maanden, ontdekken via crew en netwerk, verstoren/voorbereiden/laten, GM-tekst, kaart bij Rivalen, test plannen.js.
 - 3.7.1 De GM antwoordt altijd: snelknoppen met eigen antwoord zonder live GM, kaartnamen zonder overlap, kaart met het toetsenbord, geen dubbel advies.
 - 3.7 Rust en eerste stappen: kaart Eerste stappen, kleine meldingen in het maandrapport, statusbalk op de telefoon als raster, leesbare geselecteerde chips.

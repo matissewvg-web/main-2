@@ -511,7 +511,7 @@ function tick(s){
   if (belasting){ cost += belasting; lines.push(`| Winstbelasting (${Math.round((0.2 - off) * 100)}% tot €60k, ${Math.round((0.35 - off) * 100)}% daarboven${off ? ", offshore" : ""}) | 0 | ${belasting} |`); }
   const net = r1(rev - cost); s.cash = r1(s.cash + net);
 
-  { const h0 = s.heat, ha = heatAdd * 0.7, dec = (s.culture.heat_decay ?? 2) + s.heat * 0.07; s.heat = clamp(s.heat + ha - dec); gz.hDelen.push(["Divisies (omzet trekt aandacht)", r1(ha)], ["Vanzelf afnemen", r1(s.heat - h0 - ha)]); }
+  { const h0 = s.heat, ha = heatAdd * 0.7 * (s.player.difficulty === "Casual" ? 0.9 : 1), dec = (s.culture.heat_decay ?? 2) + s.heat * 0.07; s.heat = clamp(s.heat + ha - dec); gz.hDelen.push(["Divisies (omzet trekt aandacht)", r1(ha)], ["Vanzelf afnemen", r1(s.heat - h0 - ha)]); }
   let drift = (s.culture.morale_drift || 0) + (net > 0 ? 1 : -2); if (s.culture.layoff_policy === "hard") drift -= 2;
   drift += clamp((s.staff.avg_salary - 30) / 6, -2, 2);
   if (sf < 0.8){ drift -= 1; rep.push(`Onderbezetting: ${s.staff.count} mensen voor ${need} plekken`); }
@@ -626,7 +626,7 @@ function tick(s){
 }
 
 /* ---------- de stad: elke game een andere kaart ---------- */
-const VERSION = "3.8";
+const VERSION = "3.8.1";
 const MAP_W = 1000, MAP_H = 680;
 const RIVAL_COLORS = ["#ff9a1f", "#3d7bff", "#c6ff2e", "#f2f2f2", "#9b5cff", "#ffd400", "#ff4d4d"];
 const ARCH = {
@@ -3554,6 +3554,12 @@ async function gmSnel(soort){
   ch.berichten.push({id: "b" + uid(), van: "ik", tekst: GM_SNEL[soort], t, maand: ym(s)}, {id: "b" + uid(), van: "zij", tekst: lokaalAntwoord(s, soort), t: t + 1, status: "ok", maand: ym(s), systeem: true});
   await Store.putChat(ch); render();
 }
+async function inboxOpruimen(s){
+  const open = new Set((s.keuzes || []).map(k => k.id)), nu = ym(s);
+  const rap = G.mails.filter(m => !m.uit && !m.archief && /^Maandrapport /.test(m.onderwerp)).sort((a, b) => String(b.datum).localeCompare(String(a.datum))).slice(3);
+  const kz = G.mails.filter(m => !m.uit && !m.archief && m.keuze && !open.has(m.keuze) && String(m.datum) < nu);
+  for (const m of [...rap, ...kz].slice(0, 20)) await Store.patchMail(m.id, {archief: true, gelezen: true});
+}
 async function chatSend(key, text){
   const s = G.game, c = contacts(s).find(x => x.key === key); text = String(text || "").trim();
   if (!c || !text) return;
@@ -3699,7 +3705,7 @@ const API = {
     try { await Store.backup(); } catch(e){ foutLog("back-up voor de maand", e); }
     S.expect = true; const ctx = tick(s); const docs = await persist(ctx); S.expect = false;
     Store.slots().then(L => Store.saveSlots(L)).catch(() => {});
-    verhaalBeurt(s).catch(() => {}); planGM(s).catch(e => foutLog("plan door de GM", e));
+    inboxOpruimen(s).catch(e => foutLog("inbox opruimen", e)); verhaalBeurt(s).catch(() => {}); planGM(s).catch(e => foutLog("plan door de GM", e));
     if (s.status !== "actief" && s.eind) await Store.addScore({id: G.gid + "-" + s.eind.datum, naam: s.player.corp_name, status: s.status, score: s.eind.score, datum: s.eind.datum, moeilijkheid: s.player.difficulty});
     return {ok: true, status: s.status, rapport_mail: docs[ctx.reportIndex] && docs[ctx.reportIndex].id};
   },
