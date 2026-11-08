@@ -29,6 +29,7 @@ const NEP = {naam: "Trauma Team Platinum", soort: "abonnement", pitch: "Een abon
   const pr = await p.evaluate(() => G.game.producten.map(x => ({naam: x.naam, status: x.status, eta: x.eta, soort: x.soort})));
   ok(pr.some(x => x.naam === "Trauma Team Platinum" && x.status === "ontwikkeling" && x.soort === "abonnement"), "in ontwikkeling: " + JSON.stringify(pr));
   ok(Math.round(cash0 - await p.evaluate(() => G.game.cash)) === 60, "kost betaald");
+  await p.evaluate(() => { G.game.producten.find(y => y.naam === "Trauma Team Platinum").focus = "veilig"; }); // geen terugroepactie bij twee enen: de test mag niet op toeval falen
   for (let i = 0; i < 8; i++) await p.evaluate(async () => { for (const k of [...G.game.keuzes]) await API["/api/keuze"]({id: k.id, i: k.opties.length - 1}); await API["/api/tick"]({force: true}); });
   const na = await p.evaluate(() => { const x = G.game.producten.find(y => y.naam === "Trauma Team Platinum"); return x && {status: x.status, pop: x.pop, eff: prodEffecten(x), log: (x.log || []).map(l => l.tekst)}; });
   ok(na && na.status === "markt", "gelanceerd: " + JSON.stringify(na));

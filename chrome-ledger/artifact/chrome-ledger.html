@@ -139,6 +139,12 @@ h2::after{content:"";flex:1;height:1px;background:linear-gradient(90deg,var(--li
 .opt .t{font-weight:700;letter-spacing:.04em}
 .opt .u{font-size:14px;color:var(--muted)}
 .starter{border:1px dashed var(--line);padding:10px 12px;margin-top:4px}
+.stappen{margin-bottom:14px;box-shadow:inset 0 0 0 1px var(--cyan)}
+.stapl{list-style:none;margin:8px 0 0;padding:0;display:grid;gap:8px}
+.stapl li{display:grid;grid-template-columns:22px minmax(0,1fr) auto;gap:10px;align-items:center}
+.stapl .vink{width:20px;height:20px;border:1px solid var(--line2);display:grid;place-items:center;color:var(--green);font-weight:700}
+.stapl li.af{opacity:.55}.stapl li.af b{text-decoration:line-through}
+.chip.on .dim,.chip.on span{color:#03141a;opacity:.8}
 .gmfab{position:fixed;right:18px;bottom:62px;z-index:40;width:56px;height:56px;border-radius:50%;background:var(--panel2);color:var(--cyan);border:1px solid var(--cyan);font-weight:700;letter-spacing:.08em;box-shadow:0 0 18px rgba(5,217,232,.35);cursor:pointer}
 .gmfab .gmdot{position:absolute;top:6px;right:6px;width:10px;height:10px;border-radius:50%;background:var(--amber)}
 .gmpanel{position:fixed;right:16px;bottom:56px;top:96px;width:min(420px,calc(100vw - 32px));z-index:45;display:flex;flex-direction:column;background:var(--panel2);box-shadow:inset 0 0 0 1px var(--cyan),0 10px 40px rgba(0,0,0,.6)}
@@ -371,7 +377,8 @@ pre.rolls{font:13px/1.6 var(--mono);white-space:pre-wrap;color:var(--green);marg
   .app{grid-template-columns:minmax(0,1fr);grid-template-rows:auto auto 1fr}
   .top{flex-wrap:wrap;gap:10px;padding:10px 16px}
   .brand{order:0} .btn.next{order:1;margin-left:auto;padding:10px 14px} .date{order:2} .nx-long{display:none}
-  .stats{order:3;width:100%;flex-basis:100%}
+  .stats{order:3;width:100%;flex-basis:100%;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;overflow:visible}
+  .stat{min-width:0}.stat .k{font-size:11px;letter-spacing:.08em}.stat .v{font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   nav{flex-direction:row;overflow-x:auto;border-right:0;border-bottom:1px solid var(--line);padding:6px 10px}
   nav button{width:auto;gap:6px;padding:7px 10px;white-space:nowrap}
   nav button.on::before{left:6px;right:6px;top:auto;bottom:0;width:auto;height:2px}
@@ -643,7 +650,7 @@ overzicht(){
   const st = S.state, r = st.rapport;
   const recent = st.mails.filter(m => !m.archief).slice(0,5);
   return `<h1>Overzicht</h1>
-  ${adviesCard(st)}
+  ${eersteStappen()}${adviesCard(st)}
   ${st.besluiten.length || st.aanbiedingen.length || st.keuzes.length ? `<h2>Wacht op uw besluit</h2><div class="grid g2">${st.besluiten.map(decisionCard).join("")}${st.keuzes.map(k => keuzeCard(k)).join("")}${st.aanbiedingen.map(offerCard).join("")}</div>` : ""}
   ${st.macht.oorlogen ? `<div class="card war-banner" style="margin-top:12px"><div class="spread"><span><b>OORLOG</b> met ${esc(st.rivalen.filter(r => r.status === "oorlog").map(r => r.naam).join(", "))}. Elke maand kost dit morale en reputatie.</span><button class="btn sm danger" data-view="rivalen">Naar het front</button></div></div>` : ""}
   <div class="grid g2" style="margin-top:14px">
@@ -988,6 +995,7 @@ function setupBonus(homeD){
     <p class="dim" style="font-size:13px;margin:6px 0 0">Elk soort land geeft een ander voordeel: havens, financiële centra, datavalleien, sloppen. Klik verschillende landen aan om ze te vergelijken.</p>` : "";
 }
 const VERSIES = [
+  ["3.7", "Rust en eerste stappen", ["Een kaart Eerste stappen in het overzicht: vijf concrete dingen voor je eerste maanden (eerste product, crew aan het werk, een contract, de GM iets vragen, je eerste maand), met een knop naar de juiste plek. Ze verdwijnt als alles af is, of met Verbergen.", "Kleine meldingen (stroomstoringen, marktgeruchten, konvooien, kleine incidenten) komen niet meer als losse mail maar onderaan het maandrapport onder Ook deze maand.", "Telefoon: de statusbalk is een raster van drie kolommen in plaats van een rij die afkapt, en tekst op een geselecteerde chip blijft leesbaar."]],
   ["3.6", "Opslag die niet stil faalt", ["Saves zijn ongeveer 75% kleiner: de wereldkaart wordt bij het laden opnieuw opgebouwd in plaats van elke maand mee bewaard. Daardoor passen er veel meer spellen en back-ups in je browser.", "Een mislukte back-up meldt zich nu luid (melding en opslagkaart) in plaats van stil te falen.", "Maximaal 6 spellen in de browser, met een duidelijke melding. Kan je huidige spel niet apart bewaard worden, dan start er geen nieuw spel, zodat je nooit iets kwijtraakt.", "Foutlog onder Logboek → Opslag: vangnetten die vroeger fouten stil inslikten, schrijven ze nu op."]],
   ["3.5", "Druk uit de wereld", ["Heat komt vooral uit riskante en illegale divisies: legale divisies (Biotech, Logistiek, Media & Data, Financieel) trekken boven niveau 6 geen extra aandacht meer. Een groot legaal bedrijf werd vroeger vroeg of laat onvermijdelijk opgepakt.", "Stilstand kost klanten: verkoopt een divisie een jaar lang niets, dan zakt haar omzet elke maand verder, tot −20%, en krijg je daar een mail over. Niets doen is daardoor ook op Casual niet meer veilig.", "Meldingen verschijnen boven de GM-knop in plaats van eroverheen."]],
   ["3.4", "Eerlijk einde", ["De winst hangt af van je speellengte: €4.800k bij 10 jaar, €8.000k bij 20 jaar, €12.000k eindeloos.", "Hegemonie is nu 60% op drie continenten en de Marktmeester schakelt 3 van de 5 oorspronkelijke rivalen uit: in de tests was de economische overwinning de enige die ooit viel.", "Score: bedrijfswaarde telt met de wortel, zodat dominantie, reputatie, jaren en rivalen echt meewegen. Snel winnen geeft tempopunten. Wie verliest, verliest ook de waarde van zijn bedrijf en krijgt ×0,75: een verlies scoort nooit meer dan overleven."]],
@@ -1005,7 +1013,7 @@ const VERSIES = [
   ["1.1", "Wereld", ["Nieuwe tab Wereld: wereldnieuws, een ranglijst van alle bedrijven met waarde en markten per sector.", "25 bedrijven verspreid over de wereld: zakendiner, leveringscontract, aandelen met dividend of een overname.", "Gebeurtenissen per land en continent (stormen, staatsgrepen, handelsakkoorden) veranderen tijdelijk wat gebieden opleveren.", "Startvoordeel per soort land, een eigen stad voor je hoofdkantoor, en per gebied op de kaart: wat het oplevert.", "Geruchten en marktberichten staan in het nieuws in plaats van in je inbox."]],
   ["1.0", "Echte wereld", ["Echte wereldkaart, dominantie per continent en zee, eskaders, rivalen met oorlog en handel, blijvende inkomstenbronnen."]],
 ];
-const PLANNING = [["3.7", "Rust en eerste stappen: een kaart met de eerste stappen, een rustigere inbox (kleine meldingen in het maandrapport) en een betere telefoonweergave."], ["3.8", "De GM plant mee: snelknoppen in het GM-venster en rivalen en syndicaten met een eigen plan over meerdere maanden."], ["3.9", "Diepgang: abonnementen (prijsverhoging, loyaliteit), een overzicht van je dochters en een bedrijfsfocus."], ["4.0", "Onderzoek: technologie per sector, betere divisies en nieuwe producten."]];
+const PLANNING = [["3.8", "De GM plant mee: snelknoppen in het GM-venster en rivalen en syndicaten met een eigen plan over meerdere maanden."], ["3.9", "Diepgang: abonnementen (prijsverhoging, loyaliteit), een overzicht van je dochters en een bedrijfsfocus."], ["4.0", "Onderzoek: technologie per sector, betere divisies en nieuwe producten."]];
 function versieCard(){
   const vrs = ([v, t, l]) => `<div style="margin:8px 0"><b class="mono" style="color:var(--cyan)">${v}</b> <b>${esc(t)}</b><ul class="ylist">${l.map(x => `<li>${esc(x)}</li>`).join("")}</ul></div>`;
   return `<div class="card" style="margin-top:16px"><h3>Versies</h3>${VERSIES.slice(0, 2).map(vrs).join("")}<details><summary class="muted" style="cursor:pointer;margin:6px 0">Oudere versies (${VERSIES.length - 2})</summary>${VERSIES.slice(2).map(vrs).join("")}</details>
@@ -1315,6 +1323,19 @@ function naamModal(titel, waarde){
     m.addEventListener("keydown", e => { if (e.key === "Enter") done(inp().value); if (e.key === "Escape") done(null); });
     document.body.appendChild(m); inp().focus(); inp().select();
   });
+}
+function eersteStappen(){
+  const s = G.game; if (!s || s.flags.stappen_weg || maandenGespeeld(s) >= 8) return "";
+  const gmVraag = ((G.chats.gm || {}).berichten || []).some(b => b.van === "ik");
+  const st = [
+    ["Start je eerste product", "Bedrijf → Productlijn: kies een startidee of beschrijf iets eigens. Zonder producten draait je divisie op ×0,95.", (s.producten || []).length > 0, "bedrijf"],
+    ["Zet je fixer aan het werk", "Crew: een opdracht of klus kost niets extra, je betaalt alleen het loon.", ((s.stats || {}).klussen || 0) > 0 || (s.crew || []).some(m => crewStatus(s, m) !== "vrij"), "crew"],
+    ["Verdien aan een ander bedrijf", "Wereld → Bedrijven: een leveringscontract levert elke maand geld op.", (s.bedrijven || []).some(b => b.contract || b.aandeel > 0 || b.eigenaar === "player"), "wereld"],
+    ["Vraag de GM iets", "Knop GM rechtsonder of toets G. Bijv.: 'Wat moet ik nu doen?'", gmVraag, null],
+    ["Speel je eerste maand", "Volgende maand (toets N). Daarna komt het maandrapport.", maandenGespeeld(s) >= 1, null]];
+  const klaar = st.filter(x => x[2]).length; if (klaar === st.length) return "";
+  return `<div class="card stappen"><div class="spread"><h3>Eerste stappen</h3><span class="row" style="gap:8px"><span class="tag cyan">${klaar} van ${st.length}</span><button class="btn sm" data-a="stappenweg" aria-label="eerste stappen verbergen">Verbergen</button></span></div>
+    <ol class="stapl">${st.map(([t, u, ok, v]) => `<li class="${ok ? "af" : ""}"><span class="vink" aria-hidden="true">${ok ? "✓" : ""}</span><div><b>${esc(t)}</b><div class="dim" style="font-size:13px">${esc(u)}</div></div>${ok ? "" : v ? `<button class="btn sm" data-view="${v}">Ga</button>` : t.startsWith("Vraag") ? '<button class="btn sm" data-a="gmdock">GM</button>' : ""}</li>`).join("")}</ol></div>`;
 }
 function opslagCard(){
   const F = G.fouten || [];
@@ -1711,6 +1732,7 @@ document.addEventListener("click", async e => {
       delete S.keep.ordertxt; S.view = "comms"; S.chat = "gm"; S.chatOpen = true; localSet("view","comms"); render(); chatSend("gm", txt); return; }
     case "chatwith": S.view = "comms"; S.chat = t.dataset.key; S.chatOpen = true; localSet("view","comms"); render(); document.getElementById("chattxt")?.focus({preventScroll: true}); return;
     case "closechat": S.chatOpen = false; render(); return;
+    case "stappenweg": if (G.game){ G.game.flags.stappen_weg = true; await Store.saveGame(); } render(); return;
     case "gmdock": S.gmDock = !S.gmDock; render(); if (S.gmDock) document.getElementById("gmtxt")?.focus({preventScroll: true}); return;
     case "gmsend": { const el = document.getElementById("gmtxt"), txt = el && el.value; if (!txt || !txt.trim()) return; el.value = ""; delete S.keep.gmtxt; chatSend("gm", txt); return; }
     case "starter": return act("/api/product", {soort: "ontwikkel", divisie: t.dataset.div, schaal: "klein", focus: t.dataset.f, vorm: t.dataset.v});

@@ -11,6 +11,12 @@ const html = '<!doctype html><html><head><meta charset=utf8></head><body>' + fs.
   const ok = (v, t) => log.push((v ? "OK   " : "FOUT ") + t);
   await p.evaluate(async () => { await API["/api/setup"]({...S.setup, corp_name: "Abo Corp", doctrine: ["Biotech"], home: "BNL", kapitaal: "ruim"}); G.game.cash = 2000; S.view = "bedrijf"; render(); });
   await p.waitForTimeout(300);
+  // eerste stappen
+  await p.evaluate(() => { S.view = "overzicht"; render(); });
+  const stap0 = await p.$$eval(".stappen .stapl li", e => e.map(x => x.classList.contains("af")));
+  ok(stap0.length === 5 && stap0.every(x => !x), "eerste stappen: 5 open stappen bij de start");
+  if (out){ await p.evaluate(() => window.scrollTo(0, 0)); await p.screenshot({path: out + "/eerste-stappen.png"}); }
+  await p.evaluate(() => { S.view = "bedrijf"; render(); });
   // startideeën
   const st = await p.$$eval(".starter [data-a=starter]", e => e.map(x => x.dataset.v));
   ok(st.includes("product") && st.includes("abonnement"), "lege divisie toont startideeën: " + st.join(", "));
@@ -18,6 +24,9 @@ const html = '<!doctype html><html><head><meta charset=utf8></head><body>' + fs.
   await p.click('.starter [data-v=abonnement]'); await p.waitForTimeout(300);
   const ab = await p.evaluate(() => G.game.producten.map(x => ({naam: x.naam, soort: x.soort, status: x.status})));
   ok(ab.length === 1 && ab[0].soort === "abonnement" && ab[0].status === "ontwikkeling", "abonnement gestart met één klik: " + JSON.stringify(ab));
+  await p.evaluate(() => { S.view = "overzicht"; render(); });
+  ok(await p.evaluate(() => document.querySelector(".stappen .stapl li").classList.contains("af")), "stap 1 is afgevinkt na het eerste product");
+  await p.click("[data-a=stappenweg]"); await p.waitForTimeout(200); ok(!(await p.$(".stappen")), "Verbergen haalt de kaart weg");
   // abonnees: forceer een gewone lancering en speel 12 maanden
   const verloop = await p.evaluate(async () => { const q = G.game.producten[0]; q.doelOverride = 2; const rij = [];
     for (let i = 0; i < 14; i++){ await API["/api/tick"]({force: true}); const x = G.game.producten.find(y => y.id === q.id); if (!x) return ["weg"]; if (x.status === "markt") rij.push([x.pop, x.abo, x.aboIn, x.aboUit]); if (G.game.status !== "actief") break; }
@@ -47,7 +56,10 @@ const html = '<!doctype html><html><head><meta charset=utf8></head><body>' + fs.
   ok(gm.some(x => /^ik:Wat moet ik nu doen/.test(x)), "bericht komt in het GM-gesprek: " + JSON.stringify(gm.slice(-2)));
   if (out) await p.screenshot({path: out + "/gm-dock.png"});
   await p.keyboard.press("Escape"); await p.keyboard.press("Escape"); await p.waitForTimeout(150); ok(!(await p.$(".gmpanel")), "Esc sluit de GM");
-  await p.setViewportSize({width: 390, height: 844}); await p.evaluate(() => { S.gmDock = true; S.view = "overzicht"; render(); }); await p.waitForTimeout(200);
+  await p.setViewportSize({width: 390, height: 844}); await p.evaluate(() => { S.gmDock = false; S.view = "overzicht"; render(); window.scrollTo(0, 0); }); await p.waitForTimeout(200);
+  const stats = await p.$$eval(".stats .stat", e => e.map(x => { const r = x.getBoundingClientRect(); return [Math.round(r.left), Math.round(r.right), x.querySelector(".v").scrollWidth <= x.querySelector(".v").clientWidth + 1]; }));
+  ok(stats.length >= 6 && stats.every(([l, r]) => l >= 0 && r <= 390), "statusbalk past op 390 px: " + JSON.stringify(stats.map(x => x.slice(0, 2))));
+  if (out) await p.screenshot({path: out + "/mobiel-top.png"}); await p.evaluate(() => { S.gmDock = true; S.view = "overzicht"; render(); }); await p.waitForTimeout(200);
   ok(await p.evaluate(() => document.documentElement.scrollWidth <= 390), "GM-paneel past op 390 px");
   if (out) await p.screenshot({path: out + "/gm-dock-mobiel.png"});
   console.log(log.join("\n")); console.log("FOUTEN OP DE PAGINA:", JSON.stringify(errs)); await b.close();

@@ -113,6 +113,7 @@ function remember(r, s, txt){ r.memory.push(`${ym(s)}: ${txt}`); r.memory = r.me
 /* ---------- mails: de engine verzamelt, de opslag schrijft weg ---------- */
 function Ctx(){ return {mails: [], rep: []}; }
 function mail(ctx, s, van, onderwerp, body, prio = "NORMAAL"){
+  if (prio === "LAAG" && ctx.inTick){ (ctx.klein ??= []).push({van, onderwerp, body}); return; }
   ctx.mails.push({datum: ym(s), van, aan: s.player.title || "CEO", onderwerp, prio, body});
 }
 
@@ -125,7 +126,7 @@ const EVENTS = [
   {id: "datalek", prob: 0.05, when: () => true, effect: {reputation: -6, cash: -15},
    from: "Head of Security", subject: "Datalek, bron onbekend", prio: "HOOG", body: "Klantgegevens zijn te koop op een forum. Ik weet nog niet of het intern of extern is. Vertrouw niemand met toegang tot de serverkamer."},
   {id: "beurspiek", prob: 0.07, when: () => true, effect: {cash_pct: 0.05, reputation: 2},
-   from: "CFO", subject: "Markt trekt aan", prio: "NORMAAL", body: "Sector-optimisme verhoogt de omzet. Het gaat vanzelf weer weg. Houd cash, geen illusies."},
+   from: "CFO", subject: "Markt trekt aan", prio: "LAAG", body: "Sector-optimisme verhoogt de omzet. Het gaat vanzelf weer weg. Houd cash, geen illusies."},
   {id: "recessie", prob: 0.05, when: () => true, effect: {cash_pct: -0.05, morale: -2},
    from: "CFO", subject: "Kredietmarkt droogt op", prio: "HOOG", body: "Banken sluiten de kraan. Omzet daalt, schulden niet."},
   {id: "talent", prob: 0.06, when: s => s.reputation > 40, effect: {morale: 4, reputation: 1},
@@ -344,7 +345,7 @@ function chaosTick(s, ctx, diff){
   const M = (v, o, b, p = "NORMAAL") => mail(ctx, s, v, o, b, p);
   switch (pick){
     case "nomaden_konvooi":
-      if (n >= 15 || contract || relV(s, "isra") >= 50){ eff({cash: 6, nom: 3}); M("Logistiek", "Konvooi uit de woestenij", "Een nomaden-konvooi van de Zwarte Kraai-clan levert onderdelen. Geen papieren. Wel korting. Ze willen terugbetaling in gunsten."); }
+      if (n >= 15 || contract || relV(s, "isra") >= 50){ eff({cash: 6, nom: 3}); M("Logistiek", "Konvooi uit de woestenij", "Een nomaden-konvooi van de Zwarte Kraai-clan levert onderdelen. Geen papieren. Wel korting. Ze willen terugbetaling in gunsten.", "LAAG"); }
       else if (n <= -15){ eff({cash: -12, nom: -2}); M("Head of Security", "Konvooi blokkeert de snelweg", "Een clan blokkeert onze leveringen. Ze eisen tol. Ik raad niet aan om met een pistool te onderhandelen. Ik raad niets aan.", "HOOG"); }
       else { eff({cash: -3}); M("Logistiek", "Konvooi op de snelweg", "Een nomaden-konvooi vertraagt onze vrachtwagens. Geen vijandigheid, nog niet. Gewoon aanwezigheid.", "LAAG"); }
       break;
@@ -363,7 +364,7 @@ function chaosTick(s, ctx, diff){
       s.flags.dode_cfo_pakket = true; s.hidden_truth.push({id: "dode_cfo", waar: true, inhoud: `bewijs van illegaal handelen bij ${s.rivals.length ? CH(s.rivals).name : "een rivaal"}`}); break;
     case "slimme_vreemdeling": M("Receptie", "Vreemdeling vraagt naar u", "Een man zonder naam wil u persoonlijk spreken. Hij betaalt contant voor een kop koffie en weigert te verklaren wat hij wil.");
       s.hidden_truth.push({id: "vreemdeling", waar: R() < 0.5, bron: "onbekend"}); break;
-    case "stroomstoring": eff({cash: -4, mor: -1}); M("COO", "Stroomstoring in " + dist, "Twee uur duisternis. Noodgenerator weigerde. De monteur zegt dat hij 'dit pas hoort bij sluiting'."); break;
+    case "stroomstoring": eff({cash: -4, mor: -1}); M("COO", "Stroomstoring in " + dist, "Twee uur duisternis. Noodgenerator weigerde. De monteur zegt dat hij 'dit pas hoort bij sluiting'.", "LAAG"); break;
     case "gemeentelijk_feest": eff({rep: 2, cash: -2}); M("PR", "Gemeente vraagt sponsoring", "Een stadsfeest in de Oude Stad zoekt een hoofdsponsor. Een kans, een kostenpost, en een bom aan fotografen.", "LAAG"); break;
     case "tip_van_straat": M("Anoniem", "Tip: iemand praat over u in Roest", "Een bron beweert dat een rivaal een sabotage plant. Of dit waar is, weten we niet. De bron vraagt €2k.");
       s.hidden_truth.push({id: "tip", waar: R() < 0.5, bron: "straat"}); break;
@@ -481,7 +482,7 @@ function arcsTick(s, ctx, diff){
 /* ---------- de maand ---------- */
 function tick(s){
   migrate(s);
-  const ctx = Ctx(), diff = DIFF[s.player.difficulty] || 1, played = ym(s), start = s.cash, rep = ctx.rep, gz = gezondheidStart(s);
+  const ctx = Ctx(), diff = DIFF[s.player.difficulty] || 1, played = ym(s), start = s.cash, rep = ctx.rep, gz = gezondheidStart(s); ctx.inTick = true;
   let rev = 0, cost = 0, heatAdd = 0; const lines = [], sf = staffFactor(s), need = staffNeed(s);
   for (const d of s.divisions){
     const t = typeOf(s, d.type) || {rev: 6, cost: 4, heat: 1, vol: 0.3};
@@ -619,11 +620,13 @@ function tick(s){
   s.laatste_rapport = {maand: played, netto: shown.net, omzet: r1(rev), kosten: r1(cost), cash_offset: r1(shown.cash - s.cash), heat_offset: r1(shown.heat - s.heat), gebeurd: rep};
   addLog(s, `Maand gespeeld: netto ${shown.net >= 0 ? "+" : ""}${shown.net}k${status !== "actief" ? " · " + status : ""}`);
   if (status === "actief"){ const d = s.date; d.month += 1; if (d.month > 12){ d.month = 1; d.year += 1; } }
+  ctx.inTick = false;
+  if ((ctx.klein || []).length && ctx.mails[ctx.reportIndex]) ctx.mails[ctx.reportIndex].body += `\n**Ook deze maand:**\n${ctx.klein.map(k => `- **${k.onderwerp}** (${k.van}): ${String(k.body).split(/(?<=[.!?])\s/)[0]}`).join("\n")}\n`;
   return ctx;
 }
 
 /* ---------- de stad: elke game een andere kaart ---------- */
-const VERSION = "3.6";
+const VERSION = "3.7";
 const MAP_W = 1000, MAP_H = 680;
 const RIVAL_COLORS = ["#ff9a1f", "#3d7bff", "#c6ff2e", "#f2f2f2", "#9b5cff", "#ffd400", "#ff4d4d"];
 const ARCH = {

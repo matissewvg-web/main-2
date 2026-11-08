@@ -8,22 +8,18 @@ Dit plan wordt elke ronde bijgewerkt: wat af is gaat naar "Gedaan", nieuwe punte
 - **Eerlijk over de grenzen.** De testbots zijn geen spelers: ze negeren heat, breiden niet uit naar andere continenten en gebruiken de GM niet. Een goed bot-cijfer betekent niet dat het spel leuk is. De GM-functies zijn alleen met een nagebootste GM getest; echte speelervaring van de gebruiker weegt zwaarder dan elke meting.
 - **Niet doen:** engine.js opsplitsen in modules, tests in het artifact stoppen, nieuwe systemen bouwen terwijl een bestaand systeem onduidelijk is.
 
-## Waar het spel nu staat (3.6)
+## Waar het spel nu staat (3.7)
 Sterk: veel systemen, een echt einde met eerlijke score, de GM als ontwerper en verteller, saveslots, tests.
 Zwak:
 1. **Balans is beter maar nog grof.** Moeilijkheid is nog vooral een kostenfactor. Op Casual eindigt nog 21% van de verstandige spellen in een razzia, wat te streng is voor Casual.
-2. **Te veel tegelijk voor een nieuwe speler.** Twaalf tabs, tientallen knoppen, een volle inbox. De eerste tien minuten zijn zwaar; "starten zonder basis is wazig" zei de playtest.
+2. **Nog veel tegelijk voor een nieuwe speler.** Twaalf tabs en veel knoppen; Eerste stappen en een rustigere inbox helpen, maar of het genoeg is weet ik pas na een playtest.
 3. **Online opslag is niet getest.** Mijn tests draaien alleen in browsermodus; de online modus (de db van het artifact) zie ik alleen als jij speelt.
-4. **Telefoon** is bruikbaar maar krap: statusbalk kapt af, toasts vallen over de GM-knop.
 5. **De GM is nog een chatvenster.** Hij vertelt, maar plant niet: rivalen en syndicaten hebben geen eigen verhaal dat over maanden loopt.
 
 ## Open (in volgorde)
-### 3.7 Rust en eerste stappen (opruimronde)
-- Eerste stappen: een kaart voor de eerste drie maanden met 4 concrete stappen (eerste product, crew inzetten, een contract, volgende maand), die verdwijnt als ze af zijn.
-- Inbox rustiger: kleine meldingen gebundeld in het maandrapport.
-- Telefoon: statusbalk, roze-op-cyaan chip.
-- Een nieuw spel begint met tientallen ongelezen mails (48 in de test na een paar maanden): het eerste wat je ziet is een berg. (8 nov)
-- Kaartlabels in Europa; aria in inbox en kaart.
+### Nog over uit 3.7
+- Kaartlabels in Europa overlappen bij inzoomen; aria in inbox en kaart.
+- "Wat nu?" herhaalt soms wat Eerste stappen al zegt (eerste product): dubbel weglaten zolang de stappenkaart staat. (8 nov)
 
 ### 3.8 De GM plant mee
 - Snelknoppen in het GM-venster: "Wat nu?", "Wat kost dit?", "Vat mijn maand samen".
@@ -40,11 +36,13 @@ Zwak:
 - Genadeloos: vroegste dood in maand 16; bekijken of de eerste twee jaar daar eerlijk zijn. (8 nov)
 
 ### Testinfrastructuur (doorlopend)
+- Tests mogen niet op toeval falen: concept.js viel om bij een terugroepactie (twee enen). Gerepareerd; andere tests nalopen op hetzelfde. (8 nov)
 - Een test voor de online modus met een nagebootste db, zodat opslaan, wisselen van spel en back-ups daar ook gecontroleerd worden. (8 nov)
 - Expansie-bot in balans.js om hegemonie echt te meten.
 - Een "speel 24 maanden als mens"-run met screenshots per ronde, om zelf kritisch te kijken.
 
 ## Gedaan
+- 3.7 Rust en eerste stappen: kaart Eerste stappen, kleine meldingen in het maandrapport, statusbalk op de telefoon als raster, leesbare geselecteerde chips.
 - 3.6 Opslag die niet stil faalt: saves 75% kleiner, luide back-upfout, maximaal 6 lokale spellen, nooit het oude spel kwijt bij een nieuw spel, foutlog onder Logboek.
 - 3.5 Druk uit de wereld: heat-plafond voor legale divisies, stilstand kost klanten, toasts boven de GM-knop. Bot opent geen riskante divisies meer bij hoge heat.
 - 3.4 Eerlijk einde: winstdrempel per speellengte, haalbare hegemonie en Marktmeester, score met wortel van de waarde, verlies nooit boven overleven.
