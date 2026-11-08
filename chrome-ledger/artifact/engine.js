@@ -626,7 +626,7 @@ function tick(s){
 }
 
 /* ---------- de stad: elke game een andere kaart ---------- */
-const VERSION = "3.8.1";
+const VERSION = "3.9";
 const MAP_W = 1000, MAP_H = 680;
 const RIVAL_COLORS = ["#ff9a1f", "#3d7bff", "#c6ff2e", "#f2f2f2", "#9b5cff", "#ffd400", "#ff4d4d"];
 const ARCH = {
@@ -1488,6 +1488,14 @@ function koppelBedrijf(s, id, wijze){
   if (wijze === "strip"){ const g = r1(b.waarde * 0.75); s.cash = r1(s.cash + g); s.accounts.operationeel = s.cash; s.reputation = clamp(s.reputation - 4); shiftFaction(s, "vakbond", -6); b.koppeling = "strip"; b.waarde = 0; return `${b.naam} is opgeknipt en verkocht: +€${g}k.`; }
   const bd = r1(b.waarde * 0.012); (s.streams ??= []).push({naam: "Dochter " + b.naam, bedrag: bd, sinds: ym(s)}); b.koppeling = "dochter"; return `${b.naam} draait als dochter: +€${bd}k per maand.`;
 }
+function actDochter(s, id, actie){
+  const b = (s.bedrijven || []).find(x => x.id === id && x.eigenaar === "player" && x.koppeling === "dochter"); if (!b) return {ok: false, msg: "Dat is geen dochter van je."};
+  const st = (s.streams || []).find(x => x.naam === "Dochter " + b.naam); s.streams = (s.streams || []).filter(x => x !== st); let msg;
+  if (actie === "samen"){ b.koppeling = null; msg = koppelBedrijf(s, id, s.divisions.some(d => d.type === b.sector) ? "samen" : "eigen"); }
+  else if (actie === "verkoop"){ const g = r1(b.waarde * 0.9); s.cash = r1(s.cash + g); s.accounts.operationeel = s.cash; b.eigenaar = null; b.aandeel = 0; b.koppeling = null; msg = `${b.naam} is verkocht voor €${g}k.`; }
+  else { if (st) s.streams.push(st); return {ok: false, msg: "Onbekende actie."}; }
+  addLog(s, msg); return {ok: true, msg};
+}
 function actBedrijf(s, ctx, id, soort){
   const b = (s.bedrijven || []).find(x => x.id === id); if (!b) return {ok: false, msg: "Onbekend bedrijf."};
   if (b.eigenaar === "player") return {ok: false, msg: `${b.naam} is al van jou.`};
@@ -1715,7 +1723,7 @@ function applyChoice(s, ctx, eff, out = []){
   if (eff.ontmasker) out.push(ontmasker(s, ctx, eff.ontmasker));
   if (eff.dreiging){ const t = (s.dreigingen || []).find(x => x.id === eff.dreiging.id); if (t){ if (eff.dreiging.annuleer) s.dreigingen = s.dreigingen.filter(x => x !== t); else t.extra = (t.extra || 0) + (eff.dreiging.extra || 0); } }
   for (const [id, o] of Object.entries(eff.product || {})){ const p = (s.producten || []).find(x => x.id === id); if (!p) continue;
-    if (o.pop) p.pop = Math.round(clamp(p.pop + o.pop, 3, 95)); if (o.pop && isAbo(p)) p.abo = r1(clamp((p.abo ?? p.pop) * (1 + o.pop / (o.pop < 0 ? 100 : 200)), 0, 140)); if (o.prijs && PRIJS[o.prijs]) p.prijs = o.prijs; if (o.versie && !p.verbetering && p.kwaliteit < 5) p.verbetering = o.versie; }
+    if (o.abo && isAbo(p)) p.abo = r1(clamp((p.abo || 0) * (1 + o.abo / 100), 0, 140)); if (o.pop) p.pop = Math.round(clamp(p.pop + o.pop, 3, 95)); if (o.pop && isAbo(p)) p.abo = r1(clamp((p.abo ?? p.pop) * (1 + o.pop / (o.pop < 0 ? 100 : 200)), 0, 140)); if (o.prijs && PRIJS[o.prijs]) p.prijs = o.prijs; if (o.versie && !p.verbetering && p.kwaliteit < 5) p.verbetering = o.versie; }
   if (eff.crew_vrij){ const m = (s.crew || []).find(x => x.id === eff.crew_vrij); if (m){ m.uit = null; m.loyaliteit = clamp(m.loyaliteit + 15); } }
   for (const [id, v] of Object.entries(eff.crew_loy || {})){ const m = (s.crew || []).find(x => x.id === id); if (m) m.loyaliteit = clamp(m.loyaliteit + v); }
   if (eff.plan) planActie(s, eff.plan, out);
@@ -2367,6 +2375,7 @@ function actProduct(s, ctx, soort, a){
     else if (soort === "verbeter"){ if (p.status !== "markt") return {ok: false, msg: "Het staat niet op de markt."}; if (p.kwaliteit >= 5) return {ok: false, msg: "Beter wordt het niet."}; if (p.verbetering) return {ok: false, msg: "Er loopt al een verbetering."};
       const kost = r1(8 * dif); if (!pay(kost)) return {ok: false, msg: `Een nieuwe versie kost €${kost}k.`}; p.verbetering = 2; msg = `Versie ${p.kwaliteit + 1} van ${p.naam} in ontwikkeling: €${kost}k, 2 maanden.`; }
     else if (soort === "prijs"){ const rr = actPrijs(s, p.id, a.prijs); if (rr.ok) prodLog(p, s, `Prijs: ${PRIJS[a.prijs].label.toLowerCase()}`); return rr; }
+    else if (soort === "loyaliteit"){ if (!isAbo(p)) return {ok: false, msg: "Alleen voor abonnementen."}; p.loyaal = !p.loyaal; msg = p.loyaal ? `Loyaliteitsprogramma voor ${p.naam}: €${loyKost(p)}k per maand, opzeggers −1,2 procentpunt.` : `Loyaliteitsprogramma van ${p.naam} gestopt.`; }
     else if (soort === "stop"){ s.producten = s.producten.filter(x => x !== p); msg = `${p.naam} is uit de markt gehaald.`; }
     else return {ok: false, msg: "Onbekende actie."};
   }
@@ -2403,7 +2412,7 @@ function productTick(s, ctx){
     p.leeftijd = (p.leeftijd || 0) + 1;
     const idx = ((s.sectoren || {})[p.type] || {idx: 100}).idx, tgt = 28 + p.kwaliteit * 8 + (PRIJS[p.prijs || "standaard"] || PRIJS.standaard).pop + (idx - 100) / 3 - Math.max(0, p.leeftijd - 24) * (p.trait === "verslavend" || p.soort === "abonnement" ? 0.25 : 0.8) + ((((s.vraag || {})[p.aard] || {}).idx || 100) - 100) / 6;
     p.pop = Math.round(clamp(p.pop + (tgt - p.pop) * 0.08 + U(-2, 2), p.trait === "cult" ? 35 : 3, 95));
-    if (isAbo(p)) aboTick(s, p);
+    if (isAbo(p)) aboTick(s, p, ctx);
     if (p.trait === "gevoelig" && p.leeftijd % 3 === 0 && !p.verbetering) p.pop = Math.max(3, p.pop - 5);
   }
 
@@ -2660,8 +2669,15 @@ function aardVan(type, naam){
 const isAbo = p => !!p && p.soort === "abonnement";
 function bereik(p){ return isAbo(p) && p.abo != null ? clamp(Math.round(p.abo), 0, 110) : p.pop; }
 function aboChurn(p){ const pr = ({premium: 0.012, budget: -0.008})[p.prijs || "standaard"] || 0;
-  return clamp(0.055 - 0.007 * p.kwaliteit + pr + (p.trait === "gevoelig" ? 0.01 : 0) - (p.trait === "verslavend" ? 0.015 : 0) - (p.trait === "cult" ? 0.01 : 0), 0.012, 0.09); }
-function aboTick(s, p){ if (p.abo == null) p.abo = Math.round(p.pop * 0.8);
+  return clamp(0.055 - 0.007 * p.kwaliteit + pr - (p.loyaal ? 0.012 : 0) + (p.trait === "gevoelig" ? 0.01 : 0) - (p.trait === "verslavend" ? 0.015 : 0) - (p.trait === "cult" ? 0.01 : 0), 0.012, 0.09); }
+const loyKost = p => r1(0.5 + (p.abo || 0) / 50);
+function aboTick(s, p, ctx){ if (p.abo == null) p.abo = Math.round(p.pop * 0.8);
+  if (p.loyaal){ const k = loyKost(p); s.cash = r1(s.cash - k); s.accounts.operationeel = s.cash; }
+  if (ctx && p.abo > 15 && R() < 0.03 && !(s.keuzes || []).some(k => k.soort === "abo_" + p.id)){ const tb = r1(2 + p.abo / 20), gm = r1(p.abo / 12);
+    addKeuze(s, ctx, {soort: "abo_" + p.id, van: "Klantenservice", titel: `Een concurrent lokt abonnees van ${p.naam} weg`, tekst: `Een rivaal biedt onze ${Math.round(p.abo)}k abonnees drie maanden gratis als ze overstappen. De opzeggingen lopen al binnen.`, opties: [
+      {label: `Tegenbod · €${tb}k`, kost: tb, uitleg: "Een korting voor wie blijft. Bijna iedereen blijft (−2%).", eff: {product: {[p.id]: {abo: -2}}}},
+      {label: `Gratis maand voor iedereen · −€${gm}k`, uitleg: "Een maand inkomsten weg, maar maar 4% vertrekt en het product wordt populairder (+5).", eff: {cash: -gm, product: {[p.id]: {abo: -4, pop: 5}}}},
+      {label: "Laten gaan", uitleg: "Ongeveer 12% van je abonnees vertrekt.", eff: {product: {[p.id]: {abo: -12}}}}], standaard: 2}); }
   const vf = vraagFactor(s, p.aard || aardVan(p.type, p.naam)), inn = r1(p.pop / 100 * (4 + Math.max(0, 8 - (p.leeftijd || 0)) * 0.5) * vf), uit = r1(p.abo * aboChurn(p));
   p.abo = r1(clamp(p.abo - uit + inn, 0, 140)); p.aboIn = inn; p.aboUit = uit; }
 const PRIJS = {budget: {label: "Budget", pop: 12, gewicht: 0.8, rep: -0.05}, standaard: {label: "Standaard", pop: 0, gewicht: 1, rep: 0}, premium: {label: "Premium", pop: -10, gewicht: 1.35, rep: 0.1}};
@@ -2742,8 +2758,9 @@ function productEventTick(s, ctx){
 function actPrijs(s, id, prijs){
   const p = (s.producten || []).find(x => x.id === id); if (!p || !PRIJS[prijs]) return {ok: false, msg: "Onbekend."};
   if (p.prijs === prijs) return {ok: false, msg: "Dat is al de prijs."};
-  const was = PRIJS[p.prijs || "standaard"]; p.prijs = prijs; p.pop = clamp(p.pop - was.pop + PRIJS[prijs].pop, 3, 95);
-  const msg = `${p.naam} gaat naar ${PRIJS[prijs].label.toLowerCase()}. Populariteit nu ${p.pop}.`; addLog(s, msg); return {ok: true, msg};
+  const was = PRIJS[p.prijs || "standaard"], ORDE = ["budget", "standaard", "premium"], duurder = ORDE.indexOf(prijs) > ORDE.indexOf(p.prijs || "standaard"); p.prijs = prijs; p.pop = clamp(p.pop - was.pop + PRIJS[prijs].pop, 3, 95);
+  let weg = 0; if (isAbo(p) && duurder && p.abo){ weg = r1(p.abo * 0.08); p.abo = r1(p.abo - weg); }
+  const msg = `${p.naam} gaat naar ${PRIJS[prijs].label.toLowerCase()}. ${isAbo(p) ? `${weg ? `${weg}k abonnees zeggen meteen op na de prijsverhoging. ` : ""}Opzeggers nu ${Math.round(aboChurn(p) * 1000) / 10}% per maand.` : `Populariteit nu ${p.pop}.`}`; addLog(s, msg); return {ok: true, msg};
 }
 
 /* ===================== 3.0 VRAAG EN AANBOD, PRODUCTEIGENSCHAPPEN, PRODUCTGESCHIEDENIS ===================== */
@@ -3686,6 +3703,7 @@ function vm(){
     streams: s.streams || [], invloed: s.invloed || 0, dominantie: dominanceIncome(s, "player"), zeeSterkte: Object.fromEntries(seaControl(s).map(z => [z.id, z.sterkte.player || 0])), regios: regionDominance(s), vergunning: !!s.flags.vergunning,
     invloedActies: INFLUENCE, factieNamen: Object.keys(s.factions), rivaalNamen: s.rivals.map(r => r.name),
     leenruimte: loanCap(s), nieuwe_divisie_kost: newDivCost(s), divisie_types: allTypes(s), contract: s.flags.nomad_contract,
+    dochters: (s.bedrijven || []).filter(b => b.eigenaar === "player" && b.koppeling === "dochter").map(b => ({id: b.id, naam: b.naam, sector: b.sector, land: landNaam(s, b.land), waarde: Math.round(b.waarde), bedrag: ((s.streams || []).find(x => x.naam === "Dochter " + b.naam) || {}).bedrag || 0, verkoop: r1(b.waarde * 0.9), samen: s.divisions.some(d => d.type === b.sector) ? `samenvoegen met ${divNaam(s.divisions.find(d => d.type === b.sector))}` : `eigen divisie (${b.sector})`})),
     plannen: (s.plannen || []).filter(p => p.ontdekt).map(p => ({titel: p.titel, wie: p.wie, stap: p.stap, van: p.stappen.length, stappen: p.stappen, wanneer: p.volgende, zacht: !!p.zacht, eind: PLAN_SOORT[p.soort].eindTekst, motief: p.motief || ""})),
     adviezen: adviezen(s), doelen: doelen(s), scoreNu: score(s), lengte: spelLengte(s), gezondheid: s.gezondheid || null, eind: s.eind || null,
     crewv: crewVM(s), tijd: tijdVM(s), productlijn: productVM(s), projectRisico: projectRisico(s),
@@ -3729,6 +3747,7 @@ const API = {
   async "/api/beveiliging"(){ const r = actDefense(G.game); if (r.ok) await persist(); return {ok: r.ok, bericht: r.msg}; },
   async "/api/divisieconcept"(){ const s = G.game, ctx = Ctx(); const r = actDivisieConcept(s, ctx, G.divConcept); if (r.ok){ G.divConcept = null; await persist(ctx); } return {ok: r.ok, bericht: r.msg}; },
   async "/api/concept"(d){ const s = G.game, ctx = Ctx(); const r = actConcept(s, ctx, (G.concepten || {})[d.divisie]); if (r.ok){ delete G.concepten[d.divisie]; await persist(ctx); } return {ok: r.ok, bericht: r.msg}; },
+  async "/api/dochter"(d){ const s = G.game, ctx = Ctx(); const r = actDochter(s, d.id, d.actie); if (r.ok) await persist(ctx); return {ok: r.ok, bericht: r.msg}; },
   async "/api/product"(d){ const s = G.game, ctx = Ctx(); const r = actProduct(s, ctx, d.soort, d); if (r.ok) await persist(ctx); return {ok: r.ok, bericht: r.msg}; },
   async "/api/missie"(d){ const s = G.game, ctx = Ctx(); const r = actMissie(s, ctx, d.crew, d.missie, d.doel); if (r.ok) await persist(ctx); return {ok: r.ok, bericht: r.msg}; },
   async "/api/crew"(d){ const s = G.game, ctx = Ctx(); const r = actCrew(s, ctx, d.soort, d.id); if (r.ok) await persist(ctx); return {ok: r.ok, bericht: r.msg}; },
