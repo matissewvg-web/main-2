@@ -54,6 +54,12 @@ const html = '<!doctype html><html><head><meta charset=utf8></head><body>' + fs.
   ok(/Kies in het overzicht hoe je het koppelt/.test(ov.bericht), "bericht legt uit wat er nu gebeurt");
   const na = await p.evaluate(async id => { const s = G.game, k = s.keuzes.find(x => x.id === id), i = k.opties.findIndex(o => /Eigen divisie|Samenvoegen/.test(o.label)); const r = await API["/api/keuze"]({id, i}); return {r: r.bericht, divs: s.divisions.map(d => `${d.name || d.type} L${d.level}`), prod: s.producten.map(x => x.naam + ":" + x.status)}; }, ov.id);
   ok(na.prod.length >= 2 && /meteen op de markt/.test(na.r), "koppelen brengt de bestseller mee: " + JSON.stringify(na));
+  // 3.10: koers (strategiedag)
+  const fc = await p.evaluate(async () => { const s = G.game, m0 = s.maanden; s.maanden = 18; const ctx = Ctx(); focusTick(s, ctx); await persist(ctx); const k = s.keuzes.find(x => x.soort === "focus"); if (!k) return null;
+    const i = k.opties.findIndex(o => o.eff.focus === "rd"), d = s.divisions[0], voor = devPlan(s, d, "klein", "standaard", "medisch").maanden; const id = i >= 0 ? "rd" : k.opties[0].eff.focus;
+    await API["/api/keuze"]({id: k.id, i: Math.max(0, i)}); const na = devPlan(s, d, "klein", "standaard", "medisch").maanden; s.maanden = m0; S.view = "bedrijf"; render();
+    return {opties: k.opties.map(o => o.label), gekozen: id, focus: s.focus, rd: id === "rd" ? [voor, na] : null, kaart: /Koers/.test(document.querySelector("main").textContent)}; });
+  ok(fc && fc.opties.length === 3 && fc.focus.includes(fc.gekozen) && fc.kaart && (!fc.rd || fc.rd[1] === Math.max(1, fc.rd[0] - 1)), "strategiedag: kies een koers die blijft: " + JSON.stringify(fc));
   // 3.9: dochters
   const dt = await p.evaluate(async () => { const s = G.game, b = s.bedrijven.find(x => !x.eigenaar); b.eigenaar = "player"; b.aandeel = 100; koppelBedrijf(s, b.id, "dochter"); S.view = "bedrijf"; render();
     const zicht = /Je dochters/.test(document.querySelector("main").textContent), stream0 = s.streams.some(x => x.naam === "Dochter " + b.naam), cash0 = s.cash;

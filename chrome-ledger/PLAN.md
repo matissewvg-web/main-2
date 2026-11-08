@@ -18,11 +18,10 @@ Zwak:
 
 ## Open (in volgorde)
 ### 3.9 Diepgang waar het al leeft
-- Bedrijfsfocus: een kleine boom met keuzes die elke paar maanden een vaste bonus geven.
 
 ### Balans (vervolg)
 - Genadeloos: 8% gaat failliet vóór maand 30, met waarschuwing; nu ook concreet advies bij negatieve cash. Opnieuw bekijken na een playtest op Genadeloos. (8 nov)
-- Een lek in de directie kan al in maand 4 ontstaan; is dat te vroeg voor een nieuwe speler? Kijken of loyaliteit in het eerste jaar trager mag zakken. (8 nov)
+- Realistisch is met de koersen opgelopen naar 43% winst (doel ±35%): bijstellen, bv. iets zwakkere koersen of de eerste strategiedag pas na een jaar. (8 nov)
 
 ### Kleine punten
 - Plannen: jij kunt nog geen eigen plan tegen een rivaal opzetten (spiegelbeeld). Mogelijk 4.x. (8 nov)
@@ -34,6 +33,7 @@ Zwak:
 - tests/mensrun.js draaien in elke opruimronde en de screenshots bekijken.
 
 ## Gedaan
+- 3.10 Koers (strategiedag eens per jaar, 7 vaste koersen) en aanloop (geen vertrek in 6 maanden, geen verraad in 12). verhaal.js valt niet meer om op projectvertraging.
 - 3.9.2 Na een mensrun: advies bij zakkende reputatie (lek), bij negatieve cash (hoeveel maanden, waar snel geld), oude mail naar archief, geen absurde speelruimte-melding meer. tests/mensrun.js toegevoegd.
 - 3.9.1 Online-test met nagebootste db (alles groen), lonen +6% per tijdperk.
 - 3.9 Abonnementen (loyaliteit, prijsverhoging, weglokken) en een overzicht van je dochters met opnemen of verkopen.

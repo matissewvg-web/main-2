@@ -29,7 +29,8 @@ const html = '<!doctype html><html><head><meta charset=utf8></head><body>' + fs.
   if (out){ await p.evaluate(() => { const h = [...document.querySelectorAll("main h3")].find(x => /Nieuwe divisie/.test(x.textContent)); window.scrollTo(0, h.getBoundingClientRect().top + scrollY - 80); }); await p.waitForTimeout(150); await p.screenshot({path: out + "/divisie-voorstel.png"}); }
   await p.click("[data-a=divconceptja]"); await p.waitForTimeout(300);
   ok(await p.evaluate(() => G.game.projects.some(x => x.new_name === "Luchtwacht" && x.eersteProduct) && !!typeOf(G.game, "Luchtambulance")), "project gestart, nieuwe soort aangemaakt");
-  for (let i = 0; i < 4; i++) await p.evaluate(async () => { await API["/api/tick"]({force: true}); });
+  // een project kan vertraging oplopen of mislukken; dat hoort bij het spel, maar de test mag er niet op falen
+  await p.evaluate(async () => { const pj = G.game.projects.find(x => x.new_name === "Luchtwacht"); pj.gerold = true; /* projectworp overslaan: geen vertraging of mislukking in de test */ for (let i = 0; i < 10 && !G.game.divisions.some(d => d.name === "Luchtwacht"); i++){ const q = G.game.projects.find(x => x.new_name === "Luchtwacht"); if (q){ q.eta_months = Math.min(q.eta_months, 1); } await API["/api/tick"]({force: true}); } });
   const na = await p.evaluate(() => ({div: G.game.divisions.map(d => d.name), prod: G.game.producten.map(x => x.naam + ":" + x.status), opening: G.game.keuzes.concat([]).map(k => k.titel).concat((G.game.keuzes_klaar || []).map(k => k.titel))}));
   ok(na.div.includes("Luchtwacht") && na.prod.some(x => x.startsWith("Luchtwacht Goud")) && na.opening.includes("De eerste vlucht"), "geopend met eerste product en openingsverhaal: " + JSON.stringify(na));
   // verhaalboog
