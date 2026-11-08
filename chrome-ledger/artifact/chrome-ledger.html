@@ -656,7 +656,7 @@ overzicht(){
   const st = S.state, r = st.rapport;
   const recent = st.mails.filter(m => !m.archief).slice(0,5);
   return `<h1>Overzicht</h1>
-  ${eersteStappen()}${adviesCard(st)}
+  ${nieuwCard()}${eersteStappen()}${adviesCard(st)}
   ${st.besluiten.length || st.aanbiedingen.length || st.keuzes.length ? `<h2>Wacht op uw besluit</h2><div class="grid g2">${st.besluiten.map(decisionCard).join("")}${st.keuzes.map(k => keuzeCard(k)).join("")}${st.aanbiedingen.map(offerCard).join("")}</div>` : ""}
   ${st.macht.oorlogen ? `<div class="card war-banner" style="margin-top:12px"><div class="spread"><span><b>OORLOG</b> met ${esc(st.rivalen.filter(r => r.status === "oorlog").map(r => r.naam).join(", "))}. Elke maand kost dit morale en reputatie.</span><button class="btn sm danger" data-view="rivalen">Naar het front</button></div></div>` : ""}
   <div class="grid g2" style="margin-top:14px">
@@ -1003,9 +1003,10 @@ function setupBonus(homeD){
     <p class="dim" style="font-size:13px;margin:6px 0 0">Elk soort land geeft een ander voordeel: havens, financiële centra, datavalleien, sloppen. Klik verschillende landen aan om ze te vergelijken.</p>` : "";
 }
 const VERSIES = [
+  ["4.1.1", "Wat is er nieuw", ["Een kaart in het overzicht toont wat er nieuw is sinds je vorige bezoek, met per versie de belangrijkste verandering. Klik Gelezen om hem weg te halen."]],
   ["4.1", "Balans na de nieuwe onderdelen", ["Koersen, aanloop en uitbreidbare capaciteit maakten het spel makkelijker: de testbot won op Realistisch 46%. De winstdrempel is 10% hoger (€8.800k bij 20 jaar, €5.200k bij 10 jaar, €12.800k eindeloos) en de eerste strategiedag komt na een jaar. Gemeten: Realistisch 34%, Casual 86%, Genadeloos 11%.", "Productiecapaciteit is bij de start krapper: een goede lancering kan nu al uitverkopen, en uitbreiden is een echte keuze."]],
   ["4.0", "Echte producten", ["Elk product heeft een productblad (knop Details): drie eigenschappen die bij de soort horen (een wapen heeft vuurkracht, betrouwbaarheid en onopvallendheid; een medisch product werkzaamheid, veiligheid en herstel), prijs per stuk, kostprijs en marge, afzet per maand, levensfase en de omzet van de laatste twaalf maanden.", "Marktaandeel in je eigen segment, met de grootste concurrenten van rivalen erbij.", "Productiecapaciteit is een echte grens: is de vraag groter dan wat je kunt maken, dan ben je uitverkocht en mis je die omzet. Uitbreiden kost geld en groeit mee met je divisie.", "Eerlijk: prijs, kostprijs en afzet zijn in 4.0 een uitsplitsing van de bestaande productomzet. Echte afzet maal prijs, met een vrij instelbare prijs, komt in 4.2."]],
-  ["3.10", "Koers en aanloop", ["Bedrijfsfocus: eens per jaar (de eerste keer na zes maanden) een strategiedag. Je kiest uit drie koersen er één die blijft: Lean, Juristen in huis, Merkbouwer, Talentmagneet, Snelle R&D, Abonnementshuis of Huisbankier. Je koers staat bovenaan bij Bedrijf.", "Aanloop: in je eerste half jaar vertrekt niemand uit je directie, en in je eerste jaar wordt niemand verrader. In een testrun begon iemand al in maand 4 te lekken, voor je je mensen kende."]],
+  ["3.10", "Koers en aanloop", ["Bedrijfsfocus: eens per jaar (de eerste keer na een jaar, sinds 4.1) een strategiedag. Je kiest uit drie koersen er één die blijft: Lean, Juristen in huis, Merkbouwer, Talentmagneet, Snelle R&D, Abonnementshuis of Huisbankier. Je koers staat bovenaan bij Bedrijf.", "Aanloop: in je eerste half jaar vertrekt niemand uit je directie, en in je eerste jaar wordt niemand verrader. In een testrun begon iemand al in maand 4 te lekken, voor je je mensen kende."]],
   ["3.9.2", "Na een speelronde van twee jaar", ["Wat nu? waarschuwt als je reputatie maanden achter elkaar zakt terwijl journalisten interne stukken citeren: misschien lekt iemand uit je directie, en een speurder kan dat uitzoeken. In een testrun zakte de reputatie ongemerkt van 30 naar 10.", "Is je cash negatief, dan zegt Wat nu? hoeveel maanden je nog hebt tot het faillissement en waar je snel geld vandaan haalt.", "Mail ouder dan zes maanden zonder open keuze gaat vanzelf naar het archief."]],
   ["3.9.1", "Online getest, late druk", ["De online opslag (zoals in claude.ai) heeft nu een eigen test met een nagebootste database: compacte saves, geen eindeloze save-lus, herladen, back-ups, inbox opruimen, spellen wisselen en chats. Alles slaagde.", "Lonen stijgen 6% per tijdperk, zodat ook een groot bedrijf in de late game moet blijven opletten."]],
   ["3.9", "Abonnementen en dochters", ["Abonnementen: een loyaliteitsprogramma (vaste kosten per maand, minder opzeggers), een prijsverhoging kost meteen 8% van je abonnees, en soms lokt een concurrent je abonnees weg: tegenbod, gratis maand of laten gaan.", "Je dochters: overgenomen bedrijven die als dochter draaien staan nu bovenaan bij Bedrijf. Je kunt ze later alsnog opnemen in je bedrijf of verkopen voor 90% van hun waarde."]],
@@ -1373,6 +1374,13 @@ function plannenCard(st){
   return `<div class="card decision" style="margin-bottom:14px"><h3>Plannen tegen jou</h3>${L.map(p => `<div style="margin:8px 0 12px"><div class="spread"><b>${esc(p.titel)}</b><span class="tag HOOG">stap ${p.stap} van ${p.van}</span></div>
     <ol class="planstap">${p.stappen.map((x, i) => `<li class="${i < p.stap ? "af" : i === p.stap ? "nu" : ""}">${esc(x)}${i === p.stap ? ` <span class="dim">(rond ${esc(p.wanneer)})</span>` : ""}</li>`).join("")}</ol>
     <div class="dim" style="font-size:13px">Als het slaagt: ${esc(p.eind)}${p.zacht ? " · <b>je bent voorbereid, de klap is half zo groot</b>" : ""}${p.motief ? ` · motief: ${esc(p.motief)}` : ""}</div></div>`).join("")}</div>`;
+}
+function nieuwCard(){
+  const gezien = localGet("gezien_versie"), i = VERSIES.findIndex(v => v[0] === gezien), L = i === -1 ? VERSIES.slice(0, 10) : VERSIES.slice(0, i);
+  if (!L.length) return "";
+  return `<div class="card" style="margin-bottom:14px;box-shadow:inset 0 0 0 1px var(--violet)"><div class="spread"><h3>Nieuw sinds je vorige bezoek</h3><button class="btn sm" data-a="nieuwgelezen">Gelezen</button></div>
+    <ul class="ylist" style="font-size:14px">${L.map(([v, t, b]) => `<li><b class="mono" style="color:var(--cyan)">${esc(v)}</b> <b>${esc(t)}</b>: ${esc(b[0])}</li>`).join("")}</ul>
+    <p class="dim" style="font-size:13px;margin:6px 0 0">Alles staat uitgebreid bij Logboek → Versies.</p></div>`;
 }
 function eersteStappen(){
   const s = G.game; if (!s || s.flags.stappen_weg || maandenGespeeld(s) >= 8) return "";
@@ -1792,6 +1800,7 @@ document.addEventListener("click", async e => {
     case "gmprefill": { const el = document.getElementById("gmtxt"); if (el){ el.value = "Wat kost het om "; el.focus(); el.setSelectionRange(el.value.length, el.value.length); } return; }
     case "dochter": { if (t.dataset.x === "verkoop" && !await ask("Dochter verkopen?", "Je krijgt 90% van de waarde in één keer, en het vaste maandbedrag stopt.", "Verkopen", true)) return; return act("/api/dochter", {id: t.dataset.id, actie: t.dataset.x}); }
     case "prodsheet": S.prodSheet = S.prodSheet === t.dataset.id ? null : t.dataset.id; render(); return;
+    case "nieuwgelezen": localSet("gezien_versie", VERSIES[0][0]); render(); return;
     case "stappenweg": if (G.game){ G.game.flags.stappen_weg = true; await Store.saveGame(); } render(); return;
     case "gmdock": S.gmDock = !S.gmDock; render(); if (S.gmDock) document.getElementById("gmtxt")?.focus({preventScroll: true}); return;
     case "gmsend": { const el = document.getElementById("gmtxt"), txt = el && el.value; if (!txt || !txt.trim()) return; el.value = ""; delete S.keep.gmtxt; chatSend("gm", txt); return; }
