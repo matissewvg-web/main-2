@@ -628,7 +628,7 @@ function tick(s){
 }
 
 /* ---------- de stad: elke game een andere kaart ---------- */
-const VERSION = "3.10";
+const VERSION = "4.0";
 const MAP_W = 1000, MAP_H = 680;
 const RIVAL_COLORS = ["#ff9a1f", "#3d7bff", "#c6ff2e", "#f2f2f2", "#9b5cff", "#ffd400", "#ff4d4d"];
 const ARCH = {
@@ -2378,6 +2378,7 @@ function actProduct(s, ctx, soort, a){
     else if (soort === "verbeter"){ if (p.status !== "markt") return {ok: false, msg: "Het staat niet op de markt."}; if (p.kwaliteit >= 5) return {ok: false, msg: "Beter wordt het niet."}; if (p.verbetering) return {ok: false, msg: "Er loopt al een verbetering."};
       const kost = r1(8 * dif); if (!pay(kost)) return {ok: false, msg: `Een nieuwe versie kost €${kost}k.`}; p.verbetering = 2; msg = `Versie ${p.kwaliteit + 1} van ${p.naam} in ontwikkeling: €${kost}k, 2 maanden.`; }
     else if (soort === "prijs"){ const rr = actPrijs(s, p.id, a.prijs); if (rr.ok) prodLog(p, s, `Prijs: ${PRIJS[a.prijs].label.toLowerCase()}`); return rr; }
+    else if (soort === "capaciteit"){ if (p.status !== "markt") return {ok: false, msg: "Het staat niet op de markt."}; const k = capKost(s, p); if (!pay(k)) return {ok: false, msg: `Productie uitbreiden kost €${k}k.`}; p.capExtra = (p.capExtra || 0) + 15; delete p.uitverkochtGemeld; msg = `Productielijn van ${p.naam} uitgebreid: capaciteit nu ${prodCap(s, p)} (vraag ${Math.round(bereik(p))}).`; }
     else if (soort === "loyaliteit"){ if (!isAbo(p)) return {ok: false, msg: "Alleen voor abonnementen."}; p.loyaal = !p.loyaal; msg = p.loyaal ? `Loyaliteitsprogramma voor ${p.naam}: €${loyKost(p)}k per maand, opzeggers −1,2 procentpunt.` : `Loyaliteitsprogramma van ${p.naam} gestopt.`; }
     else if (soort === "stop"){ s.producten = s.producten.filter(x => x !== p); msg = `${p.naam} is uit de markt gehaald.`; }
     else return {ok: false, msg: "Onbekende actie."};
@@ -2704,7 +2705,41 @@ function aboTick(s, p, ctx){ if (p.abo == null) p.abo = Math.round(p.pop * 0.8);
   const vf = vraagFactor(s, p.aard || aardVan(p.type, p.naam)), inn = r1(p.pop / 100 * (4 + Math.max(0, 8 - (p.leeftijd || 0)) * 0.5) * vf), uit = r1(p.abo * aboChurn(p));
   p.abo = r1(clamp(p.abo - uit + inn, 0, 140)); p.aboIn = inn; p.aboUit = uit; }
 const PRIJS = {budget: {label: "Budget", pop: 12, gewicht: 0.8, rep: -0.05}, standaard: {label: "Standaard", pop: 0, gewicht: 1, rep: 0}, premium: {label: "Premium", pop: -10, gewicht: 1.35, rep: 0.1}};
-const prodGewicht = (p, s) => p.kwaliteit * bereik(p) / 100 * (PRIJS[p.prijs || "standaard"] || PRIJS.standaard).gewicht * (s ? vraagFactor(s, p.aard || aardVan(p.type, p.naam)) : 1) * (p.trait === "goedkoop" ? 1.15 : 1);
+
+/* ===================== 4.0 ECHTE PRODUCTEN: eigenschappen, prijs per stuk, marge, afzet, levensfase, marktaandeel, capaciteit ===================== */
+const STUK = {wapen: {eenheid: "stuks", prijs: 1200}, medisch: {eenheid: "behandelingen", prijs: 450}, implantaat: {eenheid: "implantaten", prijs: 3800}, data: {eenheid: "licenties", prijs: 90},
+  beveiliging: {eenheid: "contracten", prijs: 2500}, smokkel: {eenheid: "ladingen", prijs: 900}, logistiek: {eenheid: "zendingen", prijs: 180}, financieel: {eenheid: "rekeningen", prijs: 60},
+  orbitaal: {eenheid: "lanceringen", prijs: 40000}, consument: {eenheid: "stuks", prijs: 140}};
+const SPECS = {wapen: ["Vuurkracht", "Betrouwbaarheid", "Onopvallendheid"], medisch: ["Werkzaamheid", "Veiligheid", "Herstel"], implantaat: ["Prestatie", "Afstoting", "Levensduur"],
+  data: ["Bereik", "Nauwkeurigheid", "Privacy"], beveiliging: ["Reactietijd", "Dekking", "Discretie"], smokkel: ["Snelheid", "Onzichtbaarheid", "Volume"], logistiek: ["Snelheid", "Betrouwbaarheid", "Bereik"],
+  financieel: ["Rendement", "Risico", "Gemak"], orbitaal: ["Lading", "Precisie", "Kosten"], consument: ["Design", "Gemak", "Duurzaamheid"]};
+const PRIJS_STUK = {budget: 0.75, standaard: 1, premium: 1.5};
+function hashN(str, i){ let h = 7; for (const ch of String(str) + ":" + i) h = (h * 31 + ch.charCodeAt(0)) | 0; return Math.abs(h); }
+function prodSpecs(p){ const names = SPECS[p.aard] || SPECS.consument, F = {kwaliteit: [1, 1, 1], veilig: [0, 2, 0], snel: [0, -1, 0], goedkoop: [-1, -1, 0], innovatief: [2, -1, 0]}[p.focus] || [0, 0, 0];
+  return names.map((n, i) => ({naam: n, v: clamp(Math.round(p.kwaliteit * 1.6 + (hashN(p.id, i) % 5) - 2 + F[i] + (p.trait === "duurzaam" && i === 1 ? 1 : 0)), 1, 10)})); }
+const stukPrijs = p => Math.round((STUK[p.aard] || STUK.consument).prijs * (PRIJS_STUK[p.prijs || "standaard"] || 1) * (0.8 + p.kwaliteit * 0.08));
+const kostPrijs = p => Math.round((STUK[p.aard] || STUK.consument).prijs * (0.32 + p.kwaliteit * 0.05) * (p.trait === "goedkoop" ? 0.85 : 1));
+function levensfase(p){
+  if (p.status !== "markt") return p.status === "ontwikkeling" ? "In ontwikkeling" : "Wachtrij";
+  const h = p.hist || [], trend = h.length >= 3 ? h[h.length - 1].pop - h[h.length - 3].pop : 0, l = p.leeftijd || 0;
+  if (l < 3) return "Introductie"; if (l > 30 || trend <= -6) return "Verval"; if (trend >= 4 && l < 18) return "Groei"; return "Volwassen"; }
+/* capaciteit: hoeveel van de vraag je kunt leveren, in dezelfde schaal als populariteit (0-100). Een echte grens. */
+function prodCap(s, p){ const d = s.divisions.find(x => divNaam(x) === p.divisie); return Math.round(clamp(70 + 6 * ((d && d.level) || 1) + (p.capExtra || 0), 50, 130)); }
+const effBereik = (p, s) => s ? Math.min(bereik(p), prodCap(s, p)) : bereik(p);
+const capKost = (s, p) => r1((5 + (p.capExtra || 0) / 5) * (DIFF[s.player.difficulty] || 1));
+function segment(s, p){
+  const a = p.aard || aardVan(p.type, p.naam), mijn = (s.producten || []).filter(x => x.status === "markt" && (x.aard || aardVan(x.type, x.naam)) === a);
+  const rival = s.rivals.flatMap(r => (r.producten || []).filter(x => x.aard === a).map(x => ({naam: x.naam, wie: r.name, w: x.kwaliteit * x.pop / 100})));
+  const eigen = mijn.map(x => ({naam: x.naam, wie: "jij", w: prodGewicht(x, s), id: x.id})), alle = [...eigen, ...rival], tot = alle.reduce((t, x) => t + x.w, 0) || 1;
+  const pc = x => Math.round(x.w / tot * 1000) / 10;
+  return {aandeel: pc(eigen.find(x => x.id === p.id) || {w: 0}), concurrenten: rival.sort((x, y) => y.w - x.w).slice(0, 3).map(x => ({naam: x.naam, wie: x.wie, pct: pc(x)})), spelers: alle.length};
+}
+function prodDetail(s, p, omzet){
+  const sp = stukPrijs(p), kp = kostPrijs(p), afzet = omzet > 0 ? Math.round(omzet * 1000 / sp) : 0, cap = prodCap(s, p), vraag = bereik(p);
+  return {specs: prodSpecs(p), eenheid: (STUK[p.aard] || STUK.consument).eenheid, stukPrijs: sp, kostPrijs: kp, marge: Math.round((sp - kp) / sp * 100), afzet, fase: levensfase(p),
+    cap, vraag: Math.round(vraag), uitverkocht: vraag > cap, gemist: vraag > cap ? Math.round((vraag - cap) / vraag * 100) : 0, capKost: capKost(s, p), seg: segment(s, p), hist: (p.hist || []).slice(-12)};
+}
+const prodGewicht = (p, s) => p.kwaliteit * effBereik(p, s) / 100 * (PRIJS[p.prijs || "standaard"] || PRIJS.standaard).gewicht * (s ? vraagFactor(s, p.aard || aardVan(p.type, p.naam)) : 1) * (p.trait === "goedkoop" ? 1.15 : 1);
 const prodSterkte = p => bereik(p) / 100 * (0.5 + p.kwaliteit * 0.15);
 function prodEffecten(p){ const A = PRODUCT_AARD[p.aard || "consument"] || PRODUCT_AARD.consument, f = prodSterkte(p), out = {};
   for (const [k2, v] of Object.entries(p.eigenEff || A.eff)) out[k2] = Math.round(v * f * 10) / 10; const pr = (PRIJS[p.prijs || "standaard"] || {}).rep || 0; if (pr) out.reputation = Math.round(((out.reputation || 0) + pr) * 10) / 10;
@@ -2724,6 +2759,7 @@ function productEffectTick(s){
   for (const p of (s.producten || []).filter(x => x.status === "markt")){
     p.aard ??= aardVan(p.type, p.naam); p.prijs ??= "standaard";
     for (const [k2, v] of Object.entries(prodEffecten(p))) tot[k2] = (tot[k2] || 0) + v;
+    { const omz = ((s.divomzet || {})[p.divisie] || 0) * prodGewicht(p, s) / Math.max(0.01, (s.producten || []).filter(x => x.divisie === p.divisie && x.status === "markt").reduce((a, x) => a + prodGewicht(x, s), 0)); p.hist = [...(p.hist || []), {m: ym(s), pop: Math.round(bereik(p)), omzet: r1(omz)}].slice(-12); if (bereik(p) > prodCap(s, p) && !p.uitverkochtGemeld){ p.uitverkochtGemeld = true; (s.flags.uitverkocht_mail ??= []).push(p.naam); } }
     p.omzetTotaal = r1((p.omzetTotaal || 0) + ((s.divomzet || {})[p.divisie] || 0) * prodGewicht(p, s) / Math.max(0.01, (s.producten || []).filter(x => x.divisie === p.divisie && x.status === "markt").reduce((a, x) => a + prodGewicht(x, s), 0)));
   }
   if (tot.reputation) s.reputation = clamp(s.reputation + tot.reputation);
