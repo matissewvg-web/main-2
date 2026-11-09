@@ -88,6 +88,18 @@ const html = '<!doctype html><html><head><meta charset=utf8></head><body>' + fs.
   ok(od.kg < od.k0 && od.kp > od.k0 && od.spg[1] === Math.max(1, od.sp0[1] - 1) && od.spp[1] === Math.min(10, od.sp0[1] + 1), "goedkoop: lagere kostprijs en −1 betrouwbaarheid; premium: hoger en +1: " + JSON.stringify(od));
   ok(od.ok && od.kp1 > od.kp0 && od.betaald === od.oms, "omschakelen op de markt kost geld en verandert de kostprijs: " + JSON.stringify([od.kp0, od.kp1, od.betaald]));
   ok(od.nieuw !== od.oud && /failliet/.test(od.melding), "failliete leverancier wordt vervangen: " + od.melding);
+  // 4.5: defecten en garantie (deterministisch; kansRol vast)
+  const df = await p.evaluate(async () => { const s = G.game, q = {id: "td", naam: "Testding", type: "Logistiek", aard: "consument", kwaliteit: 3, pop: 50, status: "markt", soort: "product"};
+    const st = defectPct(q), gk = defectPct({...q, delen: [0, 1, 2].map(() => ({kwal: "goedkoop"}))}), pr = defectPct({...q, delen: [0, 1, 2].map(() => ({kwal: "premium"}))}), hk = defectPct({...q, kwaliteit: 5});
+    const kost = prodKost(q, 10), zonder = 10 * PROD_KOST * kostFactor(q) / prijsF(q);
+    const x = s.producten.find(y => y.status === "markt"), bewaar = {kw: x.kwaliteit, tr: x.trait, aard: x.aard, delen: JSON.stringify(x.delen || []), laatst: x.defectLaatst}; x.aard = "smokkel"; x.kwaliteit = 1; x.trait = "gevoelig"; x.delen = [0, 1, 2].map(() => ({kwal: "goedkoop"})); delete x.defectLaatst;
+    const hoog = defectPct(x), echt = window.kansRol; window.kansRol = () => 0; defectTick(s, Ctx(), x); window.kansRol = echt;
+    const k = (s.keuzes || []).find(y => y.soort === "defect_" + x.id); s.keuzes = (s.keuzes || []).filter(y => y !== k);
+    x.kwaliteit = bewaar.kw; x.trait = bewaar.tr; x.aard = bewaar.aard; x.delen = JSON.parse(bewaar.delen); x.defectLaatst = bewaar.laatst;
+    return {st, gk, pr, hk, garantie: Math.round((kost - zonder) * 1000) / 1000, hoog, keuze: !!k, opties: k ? k.opties.map(o => o.label) : []}; });
+  ok(df.st === 3 && df.gk === 4.5 && df.pr === 2.1 && df.hk < df.st, "defecten: consument kwaliteit 3 = 3%, goedkope onderdelen 4,5%, premium 2,1%, hogere kwaliteit minder: " + JSON.stringify(df));
+  ok(Math.abs(df.garantie - 0.3) < 1e-6, "garantie kost het defectpercentage van de omzet (3% van €10k = €0,3k)");
+  ok(df.hoog > 5 && df.keuze && df.opties.length === 3, "boven 5% defecten komt er een terugroepkeuze: " + JSON.stringify([df.hoog, df.opties]));
   ok(prijs.ok && prijs.f === 1.3 && prijs.label === "premium" && prijs.f2 === 1.8, "prijs exact instellen, begrensd op 180%: " + JSON.stringify([prijs.f, prijs.label, prijs.f2]));
   ok(loy.keuze && loy.keuze.length === 3, "concurrent lokt abonnees weg: keuze " + JSON.stringify(loy.keuze));
   // overname en koppelen
