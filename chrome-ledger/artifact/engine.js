@@ -53,7 +53,7 @@ function template(){
       {name: "Jorik Maes", role: "Head of Security", loyalty: 60, ambition: 40, secret: "Heeft een schuld bij Brigada Volk."},
       {name: "Lien Verstraeten", role: "PR", loyalty: 50, ambition: 75, secret: "Lekt af en toe aan een journalist."},
     ],
-    flags: {},
+    flags: {compensatie_473: true},
   };
 }
 
@@ -68,6 +68,7 @@ function foutLog(waar, e){
 const pak = s => s && s.map && s.map.kind === "wereld" && s.map.versie === 2 && s.map.frame ? {...s, map: {kind: "wereld", versie: 2, gedeeld: true}} : s;
 function migrate(s){
   if (s.map && s.map.gedeeld) s.map = genWorld().map;
+  if (!(s.flags || {}).compensatie_473 && s.flags && s.date){ s.cash = r1((s.cash || 0) + 100); if (s.accounts) s.accounts.operationeel = s.cash; s.flags.compensatie_473 = true; (s.log ??= []).push(`${ym(s)} · Compensatie: +€100M omdat facturen en gebeurtenissen te duur waren (4.7.3)`); } /* 4.7.3: eenmalig €100M terug in bestaande saves */
   if (!(s.flags || {}).keur_471 && s.producten){ for (const p of s.producten) if (p.keuring != null && p.keuring !== "ok"){ p.keuring = "ok"; ((s.vergunning ??= {})[p.aard || aardVan(p.type, p.naam)] = true); } (s.flags ??= {}).keur_471 = true; } /* 4.7.1: eenmalig alles gekeurd in bestaande saves */
   s.accounts ??= {operationeel: s.cash, zwart: 0, offshore: 0};
   s.accounts.zwart ??= 0; s.accounts.offshore ??= 0;
@@ -148,8 +149,9 @@ function eventProb(s, e, diff){
 }
 /* omvang van het bedrijf: schade en rekeningen schalen mee, zodat een starter niet als een megacorp geraakt wordt */
 const omvang = s => clamp((((s.history || []).slice(-1)[0]) || {omzet: 30}).omzet / 50, 0.35, 2);
-function applyEffect(s, eff){
-  s.cash = r1(s.cash + (eff.cash || 0) + s.cash * (eff.cash_pct || 0));
+function applyEffect(s, eff){ /* 4.7.3: verliezen 30% kleiner; een percentage raakt hoogstens drie maanden omzet, niet je hele spaarpot */
+  const c = eff.cash || 0, pct = eff.cash_pct || 0, basis = pct < 0 ? Math.min(Math.max(s.cash, 0), 3 * (((s.history || []).slice(-1)[0] || {}).omzet || 30)) : s.cash;
+  s.cash = r1(s.cash + (c < 0 ? c * 0.7 : c) + basis * pct);
   for (const k of ["heat", "morale", "reputation"]) if (k in eff) s[k] = clamp(s[k] + eff[k]);
 }
 
@@ -182,9 +184,9 @@ function invoice(s, payee, amount, due, note, tag = "vast"){
   s.invoices.push({id: hex8(), payee, amount: r1(amount), due_in: due, note, tag, overdue: 0, auto_pay: true});
 }
 function invoicesTick(s, ctx, diff){
-  const scale = 0.6 * omvang(s);
+  const scale = 0.35 * omvang(s); /* 4.7.3: was 0,6 */
   for (const [p, lo, hi, note] of RECURRING) if (R() < 0.4) invoice(s, p, U(lo, hi) * scale * diff, 2, note);
-  if (R() < 0.25){
+  if (R() < 0.15){
     const payee = CH(["Beveiligingsbureau Falk", "Consultants Merrick & Zoon", "Overheid: leges en heffingen", "Schadeherstel BV 'Snelle Jan'", "Cleaning crew (geen vragen)"]);
     let amt = U(1, 8) * scale * diff;
     if (payee.startsWith("Overheid") && faction(s, "stad") < -30) amt *= 1.5;
@@ -212,7 +214,7 @@ function invoicesTick(s, ctx, diff){
     still.push(inv);
   }
   s.invoices = still;
-  if (paid) ctx.rep.push(`Facturen betaald: €${r1(paid)}M`);
+  if (paid) ctx.rep.push(`Facturen betaald: €${r1(paid)}M`); ctx.facturen = r1(paid + late);
   if (late) ctx.rep.push(`Boete/rente achterstallig: €${r1(late)}M`);
 }
 
@@ -332,7 +334,8 @@ function npcTick(s, ctx){
 }
 
 function chaosTick(s, ctx, diff){
-  if (R() > 0.2) return;
+  const fase = clamp(maandenGespeeld(s) / 120, 0, 1); /* 4.7.3: chaos groeit mee: 8% kans en halve schade in het begin, 25% en volle schade na tien jaar */
+  if (R() > 0.08 + 0.17 * fase) return;
   const n = faction(s, "nomaden"), contract = s.flags.nomad_contract === true, broken = !!s.flags.nomad_contract_gebroken;
   const table = [["nomaden_konvooi", 3], ["nomaden_ruil", 2], ["nomaden_conflict", n < 10 ? (broken ? 5 : 2) : 0], ["nomaden_eis", contract ? 3 : 0],
     ["cyberpsycho", s.divisions.some(d => d.type === "Cyberware") ? 2 : 0.5], ["spookzending", 1.5], ["heimwee_ai", 1], ["sekte_roest", 0],
@@ -342,7 +345,7 @@ function chaosTick(s, ctx, diff){
   for (const [k, w] of table){ x -= w; if (w && x <= 0){ pick = k; break; } }
   const dist = CH(s.districts).name;
   const eff = ({cash = 0, rep = 0, mor = 0, heat = 0, nom = 0} = {}) => {
-    s.cash = r1(s.cash + cash * diff * (cash < 0 ? omvang(s) : 1)); s.reputation = clamp(s.reputation + rep); s.morale = clamp(s.morale + mor);
+    s.cash = r1(s.cash + cash * diff * (cash < 0 ? omvang(s) * 0.7 * (0.5 + 0.5 * fase) : 1)); s.reputation = clamp(s.reputation + rep); s.morale = clamp(s.morale + mor);
     s.heat = clamp(s.heat + heat); shiftFaction(s, "nomaden", nom);
   };
   const M = (v, o, b, p = "NORMAAL") => mail(ctx, s, v, o, b, p);
@@ -614,7 +617,7 @@ function tick(s){
   const waiting = Object.keys(s.flags).filter(k => k.startsWith("wacht_op_speler_") && s.flags[k]).map(k => k.slice(16));
   const report = `# Maandrapport ${played}\n\n*Bedragen in M€ (miljoen euro). Opgesteld door de CFO.*\n\n| Item | Waarde |\n|---|---|\n` +
     `| Cash | ${shown.cash} (was ${start}) |\n| Omzet | ${r1(rev)} |\n| Kosten | ${r1(cost)} (lonen ${r1(payroll)}, rente ${r1(interest)}, projecten ${r1(projCost)}) |\n` +
-    `| Netto (voor facturen) | ${shown.net} |\n| Schuld | ${s.debt} |\n| Open facturen | ${s.invoices.length} (€${r1(s.invoices.reduce((a, i) => a + i.amount, 0))}M) |\n` +
+    `| Netto (voor facturen) | ${shown.net} |\n| Facturen betaald | ${ctx.facturen || 0} |\n| Netto na facturen | ${r1(shown.net - (ctx.facturen || 0))} |\n| Schuld | ${s.debt} |\n| Open facturen | ${s.invoices.length} (€${r1(s.invoices.reduce((a, i) => a + i.amount, 0))}M) |\n` +
     `| Zwart / offshore | ${s.accounts.zwart} / ${s.accounts.offshore} |\n| Personeel | ${s.staff.count} (nodig ${staffNeed(s)}) |\n| Oorlogen | ${atWar(s).map(r => r.name).join(", ") || "geen"} |\n| Heat | ${r1(shown.heat)} |\n| Reputatie | ${r1(s.reputation)} |\n| Morale | ${r1(s.morale)} |\n| Status | ${status} |\n\n` +
     (lines.length ? `| Divisie | Omzet | Kosten |\n|---|---|---|\n${lines.join("\n")}\n\n` : "") +
     `**Projecten:** ${s.projects.map(p => `${p.name} (${p.eta_months} mnd)`).join("; ") || "geen"}\n\n` +
@@ -635,7 +638,7 @@ function tick(s){
 }
 
 /* ---------- de stad: elke game een andere kaart ---------- */
-const VERSION = "4.7.2";
+const VERSION = "4.7.3";
 const MAP_W = 1000, MAP_H = 680;
 const RIVAL_COLORS = ["#ff9a1f", "#3d7bff", "#c6ff2e", "#f2f2f2", "#9b5cff", "#ffd400", "#ff4d4d"];
 const ARCH = {
