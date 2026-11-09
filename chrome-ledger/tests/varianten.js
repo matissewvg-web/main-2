@@ -43,7 +43,17 @@ const html = '<!doctype html><html><head><meta charset=utf8></head><body>' + fs.
   await vast(); const zw = await p.evaluate(async () => { const s = G.game, x = s.producten.find(y => y.naam === "Basisdosis"); x.keuring = "nodig"; const c0 = s.cash, r = await API["/api/product"]({soort: "kanaal", id: x.id, k: "zwart"}), betaald = Math.round((c0 - s.cash) * 10) / 10;
     const z0 = s.accounts.zwart || 0; await API["/api/tick"]({force: true}); const o = (s.prodomzet || {})[x.id] || 0; const rap = (G.mails || []).find(m => /^Maandrapport/.test(m.onderwerp)), regel = rap ? (String(rap.body).split("\n").find(l => /Zwarte markt/.test(l)) || "") : ""; return {ok: r.ok, betaald, wissel: kanaalWissel(s), kanaal: x.kanaal, erbij: Math.round(((s.accounts.zwart || 0) - z0) * 100) / 100, helft: Math.round(o * 0.5 * 100) / 100, regel}; }); await los();
   ok(zw.ok && zw.betaald === zw.wissel && zw.kanaal === "zwart" && zw.erbij > 0 && /Zwarte markt/.test(zw.regel) && Math.abs(parseFloat(zw.regel.split("|")[2]) - zw.helft) <= 0.11, "zwarte markt: overstappen kost geld, de helft van de omzet wordt zwart geld: " + JSON.stringify(zw));
-  // 6. scherm
+  // 6. marketingkanalen (4.6.1)
+  const mk = await p.evaluate(async () => { const s = G.game, x = s.producten.find(y => y.naam === "Basisdosis"); x.actie = null; delete x.mkt; x.kanaal = "groothandel"; x.keuring = "ok";
+    const straat0 = segmenten(x, s).rows.find(r => r.naam === "Straatklinieken").pct, p0 = x.pop; const r = await API["/api/product"]({soort: "campagne", id: x.id, mk: "influencers"});
+    const straat1 = segmenten(x, s).rows.find(r => r.naam === "Straatklinieken").pct, nogeens = await API["/api/product"]({soort: "campagne", id: x.id, mk: "reclame"});
+    const q = s.producten.find(y => y.naam === "Basisdosis Pro"); q.actie = null; s.accounts.zwart = 0; const zonder = await API["/api/product"]({soort: "campagne", id: q.id, mk: "fluister"}); s.accounts.zwart = 5; const h0 = s.heat, met = await API["/api/product"]({soort: "campagne", id: q.id, mk: "fluister"});
+    const beursSeg = SEGMENTEN.medisch[mktSegIndex(x, "koopkrachtig")][0]; const m0 = x.mkt.maanden; for (let i = 0; i < m0; i++) mktTick(x);
+    return {ok: r.ok, pop: x.pop - p0, seg: x.mkt ? "nog actief" : "afgelopen", straat0, straat1, nogeens: nogeens.ok, zonder: zonder.ok, met: met.ok, zwart: s.accounts.zwart, heat: Math.round((s.heat - h0) * 10) / 10, beursSeg, m0}; });
+  ok(mk.ok && mk.pop === 8 && mk.straat1 > mk.straat0 && mk.nogeens === false, "influencers: populariteit +8, meer afzet bij straatklinieken, één campagne per maand: " + JSON.stringify(mk));
+  ok(mk.zonder === false && mk.met === true && mk.zwart === 3 && mk.heat >= 2, "fluistercampagne: alleen met zwart geld, kost heat");
+  ok(mk.beursSeg === "Rijke particulieren" && mk.m0 === 4 && mk.seg === "afgelopen", "beurs richt zich op de koopkrachtigsten; een campagne loopt af na zijn maanden");
+  // 7. scherm
   await p.evaluate(() => { S.view = "bedrijf"; render(); }); const ds = await p.$('[data-a=prodsheet]'); if (ds){ await ds.click(); await p.waitForTimeout(200); }
   const scherm = await p.evaluate(() => { const el = document.querySelector(".prodblad"); return el ? el.textContent : ""; });
   await p.click('[data-a=prodtab][data-t=verkoop]'); await p.waitForTimeout(150); const verkoop = await p.evaluate(() => document.querySelector(".prodblad").textContent);

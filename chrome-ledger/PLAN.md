@@ -27,8 +27,8 @@ Werkwijze: elk uur een ronde (automatisch). Grote punten zijn verdeeld in stappe
 | 4.3.4 | Opruimronde | 1 | klaar |
 | 4.4 | Geavanceerd productontwerp | 3 | klaar (4.4 nadruk en rivalen, 4.4.1 onderdelen, 4.4.2 opruimen, 4.4.3 varianten en bètatest) |
 | 4.5 | Kwaliteit en aansprakelijkheid | 2 | klaar (4.5 defecten, 4.5.1 keuring, 4.5.2 opruimen) |
-| 4.6 | Marketing en distributie | 2 | stap 1 klaar (verkoopkanalen); volgende: 4.6.1 marketingkanalen |
-| 4.7 | Patenten en namaak | 1 | |
+| 4.6 | Marketing en distributie | 2 | klaar (4.6 verkoopkanalen, 4.6.1 marketingkanalen); volgende: opruimronde 4.6.2 |
+| 4.7 | Patenten en namaak | 1 | na 4.6.2 |
 | 4.8 | Productdashboard | 1 | |
 | 4.9 | Toelevering en voorraad | 2 | |
 | 4.10 | Regionale markten | 2 | |
@@ -84,6 +84,7 @@ Werkwijze: elk uur een ronde (automatisch). Grote punten zijn verdeeld in stappe
 - (9 nov, 4.5.1) De bot keurt altijd; een speler die het vergeet verliest 40% afzet op die producten. Na een echte speelronde nagaan of het advies in Wat nu? genoeg opvalt.
 - (9 nov, 4.5) Garantie is nu een klein bedrag (1-4% van de productomzet, vaak tientallen euro's per maand). Merkbaar wordt het pas bij goedkope onderdelen en lage kwaliteit. Na een speelronde nagaan of defecten vaker in het nieuws of in mails moeten opduiken.
 - (opgelost in 4.5) Bij 4.5 de onderdelen laten meetellen: goedkope onderdelen geven meer defecten en terugroepacties, premium minder. Dan krijgt goedkoop een echte prijs naast −1 eigenschap.
+- (9 nov, 4.6.1) "Zakelijk" bleek niet te kloppen als doel van een beurs: bij medische producten is het minst prijsgevoelige segment rijke particulieren. Doel heet nu koopkrachtig. Segmentnamen en -gedrag nog eens nalopen per soort (zijn de em-waarden logisch?).
 - (9 nov, 4.6) varianten.js gaf één keer 8 van de 11 controles (test halverwege gestopt, foutmelding niet bewaard); 26 runs daarna allemaal goed. Mogelijk een zeldzame uitzondering in de tick bij vaste dobbelstenen. Bij de volgende opruimronde 50 runs met stderr bewaren.
 - (9 nov, 4.6) Het kwaliteitsblok zegt "lage kwaliteit" terwijl de eigenschappen 5/4/3 tonen: kwaliteit (1-5) en eigenschappen (1-10) lopen uiteen door nadruk en onderdelen. Woordkeuze aanpassen ("basiskwaliteit 2").
 - (9 nov, 4.6) De zwarte markt is voor een medisch product nu een snelle uitweg uit de keuring (80% afzet, geen €4k). Later laten meewegen in razzia's of journalisten, zodat het een echt risico is en niet alleen heat.
@@ -97,6 +98,7 @@ Werkwijze: elk uur een ronde (automatisch). Grote punten zijn verdeeld in stappe
 - (9 nov) Mensrun: een Cyberware-start verdient na twee jaar ±€5k per maand, uitbreiden naar L3 is pas in 21 maanden terugverdiend. De eerste jaren hebben weinig spannende keuzes; nagaan na een echte speelronde.
 
 ## Gedaan
+- 4.6.1 Marketingkanalen (9 nov, ochtend): MARKETING reclame/influencers/beurs/fluister, p.mkt {seg, f, maanden} telt in segmenten(), mktTick, mktSegIndex (gevoelig = hoogste em, koopkrachtig = laagste em). Blok Marketing in Prijs en klanten. .prijzen breekt nu af (flex-wrap). Drie tests in varianten.js.
 - 4.6 Verkoopkanalen (9 nov, ochtend): KANAAL groothandel/eigen/online/zwart met vol, marge, vast, heat en zwart deel; kanaalF in prodGewicht, marge in prodKost, zwarte markt negeert keuring; zwart geld en vaste kosten in de tick met eigen rapportregel. Tabblad Verkoop en keuring. Tests in varianten.js (vaste dobbelstenen, controle op de rapportregel).
 - 4.5.2 Opruimronde (9 nov, ochtend): adviesTick telt per advies (sleutel zonder getallen) hoeveel maanden het staat; ≥3 en prio < 9 zakt naar Staat al een tijdje. Toasts rechtsboven ≥900 px, 3,5 s, klik sluit. Mensrun 24 maanden: reputatie 29, cash €294k, geen fouten. adviezen per maand maakt de balanstest ±30% trager (40 spellen: 18 → 25 s), acceptabel.
 - 4.5.1 Keuring (9 nov, ochtend): KEURING_AARD (medisch, implantaat, wapen), keurF 0,6 in prodGewicht, keuringTick met worp (doel 6 ± defecten/kwaliteit), omkopen, variant erft goedkeuring, oude producten gelden als gekeurd. Advies in Wat nu?, badge op de productlijn. Bot keurt officieel. Balans 46%.

@@ -634,7 +634,7 @@ function tick(s){
 }
 
 /* ---------- de stad: elke game een andere kaart ---------- */
-const VERSION = "4.6";
+const VERSION = "4.6.1";
 const MAP_W = 1000, MAP_H = 680;
 const RIVAL_COLORS = ["#ff9a1f", "#3d7bff", "#c6ff2e", "#f2f2f2", "#9b5cff", "#ffd400", "#ff4d4d"];
 const ARCH = {
@@ -2442,7 +2442,7 @@ const SEGMENTEN = {
 function rivaalSpecs(s, a){ return s ? s.rivals.flatMap(r => (r.producten || []).filter(x => x.aard === a).map(x => ({naam: x.naam, wie: r.name, specs: prodSpecs({id: x.naam, kwaliteit: x.kwaliteit, aard: a})}))) : []; }
 function segmenten(p, s = (typeof G !== "undefined" && G.game) || null){ const a = p.aard || aardVan(p.type, p.naam), specs = prodSpecs({...p, aard: a}), gem = specs.reduce((t, x) => t + x.v, 0) / 3, E = elast(p), f = prijsF(p), RS = rivaalSpecs(s, a);
   const rows = (SEGMENTEN[a] || SEGMENTEN.consument).map(([naam, aandeel, em, v]) => { const rg = RS.length ? RS.reduce((t, x) => t + x.specs[v].v, 0) / RS.length : null, best = RS.length ? RS.reduce((b, x) => x.specs[v].v > b.specs[v].v ? x : b) : null;
-    const fit = clamp(1 + (specs[v].v - gem) * 0.07, 0.75, 1.3) * (rg == null ? 1 : clamp(1 + (specs[v].v - rg) * 0.04, 0.85, 1.15)), vol = aandeel * fit * Math.exp(-E * em * (f - 1));
+    const fit = clamp(1 + (specs[v].v - gem) * 0.07, 0.75, 1.3) * (rg == null ? 1 : clamp(1 + (specs[v].v - rg) * 0.04, 0.85, 1.15)), mk = p.mkt && p.mkt.seg === (SEGMENTEN[a] || SEGMENTEN.consument).findIndex(x => x[0] === naam) ? p.mkt.f : 1, vol = aandeel * fit * mk * Math.exp(-E * em * (f - 1));
     return {naam, aandeel, em, wil: specs[v].naam, score: specs[v].v, rivaal: rg == null ? null : Math.round(rg * 10) / 10, beste: best ? {naam: best.naam, wie: best.wie, v: best.specs[v].v} : null, fit: Math.round(fit * 100) / 100, gevoelig: Math.round(E * em * 100) / 100, vol}; });
   const tot = rows.reduce((t, x) => t + x.vol, 0) || 1; for (const r of rows) r.pct = Math.round(r.vol / tot * 100); return {rows, tot}; }
 const volF = p => clamp(segmenten(p).tot, 0.15, 1.6);
@@ -2476,7 +2476,11 @@ function actProduct(s, ctx, soort, a){
   } else {
     const p = (s.producten || []).find(x => x.id === a.id); if (!p) return {ok: false, msg: "Onbekend product."};
     if (soort === "campagne"){ if (p.status !== "markt") return {ok: false, msg: "Het staat niet op de markt."}; if (p.actie === m) return {ok: false, msg: "Deze maand al een campagne gehad."};
-      if (!pay(3)) return {ok: false, msg: "Een campagne kost €3k."}; p.actie = m; p.pop = clamp(p.pop + 12, 0, 95); msg = `Campagne voor ${p.naam}: populariteit nu ${p.pop}.`; }
+      const M = MARKETING[a.mk] || MARKETING.reclame, mk = MARKETING[a.mk] ? a.mk : "reclame", k = M.kost;
+      if (M.zwart){ if ((s.accounts.zwart || 0) < k) return {ok: false, msg: `Een fluistercampagne kost €${k}k zwart geld.`}; s.accounts.zwart = r1(s.accounts.zwart - k); } else if (!pay(k)) return {ok: false, msg: `${M.label} kost €${k}k.`};
+      const pop = mk === "fluister" && ILLEGAAL.has(p.aard) ? 12 : M.pop; p.actie = m; p.pop = clamp(p.pop + pop, 0, 95); if (M.heat) s.heat = clamp(s.heat + M.heat);
+      const si = mktSegIndex(p, M.doel), seg = si >= 0 ? (SEGMENTEN[p.aard] || SEGMENTEN.consument)[si][0] : null; if (si >= 0) p.mkt = {seg: si, f: M.f, maanden: M.maanden, kanaal: mk};
+      prodLog(p, s, `${M.label}${seg ? ` (${seg.toLowerCase()})` : ""}`); msg = `${M.label} voor ${p.naam}: populariteit nu ${p.pop}${seg ? `, ${M.maanden} maanden meer afzet bij ${seg.toLowerCase()}` : ""}${M.heat ? `, heat +${M.heat}` : ""}.`; }
     else if (soort === "verbeter"){ if (p.status !== "markt") return {ok: false, msg: "Het staat niet op de markt."}; if (p.kwaliteit >= 5) return {ok: false, msg: "Beter wordt het niet."}; if (p.verbetering) return {ok: false, msg: "Er loopt al een verbetering."};
       const kost = r1(8 * dif); if (!pay(kost)) return {ok: false, msg: `Een nieuwe versie kost €${kost}k.`}; p.verbetering = 2; msg = `Versie ${p.kwaliteit + 1} van ${p.naam} in ontwikkeling: €${kost}k, 2 maanden.`; }
     else if (soort === "prijs"){ const rr = actPrijs(s, p.id, a.f != null ? +a.f : a.prijs); if (rr.ok) prodLog(p, s, `Prijs: €${stukPrijs(p).toLocaleString("nl-NL")} per ${isAbo(p) ? "abonnee" : "stuk"} (${PRIJS[p.prijs].label.toLowerCase()})`); return rr; }
@@ -2537,7 +2541,7 @@ function productTick(s, ctx){
       p.aard ??= aardVan(p.type, p.naam); p.prijs ??= "standaard"; if (p.trait === undefined){ const ft = focusTrait(p); p.trait = ft !== undefined ? ft : kiesTrait(p, r.crit, !r.ok && !r.neutraal); } maakReview(p);
       prodLog(p, s, r.crit ? `Lancering: een hit (${p.review.sterren}★)` : r.ok ? `Gelanceerd (${p.review.sterren}★)` : r.neutraal ? `Rustige lancering (${p.review.sterren}★)` : `Lancering geflopt (${p.review.sterren}★)`); if (p.trait) prodLog(p, s, `Eigenschap: ${PRODUCT_TRAITS[p.trait].label}`); continue;
     }
-    keuringTick(s, ctx, p); defectTick(s, ctx, p);
+    keuringTick(s, ctx, p); defectTick(s, ctx, p); mktTick(p);
     if (p.verbetering && --p.verbetering <= 0){ delete p.verbetering; const r = rol2d6(Math.ceil(d.level / 2), 8); addRoll(s, `Nieuwe versie ${p.naam}: ${r.txt} → ${r.ok ? "GELUKT" : "MISLUKT"}`);
       if (r.ok){ p.kwaliteit = clamp(p.kwaliteit + 1, 1, 5); p.pop = clamp(p.pop + 10, 0, 95); p.leeftijd = 0; maakReview(p); if (p.trait === "gevoelig") p.trait = null; prodLog(p, s, `Versie ${p.kwaliteit}`); mail(ctx, s, "R&D", `${p.naam} versie ${p.kwaliteit}`, `De nieuwe versie is klaar (${r.txt}). Kwaliteit ${p.kwaliteit}, en de klanten merken het.`, "NORMAAL"); }
       else mail(ctx, s, "R&D", `Nieuwe versie ${p.naam} mislukt`, `Het ontwikkelteam kreeg het niet werkend (${r.txt}). Het geld is op, het product blijft zoals het was.`, "HOOG"); }
@@ -2884,6 +2888,15 @@ const KANAAL = {
   eigen: {label: "Eigen winkels", vol: () => 0.9, marge: 1.15, vast: 1.5, heat: 0, tekst: "Je eigen winkels en verkopers: geen tussenhandel (+15% opbrengst per stuk), minder bereik, €1,5k vaste kosten per maand."},
   online: {label: "Online", vol: p => DIGITAAL.has(p.aard) ? 1.15 : 0.85, marge: 1.05, vast: 0.5, heat: 0, tekst: "Webwinkel en platforms: sterk voor data, financiële en consumentenproducten (+15% afzet), zwak voor de rest (−15%). €0,5k per maand."},
   zwart: {label: "Zwarte markt", vol: p => ILLEGAAL.has(p.aard) ? 1.25 : 0.8, marge: 1, vast: 0, heat: 0.4, zwart: 0.5, tekst: "Via fixers en kofferbakken: geen keuring nodig, sterk voor wapens, smokkelwaar en implantaten (+25%), zwak voor de rest (−20%). De helft van de omzet komt als zwart geld binnen. Heat +0,4 per maand."}};
+/* 4.6.1: marketingkanalen. Een campagne geeft populariteit en een paar maanden extra afzet in één klantsegment:
+   doel "gevoelig" = het prijsgevoeligste segment, "koopkrachtig" = het minst prijsgevoelige. */
+const MARKETING = {
+  reclame: {label: "Reclame", kost: 3, pop: 12, doel: null, f: 1, maanden: 0, tekst: "Posters, spots, billboards: populariteit +12 bij iedereen."},
+  influencers: {label: "Influencers", kost: 3, pop: 8, doel: "gevoelig", f: 1.4, maanden: 4, tekst: "Gezichten met volgers: populariteit +8 en 4 maanden 40% meer afzet in het prijsgevoeligste segment."},
+  beurs: {label: "Beurs", kost: 5, pop: 5, doel: "koopkrachtig", f: 1.5, maanden: 6, tekst: "Een stand, een diner, handdrukken: populariteit +5 en 6 maanden 50% meer afzet bij de koopkrachtigste, minst prijsgevoelige klanten."},
+  fluister: {label: "Fluistercampagne", kost: 2, zwart: true, pop: 8, doel: "gevoelig", f: 1.3, maanden: 4, heat: 2, tekst: "Via de straat, betaald met zwart geld: populariteit +8 (wapens, smokkelwaar en implantaten +12), 4 maanden 30% meer afzet in het prijsgevoeligste segment, heat +2."}};
+function mktSegIndex(p, doel){ const L = SEGMENTEN[p.aard || aardVan(p.type, p.naam)] || SEGMENTEN.consument; if (!doel) return -1; let best = 0; L.forEach((x, i) => { if (doel === "gevoelig" ? x[2] > L[best][2] : x[2] < L[best][2]) best = i; }); return best; }
+function mktTick(p){ if (p.mkt && --p.mkt.maanden <= 0) delete p.mkt; }
 const kanaalVan = p => KANAAL[p.kanaal] ? p.kanaal : "groothandel";
 const kanaalF = p => { const K = KANAAL[kanaalVan(p)]; return K.vol(p) * K.marge; };
 const kanaalWissel = s => r1(1 * (DIFF[(s && s.player.difficulty)] || 1));
@@ -2932,7 +2945,7 @@ function prodDetail(s, p, omzet){
   const sp = abo ? Math.max(1, Math.round(omzet * 1000 / Math.max(1, p.abo * 10))) : stukPrijs(p), kp = abo ? Math.round(sp * PROD_KOST * kostFactor(p) / prijsF(p)) : kostPrijs(p), afzet = abo ? Math.round(p.abo * 10) : omzet > 0 ? Math.round(omzet * 1000 / sp) : 0;
   return {specs: prodSpecs(p), eenheid: abo ? "abonnees" : (STUK[p.aard] || STUK.consument).eenheid, perMaand: !!abo, stukPrijs: sp, kostPrijs: kp, marge: Math.round((sp - kp) / sp * 100), afzet, fase: levensfase(p),
     cap, vraag: Math.round(vraag), uitverkocht: vraag > cap, gemist: vraag > cap ? Math.round((vraag - cap) / vraag * 100) : 0, capKost: capKost(s, p), seg: segment(s, p), hist: (p.hist || []).slice(-12), prijsF: prijsF(p), elast: elast(p), segmenten: segmenten(p, s).rows.map(({vol, ...r}) => r), delen: delenVan(p).map((d, i) => { const k = deelKwal(p, i), lv = leverancier(s, p, i), per = (abo ? sp / prijsF(p) : basisPrijs(p)) * PROD_KOST * d[1] * DEEL_KWAL[k].kost;
-      return {naam: d[0], aandeel: d[1], spec: (SPECS[p.aard] || SPECS.consument)[d[2]], kwal: k, kost: Math.round(per * 100) / 100, lev: lv ? lv.naam : "eigen werkplaats"}; }), arbeid: Math.round((abo ? sp / prijsF(p) : basisPrijs(p)) * PROD_KOST * ARBEID * 100) / 100, omschakel: omschakelKost(s), kanaal: {key: kanaalVan(p), wissel: kanaalWissel(s), opties: Object.entries(KANAAL).map(([k, K]) => ({key: k, label: K.label, vol: Math.round(K.vol(p) * 100), marge: Math.round(K.marge * 100), vast: K.vast, heat: K.heat, zwart: K.zwart || 0, tekst: K.tekst}))}, keuring: KEURING_AARD.has(p.aard) || p.keuring != null ? {status: keurStatus(p), maanden: keurStatus(p) === "bezig" ? p.keuring.maanden : 0, kost: keurKost(s), omkoop: omkoopKost(s), kans: kans2d6(0, keurDoel(p)), omkoopKans: kans2d6(0, 7), instantie: keurInstantie(p)} : null, defect: defectPct(p), garantie: r1(garantie(p, omzet)), garantieEur: Math.round(garantie(p, omzet) * 1000), defectRisico: Math.max(0, Math.round((defectPct(p) - DEFECT_DREMPEL) * 10) / 10), beste: p.status === "markt" ? besteprijs(s, p) : null};
+      return {naam: d[0], aandeel: d[1], spec: (SPECS[p.aard] || SPECS.consument)[d[2]], kwal: k, kost: Math.round(per * 100) / 100, lev: lv ? lv.naam : "eigen werkplaats"}; }), arbeid: Math.round((abo ? sp / prijsF(p) : basisPrijs(p)) * PROD_KOST * ARBEID * 100) / 100, omschakel: omschakelKost(s), marketing: {actief: p.mkt ? {...p.mkt, label: MARKETING[p.mkt.kanaal] ? MARKETING[p.mkt.kanaal].label : "Campagne", seg: (SEGMENTEN[p.aard] || SEGMENTEN.consument)[p.mkt.seg][0]} : null, dezeMaand: p.actie === ym(s), opties: Object.entries(MARKETING).map(([k, M]) => ({key: k, label: M.label, kost: M.kost, zwart: !!M.zwart, tekst: M.tekst, seg: M.doel ? (SEGMENTEN[p.aard] || SEGMENTEN.consument)[mktSegIndex(p, M.doel)][0] : null}))}, kanaal: {key: kanaalVan(p), wissel: kanaalWissel(s), opties: Object.entries(KANAAL).map(([k, K]) => ({key: k, label: K.label, vol: Math.round(K.vol(p) * 100), marge: Math.round(K.marge * 100), vast: K.vast, heat: K.heat, zwart: K.zwart || 0, tekst: K.tekst}))}, keuring: KEURING_AARD.has(p.aard) || p.keuring != null ? {status: keurStatus(p), maanden: keurStatus(p) === "bezig" ? p.keuring.maanden : 0, kost: keurKost(s), omkoop: omkoopKost(s), kans: kans2d6(0, keurDoel(p)), omkoopKans: kans2d6(0, 7), instantie: keurInstantie(p)} : null, defect: defectPct(p), garantie: r1(garantie(p, omzet)), garantieEur: Math.round(garantie(p, omzet) * 1000), defectRisico: Math.max(0, Math.round((defectPct(p) - DEFECT_DREMPEL) * 10) / 10), beste: p.status === "markt" ? besteprijs(s, p) : null};
 }
 const prodGewicht = (p, s) => keurF(p) * kanaalF(p) * p.kwaliteit * effBereik(p, s) / 100 * prijsF(p) * (s ? vraagFactor(s, p.aard || aardVan(p.type, p.naam)) : 1) * (p.trait === "goedkoop" ? 1.15 : 1);
 const prodSterkte = p => bereik(p) / 100 * (0.5 + p.kwaliteit * 0.15);
