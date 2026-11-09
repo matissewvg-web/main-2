@@ -75,6 +75,9 @@ const html = '<!doctype html><html><head><meta charset=utf8></head><body>' + fs.
   ok(kr.ok && kr.c1 === kr.c0 - 15 && kr.v1 < 0 && kr.min >= 45, "inkrimpen: −15 capaciteit, vaste kosten omlaag, nooit onder 45: " + JSON.stringify(kr));
   const tr = await p.evaluate(async () => { const s = G.game, x = s.producten.find(y => y.naam === "Basisdosis"); x.capExtra = 0; s.cash += 20; const c0 = s.cash; await API["/api/product"]({soort: "capaciteit", id: x.id}); const c1 = s.cash; await API["/api/product"]({soort: "krimpen", id: x.id}); return {betaald: Math.round((c0 - c1) * 10) / 10, terug: Math.round((s.cash - c1) * 10) / 10, cap: x.capExtra}; });
   ok(tr.betaald > 0 && tr.terug === tr.betaald && tr.cap === 0, "uitbreiding terugdraaien geeft de investering terug: " + JSON.stringify(tr));
+  const ov = await p.evaluate(() => { const s = G.game, oud = JSON.parse(JSON.stringify(s)); delete oud.flags.overname_477; const weg = oud.divisions[0], n0 = oud.divisions.length; oud.divisions = oud.divisions.slice(1); oud.arcs = [{id: "hostile_bid", stage: 1, next_in: 2}]; oud.flags.wacht_op_speler_hostile_bid = true;
+    migrate(oud); const terug = oud.divisions.find(d => (d.name || d.type) === (weg.name || weg.type)); return {terug: !!terug, n: oud.divisions.length === n0, arc: oud.arcs.some(a => a.id === "hostile_bid"), wacht: !!oud.flags.wacht_op_speler_hostile_bid, start: ARCS.hostile_bid.start}; });
+  ok(ov.terug && ov.n && !ov.arc && !ov.wacht && ov.start === 0, "overnamebod weg; verloren divisie komt terug met haar producten: " + JSON.stringify(ov));
   // 7. scherm
   await p.evaluate(() => { S.view = "bedrijf"; render(); }); const ds = await p.$('[data-a=prodsheet]'); if (ds){ await ds.click(); await p.waitForTimeout(200); }
   const scherm = await p.evaluate(() => { const el = document.querySelector(".prodblad"); return el ? el.textContent : ""; });

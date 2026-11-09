@@ -53,7 +53,7 @@ function template(){
       {name: "Jorik Maes", role: "Head of Security", loyalty: 60, ambition: 40, secret: "Heeft een schuld bij Brigada Volk."},
       {name: "Lien Verstraeten", role: "PR", loyalty: 50, ambition: 75, secret: "Lekt af en toe aan een journalist."},
     ],
-    flags: {compensatie_473: true, eigen_475: true},
+    flags: {compensatie_473: true, eigen_475: true, overname_477: true},
   };
 }
 
@@ -70,6 +70,13 @@ function migrate(s){
   if (s.map && s.map.gedeeld) s.map = genWorld().map;
   if (!(s.flags || {}).compensatie_473 && s.flags && s.date){ s.cash = r1((s.cash || 0) + 100); if (s.accounts) s.accounts.operationeel = s.cash; s.flags.compensatie_473 = true; (s.log ??= []).push(`${ym(s)} · Compensatie: +€100M omdat facturen en gebeurtenissen te duur waren (4.7.3)`); } /* 4.7.3: eenmalig €100M terug in bestaande saves */
   if (!(s.flags || {}).eigen_475 && s.producten && s.flags){ for (const p of s.producten){ p.delen = [0, 1, 2].map(i => ({kwal: ((p.delen || [])[i] || {}).kwal || "standaard", eigen: true})); } s.flags.eigen_475 = true; } /* 4.7.5: eenmalig alles naar eigen productie */
+  if (s.flags && !s.flags.overname_477){ /* 4.7.7: overnamebod weg; een verloren divisie komt terug met haar producten */
+    s.arcs = (s.arcs || []).filter(a => a.id !== "hostile_bid"); delete s.flags.wacht_op_speler_hostile_bid;
+    const namen = new Set((s.divisions || []).map(d => d.name || d.type)), wees = {};
+    for (const p of s.producten || []) if (p.divisie && !namen.has(p.divisie)) (wees[p.divisie] ??= []).push(p);
+    for (const [naam, ps] of Object.entries(wees)){ const n = ps.filter(p => p.status !== "teruggeroepen").length; (s.divisions ??= []).push({name: naam, type: ps[0].type, level: Math.max(2, n - 2), efficiency: 1}); (s.log ??= []).push(`${ym(s)} · ${naam} terug na de geschrapte overname (${n} producten)`); }
+    if (s.flags.overgenomen){ delete s.flags.overgenomen; if (/OVERGENOMEN/.test(s.status || "")) s.status = "actief"; }
+    s.flags.overname_477 = true; }
   if (!(s.flags || {}).keur_471 && s.producten){ for (const p of s.producten) if (p.keuring != null && p.keuring !== "ok"){ p.keuring = "ok"; ((s.vergunning ??= {})[p.aard || aardVan(p.type, p.naam)] = true); } (s.flags ??= {}).keur_471 = true; } /* 4.7.1: eenmalig alles gekeurd in bestaande saves */
   s.accounts ??= {operationeel: s.cash, zwart: 0, offshore: 0};
   s.accounts.zwart ??= 0; s.accounts.offshore ??= 0;
@@ -416,7 +423,7 @@ const ARCS = {
     {delay: 3, from: "Nomadenleider Isra", subject: "Een uitnodiging", body: "We hebben uw bedrijf gezien. We vragen geen vriendschap. We vragen toegang tot uw netwerk, in ruil voor bescherming op de snelweg.", flag: "nomaden_aanbod", decide: true},
     {delay: 1, from: "Nomadenleider Isra", subject: "Ons antwoord op uw antwoord", resolve: true},
   ]},
-  hostile_bid: {start: 0.03, stages: [
+  hostile_bid: {start: 0, stages: [ /* 4.7.7: uitgeschakeld (willekeurige straf zonder echte tegenzet) */
     {delay: 3, from: "Marktwacht", subject: "Ongewone aandelenaankopen", body: "Iemand koopt stilletjes onze aandelen op. De bron is een holding in een belastingparadijs. De namen zijn geen namen.", effect: {reputation: -1}},
     {delay: 3, from: "Advocaat De Wit", subject: "Formeel overnamebod ontvangen", body: "Een 'vriendelijk' overnamebod ligt op tafel. U heeft 30 dagen. Een verdediging kost geld. Niets doen kost de baan.", effect: {heat: 1}, flag: "overnamebod", decide: true},
     {delay: 1, from: "Advocaat De Wit", subject: "Uitslag overnamestrijd", resolve: true},
@@ -639,7 +646,7 @@ function tick(s){
 }
 
 /* ---------- de stad: elke game een andere kaart ---------- */
-const VERSION = "4.7.6";
+const VERSION = "4.7.7";
 const MAP_W = 1000, MAP_H = 680;
 const RIVAL_COLORS = ["#ff9a1f", "#3d7bff", "#c6ff2e", "#f2f2f2", "#9b5cff", "#ffd400", "#ff4d4d"];
 const ARCH = {
