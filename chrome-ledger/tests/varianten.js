@@ -36,10 +36,19 @@ const html = '<!doctype html><html><head><meta charset=utf8></head><body>' + fs.
   await p.evaluate(() => { window.__echt = crypto.getRandomValues; crypto.getRandomValues = a => { a[0] = 3; return a; }; }); // d6 = 4 → 8
   const k2 = await p.evaluate(async () => { const s = G.game, q = s.producten.find(y => y.naam === "Basisdosis Pro"), h0 = s.heat; s.accounts.zwart = 0; const r = await API["/api/product"]({soort: "keuring", id: q.id, wijze: "omkopen"}); return {ok: r.ok, st: keurStatus(q), heat: Math.round((s.heat - h0) * 10) / 10}; });
   await los(); ok(k2.ok && k2.st === "ok" && k2.heat >= 3, "keurder omkopen (vaste worp 8): meteen goedgekeurd, heat omhoog: " + JSON.stringify(k2));
-  // 5. scherm
+  // 5. verkoopkanalen (4.6)
+  const kn = await p.evaluate(() => { const q = {id: "tk", naam: "Test", aard: "wapen", kwaliteit: 3, pop: 50, status: "markt"}; return {gh: kanaalF(q), eigen: kanaalF({...q, kanaal: "eigen"}), zwWapen: kanaalF({...q, kanaal: "zwart"}), zwMed: kanaalF({...q, aard: "medisch", kanaal: "zwart"}),
+    online: kanaalF({...q, aard: "data", kanaal: "online"}), keurZw: keurF({...q, keuring: "nodig", kanaal: "zwart"}), keurGh: keurF({...q, keuring: "nodig"}), kostGh: prodKost(q, 10), kostEigen: prodKost({...q, kanaal: "eigen"}, 10)}; });
+  ok(kn.gh === 1 && Math.abs(kn.eigen - 1.035) < 1e-9 && kn.zwWapen === 1.25 && kn.zwMed === 0.8 && Math.abs(kn.online - 1.2075) < 1e-9 && kn.keurZw === 1 && kn.keurGh === 0.6 && kn.kostEigen < kn.kostGh, "kanalen: groothandel 1, eigen ×1,035 en lagere kosten per omzet, zwart sterk voor wapens en zonder keuring: " + JSON.stringify(kn));
+  await vast(); const zw = await p.evaluate(async () => { const s = G.game, x = s.producten.find(y => y.naam === "Basisdosis"); x.keuring = "nodig"; const c0 = s.cash, r = await API["/api/product"]({soort: "kanaal", id: x.id, k: "zwart"}), betaald = Math.round((c0 - s.cash) * 10) / 10;
+    const z0 = s.accounts.zwart || 0; await API["/api/tick"]({force: true}); const o = (s.prodomzet || {})[x.id] || 0; const rap = (G.mails || []).find(m => /^Maandrapport/.test(m.onderwerp)), regel = rap ? (String(rap.body).split("\n").find(l => /Zwarte markt/.test(l)) || "") : ""; return {ok: r.ok, betaald, wissel: kanaalWissel(s), kanaal: x.kanaal, erbij: Math.round(((s.accounts.zwart || 0) - z0) * 100) / 100, helft: Math.round(o * 0.5 * 100) / 100, regel}; }); await los();
+  ok(zw.ok && zw.betaald === zw.wissel && zw.kanaal === "zwart" && zw.erbij > 0 && /Zwarte markt/.test(zw.regel) && Math.abs(parseFloat(zw.regel.split("|")[2]) - zw.helft) <= 0.11, "zwarte markt: overstappen kost geld, de helft van de omzet wordt zwart geld: " + JSON.stringify(zw));
+  // 6. scherm
   await p.evaluate(() => { S.view = "bedrijf"; render(); }); const ds = await p.$('[data-a=prodsheet]'); if (ds){ await ds.click(); await p.waitForTimeout(200); }
   const scherm = await p.evaluate(() => { const el = document.querySelector(".prodblad"); return el ? el.textContent : ""; });
+  await p.click('[data-a=prodtab][data-t=verkoop]'); await p.waitForTimeout(150); const verkoop = await p.evaluate(() => document.querySelector(".prodblad").textContent);
+  ok(/VERKOOP/.test(verkoop) && /KEURING/.test(verkoop), "tabblad Verkoop en keuring");
   ok(/VARIANT/.test(scherm), "varianten staan op het productblad");
-  if (out){ const bl = await p.$('.prodblad'); if (bl) await bl.screenshot({path: out + "/varianten.png"}); }
+  if (out){ const bl = await p.$('.prodblad'); if (bl) await bl.screenshot({path: out + "/verkoop.png"}); }
   console.log(log.join("\n")); console.log("FOUTEN OP DE PAGINA:", JSON.stringify(errs)); await b.close(); process.exit(log.some(l => l.startsWith("FOUT")) || errs.length ? 1 : 0);
 })();

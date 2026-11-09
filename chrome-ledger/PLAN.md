@@ -27,7 +27,7 @@ Werkwijze: elk uur een ronde (automatisch). Grote punten zijn verdeeld in stappe
 | 4.3.4 | Opruimronde | 1 | klaar |
 | 4.4 | Geavanceerd productontwerp | 3 | klaar (4.4 nadruk en rivalen, 4.4.1 onderdelen, 4.4.2 opruimen, 4.4.3 varianten en bètatest) |
 | 4.5 | Kwaliteit en aansprakelijkheid | 2 | klaar (4.5 defecten, 4.5.1 keuring, 4.5.2 opruimen) |
-| 4.6 | Marketing en distributie | 2 | volgende |
+| 4.6 | Marketing en distributie | 2 | stap 1 klaar (verkoopkanalen); volgende: 4.6.1 marketingkanalen |
 | 4.7 | Patenten en namaak | 1 | |
 | 4.8 | Productdashboard | 1 | |
 | 4.9 | Toelevering en voorraad | 2 | |
@@ -84,6 +84,9 @@ Werkwijze: elk uur een ronde (automatisch). Grote punten zijn verdeeld in stappe
 - (9 nov, 4.5.1) De bot keurt altijd; een speler die het vergeet verliest 40% afzet op die producten. Na een echte speelronde nagaan of het advies in Wat nu? genoeg opvalt.
 - (9 nov, 4.5) Garantie is nu een klein bedrag (1-4% van de productomzet, vaak tientallen euro's per maand). Merkbaar wordt het pas bij goedkope onderdelen en lage kwaliteit. Na een speelronde nagaan of defecten vaker in het nieuws of in mails moeten opduiken.
 - (opgelost in 4.5) Bij 4.5 de onderdelen laten meetellen: goedkope onderdelen geven meer defecten en terugroepacties, premium minder. Dan krijgt goedkoop een echte prijs naast −1 eigenschap.
+- (9 nov, 4.6) varianten.js gaf één keer 8 van de 11 controles (test halverwege gestopt, foutmelding niet bewaard); 26 runs daarna allemaal goed. Mogelijk een zeldzame uitzondering in de tick bij vaste dobbelstenen. Bij de volgende opruimronde 50 runs met stderr bewaren.
+- (9 nov, 4.6) Het kwaliteitsblok zegt "lage kwaliteit" terwijl de eigenschappen 5/4/3 tonen: kwaliteit (1-5) en eigenschappen (1-10) lopen uiteen door nadruk en onderdelen. Woordkeuze aanpassen ("basiskwaliteit 2").
+- (9 nov, 4.6) De zwarte markt is voor een medisch product nu een snelle uitweg uit de keuring (80% afzet, geen €4k). Later laten meewegen in razzia's of journalisten, zodat het een echt risico is en niet alleen heat.
 - (9 nov, 4.5.2) Verhaalkeuzes (Mara Vonk, salarisgesprek) staan op het overzicht direct onder Wat nu? met grote kaarten; met drie tegelijk duwt dat de rest ver naar beneden. Compacter tonen of in Inbox houden met één regel op het overzicht.
 - (opgelost in 4.5.2) Kritische blik: het Wat nu?-blok noemt elke maand dezelfde crewklus en dezelfde uitbreiding; na een paar maanden lees je er overheen. Adviezen die al drie maanden onveranderd staan, inklappen of rouleren.
 - (opgelost in 4.5.2) Toasts (meldingen rechtsonder) liggen bij elke actie over de inhoud, ook over Wat nu?. Kleiner maken of bovenaan zetten op brede schermen.
@@ -94,6 +97,7 @@ Werkwijze: elk uur een ronde (automatisch). Grote punten zijn verdeeld in stappe
 - (9 nov) Mensrun: een Cyberware-start verdient na twee jaar ±€5k per maand, uitbreiden naar L3 is pas in 21 maanden terugverdiend. De eerste jaren hebben weinig spannende keuzes; nagaan na een echte speelronde.
 
 ## Gedaan
+- 4.6 Verkoopkanalen (9 nov, ochtend): KANAAL groothandel/eigen/online/zwart met vol, marge, vast, heat en zwart deel; kanaalF in prodGewicht, marge in prodKost, zwarte markt negeert keuring; zwart geld en vaste kosten in de tick met eigen rapportregel. Tabblad Verkoop en keuring. Tests in varianten.js (vaste dobbelstenen, controle op de rapportregel).
 - 4.5.2 Opruimronde (9 nov, ochtend): adviesTick telt per advies (sleutel zonder getallen) hoeveel maanden het staat; ≥3 en prio < 9 zakt naar Staat al een tijdje. Toasts rechtsboven ≥900 px, 3,5 s, klik sluit. Mensrun 24 maanden: reputatie 29, cash €294k, geen fouten. adviezen per maand maakt de balanstest ±30% trager (40 spellen: 18 → 25 s), acceptabel.
 - 4.5.1 Keuring (9 nov, ochtend): KEURING_AARD (medisch, implantaat, wapen), keurF 0,6 in prodGewicht, keuringTick met worp (doel 6 ± defecten/kwaliteit), omkopen, variant erft goedkeuring, oude producten gelden als gekeurd. Advies in Wat nu?, badge op de productlijn. Bot keurt officieel. Balans 46%.
 - 4.5 Defecten en garantie (9 nov, ochtend): DEFECT_BASIS per soort, defectPct, garantie in prodKost, defectTick (kansRol voor deterministische tests) met terugroepkeuze boven 5%, max 1×/jaar. Kwaliteitsblok op het productblad. Balans 47%. varianten.js deterministisch gemaakt (vergelijkt met de waarde op het moment van lancering).
