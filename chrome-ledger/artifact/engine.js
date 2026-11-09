@@ -620,6 +620,7 @@ function tick(s){
   mail(ctx, s, "CFO", `Maandrapport ${played}`, report);
   ctx.reportIndex = ctx.mails.length - 1;
   s.maanden = maandenGespeeld(s) + 1;
+  try { adviesTick(s); } catch(e){ foutLog && foutLog("adviesTick", e); }
   s.history.push({m: played, cash: shown.cash, netto: shown.net, omzet: r1(rev), kosten: r1(cost), heat: r1(shown.heat), rep: r1(s.reputation), morale: r1(s.morale)});
   s.history = s.history.slice(-48); s.log = s.log.slice(-200);
   s.laatste_rapport = {maand: played, netto: shown.net, omzet: r1(rev), kosten: r1(cost), cash_offset: r1(shown.cash - s.cash), heat_offset: r1(shown.heat - s.heat), gebeurd: rep};
@@ -631,7 +632,7 @@ function tick(s){
 }
 
 /* ---------- de stad: elke game een andere kaart ---------- */
-const VERSION = "4.5.1";
+const VERSION = "4.5.2";
 const MAP_W = 1000, MAP_H = 680;
 const RIVAL_COLORS = ["#ff9a1f", "#3d7bff", "#c6ff2e", "#f2f2f2", "#9b5cff", "#ffd400", "#ff4d4d"];
 const ARCH = {
@@ -3147,6 +3148,8 @@ function upgradePlan(s, d){
   return {kost, extra: r1(extra), terug: extra > 0.2 ? Math.round(kost / extra) : null};
 }
 function vestigingPlan(s, d){ const kost = districtCost(s, d), extra = r1((incOf(d) - d.upkeep) * 0.8); return {kost, extra, terug: extra > 0.2 ? Math.round(kost / extra) : null}; }
+const adviesSleutel = t => String(t).replace(/[\d.,€±%−+]+/g, "#").slice(0, 60);
+function adviesTick(s){ const nieuw = {}, T = s.adviesTel || {}; for (const a of adviezen(s)) { const k = adviesSleutel(a.tekst); nieuw[k] = (T[k] || 0) + 1; } s.adviesTel = nieuw; }
 function adviezen(s){
   const out = [], add = (prio, tekst, view) => out.push({prio, tekst, view});
   const markt = (s.producten || []).filter(p => p.status === "markt"), dev = (s.producten || []).filter(p => p.status === "ontwikkeling" || p.status === "wachtrij");
@@ -3157,7 +3160,7 @@ function adviezen(s){
     add(12, `Cash is negatief: nog ${nog} maand(en) tot faillissement. Snel geld: een lening (Financiën, tot €${Math.max(0, Math.round(loanCap(s)))}k)${s.accounts.zwart > 0 ? `, zwart geld overboeken (€${Math.round(s.accounts.zwart)}k)` : ""}${dochter ? ", een dochter verkopen (Bedrijf)" : ""}${aand ? ", aandelen verkopen (Wereld)" : ""}, of kosten schrappen: personeel, crew of een project.`, "financien"); }
   { const ng = markt.find(p => ["nodig", "afgekeurd"].includes(keurStatus(p))); if (ng) add(8, `${ng.naam} is niet goedgekeurd en verkoopt alleen op de grijze markt (${Math.round(KEUR_ZONDER * 100)}% van de afzet). Een keuring kost €${keurKost(s)}k en twee maanden (Details → Overzicht → Keuring).`, "bedrijf"); }
   for (const p of markt){ const cap = prodCap(s, p), v = vraagNa(p); if (v > cap){ add(7, `${p.naam} is uitverkocht: ${Math.round((v - cap) / v * 100)}% van de vraag levert niets op. Productie uitbreiden kost €${capKost(s, p)}k (Bedrijf → Productlijn → Details).`, "bedrijf"); break; } }
-  if ((s.keuzes || []).length) add(9, `${s.keuzes.length} beslissing(en) wachten op je. Zonder antwoord kiest het spel na twee maanden zelf, meestal niet in jouw voordeel.`, "overzicht");
+  if ((s.keuzes || []).length) add(9, `${s.keuzes.length === 1 ? "1 beslissing wacht" : `${s.keuzes.length} beslissingen wachten`} op je. Zonder antwoord kiest het spel na twee maanden zelf, meestal niet in jouw voordeel.`, "overzicht");
   if (net != null && net < -1 && s.cash > 0 && s.cash / -net < 24) add(9, `Je verloor vorige maand €${Math.abs(net)}k. Met €${Math.round(s.cash)}k in kas heb je nog ±${Math.max(1, Math.round(s.cash / -net))} maanden. Snij in crew, personeel of projecten, of lanceer een product.`, "financien");
   if (s.staff.count < staffNeed(s)) add(8, `Onderbezet: ${s.staff.count} mensen voor ${staffNeed(s)} plekken. Divisies draaien op halve kracht en morale lijdt. Neem ${staffNeed(s) - s.staff.count} mensen aan bij Bedrijf (€0,4k p.p.).`, "bedrijf");
   if (s.morale < 40) add(9, `Morale ${Math.round(s.morale)}: onder 10 komt de raad in opstand. Salaris omhoog (Bedrijf), een gunst van de bond (Mensen) of winst draaien helpt.`, "bedrijf");
@@ -3178,12 +3181,15 @@ function adviezen(s){
   for (const g of s.gangs || []) if (!g.deal && gangLanden(s, g).length){ add(5, `${g.naam} zit in je gebied zonder afspraak. Vroeg of laat komt er een rekening: bescherming kost €${gangFee(s, g)}k per maand.`, "onderwereld"); break; }
   const best = doelen(s).filter(d => d.id !== "termijn").sort((a, b) => b.pct - a.pct)[0];
   if (best) add(1, `Dichtst bij winst: ${best.naam} (${best.pct}%, ${best.nu}).`, "overzicht");
-  return out.sort((a, b) => b.prio - a.prio).slice(0, 6);
+  /* 4.5.2: een niet-dringend advies dat al drie maanden onveranderd staat, zakt naar "staat al een tijdje" */
+  const T = s.adviesTel || {}; for (const a of out){ a.maanden = T[adviesSleutel(a.tekst)] || 0; a.oud = a.maanden >= 3 && a.prio < 9; }
+  out.sort((a, b) => b.prio - a.prio); return [...out.filter(a => !a.oud).slice(0, 6), ...out.filter(a => a.oud).slice(0, 4)];
 }
 function adviesCard(st){
   const A = st.adviezen; if (!A.length) return "";
   return `<div class="card advies"><div class="spread"><h3>Wat nu?</h3><span class="dim" style="font-size:13px">op volgorde van belang</span></div>
-    <ol class="alist">${A.map(a => `<li><span>${esc(a.tekst)}</span>${a.view && a.view !== "overzicht" ? `<button class="btn sm" data-view="${a.view}">Ga</button>` : ""}</li>`).join("")}</ol></div>`;
+    <ol class="alist">${A.filter(a => !a.oud).map(a => `<li><span>${esc(a.tekst)}</span>${a.view && a.view !== "overzicht" ? `<button class="btn sm" data-view="${a.view}">Ga</button>` : ""}</li>`).join("")}</ol>
+    ${A.some(a => a.oud) ? `<details style="margin-top:6px"><summary class="dim" style="cursor:pointer;font-size:13px">Staat al een tijdje (${A.filter(a => a.oud).length})</summary><ul class="alist dim" style="font-size:13.5px">${A.filter(a => a.oud).map(a => `<li><span>${esc(a.tekst)}</span>${a.view && a.view !== "overzicht" ? `<button class="btn sm" data-view="${a.view}">Ga</button>` : ""}</li>`).join("")}</ul></details>` : ""}</div>`;
 }
 const SPELREGELS = [
   ["Een beurt", "Elke beurt is een maand. Je doet wat je wilt (producten, mensen, crew, deals) en klikt dan Volgende maand. Dan rekent de engine omzet, kosten, gebeurtenissen en rivalen uit en stuurt de CFO een rapport."],

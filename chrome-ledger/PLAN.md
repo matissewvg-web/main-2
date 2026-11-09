@@ -26,8 +26,8 @@ Werkwijze: elk uur een ronde (automatisch). Grote punten zijn verdeeld in stappe
 | 4.3 | Echte afzet en prijs | 3 | klaar (4.3, 4.3.2, 4.3.3); volgende ronde is een opruimronde |
 | 4.3.4 | Opruimronde | 1 | klaar |
 | 4.4 | Geavanceerd productontwerp | 3 | klaar (4.4 nadruk en rivalen, 4.4.1 onderdelen, 4.4.2 opruimen, 4.4.3 varianten en bètatest) |
-| 4.5 | Kwaliteit en aansprakelijkheid | 2 | klaar (4.5 defecten, 4.5.1 keuring); volgende: opruimronde 4.5.2 |
-| 4.6 | Marketing en distributie | 2 | na 4.5.2 |
+| 4.5 | Kwaliteit en aansprakelijkheid | 2 | klaar (4.5 defecten, 4.5.1 keuring, 4.5.2 opruimen) |
+| 4.6 | Marketing en distributie | 2 | volgende |
 | 4.7 | Patenten en namaak | 1 | |
 | 4.8 | Productdashboard | 1 | |
 | 4.9 | Toelevering en voorraad | 2 | |
@@ -84,8 +84,9 @@ Werkwijze: elk uur een ronde (automatisch). Grote punten zijn verdeeld in stappe
 - (9 nov, 4.5.1) De bot keurt altijd; een speler die het vergeet verliest 40% afzet op die producten. Na een echte speelronde nagaan of het advies in Wat nu? genoeg opvalt.
 - (9 nov, 4.5) Garantie is nu een klein bedrag (1-4% van de productomzet, vaak tientallen euro's per maand). Merkbaar wordt het pas bij goedkope onderdelen en lage kwaliteit. Na een speelronde nagaan of defecten vaker in het nieuws of in mails moeten opduiken.
 - (opgelost in 4.5) Bij 4.5 de onderdelen laten meetellen: goedkope onderdelen geven meer defecten en terugroepacties, premium minder. Dan krijgt goedkoop een echte prijs naast −1 eigenschap.
-- (9 nov, 4.4.2) Kritische blik: het Wat nu?-blok noemt elke maand dezelfde crewklus en dezelfde uitbreiding; na een paar maanden lees je er overheen. Adviezen die al drie maanden onveranderd staan, inklappen of rouleren.
-- (9 nov, 4.4.2) Toasts (meldingen rechtsonder) liggen bij elke actie over de inhoud, ook over Wat nu?. Kleiner maken of bovenaan zetten op brede schermen.
+- (9 nov, 4.5.2) Verhaalkeuzes (Mara Vonk, salarisgesprek) staan op het overzicht direct onder Wat nu? met grote kaarten; met drie tegelijk duwt dat de rest ver naar beneden. Compacter tonen of in Inbox houden met één regel op het overzicht.
+- (opgelost in 4.5.2) Kritische blik: het Wat nu?-blok noemt elke maand dezelfde crewklus en dezelfde uitbreiding; na een paar maanden lees je er overheen. Adviezen die al drie maanden onveranderd staan, inklappen of rouleren.
+- (opgelost in 4.5.2) Toasts (meldingen rechtsonder) liggen bij elke actie over de inhoud, ook over Wat nu?. Kleiner maken of bovenaan zetten op brede schermen.
 - (opgelost in 4.4.2) Het productblad is op 390 px ±1600 px lang geworden (eigenschappen, economie, prijs, klanten, onderdelen, markt, productie, omzet). Opdelen in tabbladen: Overzicht · Prijs en klanten · Onderdelen.
 - (opgelost in 4.4.2) Onderdelen kiezen gebeurt nu pas op het productblad, na de start van de ontwikkeling. Een snelle keuze in het ontwikkelformulier (alles goedkoop, standaard, premium) zou het ontwerp in één stap maken.
 - (opgelost in 4.4.2) Het ontwikkelformulier heeft nu Focus én Nadruk; focus "veilig" en nadruk "Veiligheid" lijken op elkaar maar doen iets anders (aanpak van de ontwikkeling tegenover een eigenschap). In de volgende opruimronde Focus hernoemen naar Aanpak.
@@ -93,6 +94,7 @@ Werkwijze: elk uur een ronde (automatisch). Grote punten zijn verdeeld in stappe
 - (9 nov) Mensrun: een Cyberware-start verdient na twee jaar ±€5k per maand, uitbreiden naar L3 is pas in 21 maanden terugverdiend. De eerste jaren hebben weinig spannende keuzes; nagaan na een echte speelronde.
 
 ## Gedaan
+- 4.5.2 Opruimronde (9 nov, ochtend): adviesTick telt per advies (sleutel zonder getallen) hoeveel maanden het staat; ≥3 en prio < 9 zakt naar Staat al een tijdje. Toasts rechtsboven ≥900 px, 3,5 s, klik sluit. Mensrun 24 maanden: reputatie 29, cash €294k, geen fouten. adviezen per maand maakt de balanstest ±30% trager (40 spellen: 18 → 25 s), acceptabel.
 - 4.5.1 Keuring (9 nov, ochtend): KEURING_AARD (medisch, implantaat, wapen), keurF 0,6 in prodGewicht, keuringTick met worp (doel 6 ± defecten/kwaliteit), omkopen, variant erft goedkeuring, oude producten gelden als gekeurd. Advies in Wat nu?, badge op de productlijn. Bot keurt officieel. Balans 46%.
 - 4.5 Defecten en garantie (9 nov, ochtend): DEFECT_BASIS per soort, defectPct, garantie in prodKost, defectTick (kansRol voor deterministische tests) met terugroepkeuze boven 5%, max 1×/jaar. Kwaliteitsblok op het productblad. Balans 47%. varianten.js deterministisch gemaakt (vergelijkt met de waarde op het moment van lancering).
 - 4.4.3 Varianten en bètatest (9 nov, vroeg): VARIANT basis/pro/elite (prijs, onderdelen, kwaliteit), variant leent 60% populariteit en origineel −12%, bètatest in devPlan/lanceerWorp/wachtrij. Eerste versie gaf een variant een volledige lanceringsworp voor half geld (populariteit 55-72): uit te buiten, aangepast naar lenen. tests/varianten.js.

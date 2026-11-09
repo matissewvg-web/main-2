@@ -100,6 +100,12 @@ const html = '<!doctype html><html><head><meta charset=utf8></head><body>' + fs.
   ok(df.st === 3 && df.gk === 4.5 && df.pr === 2.1 && df.hk < df.st, "defecten: consument kwaliteit 3 = 3%, goedkope onderdelen 4,5%, premium 2,1%, hogere kwaliteit minder: " + JSON.stringify(df));
   ok(Math.abs(df.garantie - 0.3) < 1e-6, "garantie kost het defectpercentage van de omzet (3% van €10k = €0,3k)");
   ok(df.hoog > 5 && df.keuze && df.opties.length === 3, "boven 5% defecten komt er een terugroepkeuze: " + JSON.stringify([df.hoog, df.opties]));
+  // 4.5.2: adviezen die al drie maanden staan zakken weg (behalve dringende)
+  const adv = await p.evaluate(() => { const s = G.game, A0 = adviezen(s), gewoon = A0.find(a => a.prio < 9), dringend = A0.find(a => a.prio >= 9); const bewaar = s.adviesTel; s.adviesTel = {};
+    if (gewoon) s.adviesTel[adviesSleutel(gewoon.tekst)] = 3; if (dringend) s.adviesTel[adviesSleutel(dringend.tekst)] = 5; const A1 = adviezen(s); s.adviesTel = bewaar;
+    const g1 = gewoon && A1.find(a => a.tekst === gewoon.tekst), d1 = dringend && A1.find(a => a.tekst === dringend.tekst);
+    return {gewoon: !!gewoon, oud: g1 ? g1.oud : null, laatst: g1 ? A1.indexOf(g1) >= A1.filter(a => !a.oud).length : null, dringendOud: d1 ? d1.oud : false, sleutelGelijk: adviesSleutel("Uitbreiden €49,2k, ±+€2,7k per maand") === adviesSleutel("Uitbreiden €51,0k, ±+€3,1k per maand")}; });
+  ok(adv.sleutelGelijk && (!adv.gewoon || (adv.oud === true && adv.laatst === true)) && adv.dringendOud === false, "Wat nu?: een advies dat drie maanden staat zakt weg, dringende blijven bovenaan: " + JSON.stringify(adv));
   ok(prijs.ok && prijs.f === 1.3 && prijs.label === "premium" && prijs.f2 === 1.8, "prijs exact instellen, begrensd op 180%: " + JSON.stringify([prijs.f, prijs.label, prijs.f2]));
   ok(loy.keuze && loy.keuze.length === 3, "concurrent lokt abonnees weg: keuze " + JSON.stringify(loy.keuze));
   // overname en koppelen
