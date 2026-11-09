@@ -36,7 +36,7 @@ const html = '<!doctype html><html><head><meta charset=utf8></head><body>' + fs.
   ok(schok.na < schok.voor && schok.na > schok.voor * 0.6, "een schandaal kost abonnees, maar niet allemaal: " + JSON.stringify(schok));
   await p.evaluate(() => { S.view = "bedrijf"; render(); });
   const rij = await p.evaluate(() => [...document.querySelectorAll(".prow .dim")].map(x => x.textContent).find(t => /abonnees/.test(t)) || "");
-  ok(/\d+ abonnees \(\+\d+ \/ −\d+ per mnd, [\d.]+% zegt op\)/.test(rij), "productlijn toont abonnees: " + rij.slice(0, 120));
+  ok(/[\d.]+ abonnees \(\+[\d.]+ \/ −[\d.]+ per mnd, [\d,]+% zegt op\)/.test(rij), "productlijn toont abonnees: " + rij.slice(0, 120));
   if (out){ await p.evaluate(() => { const el = [...document.querySelectorAll(".prow")].find(x => /abonnees/.test(x.textContent)); window.scrollTo(0, el.getBoundingClientRect().top + scrollY - 200); }); await p.waitForTimeout(150); await p.screenshot({path: out + "/abonnement.png"}); }
   // 3.9: loyaliteit, prijsverhoging, concurrent die abonnees weglokt
   const loy = await p.evaluate(async () => { const x = G.game.producten[0], c0 = aboChurn(x); await API["/api/product"]({soort: "loyaliteit", id: x.id}); const c1 = aboChurn(x), cash0 = G.game.cash; aboTick(G.game, x, Ctx()); const kost = r1(cash0 - G.game.cash);
