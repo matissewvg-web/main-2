@@ -25,8 +25,8 @@ Werkwijze: elk uur een ronde (automatisch). Grote punten zijn verdeeld in stappe
 | 4.2 | Levende bedrijvenwereld | 1 | klaar |
 | 4.3 | Echte afzet en prijs | 3 | klaar (4.3, 4.3.2, 4.3.3); volgende ronde is een opruimronde |
 | 4.3.4 | Opruimronde | 1 | klaar |
-| 4.4 | Geavanceerd productontwerp | 3 | stap 1-2 klaar (nadruk, rivalen, onderdelen), opruimronde 4.4.2 klaar; volgende: stap 3 varianten/prototype/opvolgers (4.4.3) |
-| 4.5 | Kwaliteit en aansprakelijkheid | 2 | |
+| 4.4 | Geavanceerd productontwerp | 3 | klaar (4.4 nadruk en rivalen, 4.4.1 onderdelen, 4.4.2 opruimen, 4.4.3 varianten en bètatest) |
+| 4.5 | Kwaliteit en aansprakelijkheid | 2 | volgende |
 | 4.6 | Marketing en distributie | 2 | |
 | 4.7 | Patenten en namaak | 1 | |
 | 4.8 | Productdashboard | 1 | |
@@ -79,6 +79,8 @@ Werkwijze: elk uur een ronde (automatisch). Grote punten zijn verdeeld in stappe
 - (8 nov, laat) Segmenten tellen al voor afzet en prijs, maar rivalen hebben nog geen eigen segmentkeuze en de bot kijkt er niet naar. 4.4 (eigenschappen per segment, varianten) bouwt hierop: dan pas wordt "voor wie maak je dit?" een echte keuze.
 - (8 nov, laat) Productomzet blijft klein naast de basisomzet van een divisie (een product €1-3k tegen een divisie €8-15k). De omzet volledig naar producten verschuiven raakt de start (die draait zonder producten) en vraagt een eigen ronde met metingen.
 - (9 nov) Les uit de opruimronde: één verborgen willekeurige straf (laster) was goed voor 10 procentpunt winkans. Andere willekeurige straffen zonder tegenzet nalopen met hetzelfde spoor (repdiag): keuzes rond producten (−2,7 in 2 jaar), verhaallijnen (−3), chaos (−2,5).
+- (9 nov, 4.4.3) Varianten en het origineel zitten elkaar nu alleen bij de lancering in de weg (−12%). Daarna verkopen ze los van elkaar; echte kannibalisatie (zelfde segment, zelfde klanten) hoort bij 4.10 regionale markten of een aparte ronde.
+- (9 nov, 4.4.3) Bij 4.5 de onderdelen laten meetellen: goedkope onderdelen geven meer defecten en terugroepacties, premium minder. Dan krijgt goedkoop een echte prijs naast −1 eigenschap.
 - (9 nov, 4.4.2) Kritische blik: het Wat nu?-blok noemt elke maand dezelfde crewklus en dezelfde uitbreiding; na een paar maanden lees je er overheen. Adviezen die al drie maanden onveranderd staan, inklappen of rouleren.
 - (9 nov, 4.4.2) Toasts (meldingen rechtsonder) liggen bij elke actie over de inhoud, ook over Wat nu?. Kleiner maken of bovenaan zetten op brede schermen.
 - (opgelost in 4.4.2) Het productblad is op 390 px ±1600 px lang geworden (eigenschappen, economie, prijs, klanten, onderdelen, markt, productie, omzet). Opdelen in tabbladen: Overzicht · Prijs en klanten · Onderdelen.
@@ -88,6 +90,7 @@ Werkwijze: elk uur een ronde (automatisch). Grote punten zijn verdeeld in stappe
 - (9 nov) Mensrun: een Cyberware-start verdient na twee jaar ±€5k per maand, uitbreiden naar L3 is pas in 21 maanden terugverdiend. De eerste jaren hebben weinig spannende keuzes; nagaan na een echte speelronde.
 
 ## Gedaan
+- 4.4.3 Varianten en bètatest (9 nov, vroeg): VARIANT basis/pro/elite (prijs, onderdelen, kwaliteit), variant leent 60% populariteit en origineel −12%, bètatest in devPlan/lanceerWorp/wachtrij. Eerste versie gaf een variant een volledige lanceringsworp voor half geld (populariteit 55-72): uit te buiten, aangepast naar lenen. tests/varianten.js.
 - 4.4.2 Opruimronde (9 nov, nacht): productblad in tabbladen (S.prodTab per product), onderdelen-snelkeuze bij ontwikkelen, Focus → Aanpak, nieuwCard max 4 versies, 4.3-tekst gecorrigeerd (40%). Mensrun: reputatie 29 → 21 in 2 jaar (was 30 → 11), cash 101 → 300.
 - 4.4.1 Onderdelen en leveranciers (9 nov, nacht): ONDERDELEN per soort met gekoppelde eigenschap en leverancierssectoren, goedkoop/standaard/premium, kostFactor in kostprijs en productiekosten, leverancier uit s.bedrijven met vervanging bij faillissement (ook in maandrapport). Vier vaste tests. Balans 46%.
 - 4.4 stap 1 (9 nov, nacht): nadruk in het ontwerp (+2/−1) met uitleg wie meer of minder koopt, segmenten vergelijken met het gemiddelde van rivaalproducten (×0,85 tot ×1,15). Vier vaste tests. Balans 47%.
