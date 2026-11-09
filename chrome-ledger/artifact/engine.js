@@ -658,7 +658,7 @@ function tick(s){
 }
 
 /* ---------- de stad: elke game een andere kaart ---------- */
-const VERSION = "4.7.10";
+const VERSION = "4.7.11";
 const MAP_W = 1000, MAP_H = 680;
 const RIVAL_COLORS = ["#ff9a1f", "#3d7bff", "#c6ff2e", "#f2f2f2", "#9b5cff", "#ffd400", "#ff4d4d"];
 const ARCH = {
@@ -2486,7 +2486,7 @@ function actProduct(s, ctx, soort, a){
     const alle = (s.producten || []).filter(p => p.divisie === divNaam(d) && p.status !== "teruggeroepen");
     if (alle.length >= maxProducten(d)) return {ok: false, msg: `${divNaam(d)} kan op niveau ${d.level} maximaal ${maxProducten(d)} producten dragen (inclusief de wachtrij). Haal er een uit de markt of breid de divisie uit.`};
     const focus = DEV_FOCUS[a.focus] ? a.focus : "standaard", F = DEV_FOCUS[focus], aardK = PRODUCT_AARD[a.aard] ? a.aard : null, beta = a.beta === true || a.beta === "ja", plan = devPlan(s, d, a.schaal, focus, aardK || aardVan(d.type, a.naam || ""), beta);
-    const gratis = (s.gratisDev || 0) > 0, kost = gratis ? 0 : plan.kost, bezig = alle.some(p => p.status === "ontwikkeling"); /* 4.7.10: gratis ontwikkelingen */
+    const gratis = (s.gratisDev || 0) > 0, kost = gratis ? 0 : plan.kost, bezig = false; /* 4.7.11: geen wachtrij meer, alles start meteen */ /* 4.7.10: gratis ontwikkelingen */
     if (bezig){ if (alle.filter(p => p.status === "wachtrij").length >= 3) return {ok: false, msg: "De wachtrij is vol (3)."};
       const naamW = String(a.naam || "").trim().slice(0, 40) || nieuwProductNaam(s, d.type); if ((s.producten || []).some(p => p.naam === naamW)) return {ok: false, msg: "Die naam bestaat al."};
       const q = mkProduct(s, d, naamW, plan.kw, 0); q.status = "wachtrij"; q.schaal = a.schaal; q.focus = focus; q.nadruk = nadrukVan(a.nadruk); if (beta) q.beta = true; if (DEEL_KWAL[a.delen] && a.delen !== "standaard") q.delen = [0, 1, 2].map(() => ({kwal: a.delen, eigen: true})); q.aard = aardK || aardVan(d.type, naamW); if (a.vorm === "abonnement") q.soort = "abonnement"; (s.producten ??= []).push(q);
@@ -2521,7 +2521,6 @@ function actProduct(s, ctx, soort, a){
     else if (soort === "variant"){ const V = VARIANT[a.v]; if (!V) return {ok: false, msg: "Onbekende variant."}; if (p.status !== "markt") return {ok: false, msg: "Het staat niet op de markt."}; if (p.variantVan) return {ok: false, msg: "Maak varianten van het origineel."};
       const d = s.divisions.find(x => divNaam(x) === p.divisie); if (!d) return {ok: false, msg: "Geen divisie."}; const alle = s.producten.filter(x => x.divisie === p.divisie && x.status !== "teruggeroepen");
       if (alle.length >= maxProducten(d)) return {ok: false, msg: `${p.divisie} draagt maximaal ${maxProducten(d)} producten. Haal er een uit de markt of breid de divisie uit.`};
-      if (alle.some(x => x.status === "ontwikkeling")) return {ok: false, msg: "Er loopt al een ontwikkeling in deze divisie; een variant kan daarna."};
       const naam = `${p.naam} ${V.label}`; if (s.producten.some(x => x.naam === naam)) return {ok: false, msg: "Die variant bestaat al."};
       const k = variantKost(s); if (!pay(k)) return {ok: false, msg: `Een variant kost €${k}M.`};
       const q = mkProduct(s, d, naam, clamp(p.kwaliteit + V.kw, 1, 5), 0); Object.assign(q, {status: "ontwikkeling", eta: 1, schaal: "klein", focus: "veilig", doelOverride: 5, aard: p.aard, soort: p.soort, nadruk: p.nadruk ?? null, delen: [0, 1, 2].map(() => ({kwal: V.delen, eigen: true})), prijsF: V.f, prijs: prijsLabel(V.f), variantVan: p.id, trait: p.trait ?? null});
@@ -2549,11 +2548,11 @@ function productTick(s, ctx){
   s.producten ??= [];
   for (const d of s.divisions){ const had = (d.leeg || 0) > 12; d.leeg = opMarkt(s, d).length ? 0 : (d.leeg || 0) + 1; if (d.leeg === 13) mail(ctx, s, "Verkoop", `${divNaam(d)} verkoopt al een jaar niets`, `Klanten van ${divNaam(d)} stappen over naar rivalen die wel iets nieuws hebben. Zolang we niets op de markt hebben, zakt de omzet van deze divisie elke maand verder, tot −20%. Eén product stopt het meteen.`, "HOOG"); }
   const namen = new Set(s.divisions.map(divNaam)); s.producten = s.producten.filter(p => namen.has(p.divisie));
-  for (const d of s.divisions){ const nm = divNaam(d); if (s.producten.some(p => p.divisie === nm && p.status === "ontwikkeling")) continue;
-    const q = s.producten.find(p => p.divisie === nm && p.status === "wachtrij"); if (!q) continue;
+  for (const d of s.divisions){ const nm = divNaam(d);
+    for (const q of s.producten.filter(p => p.divisie === nm && p.status === "wachtrij")){
     const sc = PRODUCT_SCHAAL[q.schaal || "klein"], F = DEV_FOCUS[q.focus || "standaard"] || DEV_FOCUS.standaard, kost = q.betaald ? 0 : q.kostOverride != null ? q.kostOverride : r1(sc.kost * (DIFF[s.player.difficulty] || 1) * (F.kost || 1) * (q.beta ? 1.2 : 1));
     if (s.cash < kost + 10){ if (!q.wachtgeld) ctx.rep.push(`${q.naam} wacht in de rij op €${kost}M`); q.wachtgeld = true; continue; }
-    s.cash = r1(s.cash - kost); q.status = "ontwikkeling"; q.eta = (q.maandenOverride || Math.max(1, sc.maanden + (F.maanden || 0))) + 1 + (q.beta ? 1 : 0); delete q.wachtgeld; ctx.rep.push(`Productie gestart: ${q.naam}${kost ? ` (€${kost}M)` : ""}`); }
+    s.cash = r1(s.cash - kost); q.status = "ontwikkeling"; q.eta = (q.maandenOverride || Math.max(1, sc.maanden + (F.maanden || 0))) + 1 + (q.beta ? 1 : 0); delete q.wachtgeld; ctx.rep.push(`Productie gestart: ${q.naam}${kost ? ` (€${kost}M)` : ""}`); } }
   for (const p of [...s.producten]){
     const d = s.divisions.find(x => divNaam(x) === p.divisie);
     if (p.status === "wachtrij") continue;
