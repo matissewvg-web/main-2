@@ -36,6 +36,7 @@ function geldZorg(s){
 }
 function verstandig(s, ctx, agressief){
   kiesKeuzes(s, ctx, true); geldZorg(s);
+  for (const p of (s.producten || []).filter(x => x.status === "markt" && ["nodig", "afgekeurd"].includes(keurStatus(x)))) if (s.cash > keurKost(s) + 25) actProduct(s, ctx, "keuring", {id: p.id, wijze: "officieel"}); // 4.5.1: verstandig = officieel keuren
   const m = ym(s);
   // morale en heat bewaken
   if (s.morale < 50 && s.staff.avg_salary < SALARY.hoog) actStaff(s, s.staff.avg_salary < SALARY.marktconform ? "marktconform" : "hoog");

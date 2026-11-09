@@ -631,7 +631,7 @@ function tick(s){
 }
 
 /* ---------- de stad: elke game een andere kaart ---------- */
-const VERSION = "4.5";
+const VERSION = "4.5.1";
 const MAP_W = 1000, MAP_H = 680;
 const RIVAL_COLORS = ["#ff9a1f", "#3d7bff", "#c6ff2e", "#f2f2f2", "#9b5cff", "#ffd400", "#ff4d4d"];
 const ARCH = {
@@ -2477,6 +2477,12 @@ function actProduct(s, ctx, soort, a){
     else if (soort === "verbeter"){ if (p.status !== "markt") return {ok: false, msg: "Het staat niet op de markt."}; if (p.kwaliteit >= 5) return {ok: false, msg: "Beter wordt het niet."}; if (p.verbetering) return {ok: false, msg: "Er loopt al een verbetering."};
       const kost = r1(8 * dif); if (!pay(kost)) return {ok: false, msg: `Een nieuwe versie kost €${kost}k.`}; p.verbetering = 2; msg = `Versie ${p.kwaliteit + 1} van ${p.naam} in ontwikkeling: €${kost}k, 2 maanden.`; }
     else if (soort === "prijs"){ const rr = actPrijs(s, p.id, a.f != null ? +a.f : a.prijs); if (rr.ok) prodLog(p, s, `Prijs: €${stukPrijs(p).toLocaleString("nl-NL")} per ${isAbo(p) ? "abonnee" : "stuk"} (${PRIJS[p.prijs].label.toLowerCase()})`); return rr; }
+    else if (soort === "keuring"){ if (p.status !== "markt") return {ok: false, msg: "Het staat niet op de markt."}; const st = keurStatus(p); if (st === "ok") return {ok: false, msg: "Al goedgekeurd."}; if (st === "bezig") return {ok: false, msg: "De keuring loopt al."};
+      if (a.wijze === "omkopen"){ const k = omkoopKost(s), zw = (s.accounts.zwart || 0) >= k; if (zw) s.accounts.zwart = r1(s.accounts.zwart - k); else if (!pay(k)) return {ok: false, msg: `Omkopen kost €${k}k.`};
+        const r = rol2d6(0, 7); addRoll(s, `Keurder omkopen voor ${p.naam}: ${r.txt} → ${r.ok ? "GELUKT" : "MISLUKT"}`);
+        if (r.ok){ p.keuring = "ok"; s.heat = clamp(s.heat + 3); prodLog(p, s, "Goedgekeurd (met een envelop)"); msg = `${keurInstantie(p)} stempelt ${p.naam} goed (${r.txt}). €${k}k${zw ? " zwart" : ""}, heat +3.`; }
+        else { s.heat = clamp(s.heat + 6); s.reputation = clamp(s.reputation - 4); prodLog(p, s, "Omkoping mislukt"); msg = `De keurder weigert en praat (${r.txt}). €${k}k weg, heat +6, reputatie −4. Een officiële keuring kan nog.`; } }
+      else { const k = keurKost(s); if (!pay(k)) return {ok: false, msg: `Een keuring kost €${k}k.`}; p.keuring = {maanden: 2}; prodLog(p, s, "Keuring aangevraagd"); msg = `Keuring van ${p.naam} aangevraagd bij ${keurInstantie(p)}: €${k}k, 2 maanden, ${kans2d6(0, keurDoel(p))}% kans.`; } }
     else if (soort === "variant"){ const V = VARIANT[a.v]; if (!V) return {ok: false, msg: "Onbekende variant."}; if (p.status !== "markt") return {ok: false, msg: "Het staat niet op de markt."}; if (p.variantVan) return {ok: false, msg: "Maak varianten van het origineel."};
       const d = s.divisions.find(x => divNaam(x) === p.divisie); if (!d) return {ok: false, msg: "Geen divisie."}; const alle = s.producten.filter(x => x.divisie === p.divisie && x.status !== "teruggeroepen");
       if (alle.length >= maxProducten(d)) return {ok: false, msg: `${p.divisie} draagt maximaal ${maxProducten(d)} producten. Haal er een uit de markt of breid de divisie uit.`};
@@ -2518,13 +2524,14 @@ function productTick(s, ctx){
       else if (r.blunder){ s.producten = s.producten.filter(x => x !== p); s.reputation = clamp(s.reputation - 5); const k2 = r1(sc.kost * 0.3); s.cash = r1(s.cash - k2);
         mail(ctx, s, "Juridische Zaken", `Terugroepactie: ${p.naam}`, `${p.naam} (${r.txt}) blijkt een fout te hebben die we niet mochten missen. Alles moet terug. €${k2}k aan kosten, reputatie −5, en de pers heeft foto's.`, "KRITIEK"); ctx.rep.push(`Terugroepactie ${p.naam}`); continue; }
       else { (s.stats ??= {}).flops = (s.stats.flops || 0) + 1; p.pop = RI(15, 28) + (sc.flop || 0); p.kwaliteit = Math.max(1, p.kwaliteit - 1); mail(ctx, s, "Marketing", `${p.naam} flopt`, `De lancering van ${p.naam} (${r.txt}) valt tegen: populariteit ${p.pop}. Een campagne of een nieuwe versie kan het redden. Of je haalt het uit de markt.`, "HOOG"); ctx.rep.push(`${p.naam} flopt`); }
+      if (KEURING_AARD.has(p.aard || aardVan(p.type, p.naam)) && p.keuring === undefined){ const o = p.variantVan && s.producten.find(x => x.id === p.variantVan); p.keuring = o && keurStatus(o) === "ok" ? "ok" : "nodig"; }
       if (p.variantVan){ const o = s.producten.find(x => x.id === p.variantVan); if (o && o.status === "markt"){ p.pop = Math.round(clamp(o.pop * 0.6, 3, 95)); p.variantStart = {pop: p.pop, origineelVoor: o.pop}; o.pop = Math.round(clamp(o.pop * 0.88, 3, 95)); prodLog(o, s, `${p.naam} neemt klanten over (populariteit −12%)`); } }
       if (heeftFocus(s, "merk")) p.pop = Math.round(clamp(p.pop + 6, 3, 95));
       if (isAbo(p)) p.abo = Math.round(p.pop * 0.5);
       p.aard ??= aardVan(p.type, p.naam); p.prijs ??= "standaard"; if (p.trait === undefined){ const ft = focusTrait(p); p.trait = ft !== undefined ? ft : kiesTrait(p, r.crit, !r.ok && !r.neutraal); } maakReview(p);
       prodLog(p, s, r.crit ? `Lancering: een hit (${p.review.sterren}★)` : r.ok ? `Gelanceerd (${p.review.sterren}★)` : r.neutraal ? `Rustige lancering (${p.review.sterren}★)` : `Lancering geflopt (${p.review.sterren}★)`); if (p.trait) prodLog(p, s, `Eigenschap: ${PRODUCT_TRAITS[p.trait].label}`); continue;
     }
-    defectTick(s, ctx, p);
+    keuringTick(s, ctx, p); defectTick(s, ctx, p);
     if (p.verbetering && --p.verbetering <= 0){ delete p.verbetering; const r = rol2d6(Math.ceil(d.level / 2), 8); addRoll(s, `Nieuwe versie ${p.naam}: ${r.txt} → ${r.ok ? "GELUKT" : "MISLUKT"}`);
       if (r.ok){ p.kwaliteit = clamp(p.kwaliteit + 1, 1, 5); p.pop = clamp(p.pop + 10, 0, 95); p.leeftijd = 0; maakReview(p); if (p.trait === "gevoelig") p.trait = null; prodLog(p, s, `Versie ${p.kwaliteit}`); mail(ctx, s, "R&D", `${p.naam} versie ${p.kwaliteit}`, `De nieuwe versie is klaar (${r.txt}). Kwaliteit ${p.kwaliteit}, en de klanten merken het.`, "NORMAAL"); }
       else mail(ctx, s, "R&D", `Nieuwe versie ${p.naam} mislukt`, `Het ontwikkelteam kreeg het niet werkend (${r.txt}). Het geld is op, het product blijft zoals het was.`, "HOOG"); }
@@ -2861,6 +2868,18 @@ function defectDelen(p){ return delenVan(p).reduce((t, d, i) => t + d[1] * DEFEC
 function defectPct(p){ const a = p.aard || aardVan(p.type, p.naam), q = clamp(1.6 - 0.2 * (p.kwaliteit || 3), 0.6, 1.4), tr = p.trait === "gevoelig" ? 1.6 : p.trait === "goedkoop" ? 1.5 : 1;
   return Math.round((DEFECT_BASIS[a] ?? 2) * q * defectDelen(p) * tr * (p.beta ? 0.85 : 1) * 10) / 10; }
 const DEFECT_DREMPEL = 5;
+/* 4.5.1: keuring. Medisch, implantaten en wapens mogen pas overal verkocht worden na een keuring; daarvoor alleen de grijze markt (60% van de afzet).
+   Producten van vóór 4.5.1 (zonder veld) gelden als gekeurd. */
+const KEURING_AARD = new Set(["medisch", "implantaat", "wapen"]), KEUR_ZONDER = 0.6;
+const keurStatus = p => p.keuring == null ? "ok" : typeof p.keuring === "object" ? "bezig" : p.keuring;
+const keurF = p => keurStatus(p) === "ok" ? 1 : KEUR_ZONDER;
+const keurKost = s => r1(4 * (DIFF[(s && s.player.difficulty)] || 1)), omkoopKost = s => r1(2 * (DIFF[(s && s.player.difficulty)] || 1));
+const keurDoel = p => 6 + (defectPct(p) > 3 ? 1 : 0) + (defectPct(p) > DEFECT_DREMPEL ? 1 : 0) - ((p.kwaliteit || 3) >= 4 ? 1 : 0);
+const keurInstantie = p => ({medisch: "het geneesmiddelenbureau", implantaat: "de keuringsdienst voor implantaten", wapen: "de wapeninspectie"})[p.aard] || "de keurder";
+function keuringTick(s, ctx, p){ if (keurStatus(p) !== "bezig" || --p.keuring.maanden > 0) return;
+  const r = rol2d6(0, keurDoel(p)); addRoll(s, `Keuring ${p.naam}: ${r.txt} → ${r.ok ? "GOEDGEKEURD" : "AFGEKEURD"}`);
+  if (r.ok){ p.keuring = "ok"; prodLog(p, s, "Goedgekeurd"); mail(ctx, s, "Juridische Zaken", `${p.naam} goedgekeurd`, `${keurInstantie(p)[0].toUpperCase() + keurInstantie(p).slice(1)} keurt ${p.naam} goed (${r.txt}). Vanaf nu overal in de winkel.`, "NORMAAL"); }
+  else { p.keuring = "afgekeurd"; prodLog(p, s, "Afgekeurd"); mail(ctx, s, "Juridische Zaken", `${p.naam} afgekeurd`, `${keurInstantie(p)[0].toUpperCase() + keurInstantie(p).slice(1)} keurt ${p.naam} af (${r.txt}).${defectPct(p) > 3 ? ` Ze wijzen op het aantal defecten (${defectPct(p)}%).` : ""} We mogen opnieuw aanvragen; betere onderdelen of een nieuwe versie helpen.`, "HOOG"); } }
 function kansRol(){ return R(); } /* eigen functie zodat tests de kans kunnen vastzetten */
 function defectTick(s, ctx, p){ if (p.status !== "markt") return; { const dp = defectPct(p); if (dp > DEFECT_DREMPEL && kansRol() < (dp - DEFECT_DREMPEL) / 100 && !(s.keuzes || []).some(k => k.soort === "defect_" + p.id) && (!p.defectLaatst || mndNr(ym(s)) - mndNr(p.defectLaatst) >= 12)){ p.defectLaatst = ym(s); const k1 = r1(Math.max(2, (s.prodomzet || {})[p.id] || 2) * 1.5), k2 = r1(k1 / 3);
       addKeuze(s, ctx, {soort: "defect_" + p.id, van: "Kwaliteitsdienst", titel: `Te veel defecten bij ${p.naam}`, tekst: `${dp}% van wat we van ${p.naam} verkopen komt terug of gaat stuk. De klachten stapelen zich op en een consumentenprogramma belt al.`, opties: [
@@ -2897,9 +2916,9 @@ function prodDetail(s, p, omzet){
   const sp = abo ? Math.max(1, Math.round(omzet * 1000 / Math.max(1, p.abo * 10))) : stukPrijs(p), kp = abo ? Math.round(sp * PROD_KOST * kostFactor(p) / prijsF(p)) : kostPrijs(p), afzet = abo ? Math.round(p.abo * 10) : omzet > 0 ? Math.round(omzet * 1000 / sp) : 0;
   return {specs: prodSpecs(p), eenheid: abo ? "abonnees" : (STUK[p.aard] || STUK.consument).eenheid, perMaand: !!abo, stukPrijs: sp, kostPrijs: kp, marge: Math.round((sp - kp) / sp * 100), afzet, fase: levensfase(p),
     cap, vraag: Math.round(vraag), uitverkocht: vraag > cap, gemist: vraag > cap ? Math.round((vraag - cap) / vraag * 100) : 0, capKost: capKost(s, p), seg: segment(s, p), hist: (p.hist || []).slice(-12), prijsF: prijsF(p), elast: elast(p), segmenten: segmenten(p, s).rows.map(({vol, ...r}) => r), delen: delenVan(p).map((d, i) => { const k = deelKwal(p, i), lv = leverancier(s, p, i), per = (abo ? sp / prijsF(p) : basisPrijs(p)) * PROD_KOST * d[1] * DEEL_KWAL[k].kost;
-      return {naam: d[0], aandeel: d[1], spec: (SPECS[p.aard] || SPECS.consument)[d[2]], kwal: k, kost: Math.round(per * 100) / 100, lev: lv ? lv.naam : "eigen werkplaats"}; }), arbeid: Math.round((abo ? sp / prijsF(p) : basisPrijs(p)) * PROD_KOST * ARBEID * 100) / 100, omschakel: omschakelKost(s), defect: defectPct(p), garantie: r1(garantie(p, omzet)), garantieEur: Math.round(garantie(p, omzet) * 1000), defectRisico: Math.max(0, Math.round((defectPct(p) - DEFECT_DREMPEL) * 10) / 10), beste: p.status === "markt" ? besteprijs(s, p) : null};
+      return {naam: d[0], aandeel: d[1], spec: (SPECS[p.aard] || SPECS.consument)[d[2]], kwal: k, kost: Math.round(per * 100) / 100, lev: lv ? lv.naam : "eigen werkplaats"}; }), arbeid: Math.round((abo ? sp / prijsF(p) : basisPrijs(p)) * PROD_KOST * ARBEID * 100) / 100, omschakel: omschakelKost(s), keuring: KEURING_AARD.has(p.aard) || p.keuring != null ? {status: keurStatus(p), maanden: keurStatus(p) === "bezig" ? p.keuring.maanden : 0, kost: keurKost(s), omkoop: omkoopKost(s), kans: kans2d6(0, keurDoel(p)), omkoopKans: kans2d6(0, 7), instantie: keurInstantie(p)} : null, defect: defectPct(p), garantie: r1(garantie(p, omzet)), garantieEur: Math.round(garantie(p, omzet) * 1000), defectRisico: Math.max(0, Math.round((defectPct(p) - DEFECT_DREMPEL) * 10) / 10), beste: p.status === "markt" ? besteprijs(s, p) : null};
 }
-const prodGewicht = (p, s) => p.kwaliteit * effBereik(p, s) / 100 * prijsF(p) * (s ? vraagFactor(s, p.aard || aardVan(p.type, p.naam)) : 1) * (p.trait === "goedkoop" ? 1.15 : 1);
+const prodGewicht = (p, s) => keurF(p) * p.kwaliteit * effBereik(p, s) / 100 * prijsF(p) * (s ? vraagFactor(s, p.aard || aardVan(p.type, p.naam)) : 1) * (p.trait === "goedkoop" ? 1.15 : 1);
 const prodSterkte = p => bereik(p) / 100 * (0.5 + p.kwaliteit * 0.15);
 function prodEffecten(p){ const A = PRODUCT_AARD[p.aard || "consument"] || PRODUCT_AARD.consument, f = prodSterkte(p), out = {};
   for (const [k2, v] of Object.entries(p.eigenEff || A.eff)) out[k2] = Math.round(v * f * 10) / 10; const pr = ((PRIJS[p.prijs || "standaard"] || {}).rep || 0) + (prijsF(p) > 1.5 ? -0.25 : 0); if (pr) out.reputation = Math.round(((out.reputation || 0) + pr) * 10) / 10;
@@ -3136,6 +3155,7 @@ function adviezen(s){
   else for (const d of s.divisions) if (!(s.producten || []).some(p => p.divisie === divNaam(d))) add((d.leeg || 0) > 12 ? 9 : 7, (d.leeg || 0) > 12 ? `${divNaam(d)} verkoopt al ${d.leeg} maanden niets: klanten lopen weg, omzet ×${productMult(s, d).toFixed(2)}. Start een product bij Bedrijf → Productlijn.` : `${divNaam(d)} heeft geen producten en draait op ×0,95; na een jaar zonder producten lopen klanten weg. Start er een bij Bedrijf → Productlijn.`, "bedrijf");
   if (s.cash < 0){ const nog = Math.max(1, 3 - (s.flags.negatieve_cash_maanden || 0)), dochter = (s.bedrijven || []).some(b => b.eigenaar === "player" && b.koppeling === "dochter"), aand = (s.bedrijven || []).some(b => !b.eigenaar && b.aandeel > 0);
     add(12, `Cash is negatief: nog ${nog} maand(en) tot faillissement. Snel geld: een lening (Financiën, tot €${Math.max(0, Math.round(loanCap(s)))}k)${s.accounts.zwart > 0 ? `, zwart geld overboeken (€${Math.round(s.accounts.zwart)}k)` : ""}${dochter ? ", een dochter verkopen (Bedrijf)" : ""}${aand ? ", aandelen verkopen (Wereld)" : ""}, of kosten schrappen: personeel, crew of een project.`, "financien"); }
+  { const ng = markt.find(p => ["nodig", "afgekeurd"].includes(keurStatus(p))); if (ng) add(8, `${ng.naam} is niet goedgekeurd en verkoopt alleen op de grijze markt (${Math.round(KEUR_ZONDER * 100)}% van de afzet). Een keuring kost €${keurKost(s)}k en twee maanden (Details → Overzicht → Keuring).`, "bedrijf"); }
   for (const p of markt){ const cap = prodCap(s, p), v = vraagNa(p); if (v > cap){ add(7, `${p.naam} is uitverkocht: ${Math.round((v - cap) / v * 100)}% van de vraag levert niets op. Productie uitbreiden kost €${capKost(s, p)}k (Bedrijf → Productlijn → Details).`, "bedrijf"); break; } }
   if ((s.keuzes || []).length) add(9, `${s.keuzes.length} beslissing(en) wachten op je. Zonder antwoord kiest het spel na twee maanden zelf, meestal niet in jouw voordeel.`, "overzicht");
   if (net != null && net < -1 && s.cash > 0 && s.cash / -net < 24) add(9, `Je verloor vorige maand €${Math.abs(net)}k. Met €${Math.round(s.cash)}k in kas heb je nog ±${Math.max(1, Math.round(s.cash / -net))} maanden. Snij in crew, personeel of projecten, of lanceer een product.`, "financien");

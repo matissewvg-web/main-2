@@ -27,7 +27,16 @@ const html = '<!doctype html><html><head><meta charset=utf8></head><body>' + fs.
   ok(v0.ok && v0.betaald === v0.k && v0.q && v0.q.status === "ontwikkeling" && v0.q.prijsF === 1.25 && v0.q.delen.every(z => z === "premium") && v0.q.van && v0.q.kw === v0.kwOud && v0.dubbel === false, "variant Pro: betaald, in ontwikkeling, 125%, premium onderdelen, geen dubbele: " + JSON.stringify(v0));
   await vast(); const v1 = await p.evaluate(async () => { const s = G.game, x = s.producten.find(y => y.naam === "Basisdosis"), voor = x.pop; await API["/api/tick"]({force: true}); const q = s.producten.find(y => y.naam === "Basisdosis Pro"); return {status: q.status, start: q.variantStart, voor, na: x.pop, log: (x.log || []).map(l => l.tekst).join(" | ")}; }); await los();
   ok(v1.status === "markt" && v1.start && v1.start.pop === Math.round(v1.start.origineelVoor * 0.6) && /neemt klanten over/.test(v1.log), "bij de lancering neemt de variant klanten over: " + JSON.stringify(v1));
-  // 4. scherm
+  // 4. keuring (4.5.1): na de lancering niet gekeurd, 60% van de afzet; officieel keuren met vaste worp; omkopen
+  const k0 = await p.evaluate(() => { const s = G.game, x = s.producten.find(y => y.naam === "Basisdosis"), q = s.producten.find(y => y.naam === "Basisdosis Pro"); const g1 = prodGewicht(x, s), st = keurStatus(x); const ok = {...x, keuring: "ok"}; return {st, stPro: keurStatus(q), ratio: Math.round(g1 / prodGewicht(ok, s) * 100) / 100}; });
+  ok(k0.st === "nodig" && k0.stPro === "nodig" && k0.ratio === 0.6, "na de lancering niet gekeurd: 60% van de afzet: " + JSON.stringify(k0));
+  await vast(); const k1 = await p.evaluate(async () => { const s = G.game, x = s.producten.find(y => y.naam === "Basisdosis"), c0 = s.cash; const r = await API["/api/product"]({soort: "keuring", id: x.id, wijze: "officieel"}); const na1 = keurStatus(x), betaald = Math.round((c0 - s.cash) * 10) / 10;
+    await API["/api/tick"]({force: true}); await API["/api/tick"]({force: true}); return {ok: r.ok, na1, betaald, kost: keurKost(s), eind: keurStatus(x), worp: (s.worpen || []).filter(w => /Keuring Basisdosis/.test(w))}; }); await los();
+  ok(k1.ok && k1.na1 === "bezig" && k1.betaald === k1.kost && k1.eind === "ok" && k1.worp.length === 1, "officiële keuring: betaald, twee maanden, goedgekeurd met de worp in het logboek: " + JSON.stringify(k1));
+  await p.evaluate(() => { window.__echt = crypto.getRandomValues; crypto.getRandomValues = a => { a[0] = 3; return a; }; }); // d6 = 4 → 8
+  const k2 = await p.evaluate(async () => { const s = G.game, q = s.producten.find(y => y.naam === "Basisdosis Pro"), h0 = s.heat; s.accounts.zwart = 0; const r = await API["/api/product"]({soort: "keuring", id: q.id, wijze: "omkopen"}); return {ok: r.ok, st: keurStatus(q), heat: Math.round((s.heat - h0) * 10) / 10}; });
+  await los(); ok(k2.ok && k2.st === "ok" && k2.heat >= 3, "keurder omkopen (vaste worp 8): meteen goedgekeurd, heat omhoog: " + JSON.stringify(k2));
+  // 5. scherm
   await p.evaluate(() => { S.view = "bedrijf"; render(); }); const ds = await p.$('[data-a=prodsheet]'); if (ds){ await ds.click(); await p.waitForTimeout(200); }
   const scherm = await p.evaluate(() => { const el = document.querySelector(".prodblad"); return el ? el.textContent : ""; });
   ok(/VARIANT/.test(scherm), "varianten staan op het productblad");
