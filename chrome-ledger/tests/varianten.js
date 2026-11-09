@@ -78,6 +78,10 @@ const html = '<!doctype html><html><head><meta charset=utf8></head><body>' + fs.
   const ov = await p.evaluate(() => { const s = G.game, oud = JSON.parse(JSON.stringify(s)); delete oud.flags.overname_477; const weg = oud.divisions[0], n0 = oud.divisions.length; oud.divisions = oud.divisions.slice(1); oud.arcs = [{id: "hostile_bid", stage: 1, next_in: 2}]; oud.flags.wacht_op_speler_hostile_bid = true;
     migrate(oud); const terug = oud.divisions.find(d => (d.name || d.type) === (weg.name || weg.type)); return {terug: !!terug, n: oud.divisions.length === n0, arc: oud.arcs.some(a => a.id === "hostile_bid"), wacht: !!oud.flags.wacht_op_speler_hostile_bid, start: ARCS.hostile_bid.start}; });
   ok(ov.terug && ov.n && !ov.arc && !ov.wacht && ov.start === 0, "overnamebod weg; verloren divisie komt terug met haar producten: " + JSON.stringify(ov));
+  const hb = await p.evaluate(async () => { const s = G.game, d = s.divisions[0], nm = divNaam(d), n0 = s.producten.filter(x => x.divisie === nm).length; await Store.backup();
+    s.divisions = s.divisions.filter(x => x !== d); s.producten = s.producten.filter(x => x.divisie !== nm); s.hostile_bid = {uitslag: "verloren"}; delete s.flags.overname_herstel_478;
+    const r = await Store.herstelOvername(); const terug = s.divisions.some(x => divNaam(x) === nm), n1 = s.producten.filter(x => x.divisie === nm).length, tweede = await Store.herstelOvername(); return {r, terug, n0, n1, tweede}; });
+  ok(hb.terug && hb.n1 === hb.n0 && hb.n0 > 0 && hb.r && hb.r.length === 1 && hb.tweede === null, "verloren divisie komt met al haar producten terug uit de back-up, maar één keer: " + JSON.stringify(hb));
   // 7. scherm
   await p.evaluate(() => { S.view = "bedrijf"; render(); }); const ds = await p.$('[data-a=prodsheet]'); if (ds){ await ds.click(); await p.waitForTimeout(200); }
   const scherm = await p.evaluate(() => { const el = document.querySelector(".prodblad"); return el ? el.textContent : ""; });

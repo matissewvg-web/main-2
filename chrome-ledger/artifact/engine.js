@@ -646,7 +646,7 @@ function tick(s){
 }
 
 /* ---------- de stad: elke game een andere kaart ---------- */
-const VERSION = "4.7.7";
+const VERSION = "4.7.8";
 const MAP_W = 1000, MAP_H = 680;
 const RIVAL_COLORS = ["#ff9a1f", "#3d7bff", "#c6ff2e", "#f2f2f2", "#9b5cff", "#ffd400", "#ff4d4d"];
 const ARCH = {
@@ -3625,6 +3625,16 @@ const Store = {
     try { if (G.mode === "db") await G.db.doc(`games/${G.gid}/backups/b${slot}`).set(body); else localStorage.setItem("cl_backup_" + slot, JSON.stringify(body)); G.backupFout = null; }
     catch(e){ G.backupFout = ym(s); foutLog("back-up " + ym(s), e); toast("De back-up van deze maand is mislukt" + (G.mode === "db" ? "." : " (browseropslag vol?).") + " Je spel zelf is wel bewaard. Exporteer het voor de zekerheid via Logboek.", true); }
   },
+  /* 4.7.8: een divisie die bij een (geschrapte) overname verloren ging, terugzetten uit de back-ups */
+  async herstelOvername(){ const s = G.game; if (!s || !s.flags || s.flags.overname_herstel_478) return null;
+    if ((s.hostile_bid || {}).uitslag !== "verloren"){ s.flags.overname_herstel_478 = true; return null; }
+    let B = []; try { B = await this.backups(); } catch(e){ foutLog("herstel overname", e); }
+    const namen = new Set(s.divisions.map(divNaam)), gezet = [];
+    for (const b of B.slice().sort((x, y) => x.t - y.t)) for (const d of (b.s.divisions || [])){ const nm = divNaam(d); if (namen.has(nm)) continue;
+      s.divisions.push(clone(d)); namen.add(nm); const ps = (b.s.producten || []).filter(p => p.divisie === nm && !(s.producten || []).some(q => q.id === p.id)); (s.producten ??= []).push(...clone(ps));
+      gezet.push(`${nm} met ${ps.length} product${ps.length === 1 ? "" : "en"} (back-up van ${b.maand})`); }
+    s.flags.overname_herstel_478 = true; if (gezet.length){ addLog(s, "Teruggezet na de geschrapte overname: " + gezet.join(", ")); try { await this.saveGame(); } catch(e){ foutLog("herstel opslaan", e); } }
+    return gezet; },
   async backups(){
     const out = [];
     for (const slot of [0, 1, 2]){ let b = null;

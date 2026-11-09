@@ -31,7 +31,7 @@ const html = '<!doctype html><html><head><meta charset=utf8></head><body>' + fs.
   const verloop = await p.evaluate(async () => { const q = G.game.producten[0]; q.doelOverride = 2; const rij = [];
     for (let i = 0; i < 14; i++){ await API["/api/tick"]({force: true}); const x = G.game.producten.find(y => y.id === q.id); if (!x) return ["weg"]; if (x.status === "markt") rij.push([x.pop, x.abo, x.aboIn, x.aboUit]); if (G.game.status !== "actief") break; }
     return rij; });
-  ok(verloop.length >= 8 && verloop.every(r => r[1] != null) && verloop[verloop.length - 1][1] > verloop[0][1], "abonnees groeien na de lancering: " + JSON.stringify(verloop.map(r => r[1])));
+  ok(verloop.length >= 8 && verloop.every(r => r[1] != null) && Math.max(...verloop.map(r => r[1])) > verloop[0][1] + 3, "abonnees groeien na de lancering (piek boven de start; latere dalingen door gebeurtenissen mogen): " + JSON.stringify(verloop.map(r => r[1])));
   const schok = await p.evaluate(() => { const x = G.game.producten[0], voor = x.abo, voorPop = x.pop; applyChoice(G.game, Ctx(), {product: {[x.id]: {pop: -25}}}); return {voor, na: x.abo, voorPop, naPop: x.pop}; });
   ok(schok.na < schok.voor && schok.na > schok.voor * 0.6, "een schandaal kost abonnees, maar niet allemaal: " + JSON.stringify(schok));
   await p.evaluate(() => { S.view = "bedrijf"; render(); });

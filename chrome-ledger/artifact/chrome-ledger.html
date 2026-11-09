@@ -604,6 +604,7 @@ function md(src){
 
 /* ---- layout ---- */
 function render(){
+  if (G.game && G.game.flags && !G.game.flags.overname_herstel_478 && !G._herstel){ G._herstel = true; Store.herstelOvername().then(r => { if (r && r.length){ toast("Teruggezet: " + r.join(", ")); render(); } else if (r){ toast("Je verloren divisie zat niet meer in de back-ups (die gaan drie maanden terug). Zeg in de chat welke divisie het was en hoe groot, dan zet ik haar terug.", true); } }).catch(e => foutLog("herstel overname", e)); }
   const root = document.getElementById("root");
   if (!S.loaded){ root.innerHTML = `<div class="loading"><div class="t">CHROME<span style="color:var(--mag)">//</span>LEDGER</div><div class="s"><span class="dots"></span> VERBINDEN MET CORPNET · ${VERSION}</div>${S.loadNote?`<div class="muted">${esc(S.loadNote)}</div>`:""}</div>`; return; }
   const _ui = snapUI();
@@ -1008,6 +1009,7 @@ function setupBonus(homeD){
     <p class="dim" style="font-size:13px;margin:6px 0 0">Elk soort land geeft een ander voordeel: havens, financiële centra, datavalleien, sloppen. Klik verschillende landen aan om ze te vergelijken.</p>` : "";
 }
 const VERSIES = [
+  ["4.7.8", "Verloren divisie terug uit de back-up", ["4.7.7 zette een divisie die je bij de overname verloor niet terug: het spel had haar producten toen al weggegooid. Nu zoekt het spel bij het laden in je back-ups (de laatste drie maanden) en zet de divisie met al haar producten terug."]],
   ["4.7.7", "Geen vijandig overnamebod meer", ["Het vijandige overnamebod is uit het spel: het startte willekeurig en kostte je een divisie met al haar producten of het hele spel, zonder echte tegenzet. Een divisie die je zo kwijtraakte, komt bij het laden terug met haar producten."]],
   ["4.7.6", "Productie inkrimpen", ["Naast Uitbreiden staat nu Inkrimpen (−15 capaciteit). Draai je een betaalde uitbreiding terug, dan krijg je de investering terug (de eerste: €5M). Capaciteit heeft vaste kosten: elke 15 boven de basis kost €0,3M per maand, elke 15 eronder bespaart €0,3M. Uitbreiden kost dus eenmalig €5M plus maandelijks €0,3M. Minimum 45."]],
   ["4.7.5", "Alles uit de eigen fabriek", ["Nieuwe producten worden standaard volledig in je eigen fabriek gemaakt: geen leveranciers, 15% goedkopere onderdelen. Ook bestaande producten in je save zijn eenmalig (gratis) omgezet naar eigen productie."]],
