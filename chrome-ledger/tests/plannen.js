@@ -30,8 +30,10 @@ const html = '<!doctype html><html><head><meta charset=utf8></head><body>' + fs.
   const z = await p.evaluate(async id => { const s = G.game; await API["/api/keuze"]({id, i: 1}); return !!s.plannen[0].zacht; }, k.id);
   ok(z, "voorbereiden zet het plan op half");
   // 5. verstoren met zekere worp stopt het plan
-  const vs = await p.evaluate(() => { const s = G.game, x = s.plannen[0], out = []; applyChoice(s, Ctx(), {kans: 99, succes: {plan: {id: x.id, actie: "stop"}}, falen: {}}, out); return {over: s.plannen.length, out}; });
-  ok(vs.over === 0 || /verstoord/.test(vs.out.join(" ")) , "verstoren stopt het plan (of mislukt eerlijk op een worp): " + JSON.stringify(vs.out));
+  // de dobbelstenen vastzetten (een natuurlijke 2 is altijd een blunder, ook bij kans 99): d6 leest crypto.getRandomValues
+  const vs = await p.evaluate(() => { const s = G.game, x = s.plannen[0], out = [], echt = crypto.getRandomValues; crypto.getRandomValues = a => { a[0] = 3; return a; };
+    try { applyChoice(s, Ctx(), {kans: 99, succes: {plan: {id: x.id, actie: "stop"}}, falen: {}}, out); } finally { crypto.getRandomValues = echt; } return {over: s.plannen.length, out}; });
+  ok(vs.over === 0 && /verstoord/.test(vs.out.join(" ")), "verstoren met een goede worp stopt het plan: " + JSON.stringify(vs.out));
   // 6. GM schrijft de tekst, binnen grenzen
   const gm = await p.evaluate(async () => { const s = G.game; s.plannen = []; for (let i = 0; i < 50 && !s.plannen.length; i++) planStart(s, Ctx(), 10);
     G.sample = {json: async () => ({titel: "Operatie Stille Zomer ".repeat(10), stappen: ["koopt de havenmeester", "laat een schip zinken", "staat klaar met een nieuwe vloot"], motief: "U nam hun haven af in 2004."})}; G.sampleOff = false;

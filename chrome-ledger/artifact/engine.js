@@ -230,7 +230,8 @@ function marketTick(s, ctx){
   }
   for (const r of s.rivals){
     if (R() >= 0.12 + r.aggression * 0.1) continue;
-    const sec = r.sector, move = CH(["headhunt", "gezamenlijk", "dumping", "smaad", "licentiebod"]);
+    const sec = r.sector, concurrent = r.status === "oorlog" || s.divisions.some(d => d.type === r.sector); let move = CH(concurrent ? ["headhunt", "gezamenlijk", "dumping", "smaad", "smaad", "licentiebod"] : ["headhunt", "gezamenlijk", "dumping", "smaad", "licentiebod"]);
+    if (move === "smaad" && !concurrent) move = "licentiebod"; /* 4.3.4: laster alleen van concurrenten in je eigen sector of in oorlog */
     r.cash = r1(r.cash - U(2, 8));
     if (move === "headhunt" && s.npcs.length){
       const n = CH(s.npcs);
@@ -243,7 +244,7 @@ function marketTick(s, ctx){
     } else if (move === "dumping"){
       s.market[sec].player *= 0.9; ctx.rep.push(`${r.name} dumpt prijzen in ${sec}`);
     } else if (move === "smaad"){
-      s.reputation = clamp(s.reputation - 3);
+      s.reputation = clamp(s.reputation - 3); (s.smaadLog ??= []).push(ym(s)); s.smaadLog = s.smaadLog.slice(-6);
       mail(ctx, s, "PR", "Campagne tegen ons", `Anonieme blogs wijzen naar ${r.name}. Natuurlijk zonder bewijs. Natuurlijk effectief.`, "HOOG");
     } else {
       mail(ctx, s, r.ceo, "Licentie aanbod", `${r.name} wil technologie van ons licentiëren. Prijs vraagt u maar. Dat is zelden goed nieuws.`);
@@ -630,7 +631,7 @@ function tick(s){
 }
 
 /* ---------- de stad: elke game een andere kaart ---------- */
-const VERSION = "4.3.2";
+const VERSION = "4.3.4";
 const MAP_W = 1000, MAP_H = 680;
 const RIVAL_COLORS = ["#ff9a1f", "#3d7bff", "#c6ff2e", "#f2f2f2", "#9b5cff", "#ffd400", "#ff4d4d"];
 const ARCH = {
@@ -2687,7 +2688,7 @@ function migrate21(s){
 /* ===================== 2.2 DOEL, SCORE EN EINDE ===================== */
 const SPEL_LENGTE = {kort: {label: "10 jaar", maanden: 120}, normaal: {label: "20 jaar", maanden: 240}, eindeloos: {label: "Eindeloos", maanden: 0}};
 const WIN_WAARDE = 8000, HEG_PCT = 60, HEG_N = 3, RIVAAL_DOEL = 3;
-const WIN_LENGTE = {kort: 0.75, normaal: 1.3, eindeloos: 1.8};
+const WIN_LENGTE = {kort: 0.8, normaal: 1.38, eindeloos: 1.9};
 const winWaardeVoor = lengte => Math.round(WIN_WAARDE * (WIN_LENGTE[lengte] || 1) / 100) * 100;
 const winWaarde = s => winWaardeVoor(s.player.lengte);
 const RIVAAL_MULT = {Casual: 0.85, Realistisch: 1, Genadeloos: 1.2};
@@ -3078,7 +3079,11 @@ function adviezen(s){
   if (s.staff.count < staffNeed(s)) add(8, `Onderbezet: ${s.staff.count} mensen voor ${staffNeed(s)} plekken. Divisies draaien op halve kracht en morale lijdt. Neem ${staffNeed(s) - s.staff.count} mensen aan bij Bedrijf (€0,4k p.p.).`, "bedrijf");
   if (s.morale < 40) add(9, `Morale ${Math.round(s.morale)}: onder 10 komt de raad in opstand. Salaris omhoog (Bedrijf), een gunst van de bond (Mensen) of winst draaien helpt.`, "bedrijf");
   { const h = (s.history || []).slice(-7), daling = h.length >= 6 ? r1(h[0].rep - h[h.length - 1].rep) : 0, pers = G.mails ? G.mails.filter(m => /^Journalist/.test(m.van) && m.datum >= ((s.history || []).slice(-6)[0] || {}).m).length : 0;
-    if (daling >= 6 && (pers >= 2 || s.reputation < 20)) add(8, `Reputatie zakt (−${daling} in 6 maanden)${pers >= 2 ? ` en journalisten citeren interne stukken: misschien lekt er iemand uit je directie` : ""}. Laat een speurder een directielid natrekken (Crew), praat met je mensen (Mensen) of zet je spindokter in.`, "crew"); }
+    const smaad = (s.smaadLog || []).filter(m => mndNr(ym(s)) - mndNr(m) <= 6).length, dl = String(daling).replace(".", ",");
+    if (daling >= 6 && (pers >= 2 || s.reputation < 20)) add(8, pers >= 2 ? `Reputatie zakt (−${dl} in 6 maanden) en journalisten citeren interne stukken: misschien lekt er iemand uit je directie. Laat een speurder een directielid natrekken (Crew) of praat met je mensen (Mensen).`
+      : smaad && smaad * 3 >= daling / 2 ? `Reputatie zakt (−${dl} in 6 maanden), vooral door ${smaad === 1 ? "een lastercampagne" : `${smaad} lastercampagnes`} van een concurrent. Herstel gaat via een spindokter met de klus Campagne (Crew), producten met een goede naam (medisch, beveiliging) of premium prijzen.`
+      : smaad ? `Reputatie zakt (−${dl} in 6 maanden). ${smaad === 1 ? "Een lastercampagne" : `${smaad} lastercampagnes`} van een concurrent verklaren maar een deel; de rest is onduidelijk. Laat een speurder je directie natrekken (Crew), of kijk in Logboek wat er gebeurde.`
+      : `Reputatie zakt (−${dl} in 6 maanden). Wat er gebeurde staat in Logboek. Herstel gaat via een spindokter met de klus Campagne (Crew), producten met een goede naam (medisch, beveiliging) of premium prijzen.`, "crew"); }
   if (s.heat > 55) add(9, `Heat ${Math.round(s.heat)}: boven 90 volgt een razzia. Laat een netrunner sporen wissen (Crew), vraag de commissaris om een gunst (Mensen) of gebruik invloed (Kaart).`, "crew");
   const vrijeCrew = (s.crew || []).filter(m => crewStatus(s, m) === "vrij");
   for (const k of (s.klussen || [])){ const m = vrijeCrew.find(x => x.rol === k.rol); if (m){ add(6, `${m.naam} kan de klus "${k.titel}" doen: +€${k.beloning}k, ${kans2d6(crewBonus(s, m, k.gevaar), k.doel, m.trait === "slordig")}% kans.`, "crew"); break; } }
@@ -3103,7 +3108,7 @@ const SPELREGELS = [
   ["Dobbelstenen", "Elke onzekere actie is 2d6 + bonus tegen een doel. Twee zessen lukt altijd, twee enen nooit. De kans die je vooraf ziet is de echte kans. Elke worp staat in Logboek → Dobbelstenen."],
   ["Morale en heat", "Morale onder 10, twee maanden lang: coup. Heat boven 90, twee maanden lang: razzia. Heat komt vooral uit riskante en illegale divisies (Smokkel, Cyberware, Private Security), die met elk niveau meer aandacht trekken; legale divisies trekken boven niveau 6 geen extra aandacht meer. Het overzicht laat zien waarom ze bewegen en waarschuwt ruim op tijd."],
   ["Stilstand", "Verkoopt een divisie een jaar lang niets, dan lopen klanten naar rivalen: de omzet zakt elke maand verder, tot −20%. Eén product op de markt stopt het meteen."],
-  ["Winnen", "Een bedrijfswaarde van €10.400k (10 jaar: €6.000k, eindeloos: €14.400k), 60% op drie continenten, of 3 van de 5 oorspronkelijke rivalen uitgeschakeld. Anders telt na de gekozen speellengte je score."],
+  ["Winnen", "Een bedrijfswaarde van €11.000k (10 jaar: €6.400k, eindeloos: €15.200k), 60% op drie continenten, of 3 van de 5 oorspronkelijke rivalen uitgeschakeld. Anders telt na de gekozen speellengte je score."],
   ["Score", "Bedrijfswaarde telt met de wortel (40 × √waarde), plus dominantie, reputatie, jaren, uitgeschakelde rivalen en status. Winnen ×1,25 plus tempo, termijn uitdienen ×1, verliezen ×0,75 en zonder de waarde van je bedrijf: een verlies scoort dus nooit hoger dan overleven met hetzelfde bedrijf."],
   ["Keuzes", "Keuzemails hebben knoppen; elke optie zegt wat ze kost en doet. Antwoord je niet, dan kiest het spel na twee maanden de standaardoptie."],
 ];

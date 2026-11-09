@@ -24,7 +24,8 @@ Werkwijze: elk uur een ronde (automatisch). Grote punten zijn verdeeld in stappe
 |---|---|---|---|
 | 4.2 | Levende bedrijvenwereld | 1 | klaar |
 | 4.3 | Echte afzet en prijs | 3 | klaar (4.3, 4.3.2, 4.3.3); volgende ronde is een opruimronde |
-| 4.4 | Geavanceerd productontwerp | 3 | |
+| 4.3.4 | Opruimronde | 1 | klaar |
+| 4.4 | Geavanceerd productontwerp | 3 | volgende |
 | 4.5 | Kwaliteit en aansprakelijkheid | 2 | |
 | 4.6 | Marketing en distributie | 2 | |
 | 4.7 | Patenten en namaak | 1 | |
@@ -77,9 +78,11 @@ Werkwijze: elk uur een ronde (automatisch). Grote punten zijn verdeeld in stappe
 - (8 nov) Grootste verliesoorzaak van de verstandige bot op Realistisch is razzia/vervolging (37%), niet faillissement (3%). Heat is voor een voorzichtige speler misschien te streng, of de bot negeert heat te veel: nagaan met een speler, niet alleen met de bot.
 - (8 nov, laat) Segmenten tellen al voor afzet en prijs, maar rivalen hebben nog geen eigen segmentkeuze en de bot kijkt er niet naar. 4.4 (eigenschappen per segment, varianten) bouwt hierop: dan pas wordt "voor wie maak je dit?" een echte keuze.
 - (8 nov, laat) Productomzet blijft klein naast de basisomzet van een divisie (een product €1-3k tegen een divisie €8-15k). De omzet volledig naar producten verschuiven raakt de start (die draait zonder producten) en vraagt een eigen ronde met metingen.
-- (8 nov) plannen.js gaf in één van zes runs een FOUT die daarna niet terugkwam: zoeken welke controle op toeval leunt.
+- (9 nov) Les uit de opruimronde: één verborgen willekeurige straf (laster) was goed voor 10 procentpunt winkans. Andere willekeurige straffen zonder tegenzet nalopen met hetzelfde spoor (repdiag): keuzes rond producten (−2,7 in 2 jaar), verhaallijnen (−3), chaos (−2,5).
+- (9 nov) Mensrun: een Cyberware-start verdient na twee jaar ±€5k per maand, uitbreiden naar L3 is pas in 21 maanden terugverdiend. De eerste jaren hebben weinig spannende keuzes; nagaan na een echte speelronde.
 
 ## Gedaan
+- 4.3.4 Opruimronde (9 nov, nacht): mensrun van 24 maanden liet reputatie zakken van 30 naar 11 zonder lek; oorzaak met een spoor op elke wijziging: willekeurige laster van alle rivalen (−12 in 2 jaar). Laster nu alleen van de concurrent in je sector of in oorlog, eerlijk advies, winstdrempel ×1,38 (€11.000k) om de balans terug te zetten (55% → 45%). Productuitleg ingeklapt, marktaandeel zonder tilde, plannen.js deterministisch (oorzaak: dubbel 1 is altijd een blunder).
 - 4.3.3 Klanten en echte aantallen (8 nov, laat): segmenten per soort, Details → Klanten (op 390 px als lijst, een tabel paste niet), productomzet ×1,31 met productie 45%, stukprijzen omlaag. balans.js meet nu het productaandeel. Twee vaste tests voor segmenten.
 - 4.3.2 Zelf je prijs bepalen (8 nov, avond): prijsschuif met live voorbeeld in het productblad, prijsgevoeligheid per markt en kwaliteit, kostprijs per stuk vast, uitverkocht = gratis prijsruimte, abonnementen via instroom en opzeggers. Productgebeurtenissen die naar premium zetten werden eerst een val (bot 44% → 34%); gevoeligheid verzacht, daarna 42%. Zes vaste tests in playtest.js, schermtest met schuif.
 - 4.3 (na playtest: "producten leveren te weinig op, te veel events en keuzes"): producten eigen omzet en kosten, minder gebeurtenissen/chaos/aanslagen/syndicaatrekeningen, kleine keuzes max 1 per 2 maanden, gewone meldingen in het rapport (2,6 → 1,6 mails/maand), eigen soort = enige startdivisie, Engelse namen herkend. Realistisch 38%.
