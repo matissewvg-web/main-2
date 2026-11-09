@@ -36,7 +36,11 @@ const html = '<!doctype html><html><head><meta charset=utf8></head><body>' + fs.
   await p.evaluate(() => { window.__echt = crypto.getRandomValues; crypto.getRandomValues = a => { a[0] = 3; return a; }; }); // d6 = 4 → 8
   const vg = await p.evaluate(() => { const s = G.game, q = s.producten.find(y => y.naam === "Basisdosis Pro"); const st = keurStatus(q), lic = !!(s.vergunning || {}).medisch;
     const oud = {flags: {}, producten: [{naam: "Oud", aard: "wapen", keuring: "afgekeurd"}, {naam: "Bezig", aard: "medisch", keuring: {maanden: 1}}]}; try { migrate(oud); } catch(e){} return {st, lic, migr: oud.producten.map(x => keurStatus(x)), vlag: oud.flags.keur_471}; });
-  ok(vg.st === "ok" && vg.lic && vg.migr.every(x => x === "ok") && vg.vlag, "vergunning: na één goedkeuring is de hele markt gekeurd; oude saves eenmalig alles gekeurd: " + JSON.stringify(vg));
+  ok(vg.st === "nodig" && vg.migr.every(x => x === "ok") && vg.vlag, "keuring per editie: de variant blijft ongekeurd tot hij zelf gekeurd is; oude saves eenmalig alles gekeurd: " + JSON.stringify(vg));
+  await p.evaluate(() => { window.__echt2 = crypto.getRandomValues; crypto.getRandomValues = a => { a[0] = 5; return a; }; }); // dubbel zes
+  const nv = await p.evaluate(async () => { const s = G.game, x = s.producten.find(y => y.naam === "Basisdosis"), kw = x.kwaliteit; x.keuring = "ok"; x.verbetering = 1; await API["/api/tick"]({force: true}); return {kw0: kw, kw1: x.kwaliteit, st: keurStatus(x)}; });
+  await p.evaluate(() => { crypto.getRandomValues = window.__echt2; });
+  ok(nv.kw1 === Math.min(5, nv.kw0 + 1) && (nv.kw0 >= 5 || nv.st === "nodig"), "nieuwe versie = nieuwe editie: opnieuw keuren: " + JSON.stringify(nv));
   const k2 = await p.evaluate(async () => { const s = G.game, q = s.producten.find(y => y.naam === "Basisdosis Pro"), h0 = s.heat; s.accounts.zwart = 0; s.vergunning = {}; q.keuring = "nodig"; const r = await API["/api/product"]({soort: "keuring", id: q.id, wijze: "omkopen"}); return {ok: r.ok, st: keurStatus(q), heat: Math.round((s.heat - h0) * 10) / 10}; });
   await los(); ok(k2.ok && k2.st === "ok" && k2.heat >= 3, "keurder omkopen (vaste worp 8): meteen goedgekeurd, heat omhoog: " + JSON.stringify(k2));
   // 5. verkoopkanalen (4.6)

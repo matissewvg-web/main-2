@@ -635,7 +635,7 @@ function tick(s){
 }
 
 /* ---------- de stad: elke game een andere kaart ---------- */
-const VERSION = "4.7.1";
+const VERSION = "4.7.2";
 const MAP_W = 1000, MAP_H = 680;
 const RIVAL_COLORS = ["#ff9a1f", "#3d7bff", "#c6ff2e", "#f2f2f2", "#9b5cff", "#ffd400", "#ff4d4d"];
 const ARCH = {
@@ -2535,7 +2535,7 @@ function productTick(s, ctx){
       else if (r.blunder){ s.producten = s.producten.filter(x => x !== p); s.reputation = clamp(s.reputation - 5); const k2 = r1(sc.kost * 0.3); s.cash = r1(s.cash - k2);
         mail(ctx, s, "Juridische Zaken", `Terugroepactie: ${p.naam}`, `${p.naam} (${r.txt}) blijkt een fout te hebben die we niet mochten missen. Alles moet terug. €${k2}M aan kosten, reputatie −5, en de pers heeft foto's.`, "KRITIEK"); ctx.rep.push(`Terugroepactie ${p.naam}`); continue; }
       else { (s.stats ??= {}).flops = (s.stats.flops || 0) + 1; p.pop = RI(15, 28) + (sc.flop || 0); p.kwaliteit = Math.max(1, p.kwaliteit - 1); mail(ctx, s, "Marketing", `${p.naam} flopt`, `De lancering van ${p.naam} (${r.txt}) valt tegen: populariteit ${p.pop}. Een campagne of een nieuwe versie kan het redden. Of je haalt het uit de markt.`, "HOOG"); ctx.rep.push(`${p.naam} flopt`); }
-      if (KEURING_AARD.has(p.aard || aardVan(p.type, p.naam)) && p.keuring === undefined){ const o = p.variantVan && s.producten.find(x => x.id === p.variantVan); p.keuring = (o && keurStatus(o) === "ok") || (s.vergunning || {})[p.aard || aardVan(p.type, p.naam)] ? "ok" : "nodig"; }
+      if (KEURING_AARD.has(p.aard || aardVan(p.type, p.naam)) && p.keuring === undefined){ const o = p.variantVan && s.producten.find(x => x.id === p.variantVan); p.keuring = "nodig"; }
       if (p.variantVan){ const o = s.producten.find(x => x.id === p.variantVan); if (o && o.status === "markt"){ p.pop = Math.round(clamp(o.pop * 0.6, 3, 95)); p.variantStart = {pop: p.pop, origineelVoor: o.pop}; o.pop = Math.round(clamp(o.pop * 0.88, 3, 95)); prodLog(o, s, `${p.naam} neemt klanten over (populariteit −12%)`); } }
       if (heeftFocus(s, "merk")) p.pop = Math.round(clamp(p.pop + 6, 3, 95));
       if (isAbo(p)) p.abo = Math.round(p.pop * 0.5);
@@ -2544,7 +2544,7 @@ function productTick(s, ctx){
     }
     keuringTick(s, ctx, p); defectTick(s, ctx, p); mktTick(p);
     if (p.verbetering && --p.verbetering <= 0){ delete p.verbetering; const r = rol2d6(Math.ceil(d.level / 2), 8); addRoll(s, `Nieuwe versie ${p.naam}: ${r.txt} → ${r.ok ? "GELUKT" : "MISLUKT"}`);
-      if (r.ok){ p.kwaliteit = clamp(p.kwaliteit + 1, 1, 5); p.pop = clamp(p.pop + 10, 0, 95); p.leeftijd = 0; maakReview(p); if (p.trait === "gevoelig") p.trait = null; prodLog(p, s, `Versie ${p.kwaliteit}`); mail(ctx, s, "R&D", `${p.naam} versie ${p.kwaliteit}`, `De nieuwe versie is klaar (${r.txt}). Kwaliteit ${p.kwaliteit}, en de klanten merken het.`, "NORMAAL"); }
+      if (r.ok){ p.kwaliteit = clamp(p.kwaliteit + 1, 1, 5); p.pop = clamp(p.pop + 10, 0, 95); p.leeftijd = 0; maakReview(p); if (KEURING_AARD.has(p.aard || aardVan(p.type, p.naam)) && kanaalVan(p) !== "zwart") p.keuring = "nodig"; /* 4.7.2: nieuwe editie, nieuwe keuring */ if (p.trait === "gevoelig") p.trait = null; prodLog(p, s, `Versie ${p.kwaliteit}`); mail(ctx, s, "R&D", `${p.naam} versie ${p.kwaliteit}`, `De nieuwe versie is klaar (${r.txt}). Kwaliteit ${p.kwaliteit}, en de klanten merken het.${p.keuring === "nodig" ? " Let op: een nieuwe editie moet opnieuw gekeurd worden; tot dan alleen de grijze markt." : ""}`, "NORMAAL"); }
       else mail(ctx, s, "R&D", `Nieuwe versie ${p.naam} mislukt`, `Het ontwikkelteam kreeg het niet werkend (${r.txt}). Het geld is op, het product blijft zoals het was.`, "HOOG"); }
     p.leeftijd = (p.leeftijd || 0) + 1;
     const idx = ((s.sectoren || {})[p.type] || {idx: 100}).idx, tgt = 28 + p.kwaliteit * 8 + (idx - 100) / 3 - Math.max(0, p.leeftijd - 24) * (p.trait === "verslavend" || p.soort === "abonnement" ? 0.25 : 0.8) + ((((s.vraag || {})[p.aard] || {}).idx || 100) - 100) / 6;
@@ -2906,8 +2906,8 @@ const keurF = p => keurStatus(p) === "ok" || kanaalVan(p) === "zwart" ? 1 : KEUR
 const keurKost = s => r1(4 * (DIFF[(s && s.player.difficulty)] || 1)), omkoopKost = s => r1(2 * (DIFF[(s && s.player.difficulty)] || 1));
 const keurDoel = p => 6 + (defectPct(p) > 3 ? 1 : 0) + (defectPct(p) > DEFECT_DREMPEL ? 1 : 0) - ((p.kwaliteit || 3) >= 4 ? 1 : 0);
 const keurInstantie = p => ({medisch: "het geneesmiddelenbureau", implantaat: "de keuringsdienst voor implantaten", wapen: "de wapeninspectie"})[p.aard] || "de keurder";
-/* 4.7.1: een goedkeuring geeft een vergunning voor die markt; alle producten van die soort zijn daarna gekeurd, ook nieuwe */
-function vergunning(s, p){ const a = p.aard || aardVan(p.type, p.naam); (s.vergunning ??= {})[a] = true; for (const x of s.producten || []) if ((x.aard || aardVan(x.type, x.naam)) === a && x.keuring != null && x.keuring !== "ok") x.keuring = "ok"; }
+/* 4.7.2: een goedkeuring is permanent, maar geldt alleen voor deze editie: een nieuw product, een variant of een nieuwe versie wordt opnieuw gekeurd */
+function vergunning(s, p){ }
 function keuringTick(s, ctx, p){ if (keurStatus(p) !== "bezig" || --p.keuring.maanden > 0) return;
   const r = rol2d6(0, keurDoel(p)); addRoll(s, `Keuring ${p.naam}: ${r.txt} → ${r.ok ? "GOEDGEKEURD" : "AFGEKEURD"}`);
   if (r.ok){ p.keuring = "ok"; vergunning(s, p); prodLog(p, s, "Goedgekeurd"); mail(ctx, s, "Juridische Zaken", `${p.naam} goedgekeurd`, `${keurInstantie(p)[0].toUpperCase() + keurInstantie(p).slice(1)} keurt ${p.naam} goed (${r.txt}). Vanaf nu overal in de winkel.`, "NORMAAL"); }
