@@ -82,6 +82,10 @@ const html = '<!doctype html><html><head><meta charset=utf8></head><body>' + fs.
     s.divisions = s.divisions.filter(x => x !== d); s.producten = s.producten.filter(x => x.divisie !== nm); s.hostile_bid = {uitslag: "verloren"}; delete s.flags.overname_herstel_478;
     const r = await Store.herstelOvername(); const terug = s.divisions.some(x => divNaam(x) === nm), n1 = s.producten.filter(x => x.divisie === nm).length, tweede = await Store.herstelOvername(); return {r, terug, n0, n1, tweede}; });
   ok(hb.terug && hb.n1 === hb.n0 && hb.n0 > 0 && hb.r && hb.r.length === 1 && hb.tweede === null, "verloren divisie komt met al haar producten terug uit de back-up, maar één keer: " + JSON.stringify(hb));
+  const wm = await p.evaluate(() => { const s = G.game, oud = JSON.parse(JSON.stringify(s)); delete oud.flags.herstel_wm_479; oud.hostile_bid = {uitslag: "verloren"}; oud.divisions = oud.divisions.filter(d => !/weapon/i.test(d.name || d.type));
+    migrate(oud); const d = oud.divisions.find(x => x.name === "Weapon manufacturing"), ps = oud.producten.filter(x => x.divisie === "Weapon manufacturing"); oud.history = [{omzet: 30}];
+    const om = ps.map(x => r1(prodOmzet(oud, x))); return {d: !!d, level: d && d.level, n: ps.length, namen: ps.map(x => x.naam), units: ps.map(x => stukInfo(x).eenheid), keur: ps.every(x => keurStatus(x) === "ok"), eigen: ps.every(x => x.delen.every(y => y.eigen)), om, dubbel: (migrate(oud), oud.divisions.filter(x => x.name === "Weapon manufacturing").length)}; });
+  ok(wm.d && wm.level === 5 && wm.n === 7 && wm.keur && wm.eigen && wm.dubbel === 1 && wm.om.every(x => x > 0), "Weapon manufacturing terug met 7 producten, gekeurd en eigen fabriek: " + JSON.stringify(wm));
   // 7. scherm
   await p.evaluate(() => { S.view = "bedrijf"; render(); }); const ds = await p.$('[data-a=prodsheet]'); if (ds){ await ds.click(); await p.waitForTimeout(200); }
   const scherm = await p.evaluate(() => { const el = document.querySelector(".prodblad"); return el ? el.textContent : ""; });

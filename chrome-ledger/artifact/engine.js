@@ -77,6 +77,13 @@ function migrate(s){
     for (const [naam, ps] of Object.entries(wees)){ const n = ps.filter(p => p.status !== "teruggeroepen").length; (s.divisions ??= []).push({name: naam, type: ps[0].type, level: Math.max(2, n - 2), efficiency: 1}); (s.log ??= []).push(`${ym(s)} · ${naam} terug na de geschrapte overname (${n} producten)`); }
     if (s.flags.overgenomen){ delete s.flags.overgenomen; if (/OVERGENOMEN/.test(s.status || "")) s.status = "actief"; }
     s.flags.overname_477 = true; }
+  if (s.flags && !s.flags.herstel_wm_479 && (s.hostile_bid || {}).uitslag === "verloren" && s.divisions && !s.divisions.some(d => /weapon manufacturing/i.test(d.name || d.type))){ /* 4.7.9: verloren wapendivisie van de speler terug */
+    s.custom_types ??= {}; let type = Object.keys(s.custom_types).find(k => /weapon/i.test(k)); if (!type && typeof addCustomType === "function"){ const r = addCustomType(s, "Weapon manufacturing", PRESETS.gebalanceerd, "Wapens, voertuigen en drones"); if (r.ok) type = r.naam; }
+    const d = {name: "Weapon manufacturing", type: type || "Private Security", level: 5, efficiency: 1}; s.divisions.push(d);
+    const L = [["Wapens", "klein", null], ["Sniper", "groot", ["sniperrifles", "sniperrifle", 12000]], ["Armor", "groot", ["pantsersets", "pantserset", 3500]], ["Drones", "groot", ["gevechtsdrones", "gevechtsdrone", 45000]],
+      ["Tanks", "vlag", null], ["Mechs", "vlag", ["mechs", "mech", 12000000, true]], ["Vliegtuigen", "vlag", ["gevechtsvliegtuigen", "gevechtsvliegtuig", 35000000, true]]];
+    for (const [naam, sc, st] of L){ const p = mkProduct(s, d, naam, 3, 55); Object.assign(p, {aard: "wapen", schaal: sc, keuring: "ok", prijs: "standaard", trait: null, kanaal: "groothandel"}); if (st) p.stuk = {eenheid: st[0], enkel: st[1], prijs: st[2], order: !!st[3]}; try { maakReview(p); } catch(e){} (s.producten ??= []).push(p); }
+    (s.log ??= []).push(`${ym(s)} · Weapon manufacturing terug met 7 producten (overname geschrapt)`); s.flags.herstel_wm_479 = true; }
   if (!(s.flags || {}).keur_471 && s.producten){ for (const p of s.producten) if (p.keuring != null && p.keuring !== "ok"){ p.keuring = "ok"; ((s.vergunning ??= {})[p.aard || aardVan(p.type, p.naam)] = true); } (s.flags ??= {}).keur_471 = true; } /* 4.7.1: eenmalig alles gekeurd in bestaande saves */
   s.accounts ??= {operationeel: s.cash, zwart: 0, offshore: 0};
   s.accounts.zwart ??= 0; s.accounts.offshore ??= 0;
@@ -646,7 +653,7 @@ function tick(s){
 }
 
 /* ---------- de stad: elke game een andere kaart ---------- */
-const VERSION = "4.7.8";
+const VERSION = "4.7.9";
 const MAP_W = 1000, MAP_H = 680;
 const RIVAL_COLORS = ["#ff9a1f", "#3d7bff", "#c6ff2e", "#f2f2f2", "#9b5cff", "#ffd400", "#ff4d4d"];
 const ARCH = {
@@ -2959,7 +2966,7 @@ const STUK_SCHAAL = {
   financieel: {klein: ["rekeningen", "rekening", 4], groot: ["beleggingsfondsen", "beleggingsfonds", 25000], vlag: ["staatsleningen", "staatslening", 5000000, true]},
   orbitaal: {klein: ["ladingplaatsen", "ladingplaats", 8500], groot: ["satellietlanceringen", "satellietlancering", 900000], vlag: ["satellieten", "satelliet", 40000000, true]},
   consument: {klein: ["stuks", "stuk", 12], groot: ["premium apparaten", "premium apparaat", 450], vlag: ["luxemerken", "luxeproduct", 6000]}};
-function stukInfo(p){ const a = p.aard || aardVan(p.type, p.naam), r = ((STUK_SCHAAL[a] || STUK_SCHAAL.consument)[p.schaal || "klein"]) || (STUK_SCHAAL[a] || STUK_SCHAAL.consument).klein; return {eenheid: r[0], enkel: r[1], prijs: r[2], order: !!r[3]}; }
+function stukInfo(p){ if (p.stuk && p.stuk.prijs) return {eenheid: p.stuk.eenheid, enkel: p.stuk.enkel, prijs: p.stuk.prijs, order: !!p.stuk.order}; const a = p.aard || aardVan(p.type, p.naam), r = ((STUK_SCHAAL[a] || STUK_SCHAAL.consument)[p.schaal || "klein"]) || (STUK_SCHAAL[a] || STUK_SCHAAL.consument).klein; return {eenheid: r[0], enkel: r[1], prijs: r[2], order: !!r[3]}; }
 /* orders: de verwachte omzet blijft gelijk, maar komt in brokken binnen (gemiddeld eens per drie maanden een order) */
 const ORDER_KANS = 0.3;
 function orderOmzet(s, ctx, p, o){ if (!(o > 0)) return 0; if (kansRol() >= ORDER_KANS) return 0; const I = stukInfo(p), o2 = o / ORDER_KANS, stuks = Math.max(1, Math.round(o2 * 1e6 / Math.max(1, stukPrijs(p))));
