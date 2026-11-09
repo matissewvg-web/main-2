@@ -64,10 +64,12 @@ const html = '<!doctype html><html><head><meta charset=utf8></head><body>' + fs.
   const cp = await p.evaluate(() => { const s = G.game, oud = JSON.parse(JSON.stringify(s)); delete oud.flags.compensatie_473; const c0 = oud.cash; migrate(oud); const c1 = oud.cash; migrate(oud); return {erbij: Math.round((c1 - c0) * 10) / 10, tweede: Math.round((oud.cash - c1) * 10) / 10, nieuw: !!s.flags.compensatie_473}; });
   ok(cp.erbij === 100 && cp.tweede === 0 && cp.nieuw, "compensatie: oude save eenmalig +€100M, nieuw spel niet: " + JSON.stringify(cp));
   // 9. zelf maken (4.7.4)
-  const zm = await p.evaluate(async () => { const s = G.game, x = s.producten.find(y => y.naam === "Basisdosis"); s.cash += 50; const c0 = s.cash, k0 = kostPrijs(x), f0 = kostFactor(x);
+  const zm = await p.evaluate(async () => { const s = G.game, x = s.producten.find(y => y.naam === "Basisdosis"); x.delen = [0, 1, 2].map(() => ({kwal: "standaard", eigen: false})); s.cash += 50; const c0 = s.cash, k0 = kostPrijs(x), f0 = kostFactor(x);
     const r = await API["/api/product"]({soort: "zelfmaken", id: x.id, i: "alle"}), nogeens = await API["/api/product"]({soort: "zelfmaken", id: x.id, i: "0"});
     const D = prodDetail(s, x, 1); return {ok: r.ok, betaald: Math.round((c0 - s.cash) * 10) / 10, per: zelfKost(s), k0, k1: kostPrijs(x), f0, f1: kostFactor(x), alleEigen: x.delen.every(d => d.eigen && !d.lev), lev: D.delen.map(d => d.lev), nogeens: nogeens.ok}; });
   ok(zm.ok && zm.betaald === Math.round(zm.per * 3 * 10) / 10 && zm.f1 < zm.f0 && zm.alleEigen && zm.lev.every(l => l === "eigen fabriek") && zm.nogeens === false, "alles zelf maken: drie keer de investering, lagere kostprijs, geen leveranciers meer: " + JSON.stringify(zm));
+  const st = await p.evaluate(() => { const s = G.game, d = s.divisions[0], q = mkProduct(s, d, "Standaardtest", 3, 50); const oud = JSON.parse(JSON.stringify(s)); delete oud.flags.eigen_475; oud.producten.forEach(x => x.delen = [{kwal: "premium"}]); migrate(oud); return {nieuw: q.delen.every(x => x.eigen), oud: oud.producten.every(x => x.delen.length === 3 && x.delen.every(y => y.eigen)), kwalBewaard: oud.producten.every(x => x.delen[0].kwal === "premium")}; });
+  ok(st.nieuw && st.oud && st.kwalBewaard, "standaard eigen fabriek; oude save eenmalig omgezet (keuzes bewaard): " + JSON.stringify(st));
   // 7. scherm
   await p.evaluate(() => { S.view = "bedrijf"; render(); }); const ds = await p.$('[data-a=prodsheet]'); if (ds){ await ds.click(); await p.waitForTimeout(200); }
   const scherm = await p.evaluate(() => { const el = document.querySelector(".prodblad"); return el ? el.textContent : ""; });

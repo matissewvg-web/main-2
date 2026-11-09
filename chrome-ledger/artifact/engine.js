@@ -53,7 +53,7 @@ function template(){
       {name: "Jorik Maes", role: "Head of Security", loyalty: 60, ambition: 40, secret: "Heeft een schuld bij Brigada Volk."},
       {name: "Lien Verstraeten", role: "PR", loyalty: 50, ambition: 75, secret: "Lekt af en toe aan een journalist."},
     ],
-    flags: {compensatie_473: true},
+    flags: {compensatie_473: true, eigen_475: true},
   };
 }
 
@@ -69,6 +69,7 @@ const pak = s => s && s.map && s.map.kind === "wereld" && s.map.versie === 2 && 
 function migrate(s){
   if (s.map && s.map.gedeeld) s.map = genWorld().map;
   if (!(s.flags || {}).compensatie_473 && s.flags && s.date){ s.cash = r1((s.cash || 0) + 100); if (s.accounts) s.accounts.operationeel = s.cash; s.flags.compensatie_473 = true; (s.log ??= []).push(`${ym(s)} · Compensatie: +€100M omdat facturen en gebeurtenissen te duur waren (4.7.3)`); } /* 4.7.3: eenmalig €100M terug in bestaande saves */
+  if (!(s.flags || {}).eigen_475 && s.producten && s.flags){ for (const p of s.producten){ p.delen = [0, 1, 2].map(i => ({kwal: ((p.delen || [])[i] || {}).kwal || "standaard", eigen: true})); } s.flags.eigen_475 = true; } /* 4.7.5: eenmalig alles naar eigen productie */
   if (!(s.flags || {}).keur_471 && s.producten){ for (const p of s.producten) if (p.keuring != null && p.keuring !== "ok"){ p.keuring = "ok"; ((s.vergunning ??= {})[p.aard || aardVan(p.type, p.naam)] = true); } (s.flags ??= {}).keur_471 = true; } /* 4.7.1: eenmalig alles gekeurd in bestaande saves */
   s.accounts ??= {operationeel: s.cash, zwart: 0, offshore: 0};
   s.accounts.zwart ??= 0; s.accounts.offshore ??= 0;
@@ -638,7 +639,7 @@ function tick(s){
 }
 
 /* ---------- de stad: elke game een andere kaart ---------- */
-const VERSION = "4.7.4";
+const VERSION = "4.7.5";
 const MAP_W = 1000, MAP_H = 680;
 const RIVAL_COLORS = ["#ff9a1f", "#3d7bff", "#c6ff2e", "#f2f2f2", "#9b5cff", "#ffd400", "#ff4d4d"];
 const ARCH = {
@@ -2409,7 +2410,7 @@ const PRODUCT_SCHAAL = {
 };
 function productNamen(type){ if (PRODUCT_NAMEN[type]) return PRODUCT_NAMEN[type]; const kw = PRODUCT_WOORDEN.find(([re]) => re.test(type)); return kw ? kw[1] : ["Basis", "Pro", "Elite", "X", "Mk II", "Nova"].map(x => `${type} ${x}`); }
 function nieuwProductNaam(s, type){ const used = new Set((s.producten || []).map(p => p.naam)); return productNamen(type).find(x => !used.has(x)) || `${type} ${RI(2, 9)}${CH(["00", "X", "S", "Pro"])}`; }
-function mkProduct(s, d, naam, kw, pop){ return {id: "p" + hex8(), naam: naam || nieuwProductNaam(s, d.type), divisie: d.name || d.type, type: d.type, kwaliteit: clamp(Math.round(kw), 1, 5), pop: Math.round(pop), leeftijd: 0, sinds: ym(s), status: "markt"}; }
+function mkProduct(s, d, naam, kw, pop){ return {id: "p" + hex8(), naam: naam || nieuwProductNaam(s, d.type), divisie: d.name || d.type, type: d.type, kwaliteit: clamp(Math.round(kw), 1, 5), pop: Math.round(pop), leeftijd: 0, sinds: ym(s), status: "markt", delen: [0, 1, 2].map(() => ({kwal: "standaard", eigen: true}))}; } /* 4.7.5: standaard alles uit de eigen fabriek */
 const divNaam = d => d.name || d.type;
 const opMarkt = (s, d) => (s.producten || []).filter(p => p.divisie === divNaam(d) && p.status === "markt");
 const maxProducten = d => 2 + d.level;
@@ -2469,12 +2470,12 @@ function actProduct(s, ctx, soort, a){
     const kost = plan.kost, bezig = alle.some(p => p.status === "ontwikkeling");
     if (bezig){ if (alle.filter(p => p.status === "wachtrij").length >= 3) return {ok: false, msg: "De wachtrij is vol (3)."};
       const naamW = String(a.naam || "").trim().slice(0, 40) || nieuwProductNaam(s, d.type); if ((s.producten || []).some(p => p.naam === naamW)) return {ok: false, msg: "Die naam bestaat al."};
-      const q = mkProduct(s, d, naamW, plan.kw, 0); q.status = "wachtrij"; q.schaal = a.schaal; q.focus = focus; q.nadruk = nadrukVan(a.nadruk); if (beta) q.beta = true; if (DEEL_KWAL[a.delen] && a.delen !== "standaard") q.delen = [0, 1, 2].map(() => ({kwal: a.delen})); q.aard = aardK || aardVan(d.type, naamW); if (a.vorm === "abonnement") q.soort = "abonnement"; (s.producten ??= []).push(q);
+      const q = mkProduct(s, d, naamW, plan.kw, 0); q.status = "wachtrij"; q.schaal = a.schaal; q.focus = focus; q.nadruk = nadrukVan(a.nadruk); if (beta) q.beta = true; if (DEEL_KWAL[a.delen] && a.delen !== "standaard") q.delen = [0, 1, 2].map(() => ({kwal: a.delen, eigen: true})); q.aard = aardK || aardVan(d.type, naamW); if (a.vorm === "abonnement") q.soort = "abonnement"; (s.producten ??= []).push(q);
       const msgW = `${naamW} staat in de wachtrij van ${divNaam(d)}. Het start vanzelf als het vorige product gelanceerd is; dan wordt €${kost}M betaald.`; addLog(s, msgW); return {ok: true, msg: msgW}; }
     if (!pay(kost)) return {ok: false, msg: `Dit kost €${kost}M. Niet genoeg cash.`};
     const naam = String(a.naam || "").trim().slice(0, 40) || nieuwProductNaam(s, d.type);
     if ((s.producten || []).some(p => p.naam === naam)) return {ok: false, msg: "Die naam bestaat al."};
-    const p = mkProduct(s, d, naam, plan.kw, 0); p.status = "ontwikkeling"; p.eta = plan.maanden; p.schaal = a.schaal; p.focus = focus; p.nadruk = nadrukVan(a.nadruk); if (beta) p.beta = true; if (DEEL_KWAL[a.delen] && a.delen !== "standaard") p.delen = [0, 1, 2].map(() => ({kwal: a.delen})); p.aard = aardK || aardVan(d.type, naam); if (a.vorm === "abonnement") p.soort = "abonnement"; (s.producten ??= []).push(p);
+    const p = mkProduct(s, d, naam, plan.kw, 0); p.status = "ontwikkeling"; p.eta = plan.maanden; p.schaal = a.schaal; p.focus = focus; p.nadruk = nadrukVan(a.nadruk); if (beta) p.beta = true; if (DEEL_KWAL[a.delen] && a.delen !== "standaard") p.delen = [0, 1, 2].map(() => ({kwal: a.delen, eigen: true})); p.aard = aardK || aardVan(d.type, naam); if (a.vorm === "abonnement") p.soort = "abonnement"; (s.producten ??= []).push(p);
     const K = devPlan(s, d, a.schaal, focus, p.aard, beta).kansen; prodLog(p, s, `Ontwikkeling gestart (${PRODUCT_SCHAAL[a.schaal].label.toLowerCase()}, focus ${F.label.toLowerCase()})`);
     msg = `${naam} in ontwikkeling bij ${divNaam(d)}: €${kost}M, ${plan.maanden} maanden. Bij de lancering: hit ${K.hit}%, gewoon ${K.gewoon}%, matig ${K.neutraal}%, flop ${K.flop}%, terugroepactie ${K.terug}%.`;
   } else {
@@ -2503,7 +2504,7 @@ function actProduct(s, ctx, soort, a){
       if (alle.some(x => x.status === "ontwikkeling")) return {ok: false, msg: "Er loopt al een ontwikkeling in deze divisie; een variant kan daarna."};
       const naam = `${p.naam} ${V.label}`; if (s.producten.some(x => x.naam === naam)) return {ok: false, msg: "Die variant bestaat al."};
       const k = variantKost(s); if (!pay(k)) return {ok: false, msg: `Een variant kost €${k}M.`};
-      const q = mkProduct(s, d, naam, clamp(p.kwaliteit + V.kw, 1, 5), 0); Object.assign(q, {status: "ontwikkeling", eta: 1, schaal: "klein", focus: "veilig", doelOverride: 5, aard: p.aard, soort: p.soort, nadruk: p.nadruk ?? null, delen: [0, 1, 2].map(() => ({kwal: V.delen})), prijsF: V.f, prijs: prijsLabel(V.f), variantVan: p.id, trait: p.trait ?? null});
+      const q = mkProduct(s, d, naam, clamp(p.kwaliteit + V.kw, 1, 5), 0); Object.assign(q, {status: "ontwikkeling", eta: 1, schaal: "klein", focus: "veilig", doelOverride: 5, aard: p.aard, soort: p.soort, nadruk: p.nadruk ?? null, delen: [0, 1, 2].map(() => ({kwal: V.delen, eigen: true})), prijsF: V.f, prijs: prijsLabel(V.f), variantVan: p.id, trait: p.trait ?? null});
       s.producten.push(q); prodLog(p, s, `Variant ${V.label} in ontwikkeling`); prodLog(q, s, `Variant van ${p.naam}`); msg = `${naam} in ontwikkeling: €${k}M, 1 maand. Bij de lancering neemt het klanten over van ${p.naam}.`; }
     else if (soort === "zelfmaken"){ const idx = a.i === "alle" ? delenVan(p).map((_, j) => j).filter(j => !eigenDeel(p, j)) : [+a.i].filter(j => delenVan(p)[j] && !eigenDeel(p, j));
       if (!idx.length) return {ok: false, msg: "Dat maak je al zelf."}; const k = r1(zelfKost(s) * idx.length); if (!pay(k)) return {ok: false, msg: `Zelf maken kost €${k}M (€${zelfKost(s)}M per onderdeel).`};
