@@ -631,7 +631,7 @@ function tick(s){
 }
 
 /* ---------- de stad: elke game een andere kaart ---------- */
-const VERSION = "4.4";
+const VERSION = "4.4.1";
 const MAP_W = 1000, MAP_H = 680;
 const RIVAL_COLORS = ["#ff9a1f", "#3d7bff", "#c6ff2e", "#f2f2f2", "#9b5cff", "#ffd400", "#ff4d4d"];
 const ARCH = {
@@ -1564,7 +1564,7 @@ function bedrijfLeven(s, ctx){
   for (const b of B){ b.groei = r1(clamp((b.groei ?? U(-0.015, 0.015)) * 0.92 + U(-0.011, 0.01), -0.05, 0.05) * 1000) / 1000; b.piek = Math.max(b.piek || 0, b.waarde); b.zwak = (b.waarde < 38 || b.waarde < b.piek * 0.4) && !b.eigenaar ? (b.zwak || 0) + 1 : 0; }
   // faillissement: drie maanden onder water
   for (const b of B.filter(x => x.zwak >= 3 && !x.eigenaar)){
-    s.bedrijven = s.bedrijven.filter(x => x !== b); if (b.contract) s.streams = (s.streams || []).filter(x => x.naam !== "Contract " + b.naam);
+    s.bedrijven = s.bedrijven.filter(x => x !== b); leverancierWeg(s, typeof ctx !== "undefined" ? ctx : null, b); if (b.contract) s.streams = (s.streams || []).filter(x => x.naam !== "Contract " + b.naam);
     (s.stats ??= {}).failliet = (s.stats.failliet || 0) + 1; (s.wereldJaar ??= {})[s.date.year] = {...((s.wereldJaar || {})[s.date.year] || {}), failliet: (((s.wereldJaar || {})[s.date.year] || {}).failliet || 0) + 1};
     news(s, `${b.naam} failliet`, `${b.naam} (${b.sector}) houdt op te bestaan.${b.aandeel ? ` Jouw ${b.aandeel}% is niets meer waard.` : ""}${b.contract ? " Je leveringscontract vervalt." : ""}`, landNaam(s, b.land), "markt", !!(b.aandeel || b.contract));
     if (b.aandeel || b.contract) ctx.rep.push(`${b.naam} failliet`); }
@@ -2110,7 +2110,7 @@ function jaarTick(s, ctx){
   for (const n of s.npcs) n.ambition = clamp(n.ambition + RI(1, 5));
   // zwakke bedrijven vallen om, nieuwe komen op
   for (const b of []) if (!b.eigenaar && b.waarde < 40 && R() < 0.5){   /* 4.2: faillissementen en oprichtingen gaan nu maandelijks in bedrijfLeven */
-    s.bedrijven = s.bedrijven.filter(x => x !== b); if (b.contract) s.streams = (s.streams || []).filter(x => x.naam !== "Contract " + b.naam);
+    s.bedrijven = s.bedrijven.filter(x => x !== b); leverancierWeg(s, typeof ctx !== "undefined" ? ctx : null, b); if (b.contract) s.streams = (s.streams || []).filter(x => x.naam !== "Contract " + b.naam);
     let extra = ""; if (b.aandeel){ extra = ` Jouw ${b.aandeel}% is niets meer waard.`; }
     news(s, `${b.naam} failliet`, `${b.naam} houdt op te bestaan.${extra}`, landNaam(s, b.land), "markt", !!(b.aandeel || b.contract)); }
 }
@@ -2438,7 +2438,7 @@ function segmenten(p, s = (typeof G !== "undefined" && G.game) || null){ const a
     return {naam, aandeel, em, wil: specs[v].naam, score: specs[v].v, rivaal: rg == null ? null : Math.round(rg * 10) / 10, beste: best ? {naam: best.naam, wie: best.wie, v: best.specs[v].v} : null, fit: Math.round(fit * 100) / 100, gevoelig: Math.round(E * em * 100) / 100, vol}; });
   const tot = rows.reduce((t, x) => t + x.vol, 0) || 1; for (const r of rows) r.pct = Math.round(r.vol / tot * 100); return {rows, tot}; }
 const volF = p => clamp(segmenten(p).tot, 0.15, 1.6);
-const prodKost = (p, omzet) => omzet * PROD_KOST / prijsF(p);
+const prodKost = (p, omzet) => omzet * PROD_KOST * kostFactor(p) / prijsF(p);
 function prijsProef(s, p, f){ const q = {...p, prijsF: clamp(f, PRIJS_MIN, PRIJS_MAX)}, o = prodOmzet(s, q); return {f: q.prijsF, stukPrijs: stukPrijs(q), omzet: r1(o), winst: r1(o - prodKost(q, o)), w: o - prodKost(q, o), vraag: Math.round(vraagNa(q)), cap: prodCap(s, q), churn: isAbo(q) ? Math.round(aboChurn(q) * 1000) / 10 : null}; }
 function besteprijs(s, p){ let best = null; for (let f = PRIJS_MIN; f <= PRIJS_MAX + 1e-9; f += 0.05){ const x = prijsProef(s, p, Math.round(f * 100) / 100); if (!best || x.w > best.w + 1e-6) best = x; } return best; }
 function prodOmzet(s, p){ const d = s.divisions.find(x => divNaam(x) === p.divisie); if (!d) return 0; return (5 + 3 * Math.pow(d.level, 0.8)) * prodGewicht(p, s) * 0.17; }
@@ -2472,6 +2472,10 @@ function actProduct(s, ctx, soort, a){
     else if (soort === "verbeter"){ if (p.status !== "markt") return {ok: false, msg: "Het staat niet op de markt."}; if (p.kwaliteit >= 5) return {ok: false, msg: "Beter wordt het niet."}; if (p.verbetering) return {ok: false, msg: "Er loopt al een verbetering."};
       const kost = r1(8 * dif); if (!pay(kost)) return {ok: false, msg: `Een nieuwe versie kost €${kost}k.`}; p.verbetering = 2; msg = `Versie ${p.kwaliteit + 1} van ${p.naam} in ontwikkeling: €${kost}k, 2 maanden.`; }
     else if (soort === "prijs"){ const rr = actPrijs(s, p.id, a.f != null ? +a.f : a.prijs); if (rr.ok) prodLog(p, s, `Prijs: €${stukPrijs(p).toLocaleString("nl-NL")} per ${isAbo(p) ? "abonnee" : "stuk"} (${PRIJS[p.prijs].label.toLowerCase()})`); return rr; }
+    else if (soort === "onderdeel"){ const i = +a.i, D = delenVan(p)[i]; if (!D || !DEEL_KWAL[a.kwal]) return {ok: false, msg: "Onbekend onderdeel."}; if (deelKwal(p, i) === a.kwal) return {ok: false, msg: "Dat is al zo."};
+      const k = p.status === "markt" ? omschakelKost(s) : 0; if (k && !pay(k)) return {ok: false, msg: `Omschakelen kost €${k}k.`}; const kp0 = kostPrijs(p); leverancier(s, p, i); p.delen[i].kwal = a.kwal;
+      const sp = prodSpecs(p).find(x => x.naam === (SPECS[p.aard] || SPECS.consument)[D[2]]);
+      msg = `${p.naam}: ${D[0].toLowerCase()} nu ${DEEL_KWAL[a.kwal].label.toLowerCase()}${k ? ` (omschakelen €${k}k)` : ""}. Kostprijs €${kp0} → €${kostPrijs(p)} per stuk, ${sp.naam.toLowerCase()} ${sp.v}/10.`; prodLog(p, s, `${D[0]}: ${DEEL_KWAL[a.kwal].label.toLowerCase()}`); }
     else if (soort === "capaciteit"){ if (p.status !== "markt") return {ok: false, msg: "Het staat niet op de markt."}; const k = capKost(s, p); if (!pay(k)) return {ok: false, msg: `Productie uitbreiden kost €${k}k.`}; p.capExtra = (p.capExtra || 0) + 15; msg = `Productielijn van ${p.naam} uitgebreid: capaciteit nu ${prodCap(s, p)} (vraag ${Math.round(vraagNa(p))}).`; }
     else if (soort === "loyaliteit"){ if (!isAbo(p)) return {ok: false, msg: "Alleen voor abonnementen."}; p.loyaal = !p.loyaal; msg = p.loyaal ? `Loyaliteitsprogramma voor ${p.naam}: €${loyKost(p)}k per maand, opzeggers −1,2 procentpunt.` : `Loyaliteitsprogramma van ${p.naam} gestopt.`; }
     else if (soort === "stop"){ s.producten = s.producten.filter(x => x !== p); msg = `${p.naam} is uit de markt gehaald.`; }
@@ -2813,13 +2817,36 @@ const SPECS = {wapen: ["Vuurkracht", "Betrouwbaarheid", "Onopvallendheid"], medi
   data: ["Bereik", "Nauwkeurigheid", "Privacy"], beveiliging: ["Reactietijd", "Dekking", "Discretie"], smokkel: ["Snelheid", "Onzichtbaarheid", "Volume"], logistiek: ["Snelheid", "Betrouwbaarheid", "Bereik"],
   financieel: ["Rendement", "Risico", "Gemak"], orbitaal: ["Lading", "Precisie", "Kosten"], consument: ["Design", "Gemak", "Duurzaamheid"]};
 function hashN(str, i){ let h = 7; for (const ch of String(str) + ":" + i) h = (h * 31 + ch.charCodeAt(0)) | 0; return Math.abs(h); }
+/* 4.4.1: onderdelenlijst. Per soort drie onderdelen (deel van de kostprijs, gekoppelde eigenschap, sectoren van mogelijke leveranciers); de rest (20%) is arbeid.
+   Goedkoop: −30% kosten, −1 op die eigenschap. Premium: +35% kosten, +1. Standaard kost precies wat een product vóór 4.4.1 kostte. */
+const ONDERDELEN = {
+  wapen: [["Loop en mechaniek", 0.35, 1, ["Private Security", "Cyberware"]], ["Munitie en lading", 0.25, 0, ["Private Security", "Smokkel"]], ["Behuizing en demping", 0.2, 2, ["Cyberware"]]],
+  medisch: [["Werkzame stof", 0.4, 0, ["Biotech"]], ["Zuivering en tests", 0.25, 1, ["Biotech"]], ["Nazorgpakket", 0.15, 2, ["Biotech", "Logistiek"]]],
+  implantaat: [["Neurale chip", 0.4, 0, ["Cyberware"]], ["Biocompatibele coating", 0.25, 1, ["Biotech"]], ["Voeding en behuizing", 0.15, 2, ["Cyberware"]]],
+  data: [["Servers en opslag", 0.35, 0, ["Media & Data"]], ["Datasets", 0.25, 1, ["Media & Data"]], ["Versleuteling", 0.2, 2, ["Media & Data", "Cyberware"]]],
+  beveiliging: [["Voertuigen en drones", 0.35, 0, ["Private Security", "Logistiek"]], ["Sensoren en camera's", 0.25, 1, ["Cyberware"]], ["Training en screening", 0.2, 2, ["Private Security"]]],
+  smokkel: [["Voertuigen", 0.35, 0, ["Logistiek"]], ["Valse papieren", 0.25, 1, ["Smokkel", "Media & Data"]], ["Opslag en containers", 0.2, 2, ["Logistiek"]]],
+  logistiek: [["Voertuigen en brandstof", 0.4, 0, ["Logistiek"]], ["Tracking en software", 0.2, 1, ["Media & Data"]], ["Depots", 0.2, 2, ["Logistiek"]]],
+  financieel: [["Rekenkracht", 0.3, 0, ["Media & Data"]], ["Compliance en verzekering", 0.3, 1, ["Financieel"]], ["App en klantenservice", 0.2, 2, ["Media & Data"]]],
+  orbitaal: [["Lanceerraket", 0.45, 0, ["Orbitaal", "Logistiek"]], ["Navigatie", 0.2, 1, ["Cyberware"]], ["Brandstof", 0.15, 2, ["Orbitaal", "Logistiek"]]],
+  consument: [["Ontwerp en materiaal", 0.35, 0, ["Cyberware", "Media & Data"]], ["Elektronica", 0.25, 1, ["Cyberware"]], ["Verpakking en levering", 0.2, 2, ["Logistiek"]]]};
+const ARBEID = 0.2, DEEL_KWAL = {goedkoop: {label: "Goedkoop", kost: 0.7, spec: -1}, standaard: {label: "Standaard", kost: 1, spec: 0}, premium: {label: "Premium", kost: 1.35, spec: 1}};
+const delenVan = p => ONDERDELEN[p.aard || aardVan(p.type, p.naam)] || ONDERDELEN.consument;
+const deelKwal = (p, i) => DEEL_KWAL[((p.delen || [])[i] || {}).kwal] ? p.delen[i].kwal : "standaard";
+const kostFactor = p => ARBEID + delenVan(p).reduce((t, d, i) => t + d[1] * DEEL_KWAL[deelKwal(p, i)].kost, 0);
+function leverancier(s, p, i){ if (!s) return null; const D = delenVan(p)[i], x = ((p.delen ??= [])[i] ??= {kwal: "standaard"}), B = s.bedrijven || [];
+  let b = x.lev && B.find(y => y.id === x.lev); if (!b){ const pool = B.filter(y => D[3].includes(y.sector)), lijst = pool.length ? pool : B; b = lijst.length ? lijst[hashN(p.id, i) % lijst.length] : null; x.lev = b ? b.id : null; }
+  return b; }
+function leverancierWeg(s, ctx, b){ for (const p of s.producten || []) (p.delen || []).forEach((x, i) => { if (x && x.lev === b.id){ x.lev = null; const nb = leverancier(s, p, i); if (ctx) ctx.rep.push(`Leverancier ${b.naam} van ${p.naam} failliet; ${nb ? nb.naam : "de eigen werkplaats"} neemt het over`); } }); }
+const omschakelKost = s => r1(2 * (DIFF[(s && s.player.difficulty)] || 1));
 const nadrukVan = v => v === "" || v == null || isNaN(+v) || +v < 0 || +v > 2 ? null : +v;
 function prodSpecs(p){ const names = SPECS[p.aard] || SPECS.consument, F = {kwaliteit: [1, 1, 1], veilig: [0, 2, 0], snel: [0, -1, 0], goedkoop: [-1, -1, 0], innovatief: [2, -1, 0]}[p.focus] || [0, 0, 0];
   const N = [0, 0, 0]; if (p.nadruk != null && p.nadruk >= 0 && p.nadruk <= 2){ N[p.nadruk] = 2; N[(p.nadruk + 1) % 3] = -1; } /* 4.4: nadruk bij het ontwerp: +2 op de gekozen eigenschap, −1 op de volgende */
+  if (p.delen) delenVan(p).forEach((d, j) => { N[d[2]] += DEEL_KWAL[deelKwal(p, j)].spec; });
   return names.map((n, i) => ({naam: n, v: clamp(Math.round(p.kwaliteit * 1.6 + (hashN(p.id, i) % 5) - 2 + F[i] + N[i] + (p.trait === "duurzaam" && i === 1 ? 1 : 0)), 1, 10)})); }
 const basisPrijs = p => (STUK[p.aard] || STUK.consument).prijs * (0.8 + p.kwaliteit * 0.08);
 const stukPrijs = p => Math.round(basisPrijs(p) * prijsF(p));
-const kostPrijs = p => Math.round(basisPrijs(p) * PROD_KOST);
+const kostPrijs = p => Math.round(basisPrijs(p) * PROD_KOST * kostFactor(p));
 function levensfase(p){
   if (p.status !== "markt") return p.status === "ontwikkeling" ? "In ontwikkeling" : "Wachtrij";
   const h = p.hist || [], trend = h.length >= 3 ? h[h.length - 1].pop - h[h.length - 3].pop : 0, l = p.leeftijd || 0;
@@ -2837,9 +2864,10 @@ function segment(s, p){
 }
 function prodDetail(s, p, omzet){
   const abo = isAbo(p) && p.abo, cap = prodCap(s, p), vraag = vraagNa(p);
-  const sp = abo ? Math.max(1, Math.round(omzet * 1000 / Math.max(1, p.abo * 10))) : stukPrijs(p), kp = abo ? Math.round(sp * PROD_KOST / prijsF(p)) : kostPrijs(p), afzet = abo ? Math.round(p.abo * 10) : omzet > 0 ? Math.round(omzet * 1000 / sp) : 0;
+  const sp = abo ? Math.max(1, Math.round(omzet * 1000 / Math.max(1, p.abo * 10))) : stukPrijs(p), kp = abo ? Math.round(sp * PROD_KOST * kostFactor(p) / prijsF(p)) : kostPrijs(p), afzet = abo ? Math.round(p.abo * 10) : omzet > 0 ? Math.round(omzet * 1000 / sp) : 0;
   return {specs: prodSpecs(p), eenheid: abo ? "abonnees" : (STUK[p.aard] || STUK.consument).eenheid, perMaand: !!abo, stukPrijs: sp, kostPrijs: kp, marge: Math.round((sp - kp) / sp * 100), afzet, fase: levensfase(p),
-    cap, vraag: Math.round(vraag), uitverkocht: vraag > cap, gemist: vraag > cap ? Math.round((vraag - cap) / vraag * 100) : 0, capKost: capKost(s, p), seg: segment(s, p), hist: (p.hist || []).slice(-12), prijsF: prijsF(p), elast: elast(p), segmenten: segmenten(p, s).rows.map(({vol, ...r}) => r), beste: p.status === "markt" ? besteprijs(s, p) : null};
+    cap, vraag: Math.round(vraag), uitverkocht: vraag > cap, gemist: vraag > cap ? Math.round((vraag - cap) / vraag * 100) : 0, capKost: capKost(s, p), seg: segment(s, p), hist: (p.hist || []).slice(-12), prijsF: prijsF(p), elast: elast(p), segmenten: segmenten(p, s).rows.map(({vol, ...r}) => r), delen: delenVan(p).map((d, i) => { const k = deelKwal(p, i), lv = leverancier(s, p, i), per = (abo ? sp / prijsF(p) : basisPrijs(p)) * PROD_KOST * d[1] * DEEL_KWAL[k].kost;
+      return {naam: d[0], aandeel: d[1], spec: (SPECS[p.aard] || SPECS.consument)[d[2]], kwal: k, kost: Math.round(per * 100) / 100, lev: lv ? lv.naam : "eigen werkplaats"}; }), arbeid: Math.round((abo ? sp / prijsF(p) : basisPrijs(p)) * PROD_KOST * ARBEID * 100) / 100, omschakel: omschakelKost(s), beste: p.status === "markt" ? besteprijs(s, p) : null};
 }
 const prodGewicht = (p, s) => p.kwaliteit * effBereik(p, s) / 100 * prijsF(p) * (s ? vraagFactor(s, p.aard || aardVan(p.type, p.naam)) : 1) * (p.trait === "goedkoop" ? 1.15 : 1);
 const prodSterkte = p => bereik(p) / 100 * (0.5 + p.kwaliteit * 0.15);

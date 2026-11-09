@@ -76,6 +76,17 @@ const html = '<!doctype html><html><head><meta charset=utf8></head><body>' + fs.
   ok(nd.z1 > nd.z0, "nadruk op veiligheid: ziekenhuizen kopen een groter deel: " + JSON.stringify([nd.z0, nd.z1]));
   ok(nd.tegenZwak > nd.tegenSterk, "tegen zwakke rivalen verkoop je meer dan tegen sterke: " + JSON.stringify([nd.tegenZwak, nd.tegenSterk]));
   ok(nd.vrij <= 0 || nd.opgeslagen === 2, "nadruk wordt bij ontwikkelen bewaard: " + JSON.stringify(nd.opgeslagen));
+  // 4.4.1: onderdelen (deterministisch)
+  const od = await p.evaluate(async () => { const s = G.game, q = {id: "to", naam: "Testwapen", type: "Private Security", aard: "wapen", kwaliteit: 3, pop: 50, status: "markt", soort: "product", leeftijd: 5};
+    const f0 = kostFactor(q), k0 = kostPrijs(q), sp0 = prodSpecs({...q, delen: []}).map(x => x.v);
+    const qg = {...q, delen: [{kwal: "goedkoop"}]}, qp = {...q, delen: [{kwal: "premium"}]};
+    const x = s.producten.find(y => y.status === "markt"), cash0 = s.cash, kp0 = kostPrijs(x), r = await API["/api/product"]({soort: "onderdeel", id: x.id, i: 0, kwal: "premium"}), kp1 = kostPrijs(x), betaald = r1(cash0 - s.cash);
+    const lv = leverancier(s, x, 0), nep = {id: lv ? lv.id : "x", naam: lv ? lv.naam : "x"}; s.bedrijven = s.bedrijven.filter(b => b.id !== nep.id); const ctx = Ctx(); leverancierWeg(s, ctx, nep);
+    return {f0, k0, kg: kostPrijs(qg), kp: kostPrijs(qp), sp0, spg: prodSpecs(qg).map(x => x.v), spp: prodSpecs(qp).map(x => x.v), ok: r.ok, kp0, kp1, betaald, oms: omschakelKost(s), nieuw: x.delen[0].lev, oud: nep.id, melding: ctx.rep.join(" ")}; });
+  ok(Math.abs(od.f0 - 1) < 1e-9, "standaard onderdelen kosten precies wat een product vroeger kostte");
+  ok(od.kg < od.k0 && od.kp > od.k0 && od.spg[1] === Math.max(1, od.sp0[1] - 1) && od.spp[1] === Math.min(10, od.sp0[1] + 1), "goedkoop: lagere kostprijs en −1 betrouwbaarheid; premium: hoger en +1: " + JSON.stringify(od));
+  ok(od.ok && od.kp1 > od.kp0 && od.betaald === od.oms, "omschakelen op de markt kost geld en verandert de kostprijs: " + JSON.stringify([od.kp0, od.kp1, od.betaald]));
+  ok(od.nieuw !== od.oud && /failliet/.test(od.melding), "failliete leverancier wordt vervangen: " + od.melding);
   ok(prijs.ok && prijs.f === 1.3 && prijs.label === "premium" && prijs.f2 === 1.8, "prijs exact instellen, begrensd op 180%: " + JSON.stringify([prijs.f, prijs.label, prijs.f2]));
   ok(loy.keuze && loy.keuze.length === 3, "concurrent lokt abonnees weg: keuze " + JSON.stringify(loy.keuze));
   // overname en koppelen
