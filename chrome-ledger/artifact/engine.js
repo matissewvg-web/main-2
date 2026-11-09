@@ -631,7 +631,7 @@ function tick(s){
 }
 
 /* ---------- de stad: elke game een andere kaart ---------- */
-const VERSION = "4.3.4";
+const VERSION = "4.4";
 const MAP_W = 1000, MAP_H = 680;
 const RIVAL_COLORS = ["#ff9a1f", "#3d7bff", "#c6ff2e", "#f2f2f2", "#9b5cff", "#ffd400", "#ff4d4d"];
 const ARCH = {
@@ -2430,9 +2430,12 @@ const SEGMENTEN = {
   financieel: [["Particulieren", 0.5, 1.3, 2], ["MKB", 0.3, 1.0, 1], ["Vermogenden", 0.2, 0.5, 0]],
   orbitaal: [["Satellietbedrijven", 0.45, 0.8, 1], ["Staten", 0.3, 0.6, 0], ["Start-ups", 0.25, 1.6, 2]],
   consument: [["Massamarkt", 0.55, 1.4, 1], ["Trendvolgers", 0.25, 0.8, 0], ["Bewuste kopers", 0.2, 0.9, 2]]};
-function segmenten(p){ const a = p.aard || aardVan(p.type, p.naam), specs = prodSpecs({...p, aard: a}), gem = specs.reduce((t, x) => t + x.v, 0) / 3, E = elast(p), f = prijsF(p);
-  const rows = (SEGMENTEN[a] || SEGMENTEN.consument).map(([naam, aandeel, em, v]) => { const fit = clamp(1 + (specs[v].v - gem) * 0.07, 0.75, 1.3), vol = aandeel * fit * Math.exp(-E * em * (f - 1));
-    return {naam, aandeel, em, wil: specs[v].naam, score: specs[v].v, fit: Math.round(fit * 100) / 100, gevoelig: Math.round(E * em * 100) / 100, vol}; });
+/* 4.4: per segment telt ook hoe je scoort tegen de producten van rivalen in dezelfde markt (hun gemiddelde op die eigenschap) */
+function rivaalSpecs(s, a){ return s ? s.rivals.flatMap(r => (r.producten || []).filter(x => x.aard === a).map(x => ({naam: x.naam, wie: r.name, specs: prodSpecs({id: x.naam, kwaliteit: x.kwaliteit, aard: a})}))) : []; }
+function segmenten(p, s = (typeof G !== "undefined" && G.game) || null){ const a = p.aard || aardVan(p.type, p.naam), specs = prodSpecs({...p, aard: a}), gem = specs.reduce((t, x) => t + x.v, 0) / 3, E = elast(p), f = prijsF(p), RS = rivaalSpecs(s, a);
+  const rows = (SEGMENTEN[a] || SEGMENTEN.consument).map(([naam, aandeel, em, v]) => { const rg = RS.length ? RS.reduce((t, x) => t + x.specs[v].v, 0) / RS.length : null, best = RS.length ? RS.reduce((b, x) => x.specs[v].v > b.specs[v].v ? x : b) : null;
+    const fit = clamp(1 + (specs[v].v - gem) * 0.07, 0.75, 1.3) * (rg == null ? 1 : clamp(1 + (specs[v].v - rg) * 0.04, 0.85, 1.15)), vol = aandeel * fit * Math.exp(-E * em * (f - 1));
+    return {naam, aandeel, em, wil: specs[v].naam, score: specs[v].v, rivaal: rg == null ? null : Math.round(rg * 10) / 10, beste: best ? {naam: best.naam, wie: best.wie, v: best.specs[v].v} : null, fit: Math.round(fit * 100) / 100, gevoelig: Math.round(E * em * 100) / 100, vol}; });
   const tot = rows.reduce((t, x) => t + x.vol, 0) || 1; for (const r of rows) r.pct = Math.round(r.vol / tot * 100); return {rows, tot}; }
 const volF = p => clamp(segmenten(p).tot, 0.15, 1.6);
 const prodKost = (p, omzet) => omzet * PROD_KOST / prijsF(p);
@@ -2454,12 +2457,12 @@ function actProduct(s, ctx, soort, a){
     const kost = plan.kost, bezig = alle.some(p => p.status === "ontwikkeling");
     if (bezig){ if (alle.filter(p => p.status === "wachtrij").length >= 3) return {ok: false, msg: "De wachtrij is vol (3)."};
       const naamW = String(a.naam || "").trim().slice(0, 40) || nieuwProductNaam(s, d.type); if ((s.producten || []).some(p => p.naam === naamW)) return {ok: false, msg: "Die naam bestaat al."};
-      const q = mkProduct(s, d, naamW, plan.kw, 0); q.status = "wachtrij"; q.schaal = a.schaal; q.focus = focus; q.aard = aardK || aardVan(d.type, naamW); if (a.vorm === "abonnement") q.soort = "abonnement"; (s.producten ??= []).push(q);
+      const q = mkProduct(s, d, naamW, plan.kw, 0); q.status = "wachtrij"; q.schaal = a.schaal; q.focus = focus; q.nadruk = nadrukVan(a.nadruk); q.aard = aardK || aardVan(d.type, naamW); if (a.vorm === "abonnement") q.soort = "abonnement"; (s.producten ??= []).push(q);
       const msgW = `${naamW} staat in de wachtrij van ${divNaam(d)}. Het start vanzelf als het vorige product gelanceerd is; dan wordt €${kost}k betaald.`; addLog(s, msgW); return {ok: true, msg: msgW}; }
     if (!pay(kost)) return {ok: false, msg: `Dit kost €${kost}k. Niet genoeg cash.`};
     const naam = String(a.naam || "").trim().slice(0, 40) || nieuwProductNaam(s, d.type);
     if ((s.producten || []).some(p => p.naam === naam)) return {ok: false, msg: "Die naam bestaat al."};
-    const p = mkProduct(s, d, naam, plan.kw, 0); p.status = "ontwikkeling"; p.eta = plan.maanden; p.schaal = a.schaal; p.focus = focus; p.aard = aardK || aardVan(d.type, naam); if (a.vorm === "abonnement") p.soort = "abonnement"; (s.producten ??= []).push(p);
+    const p = mkProduct(s, d, naam, plan.kw, 0); p.status = "ontwikkeling"; p.eta = plan.maanden; p.schaal = a.schaal; p.focus = focus; p.nadruk = nadrukVan(a.nadruk); p.aard = aardK || aardVan(d.type, naam); if (a.vorm === "abonnement") p.soort = "abonnement"; (s.producten ??= []).push(p);
     const K = devPlan(s, d, a.schaal, focus, p.aard).kansen; prodLog(p, s, `Ontwikkeling gestart (${PRODUCT_SCHAAL[a.schaal].label.toLowerCase()}, focus ${F.label.toLowerCase()})`);
     msg = `${naam} in ontwikkeling bij ${divNaam(d)}: €${kost}k, ${plan.maanden} maanden. Bij de lancering: hit ${K.hit}%, gewoon ${K.gewoon}%, matig ${K.neutraal}%, flop ${K.flop}%, terugroepactie ${K.terug}%.`;
   } else {
@@ -2810,8 +2813,10 @@ const SPECS = {wapen: ["Vuurkracht", "Betrouwbaarheid", "Onopvallendheid"], medi
   data: ["Bereik", "Nauwkeurigheid", "Privacy"], beveiliging: ["Reactietijd", "Dekking", "Discretie"], smokkel: ["Snelheid", "Onzichtbaarheid", "Volume"], logistiek: ["Snelheid", "Betrouwbaarheid", "Bereik"],
   financieel: ["Rendement", "Risico", "Gemak"], orbitaal: ["Lading", "Precisie", "Kosten"], consument: ["Design", "Gemak", "Duurzaamheid"]};
 function hashN(str, i){ let h = 7; for (const ch of String(str) + ":" + i) h = (h * 31 + ch.charCodeAt(0)) | 0; return Math.abs(h); }
+const nadrukVan = v => v === "" || v == null || isNaN(+v) || +v < 0 || +v > 2 ? null : +v;
 function prodSpecs(p){ const names = SPECS[p.aard] || SPECS.consument, F = {kwaliteit: [1, 1, 1], veilig: [0, 2, 0], snel: [0, -1, 0], goedkoop: [-1, -1, 0], innovatief: [2, -1, 0]}[p.focus] || [0, 0, 0];
-  return names.map((n, i) => ({naam: n, v: clamp(Math.round(p.kwaliteit * 1.6 + (hashN(p.id, i) % 5) - 2 + F[i] + (p.trait === "duurzaam" && i === 1 ? 1 : 0)), 1, 10)})); }
+  const N = [0, 0, 0]; if (p.nadruk != null && p.nadruk >= 0 && p.nadruk <= 2){ N[p.nadruk] = 2; N[(p.nadruk + 1) % 3] = -1; } /* 4.4: nadruk bij het ontwerp: +2 op de gekozen eigenschap, −1 op de volgende */
+  return names.map((n, i) => ({naam: n, v: clamp(Math.round(p.kwaliteit * 1.6 + (hashN(p.id, i) % 5) - 2 + F[i] + N[i] + (p.trait === "duurzaam" && i === 1 ? 1 : 0)), 1, 10)})); }
 const basisPrijs = p => (STUK[p.aard] || STUK.consument).prijs * (0.8 + p.kwaliteit * 0.08);
 const stukPrijs = p => Math.round(basisPrijs(p) * prijsF(p));
 const kostPrijs = p => Math.round(basisPrijs(p) * PROD_KOST);
@@ -2834,7 +2839,7 @@ function prodDetail(s, p, omzet){
   const abo = isAbo(p) && p.abo, cap = prodCap(s, p), vraag = vraagNa(p);
   const sp = abo ? Math.max(1, Math.round(omzet * 1000 / Math.max(1, p.abo * 10))) : stukPrijs(p), kp = abo ? Math.round(sp * PROD_KOST / prijsF(p)) : kostPrijs(p), afzet = abo ? Math.round(p.abo * 10) : omzet > 0 ? Math.round(omzet * 1000 / sp) : 0;
   return {specs: prodSpecs(p), eenheid: abo ? "abonnees" : (STUK[p.aard] || STUK.consument).eenheid, perMaand: !!abo, stukPrijs: sp, kostPrijs: kp, marge: Math.round((sp - kp) / sp * 100), afzet, fase: levensfase(p),
-    cap, vraag: Math.round(vraag), uitverkocht: vraag > cap, gemist: vraag > cap ? Math.round((vraag - cap) / vraag * 100) : 0, capKost: capKost(s, p), seg: segment(s, p), hist: (p.hist || []).slice(-12), prijsF: prijsF(p), elast: elast(p), segmenten: segmenten(p).rows.map(({vol, ...r}) => r), beste: p.status === "markt" ? besteprijs(s, p) : null};
+    cap, vraag: Math.round(vraag), uitverkocht: vraag > cap, gemist: vraag > cap ? Math.round((vraag - cap) / vraag * 100) : 0, capKost: capKost(s, p), seg: segment(s, p), hist: (p.hist || []).slice(-12), prijsF: prijsF(p), elast: elast(p), segmenten: segmenten(p, s).rows.map(({vol, ...r}) => r), beste: p.status === "markt" ? besteprijs(s, p) : null};
 }
 const prodGewicht = (p, s) => p.kwaliteit * effBereik(p, s) / 100 * prijsF(p) * (s ? vraagFactor(s, p.aard || aardVan(p.type, p.naam)) : 1) * (p.trait === "goedkoop" ? 1.15 : 1);
 const prodSterkte = p => bereik(p) / 100 * (0.5 + p.kwaliteit * 0.15);

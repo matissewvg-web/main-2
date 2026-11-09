@@ -64,6 +64,18 @@ const html = '<!doctype html><html><head><meta charset=utf8></head><body>' + fs.
     return {som, straatL, straatH, rijkL, rijkH, alle}; });
   ok(seg.alle && seg.som >= 99 && seg.som <= 101, "elk soort heeft drie segmenten die samen de markt vormen");
   ok(seg.straatH < seg.straatL && seg.rijkH > seg.rijkL, "hoge prijs: straatklinieken haken af, rijke particulieren blijven: " + JSON.stringify(seg));
+  // 4.4 stap 1: nadruk in het ontwerp en vergelijking met rivalen (deterministisch)
+  const nd = await p.evaluate(async () => { const s = G.game, q = {id: "tn", naam: "Testdosis", type: "Biotech", aard: "medisch", kwaliteit: 3, pop: 50, status: "markt", soort: "product", leeftijd: 5};
+    const s0 = prodSpecs(q), s1 = prodSpecs({...q, nadruk: 1}), z0 = segmenten(q, null).rows.find(x => x.naam === "Ziekenhuizen").pct, z1 = segmenten({...q, nadruk: 1}, null).rows.find(x => x.naam === "Ziekenhuizen").pct;
+    const nep = {rivals: [{name: "Rivaal", producten: [{naam: "Zwak", aard: "medisch", kwaliteit: 1, pop: 50}]}]}, nep2 = {rivals: [{name: "Rivaal", producten: [{naam: "Sterk", aard: "medisch", kwaliteit: 5, pop: 50}]}]};
+    const tegenZwak = segmenten(q, nep).tot, tegenSterk = segmenten(q, nep2).tot;
+    const d = s.divisions[0], vrij = maxProducten(d) - s.producten.filter(x => x.divisie === divNaam(d) && x.status !== "teruggeroepen").length; s.cash += 200;
+    let opgeslagen = null; if (vrij > 0){ const r = await API["/api/product"]({soort: "ontwikkel", divisie: divNaam(d), schaal: "klein", focus: "standaard", aard: "medisch", nadruk: "2", naam: "Nadruktest"}); const x = s.producten.find(y => y.naam === "Nadruktest"); opgeslagen = x ? x.nadruk : "geen product: " + r.bericht; }
+    return {s0: s0.map(x => x.v), s1: s1.map(x => x.v), z0, z1, tegenZwak, tegenSterk, vrij, opgeslagen}; });
+  ok(nd.s1[1] === Math.min(10, nd.s0[1] + 2) && nd.s1[2] === Math.max(1, nd.s0[2] - 1) && nd.s1[0] === nd.s0[0], "nadruk: +2 op de gekozen eigenschap, −1 op de volgende: " + JSON.stringify([nd.s0, nd.s1]));
+  ok(nd.z1 > nd.z0, "nadruk op veiligheid: ziekenhuizen kopen een groter deel: " + JSON.stringify([nd.z0, nd.z1]));
+  ok(nd.tegenZwak > nd.tegenSterk, "tegen zwakke rivalen verkoop je meer dan tegen sterke: " + JSON.stringify([nd.tegenZwak, nd.tegenSterk]));
+  ok(nd.vrij <= 0 || nd.opgeslagen === 2, "nadruk wordt bij ontwikkelen bewaard: " + JSON.stringify(nd.opgeslagen));
   ok(prijs.ok && prijs.f === 1.3 && prijs.label === "premium" && prijs.f2 === 1.8, "prijs exact instellen, begrensd op 180%: " + JSON.stringify([prijs.f, prijs.label, prijs.f2]));
   ok(loy.keuze && loy.keuze.length === 3, "concurrent lokt abonnees weg: keuze " + JSON.stringify(loy.keuze));
   // overname en koppelen
