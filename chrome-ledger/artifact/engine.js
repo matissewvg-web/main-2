@@ -77,6 +77,11 @@ function migrate(s){
     for (const [naam, ps] of Object.entries(wees)){ const n = ps.filter(p => p.status !== "teruggeroepen").length; (s.divisions ??= []).push({name: naam, type: ps[0].type, level: Math.max(2, n - 2), efficiency: 1}); (s.log ??= []).push(`${ym(s)} · ${naam} terug na de geschrapte overname (${n} producten)`); }
     if (s.flags.overgenomen){ delete s.flags.overgenomen; if (/OVERGENOMEN/.test(s.status || "")) s.status = "actief"; }
     s.flags.overname_477 = true; }
+  if (s.flags && s.flags.herstel_wm_479 && !s.flags.herstel_wm_4710){ /* 4.7.10: de speler bouwt de wapenlijn zelf: teruggezette producten weg, niveau 6, €60M en 5 gratis ontwikkelingen */
+    const T = ["Wapens", "Sniper", "Armor", "Drones", "Tanks", "Mechs", "Vliegtuigen"], d = (s.divisions || []).find(x => /weapon manufacturing/i.test(x.name || x.type));
+    s.producten = (s.producten || []).filter(p => !(d && p.divisie === (d.name || d.type) && T.includes(p.naam))); if (d) d.level = Math.max(d.level || 1, 6);
+    s.cash = r1((s.cash || 0) + 60); if (s.accounts) s.accounts.operationeel = s.cash; s.gratisDev = (s.gratisDev || 0) + 5;
+    (s.log ??= []).push(`${ym(s)} · Weapon manufacturing naar niveau 6, +€60M en 5 gratis productontwikkelingen`); s.flags.herstel_wm_4710 = true; }
   if (s.flags && !s.flags.herstel_wm_479 && (s.hostile_bid || {}).uitslag === "verloren" && s.divisions && !s.divisions.some(d => /weapon manufacturing/i.test(d.name || d.type))){ /* 4.7.9: verloren wapendivisie van de speler terug */
     s.custom_types ??= {}; let type = Object.keys(s.custom_types).find(k => /weapon/i.test(k)); if (!type && typeof addCustomType === "function"){ const r = addCustomType(s, "Weapon manufacturing", PRESETS.gebalanceerd, "Wapens, voertuigen en drones"); if (r.ok) type = r.naam; }
     const d = {name: "Weapon manufacturing", type: type || "Private Security", level: 5, efficiency: 1}; s.divisions.push(d);
@@ -653,7 +658,7 @@ function tick(s){
 }
 
 /* ---------- de stad: elke game een andere kaart ---------- */
-const VERSION = "4.7.9";
+const VERSION = "4.7.10";
 const MAP_W = 1000, MAP_H = 680;
 const RIVAL_COLORS = ["#ff9a1f", "#3d7bff", "#c6ff2e", "#f2f2f2", "#9b5cff", "#ffd400", "#ff4d4d"];
 const ARCH = {
@@ -2481,14 +2486,15 @@ function actProduct(s, ctx, soort, a){
     const alle = (s.producten || []).filter(p => p.divisie === divNaam(d) && p.status !== "teruggeroepen");
     if (alle.length >= maxProducten(d)) return {ok: false, msg: `${divNaam(d)} kan op niveau ${d.level} maximaal ${maxProducten(d)} producten dragen (inclusief de wachtrij). Haal er een uit de markt of breid de divisie uit.`};
     const focus = DEV_FOCUS[a.focus] ? a.focus : "standaard", F = DEV_FOCUS[focus], aardK = PRODUCT_AARD[a.aard] ? a.aard : null, beta = a.beta === true || a.beta === "ja", plan = devPlan(s, d, a.schaal, focus, aardK || aardVan(d.type, a.naam || ""), beta);
-    const kost = plan.kost, bezig = alle.some(p => p.status === "ontwikkeling");
+    const gratis = (s.gratisDev || 0) > 0, kost = gratis ? 0 : plan.kost, bezig = alle.some(p => p.status === "ontwikkeling"); /* 4.7.10: gratis ontwikkelingen */
     if (bezig){ if (alle.filter(p => p.status === "wachtrij").length >= 3) return {ok: false, msg: "De wachtrij is vol (3)."};
       const naamW = String(a.naam || "").trim().slice(0, 40) || nieuwProductNaam(s, d.type); if ((s.producten || []).some(p => p.naam === naamW)) return {ok: false, msg: "Die naam bestaat al."};
       const q = mkProduct(s, d, naamW, plan.kw, 0); q.status = "wachtrij"; q.schaal = a.schaal; q.focus = focus; q.nadruk = nadrukVan(a.nadruk); if (beta) q.beta = true; if (DEEL_KWAL[a.delen] && a.delen !== "standaard") q.delen = [0, 1, 2].map(() => ({kwal: a.delen, eigen: true})); q.aard = aardK || aardVan(d.type, naamW); if (a.vorm === "abonnement") q.soort = "abonnement"; (s.producten ??= []).push(q);
-      const msgW = `${naamW} staat in de wachtrij van ${divNaam(d)}. Het start vanzelf als het vorige product gelanceerd is; dan wordt €${kost}M betaald.`; addLog(s, msgW); return {ok: true, msg: msgW}; }
-    if (!pay(kost)) return {ok: false, msg: `Dit kost €${kost}M. Niet genoeg cash.`};
+      if (gratis){ q.kostOverride = 0; s.gratisDev -= 1; }
+      const msgW = `${naamW} staat in de wachtrij van ${divNaam(d)}. Het start vanzelf als het vorige product gelanceerd is; ${gratis ? `gratis (nog ${s.gratisDev} gratis)` : `dan wordt €${kost}M betaald`}.`; addLog(s, msgW); return {ok: true, msg: msgW}; }
     const naam = String(a.naam || "").trim().slice(0, 40) || nieuwProductNaam(s, d.type);
     if ((s.producten || []).some(p => p.naam === naam)) return {ok: false, msg: "Die naam bestaat al."};
+    if (!pay(kost)) return {ok: false, msg: `Dit kost €${kost}M. Niet genoeg cash.`}; if (gratis) s.gratisDev -= 1;
     const p = mkProduct(s, d, naam, plan.kw, 0); p.status = "ontwikkeling"; p.eta = plan.maanden; p.schaal = a.schaal; p.focus = focus; p.nadruk = nadrukVan(a.nadruk); if (beta) p.beta = true; if (DEEL_KWAL[a.delen] && a.delen !== "standaard") p.delen = [0, 1, 2].map(() => ({kwal: a.delen, eigen: true})); p.aard = aardK || aardVan(d.type, naam); if (a.vorm === "abonnement") p.soort = "abonnement"; (s.producten ??= []).push(p);
     const K = devPlan(s, d, a.schaal, focus, p.aard, beta).kansen; prodLog(p, s, `Ontwikkeling gestart (${PRODUCT_SCHAAL[a.schaal].label.toLowerCase()}, focus ${F.label.toLowerCase()})`);
     msg = `${naam} in ontwikkeling bij ${divNaam(d)}: €${kost}M, ${plan.maanden} maanden. Bij de lancering: hit ${K.hit}%, gewoon ${K.gewoon}%, matig ${K.neutraal}%, flop ${K.flop}%, terugroepactie ${K.terug}%.`;

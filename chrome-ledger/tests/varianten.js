@@ -86,6 +86,12 @@ const html = '<!doctype html><html><head><meta charset=utf8></head><body>' + fs.
     migrate(oud); const d = oud.divisions.find(x => x.name === "Weapon manufacturing"), ps = oud.producten.filter(x => x.divisie === "Weapon manufacturing"); oud.history = [{omzet: 30}];
     const om = ps.map(x => r1(prodOmzet(oud, x))); return {d: !!d, level: d && d.level, n: ps.length, namen: ps.map(x => x.naam), units: ps.map(x => stukInfo(x).eenheid), keur: ps.every(x => keurStatus(x) === "ok"), eigen: ps.every(x => x.delen.every(y => y.eigen)), om, dubbel: (migrate(oud), oud.divisions.filter(x => x.name === "Weapon manufacturing").length)}; });
   ok(wm.d && wm.level === 5 && wm.n === 7 && wm.keur && wm.eigen && wm.dubbel === 1 && wm.om.every(x => x > 0), "Weapon manufacturing terug met 7 producten, gekeurd en eigen fabriek: " + JSON.stringify(wm));
+  const z = await p.evaluate(async () => { const s = G.game, oud = JSON.parse(JSON.stringify(s)); delete oud.flags.herstel_wm_479; delete oud.flags.herstel_wm_4710; oud.hostile_bid = {uitslag: "verloren"}; oud.divisions = oud.divisions.filter(d => !/weapon/i.test(d.name || d.type)); oud.gratisDev = 0;
+    migrate(oud); const n1 = oud.producten.filter(x => x.divisie === "Weapon manufacturing").length, c1 = oud.cash; migrate(oud); const d = oud.divisions.find(x => x.name === "Weapon manufacturing");
+    const n2 = oud.producten.filter(x => x.divisie === "Weapon manufacturing").length, extra = Math.round((oud.cash - c1) * 10) / 10; migrate(oud);
+    G.game.gratisDev = 1; const c0 = G.game.cash, dv = G.game.divisions[0], r = await API["/api/product"]({soort: "ontwikkel", divisie: divNaam(dv), schaal: "vlag", focus: "standaard", naam: "Gratis Test"}); const betaald = Math.round((c0 - G.game.cash) * 10) / 10;
+    return {n1, n2, level: d.level, extra, gratis: oud.gratisDev, ok: r.ok, betaald, over: G.game.gratisDev, nogmaals: oud.cash === c1 + 60 ? "ok" : oud.cash}; });
+  ok(z.n1 === 7 && z.n2 === 0 && z.level === 6 && z.extra === 60 && z.gratis === 5 && (!z.ok || (z.betaald === 0 && z.over === 0)), "wapenlijn zelf bouwen: producten weg, niveau 6, +€60M, 5 gratis ontwikkelingen die echt niets kosten: " + JSON.stringify(z));
   // 7. scherm
   await p.evaluate(() => { S.view = "bedrijf"; render(); }); const ds = await p.$('[data-a=prodsheet]'); if (ds){ await ds.click(); await p.waitForTimeout(200); }
   const scherm = await p.evaluate(() => { const el = document.querySelector(".prodblad"); return el ? el.textContent : ""; });
