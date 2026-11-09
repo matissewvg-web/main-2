@@ -631,7 +631,7 @@ function tick(s){
 }
 
 /* ---------- de stad: elke game een andere kaart ---------- */
-const VERSION = "4.4.1";
+const VERSION = "4.4.2";
 const MAP_W = 1000, MAP_H = 680;
 const RIVAL_COLORS = ["#ff9a1f", "#3d7bff", "#c6ff2e", "#f2f2f2", "#9b5cff", "#ffd400", "#ff4d4d"];
 const ARCH = {
@@ -2457,12 +2457,12 @@ function actProduct(s, ctx, soort, a){
     const kost = plan.kost, bezig = alle.some(p => p.status === "ontwikkeling");
     if (bezig){ if (alle.filter(p => p.status === "wachtrij").length >= 3) return {ok: false, msg: "De wachtrij is vol (3)."};
       const naamW = String(a.naam || "").trim().slice(0, 40) || nieuwProductNaam(s, d.type); if ((s.producten || []).some(p => p.naam === naamW)) return {ok: false, msg: "Die naam bestaat al."};
-      const q = mkProduct(s, d, naamW, plan.kw, 0); q.status = "wachtrij"; q.schaal = a.schaal; q.focus = focus; q.nadruk = nadrukVan(a.nadruk); q.aard = aardK || aardVan(d.type, naamW); if (a.vorm === "abonnement") q.soort = "abonnement"; (s.producten ??= []).push(q);
+      const q = mkProduct(s, d, naamW, plan.kw, 0); q.status = "wachtrij"; q.schaal = a.schaal; q.focus = focus; q.nadruk = nadrukVan(a.nadruk); if (DEEL_KWAL[a.delen] && a.delen !== "standaard") q.delen = [0, 1, 2].map(() => ({kwal: a.delen})); q.aard = aardK || aardVan(d.type, naamW); if (a.vorm === "abonnement") q.soort = "abonnement"; (s.producten ??= []).push(q);
       const msgW = `${naamW} staat in de wachtrij van ${divNaam(d)}. Het start vanzelf als het vorige product gelanceerd is; dan wordt €${kost}k betaald.`; addLog(s, msgW); return {ok: true, msg: msgW}; }
     if (!pay(kost)) return {ok: false, msg: `Dit kost €${kost}k. Niet genoeg cash.`};
     const naam = String(a.naam || "").trim().slice(0, 40) || nieuwProductNaam(s, d.type);
     if ((s.producten || []).some(p => p.naam === naam)) return {ok: false, msg: "Die naam bestaat al."};
-    const p = mkProduct(s, d, naam, plan.kw, 0); p.status = "ontwikkeling"; p.eta = plan.maanden; p.schaal = a.schaal; p.focus = focus; p.nadruk = nadrukVan(a.nadruk); p.aard = aardK || aardVan(d.type, naam); if (a.vorm === "abonnement") p.soort = "abonnement"; (s.producten ??= []).push(p);
+    const p = mkProduct(s, d, naam, plan.kw, 0); p.status = "ontwikkeling"; p.eta = plan.maanden; p.schaal = a.schaal; p.focus = focus; p.nadruk = nadrukVan(a.nadruk); if (DEEL_KWAL[a.delen] && a.delen !== "standaard") p.delen = [0, 1, 2].map(() => ({kwal: a.delen})); p.aard = aardK || aardVan(d.type, naam); if (a.vorm === "abonnement") p.soort = "abonnement"; (s.producten ??= []).push(p);
     const K = devPlan(s, d, a.schaal, focus, p.aard).kansen; prodLog(p, s, `Ontwikkeling gestart (${PRODUCT_SCHAAL[a.schaal].label.toLowerCase()}, focus ${F.label.toLowerCase()})`);
     msg = `${naam} in ontwikkeling bij ${divNaam(d)}: €${kost}k, ${plan.maanden} maanden. Bij de lancering: hit ${K.hit}%, gewoon ${K.gewoon}%, matig ${K.neutraal}%, flop ${K.flop}%, terugroepactie ${K.terug}%.`;
   } else {

@@ -70,12 +70,13 @@ const html = '<!doctype html><html><head><meta charset=utf8></head><body>' + fs.
     const nep = {rivals: [{name: "Rivaal", producten: [{naam: "Zwak", aard: "medisch", kwaliteit: 1, pop: 50}]}]}, nep2 = {rivals: [{name: "Rivaal", producten: [{naam: "Sterk", aard: "medisch", kwaliteit: 5, pop: 50}]}]};
     const tegenZwak = segmenten(q, nep).tot, tegenSterk = segmenten(q, nep2).tot;
     const d = s.divisions[0], vrij = maxProducten(d) - s.producten.filter(x => x.divisie === divNaam(d) && x.status !== "teruggeroepen").length; s.cash += 200;
-    let opgeslagen = null; if (vrij > 0){ const r = await API["/api/product"]({soort: "ontwikkel", divisie: divNaam(d), schaal: "klein", focus: "standaard", aard: "medisch", nadruk: "2", naam: "Nadruktest"}); const x = s.producten.find(y => y.naam === "Nadruktest"); opgeslagen = x ? x.nadruk : "geen product: " + r.bericht; }
-    return {s0: s0.map(x => x.v), s1: s1.map(x => x.v), z0, z1, tegenZwak, tegenSterk, vrij, opgeslagen}; });
+    let opgeslagen = null, delenOk = null; if (vrij > 0){ const r = await API["/api/product"]({soort: "ontwikkel", divisie: divNaam(d), schaal: "klein", focus: "standaard", aard: "medisch", nadruk: "2", delen: "premium", naam: "Nadruktest"}); const x = s.producten.find(y => y.naam === "Nadruktest"); opgeslagen = x ? x.nadruk : "geen product: " + r.bericht; delenOk = !!x && x.delen.length === 3 && x.delen.every(z => z.kwal === "premium") && Math.abs(kostFactor(x) - 1.28) < 1e-9; }
+    return {s0: s0.map(x => x.v), s1: s1.map(x => x.v), z0, z1, tegenZwak, tegenSterk, vrij, opgeslagen, delenOk}; });
   ok(nd.s1[1] === Math.min(10, nd.s0[1] + 2) && nd.s1[2] === Math.max(1, nd.s0[2] - 1) && nd.s1[0] === nd.s0[0], "nadruk: +2 op de gekozen eigenschap, −1 op de volgende: " + JSON.stringify([nd.s0, nd.s1]));
   ok(nd.z1 > nd.z0, "nadruk op veiligheid: ziekenhuizen kopen een groter deel: " + JSON.stringify([nd.z0, nd.z1]));
   ok(nd.tegenZwak > nd.tegenSterk, "tegen zwakke rivalen verkoop je meer dan tegen sterke: " + JSON.stringify([nd.tegenZwak, nd.tegenSterk]));
   ok(nd.vrij <= 0 || nd.opgeslagen === 2, "nadruk wordt bij ontwikkelen bewaard: " + JSON.stringify(nd.opgeslagen));
+  ok(nd.vrij <= 0 || nd.delenOk === true, "onderdelen kiezen bij ontwikkelen (alles premium = kostprijs ×1,28)");
   // 4.4.1: onderdelen (deterministisch)
   const od = await p.evaluate(async () => { const s = G.game, q = {id: "to", naam: "Testwapen", type: "Private Security", aard: "wapen", kwaliteit: 3, pop: 50, status: "markt", soort: "product", leeftijd: 5};
     const f0 = kostFactor(q), k0 = kostPrijs(q), sp0 = prodSpecs({...q, delen: []}).map(x => x.v);
@@ -101,7 +102,9 @@ const html = '<!doctype html><html><head><meta charset=utf8></head><body>' + fs.
   await p.evaluate(() => { S.view = "bedrijf"; render(); });
   await p.click("[data-a=prodsheet]"); await p.waitForTimeout(200);
   const blad = await p.evaluate(() => { const el = document.querySelector(".prodblad"); return el && {specs: el.querySelectorAll(".spec").length, tekst: el.textContent}; });
-  ok(blad && blad.specs === 3 && /Kostprijs/.test(blad.tekst) && /Jouw aandeel/.test(blad.tekst) && /capaciteit/.test(blad.tekst), "productblad met eigenschappen, economie, markt en productie");
+  const tab = async t => { await p.click(`[data-a=prodtab][data-t=${t}]`); await p.waitForTimeout(150); return p.evaluate(() => document.querySelector(".prodblad").textContent); };
+  const tMarkt = await tab("markt"), tPrijs = await tab("prijs"), tDelen = await tab("onderdelen"); await tab("overzicht");
+  ok(blad && blad.specs === 3 && /Kostprijs/.test(blad.tekst) && /capaciteit/.test(blad.tekst) && /Jouw aandeel/.test(tMarkt) && /KLANTEN/.test(tPrijs) && /ONDERDELEN/.test(tDelen) && !/ONDERDELEN/.test(blad.tekst), "productblad in tabbladen: overzicht, prijs en klanten, onderdelen, markt");
   if (out){ await p.evaluate(() => { const el = document.querySelector(".prodblad"); window.scrollTo(0, el.getBoundingClientRect().top + scrollY - 160); }); await p.waitForTimeout(150); await p.screenshot({path: out + "/productblad.png"}); }
   const cap = await p.evaluate(async () => { const s = G.game, x = s.producten.find(y => y.status === "markt" && !isAbo(y)) || s.producten[0]; x.pop = 99; const c0 = prodCap(s, x), w0 = prodGewicht(x, s);
     const adv = adviezen(s).some(a => /uitverkocht/.test(a.tekst)); await API["/api/product"]({soort: "capaciteit", id: x.id}); return {c0, c1: prodCap(s, x), w0, w1: prodGewicht(x, s), adv}; });
