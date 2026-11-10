@@ -16,26 +16,44 @@ Zwak:
 3. **Balans:** op doel sinds 4.1 (Casual 86%, Realistisch 34%, Genadeloos 11%), maar abonnementen, dochters en de GM zijn niet op balans getest.
 4. **Nog niemand heeft het echt gespeeld sinds de ochtend.** Bots zijn geen spelers.
 
-## Roadmap 5.x (vanaf woensdag 11 nov, op verzoek van de gebruiker)
+## Masterroadmap (alles: oude lijst + nieuwe wensen + eigen ideeën)
 
-Werkwijze: elk uur een ronde, één stap per ronde, elke derde ronde een opruimronde. Feedback uit een speelronde gaat altijd voor. Doorwerken tot de weeklimiet op is; daarna verder waar het stopte. Bestaande saves moeten blijven werken (migrate, nooit iets kwijt).
+Werkwijze: elk uur een ronde, één stap per ronde, elke derde ronde een opruimronde. Feedback uit een speelronde gaat altijd voor. Doorwerken tot de weeklimiet op is, daarna verder waar het stopte. Bestaande saves blijven werken (migrate, nooit iets kwijt). Herkomst: [oud] = stond al op de roadmap, [wens] = gevraagd op 10 nov, [idee] = eigen voorstel.
 
-| Versie | Wat | Rondes | Status |
-|---|---|---|---|
-| 5.1 | Eigen huisstijl: bedrijfskleuren, thema (kleurenset van het scherm), logo (generator met symbool en initialen, of een PNG uploaden, verkleind en in de save) | 1 | volgende |
-| 5.2 | Slimme automatisering: autopilot per product (prijs volgt de beste prijs, capaciteit volgt de vraag binnen een budget, keuring aanvragen) en per divisie (automatisch ontwikkelen als er plek is) | 2 | |
-| 5.3 | Echte-wereldtijdlijn: trends en gebeurtenissen per jaar die vraag en kansen verschuiven (smartphones 2007, crisis 2008, crypto 2009 en 2017, drones en dronegevechten rond 2015-2020, pandemie 2020, AI-golf 2023, commerciële ruimtevaart jaren '20, daarna cyberpunk: implantaten, privélegers) | 2 | |
-| 5.4 | Corpospanning per regio (zoals world tension in HOI4): elke regio een eigen spanning 0-100 die met de tijd, oorlogen, wapenverkoop en corpomacht stijgt; drempels openen sancties, embargo's, privélegers en corporate zones | 2 | |
-| 5.5 | Straatoorlog en corpomacht: bij hoge spanning eigen beveiliging op straat inzetten, gebieden bevechten, corpowetten kopen; meer macht = meer mogen | 2 | |
-| 5.6 | Gebied als dominantie: een district heeft geen eigenaar maar invloedsaandelen (speler, rivalen, bendes, staat), net als de zee; inkomsten, heat en hegemonie volgen je aandeel | 3 | |
-| 5.7 | Elk spel een nieuwe wereld: rivalen en wereldbedrijven per spel gegenereerd (namen, sectoren, CEO's met karakter, startposities), met een zaad om een wereld te delen | 1 | |
-| 5.8 | Mensen doen echt werk: directie en personeel als assistenten met taken (CFO betaalt facturen en bewaakt het budget, verkoopchef zet prijzen, R&D stelt producten voor, HR werft), elk met talent, loon en loyaliteit; taken delegeren of zelf doen | 2 | |
-| 5.9 | Klanten komen naar jou (B2B-orders, was 5.0): inkoopaanvragen van staten, legers, bedrijven en syndicaten, aanbestedingen, raamcontracten | 3 | |
-| 5.10 | Export en vergunningen: wapens en implantaten per regio een exportvergunning, embargo's uit 5.4, smokkel als uitweg | 1 | |
-| 5.11 | Beurs: zelf naar de beurs, aandelen uitgeven of terugkopen, aandeelhoudersvergaderingen (vervangt het geschrapte overnamebod met iets wat je zelf stuurt) | 2 | |
-| daarna | Oude roadmap: patenten en namaak, productdashboard, toelevering en voorraad, regionale markten (samen met 5.4/5.10), onderzoek, zelf plannen smeden | | |
+| # | Versie | Wat | Herkomst | Rondes |
+|---|---|---|---|---|
+| 1 | 5.0 | Opruimen: woordkeuze kwaliteit/eigenschappen, zwarte markt als echt risico (razzia's, journalisten), verhaalkeuzes compacter op het overzicht, ordertest met vaste kans, varianten.js 50 keer met foutmeldingen, kleine kosten in miljoenen nalopen (omkopen, aannemen), balans terug naar ±40% met iets wat de speler zelf stuurt | [oud] | 1 |
+| 2 | 5.1 | Eigen huisstijl: bedrijfskleuren, thema van het scherm, logo uit een generator (symbool + initialen) of eigen PNG (verkleind, in de save) | [wens] | 1 |
+| 3 | 5.2 | Slimme automatisering: autopilot per product (prijs volgt de beste prijs, capaciteit volgt de vraag binnen een budget, keuring vanzelf) en per divisie (automatisch ontwikkelen als er plek is) | [wens] | 2 |
+| 4 | 5.3 | Echte-wereldtijdlijn: trends per jaar die vraag en kansen verschuiven (smartphones 2007, crisis 2008, crypto 2009/2017, drones en dronegevechten 2015-2020, pandemie 2020, AI-golf 2023, commerciële ruimtevaart, daarna cyberpunk: implantaten, privélegers, AI-wetten) | [wens] | 2 |
+| 5 | 5.4 | Corpospanning per regio (zoals world tension in HOI4): elke regio 0-100, stijgt met de tijd, oorlogen, wapenverkoop en corpomacht; drempels openen sancties, embargo's, privélegers en corporate zones | [wens] | 2 |
+| 6 | 5.5 | Straatoorlog en corpomacht: bij hoge spanning eigen beveiliging op straat, gebieden bevechten, corpowetten kopen; meer macht = meer mogen | [wens] | 2 |
+| 7 | 5.6 | Gebied als dominantie: invloedsaandelen per district (speler, rivalen, bendes, staat) zoals op zee; inkomsten, heat en hegemonie volgen je aandeel | [wens] | 3 |
+| 8 | 5.7 | Elk spel een nieuwe wereld: rivalen en wereldbedrijven gegenereerd (namen, sectoren, CEO's met karakter, startposities), met een zaad om een wereld te delen | [wens] | 1 |
+| 9 | 5.8 | Mensen doen echt werk (neemt 4.12 Mensen per divisie mee): directie en personeel als assistenten met taken (CFO betaalt facturen en bewaakt het budget, verkoopchef zet prijzen, R&D stelt producten voor, HR werft), met talent, loon en loyaliteit; taken delegeren of zelf doen; een hoofd per divisie | [wens]+[oud] | 2 |
+| 10 | 5.9 | Klanten komen naar jou (was 5.0): inkoopaanvragen van staten, legers, bedrijven en syndicaten; aanbestedingen tegen rivalen; raamcontracten; riskante klanten | [oud] | 3 |
+| 11 | 5.10 | Export en vergunningen: wapens en implantaten per regio een exportvergunning, embargo's uit de corpospanning, smokkel als uitweg | [idee] | 1 |
+| 12 | 5.11 | Regionale markten (was 4.10): vraag, prijzen, keuring en concurrenten per continent; je kiest waar je verkoopt | [oud] | 2 |
+| 13 | 5.12 | Toelevering en voorraad (was 4.9): grondstoffen per regio, tekorten bij oorlog en sancties, voorraad aanleggen, leveranciers als je niet alles zelf maakt | [oud] | 2 |
+| 14 | 5.13 | Patenten en namaak (was 4.7): patent op een eigenschap, namakers aanklagen, rivalen patenteren ook | [oud] | 1 |
+| 15 | 5.14 | Onderzoek (was 4.13): technologieboom per soort (betere onderdelen, nieuwe productlijnen zoals mechs, nieuwe markten), rivalen onderzoeken mee | [oud] | 2 |
+| 16 | 5.15 | Realistische financiën en de beurs (was 4.11 + idee): balans, kasstroom, afschrijving, leningen met looptijd; zelf naar de beurs, aandelen uitgeven of terugkopen, aandeelhoudersvergaderingen (iets wat je zelf stuurt, in plaats van het geschrapte overnamebod) | [oud]+[idee] | 2 |
+| 17 | 5.16 | Productdashboard en statistieken (was 4.8): grafieken per product en per divisie over tijd, naast je sterkste concurrent; jaaroverzicht | [oud] | 1 |
+| 18 | 5.17 | Zelf plannen smeden (was 4.14): zelf een plan tegen een rival of bende opzetten over maanden, met stappen, kansen en tegenzetten | [oud] | 1 |
+| 19 | 5.18 | Krant van de maand: één pagina met de wereldtrends, jouw nieuws, rivalen en de corpospanning, in de stijl van de stad | [idee] | 1 |
+| 20 | 5.19 | De CEO als persoon: leeftijd, gezondheid, reputatie, privéleven, opvolging (een dynastie of een coup), en rivaliserende CEO's met een eigen relatie tot jou | [idee] | 2 |
+| 21 | 5.20 | Eigen moeilijkheid: schuiven voor gebeurtenissen, chaos, corpospanning en winstdrempel, zodat jij bepaalt hoe hard het spel is | [idee] | 1 |
+| 22 | 5.21 | Uitleg en begin: een korte rondleiding van 5 stappen bij een nieuw spel, en een spiekbriefje per scherm | [idee] | 1 |
 
-Eerlijk over de omvang: dit is ±22 rondes werk. Met de weeklimiet van de gebruiker haal ik dat niet in één keer; de volgorde zet eerst wat snel speelbaar verschil maakt (5.1, 5.2), dan de grote wereldsystemen (5.3-5.6). 5.6 raakt de kaart, oorlog en hegemonie tegelijk: het grootste risico op bugs, dus met extra tests en een opruimronde erna.
+Totaal ±40 rondes (plus de opruimrondes daartussen, ±13). Met de weeklimiet van de gebruiker is dat enkele weken werk. De volgorde zet eerst wat je meteen merkt (opruimen, huisstijl, automatisering), dan de grote wereldsystemen (tijdlijn, spanning, straat, dominantie), dan de diepte (mensen, B2B, markten, toelevering) en tot slot de afwerking.
+
+Grootste risico's: 5.6 (dominantie) raakt kaart, oorlog en hegemonie tegelijk; 5.11 (regionale markten) raakt de hele producteconomie. Beide met extra tests en direct een opruimronde erna.
+
+### Doorlopend (elke ronde in het achterhoofd)
+- Balans: verstandige bot op Realistisch ±40%; nu ±58%, te makkelijk na de kostenverlagingen.
+- Reputatie zakt in lange spellen snel (wapenbedrijf 28 → 3 in 2 jaar): oorzaken nalopen met repdiag.
+- Het begin is traag (±€5M winst per maand de eerste jaren).
+- Tests mogen nooit op toeval falen.
 
 ## Roadmap (4.x, deels afgerond)
 
