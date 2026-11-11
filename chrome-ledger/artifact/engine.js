@@ -536,10 +536,11 @@ function tick(s){
   const crewKost = crewLoonTotaal(s) + legerKostNu(s);
   if (crewKost) lines.push(`| Crew${s.huurleger ? " en huurleger" : ""} (${(s.crew || []).length}) | 0 | ${r1(crewKost)} |`);
   cost += payroll + (s.culture.bonus_cost || 0) + interest + projCost + (s.defensie || 0) * 2 + (s.schepen || 0) * 1.2 + crewKost;
+  { const np = patrouilles(s).length, pk = r1(np * patrouilleKost(s)); if (pk){ cost += pk; lines.push(`| Patrouilles op straat (${np}) | 0 | ${pk} |`); if (!heeftWet(s, "beveiliging")) heatAdd += np * 0.25; } } /* 5.5 */
   if (npcActive(s, "kosten")) cost *= 0.97;
   if (heeftFocus(s, "lean")) cost *= 0.95;
-  const off = s.accounts.offshore >= 20 ? 0.08 : 0, winst0 = Math.max(0, rev - cost), belasting = r1(Math.min(winst0, 60) * (0.2 - off) + Math.max(0, winst0 - 60) * (0.35 - off));
-  if (belasting){ cost += belasting; lines.push(`| Winstbelasting (${Math.round((0.2 - off) * 100)}% tot €60M, ${Math.round((0.35 - off) * 100)}% daarboven${off ? ", offshore" : ""}) | 0 | ${belasting} |`); }
+  const off = (s.accounts.offshore >= 20 ? 0.08 : 0) + (heeftWet(s, "zone") ? 0.05 : 0), winst0 = Math.max(0, rev - cost), belasting = r1(Math.min(winst0, 60) * (0.2 - off) + Math.max(0, winst0 - 60) * (0.35 - off));
+  if (belasting){ cost += belasting; lines.push(`| Winstbelasting (${Math.round((0.2 - off) * 100)}% tot €60M, ${Math.round((0.35 - off) * 100)}% daarboven${s.accounts.offshore >= 20 ? ", offshore" : ""}${heeftWet(s, "zone") ? ", corpozone" : ""}) | 0 | ${belasting} |`); }
   const net = r1(rev - cost); s.cash = r1(s.cash + net);
 
   { const h0 = s.heat, ha = heatAdd * 0.7 * (s.player.difficulty === "Casual" ? 0.9 : 1) * (heeftFocus(s, "juristen") ? 0.9 : 1), dec = (s.culture.heat_decay ?? 2) + s.heat * 0.07 + spanningHeat(s); s.heat = clamp(s.heat + ha - dec); gz.hDelen.push(["Divisies (omzet trekt aandacht)", r1(ha)], ["Vanzelf afnemen", r1(s.heat - h0 - ha)]); }
@@ -601,7 +602,7 @@ function tick(s){
   lingeringTick(s, ctx, diff); invoicesTick(s, ctx, diff); marketTick(s, ctx); factionTick(s, ctx);
   npcTick(s, ctx); nomadDemandTick(s, ctx); chaosTick(s, ctx, diff); rumorTick(s, ctx); arcsTick(s, ctx, diff);
   sectorTick(s); regionTick(s, ctx); bedrijfTick(s, ctx); bedrijfLeven(s, ctx); peopleTick(s, ctx, diff);
-  specialTick(s, ctx); productTick(s, ctx); { const pe = productEffectTick(s); if (pe.heat) gz.hDelen.push(["Producten", r1(pe.heat)]); if (pe.morale) gz.mDelen.push(["Producten", r1(pe.morale)]); } productEventTick(s, ctx); tijdlijnTick(s, ctx); spanningTick(s, ctx); vraagTick(s); rivalProductTick(s); wereldInvloedProducten(s); eraTick(s, ctx); if (s.date.month === 12) jaarTick(s, ctx); marktTick(s); klusTick(s);
+  specialTick(s, ctx); productTick(s, ctx); { const pe = productEffectTick(s); if (pe.heat) gz.hDelen.push(["Producten", r1(pe.heat)]); if (pe.morale) gz.mDelen.push(["Producten", r1(pe.morale)]); } productEventTick(s, ctx); tijdlijnTick(s, ctx); spanningTick(s, ctx); corpoTick(s, ctx); vraagTick(s); rivalProductTick(s); wereldInvloedProducten(s); eraTick(s, ctx); if (s.date.month === 12) jaarTick(s, ctx); marktTick(s); klusTick(s);
   s.accounts.operationeel = s.cash; s.hidden_truth = s.hidden_truth.slice(-30);
 
   let status = "actief";
@@ -615,7 +616,7 @@ function tick(s){
   if (s.flags.lage_morale >= 2 && R() < 0.5) status = "COUP IN DE RAAD";
   else if (s.morale < 20) mail(ctx, s, "Anoniem", "De raad vergadert zonder u", "Drie bestuursleden lunchten gisteren samen. U stond niet op de lijst.", "HOOG");
   s.flags.hoge_heat = s.heat > 90 ? (s.flags.hoge_heat || 0) + 1 : 0;
-  if (s.flags.hoge_heat >= 2 && R() < 0.4) status = "RAZZIA / VERVOLGING";
+  if (s.flags.hoge_heat >= 2 && R() < 0.4 * (heeftWet(s, "rechtspraak") ? 0.5 : 1)) status = "RAZZIA / VERVOLGING";
   else if (s.heat > 75) mail(ctx, s, "Juridische Zaken", "Er wordt een dossier opgebouwd", "Een bevriende griffier zegt dat ons dossier dikker wordt. Bij de huidige heat is een inval een kwestie van tijd.", "KRITIEK");
   if (s.flags.overgenomen){ delete s.flags.overgenomen; status = "OVERGENOMEN"; }
   statsTick(s); gezondheidEind(s, gz, ctx);
@@ -658,7 +659,7 @@ function tick(s){
 }
 
 /* ---------- de stad: elke game een andere kaart ---------- */
-const VERSION = "5.4.1";
+const VERSION = "5.5";
 const MAP_W = 1000, MAP_H = 680;
 const RIVAL_COLORS = ["#ff9a1f", "#3d7bff", "#c6ff2e", "#f2f2f2", "#9b5cff", "#ffd400", "#ff4d4d"];
 const ARCH = {
@@ -1003,7 +1004,7 @@ const rivalDistricts = (s, r) => s.districts.filter(d => d.control === r.name);
 const playerDistricts = s => s.districts.filter(d => d.control === "player");
 function playerPower(s){
   const sec = s.divisions.filter(d => d.type === "Private Security").reduce((a, d) => a + d.level, 0);
-  return Math.round(10 + (s.defensie || 0) * 12 + sec * 8 + s.staff.count / 10 + playerDistricts(s).length * 3 + s.reputation / 10 + (npcActive(s, "macht") ? 6 : 0) + (s.flags.alert ? 8 : 0) + legerMacht(s) + productMacht(s));
+  return Math.round(10 + (s.defensie || 0) * 12 + sec * 8 + s.staff.count / 10 + playerDistricts(s).length * 3 + s.reputation / 10 + (npcActive(s, "macht") ? 6 : 0) + (s.flags.alert ? 8 : 0) + legerMacht(s) + productMacht(s) + patrouilles(s).length * 2);
 }
 function rivalPower(s, r){
   return Math.round(10 + (r.defensie || 0) * 12 + (r.divs["Private Security"] || 0) * 8 + r.staff / 10 + rivalDistricts(s, r).length * 3);
@@ -1985,7 +1986,7 @@ function gangTick(s, ctx, diff){
     for (const [land, p] of Object.entries(g.gebied)){
       const d = s.districts.find(x => x.id === land); if (!d) continue;
       let tgt = (g.basis || {})[land] ?? 20;
-      if (d.control === "player") tgt -= (s.defensie || 0) * 5 + sec * 3 - (g.deal === "partner" ? 15 : 0);
+      if (d.control === "player") tgt -= (s.defensie || 0) * 5 + sec * 3 - (g.deal === "partner" ? 15 : 0) + ((s.patrouille || {})[land] ? 15 : 0);
       else if (d.control !== "neutral"){ const r = s.rivals.find(x => x.name === d.control); tgt -= r ? r.defensie * 5 + (r.divs["Private Security"] || 0) * 3 : 0; }
       g.gebied[land] = Math.round(clamp(p + (tgt - p) * 0.05 + U(-2, 2), 0, 95));
     }
@@ -3171,7 +3172,64 @@ function spanningTick(s, ctx){ const S0 = (s.spanning ??= {}), nu = ym(s); for (
     const f0 = spanningFase(oud), f1 = spanningFase(S0[n]); if (f1[0] > f0[0]){ news(s, `${n}: ${f1[1]}`, `De corpospanning in ${n} loopt op tot ${Math.round(S0[n])}. ${f1[2]}`, n, "wereld", true); ctx.rep.push(`Corpospanning ${n}: ${f1[1]}`); } } }
 /* 5.4.1: Sancties en Privélegers op je thuiscontinent: staten zitten corporaties op de huid (heat zakt trager); Corporate zone: politie kijkt weg */
 const spanningThuis = s => (s.spanning || {})[(s.districts.find(x => x.id === s.player.home_district) || {}).continent] || 0;
-const spanningHeat = s => { const v = spanningThuis(s); return v >= 90 ? 1 : v >= 50 ? -0.6 : 0; };
+const spanningHeat = s => { const v = spanningThuis(s); return (v >= 90 ? 1 : v >= 50 ? -0.6 : 0) + (heeftWet(s, "immuniteit") ? 0.8 : 0); };
+/* 5.5: straatoorlog en corpomacht. Bij hoge spanning mag je eigen beveiliging de straat op, vecht je om districten zonder oorlogsverklaring en koop je corpowetten met invloed. Meer macht = meer mogen. */
+const spanningVan = (s, cont) => (s.spanning || {})[cont] || 0;
+const CORPOWETTEN = {
+  beveiliging: {label: "Privébeveiligingswet", fase: 50, inv: 20, cash: 15, macht: 0, uitleg: "Patrouilles mogen al vanaf 50 spanning (Sancties), kosten €0,8M in plaats van €1,5M per maand en geven geen heat."},
+  immuniteit: {label: "Bedrijfsimmuniteit", fase: 70, inv: 35, cash: 40, macht: 40, uitleg: "Heat zakt elke maand 0,8 extra."},
+  zone: {label: "Belastingvrije corpozone", fase: 70, inv: 40, cash: 50, macht: 50, uitleg: "Winstbelasting 5 procentpunt lager."},
+  rechtspraak: {label: "Eigen rechtspraak", fase: 90, inv: 60, cash: 80, macht: 65, uitleg: "Bij heat boven 90 lukt een razzia maar half zo vaak."},
+};
+const heeftWet = (s, k) => !!(s.wetten || {})[k];
+const patrouilleDrempel = s => heeftWet(s, "beveiliging") ? 50 : 70;
+const patrouilleMag = (s, d) => !!d && d.control === "player" && spanningVan(s, d.continent) >= patrouilleDrempel(s);
+const patrouilleKost = s => heeftWet(s, "beveiliging") ? 0.8 : 1.5;
+const patrouilles = s => Object.keys(s.patrouille || {}).filter(id => (s.districts.find(d => d.id === id) || {}).control === "player");
+const STRAAT = {kost: 12, drempel: 70};
+const straatKost = s => r1(STRAAT.kost * (DIFF[s.player.difficulty] || 1));
+function straatKans(s, d){ const r = s.rivals.find(x => x.name === d.control); if (!r) return 0;
+  const buur = (d.neighbors || []).filter(n => (s.patrouille || {})[n] && (s.districts.find(x => x.id === n) || {}).control === "player").length;
+  return warChance(s, r, 5 + Math.min(3, buur) * 6 + (spanningVan(s, d.continent) >= 90 ? 5 : 0)); }
+const straatDoelen = s => s.districts.filter(d => d.control !== "player" && d.control !== "neutral" && spanningVan(s, d.continent) >= STRAAT.drempel && s.rivals.some(r => r.name === d.control && r.hq !== d.id) && reachable(s, "player", d));
+function wetStatus(s, k){ const w = CORPOWETTEN[k], thuis = spanningThuis(s), macht = playerPower(s);
+  if (heeftWet(s, k)) return {ok: false, reden: "van kracht", actief: true};
+  if (thuis < w.fase) return {ok: false, reden: `pas vanaf ${w.fase} spanning op je thuiscontinent (nu ${Math.round(thuis)})`};
+  if (macht < w.macht) return {ok: false, reden: `je macht moet minstens ${w.macht} zijn (nu ${macht})`};
+  if ((s.invloed || 0) < w.inv) return {ok: false, reden: `${w.inv} invloed nodig (je hebt ${Math.floor(s.invloed || 0)})`};
+  if (s.cash < w.cash) return {ok: false, reden: `€${w.cash}M nodig`};
+  return {ok: true, reden: ""}; }
+function actCorpo(s, ctx, soort, id){
+  if (soort === "patrouille"){ const d = s.districts.find(x => x.id === id); if (!d || d.control !== "player") return {ok: false, msg: "Kies een district van jezelf."};
+    const P = (s.patrouille ??= {}); if (P[id]){ delete P[id]; addLog(s, `Patrouille in ${d.name} gestopt`); return {ok: true, msg: `Patrouille in ${d.name} gestopt.`}; }
+    if (!patrouilleMag(s, d)) return {ok: false, msg: `In ${d.continent} mag dat pas vanaf ${patrouilleDrempel(s)} corpospanning (nu ${Math.round(spanningVan(s, d.continent))}).`};
+    P[id] = ym(s); addLog(s, `Patrouille in ${d.name} gestart`);
+    return {ok: true, msg: `Eigen beveiliging patrouilleert in ${d.name}: €${patrouilleKost(s)}M per maand, bendes krijgen minder grip, je macht +2${heeftWet(s, "beveiliging") ? "" : ", heat +0,25 per maand"}.`}; }
+  if (soort === "straat"){ const d = s.districts.find(x => x.id === id); if (!d || !straatDoelen(s).includes(d)) return {ok: false, msg: `Hier kun je niet op straat vechten. Het district moet van een rivaal zijn (niet hun HQ), aan je gebied grenzen en op een continent met minstens ${STRAAT.drempel} spanning liggen.`};
+    const r = s.rivals.find(x => x.name === d.control), kost = straatKost(s); if (s.cash < kost) return {ok: false, msg: `Niet genoeg cash (€${kost}M nodig).`};
+    s.cash = r1(s.cash - kost); const kans = straatKans(s, d), roll = rolKans(kans), zone = spanningVan(s, d.continent) >= 90 ? 0.5 : 1;
+    addRoll(s, `Straatgevecht om ${d.name} tegen ${r.name}: ${roll.txt} → ${roll.ok ? "GELUKT" : "MISLUKT"}`); let msg;
+    if (roll.ok){ d.control = "player"; relShift(r, -15); r.moeheid = clamp(r.moeheid + 8); s.heat = clamp(s.heat + 5 * zone); s.spanning[d.continent] = r1(Math.min(100, spanningVan(s, d.continent) + 1));
+      msg = `Onze mensen hebben ${d.name} op straat veroverd. ${r.name} is het district kwijt.`; remember(r, s, "straatgevecht door speler");
+      news(s, `Straatgevecht in ${d.name}`, `Gepantserde wagens, rookgranaten, een nacht lang. Bij zonsopgang hangen er andere logo's in ${d.name}.`, d.continent, "wereld", true); }
+    else { const l = r1(U(4, 10)); s.cash = r1(s.cash - l); relShift(r, -8); s.heat = clamp(s.heat + 3 * zone); msg = `Het straatgevecht om ${d.name} is mislukt. €${l}M schade en ${r.name} weet wie het was.`; }
+    mail(ctx, s, roll.ok ? "Head of Security" : "Juridische Zaken", `Straatgevecht om ${d.name}: ${roll.ok ? "gelukt" : "mislukt"}`, msg + ` (Worp ${roll.txt}.)`, roll.ok ? "NORMAAL" : "HOOG");
+    addLog(s, msg); s.accounts.operationeel = s.cash; return {ok: true, msg: msg + ` Worp ${roll.txt}.`}; }
+  if (soort === "wet"){ const w = CORPOWETTEN[id]; if (!w) return {ok: false, msg: "Onbekende wet."}; const st = wetStatus(s, id); if (!st.ok) return {ok: false, msg: `${w.label}: ${st.reden}.`};
+    s.invloed = r1(s.invloed - w.inv); s.cash = r1(s.cash - w.cash); (s.wetten ??= {})[id] = ym(s); s.accounts.operationeel = s.cash;
+    news(s, `${w.label} aangenomen`, `Na een stille stemming en een paar dure diners ligt er een nieuwe wet. ${s.player.corp_name} staat niet in de tekst, maar iedereen weet voor wie hij is.`, "", "wereld", true);
+    addLog(s, `Corpowet ${w.label} gekocht (${w.inv} invloed, €${w.cash}M)`); return {ok: true, msg: `${w.label} is van kracht: ${w.uitleg}`}; }
+  return {ok: false, msg: "Onbekende actie."}; }
+function corpoTick(s, ctx){
+  if (s.patrouille) s.patrouille = Object.fromEntries(patrouilles(s).map(id => [id, s.patrouille[id]]));
+  /* rivalen die je niet mogen vechten bij hoge spanning ook op straat, zonder oorlogsverklaring: hooguit één gevecht per maand */
+  for (const r of s.rivals){ if (r.status === "oorlog" || (r.relatie || 0) > -20) continue;
+    const doel = playerDistricts(s).filter(d => d.id !== s.player.home_district && spanningVan(s, d.continent) >= STRAAT.drempel && reachable(s, r.name, d));
+    if (!doel.length || kansRol() >= 0.03 + (r.aggression || 0) * 0.03) continue;
+    const d = CH(doel), pat = !!(s.patrouille || {})[d.id], hit = R() * 100 < rivalHitChance(s, r, pat ? -25 : 0);
+    if (hit){ d.control = r.name; if (s.patrouille) delete s.patrouille[d.id]; mail(ctx, s, "Head of Security", `${r.name} neemt ${d.name} op straat`, `Zonder oorlogsverklaring, zonder waarschuwing: privélegers van ${r.name} hebben ${d.name} ingenomen. In deze spanning grijpt niemand in.${pat ? "" : " Een patrouille had het moeilijker gemaakt."}`, "KRITIEK"); ctx.rep.push(`${r.name} neemt ${d.name} op straat`); }
+    else { mail(ctx, s, "Head of Security", `Straatgevecht in ${d.name} afgeslagen`, `${r.name} probeerde ${d.name} op straat in te nemen. ${pat ? "Onze patrouille hield stand." : "We hielden stand, deze keer."}`, "NORMAAL"); ctx.rep.push(`Straatgevecht in ${d.name} afgeslagen`); }
+    break; } }
 const spanningGem = s => { const v = Object.values(s.spanning || {}); return v.length ? v.reduce((a, b) => a + b, 0) / v.length : 0; };
 function tijdlijnTick(s, ctx){ const nu = ym(s), gehad = (s.tijdlijnGehad ??= []), B = (s.vraagBasis ??= {});
   for (const t of TIJDLIJN){ if (t.d > nu || gehad.includes(t.d)) continue; gehad.push(t.d); const recent = mndNr(nu) - mndNr(t.d) <= 2;
@@ -4179,6 +4237,7 @@ const API = {
     const A = (dv.autoDev ??= {aan: false, schaal: "klein"}); if (d.aan != null) A.aan = !!d.aan; if (PRODUCT_SCHAAL[d.schaal]) A.schaal = d.schaal; if (d.aard && PRODUCT_AARD[d.aard]) A.aard = d.aard; await persist(Ctx());
     return {ok: true, bericht: `${divNaam(dv)}: automatisch ontwikkelen ${A.aan ? `aan (${PRODUCT_SCHAAL[A.schaal].label.toLowerCase()})` : "uit"}.`}; },
   async "/api/autostandaard"(d){ const s = G.game; if (!AUTO[d.k]) return {ok: false, bericht: "Onbekend."}; (s.autoStandaard ??= {})[d.k] = !!d.aan; if (d.alle) for (const p of s.producten || []) (p.auto ??= {})[d.k] = !!d.aan; await persist(Ctx()); return {ok: true, bericht: `${AUTO[d.k].split(" (")[0]}: ${d.aan ? "aan" : "uit"}${d.alle ? " voor alle producten" : " voor nieuwe producten"}.`}; },
+  async "/api/corpo"(d){ const s = G.game, ctx = Ctx(); const r = actCorpo(s, ctx, d.soort, d.id); if (r.ok) await persist(ctx); return {ok: r.ok, bericht: r.msg}; },
   async "/api/huisstijl"(d){ const s = G.game, ctx = Ctx(); const r = actHuisstijl(s, d || {}); if (r.ok) await persist(ctx); return {ok: r.ok, bericht: r.msg}; },
   async "/api/product"(d){ const s = G.game, ctx = Ctx(); const r = actProduct(s, ctx, d.soort, d); if (r.ok) await persist(ctx); return {ok: r.ok, bericht: r.msg}; },
   async "/api/missie"(d){ const s = G.game, ctx = Ctx(); const r = actMissie(s, ctx, d.crew, d.missie, d.doel); if (r.ok) await persist(ctx); return {ok: r.ok, bericht: r.msg}; },

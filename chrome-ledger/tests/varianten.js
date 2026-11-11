@@ -131,6 +131,24 @@ const html = '<!doctype html><html><head><meta charset=utf8></head><body>' + fs.
   await p.evaluate(() => { S.view = "bedrijf"; render(); }); const ds = await p.$('[data-a=prodsheet]'); if (ds){ await ds.click(); await p.waitForTimeout(200); }
   const scherm = await p.evaluate(() => { const el = document.querySelector(".prodblad"); return el ? el.textContent : ""; });
   await p.click('[data-a=prodtab][data-t=verkoop]'); await p.waitForTimeout(150); const verkoop = await p.evaluate(() => document.querySelector(".prodblad").textContent);
+  // 5.5 straatoorlog en corpomacht
+  await p.evaluate(() => { window.__echt5 = crypto.getRandomValues; crypto.getRandomValues = a => { a[0] = 5; return a; }; }); // dubbel zes: gelukt
+  const cm = await p.evaluate(() => { const c = JSON.parse(JSON.stringify(G.game)), ctx = Ctx(); for (const k of CONTINENTS) (c.spanning ??= {})[k.naam] = 40; c.cash = 500; c.invloed = 100; c.patrouille = {}; c.wetten = {};
+    const thuis = c.districts.find(d => d.id === c.player.home_district), te = actCorpo(c, ctx, "patrouille", thuis.id);
+    for (const k of CONTINENTS) c.spanning[k.naam] = 75; const m0 = playerPower(c), pa = actCorpo(c, ctx, "patrouille", thuis.id), m1 = playerPower(c);
+    const r = c.rivals[0], nb = c.districts.find(d => (thuis.neighbors || []).includes(d.id) && d.id !== r.hq && d.control !== "player"); let straat = null;
+    if (nb){ nb.control = r.name; const k = straatKans(c, nb), doel = straatDoelen(c).includes(nb), res = actCorpo(c, ctx, "straat", nb.id); straat = {doel, kans: k, ok: res.ok, van: nb.control}; }
+    const h0 = spanningHeat(c); c.defensie = 6; const w1 = actCorpo(c, ctx, "wet", "immuniteit"), w2 = actCorpo(c, ctx, "wet", "rechtspraak"), h1 = spanningHeat(c);
+    const kort = actCorpo(c, ctx, "wet", "zone");
+    return {te: te.ok, pa: pa.ok, n: patrouilles(c).length, m0, m1, straat, w1: w1.ok, w2: w2.ok, w2msg: w2.msg, dh: Math.round((h1 - h0) * 10) / 10, wetten: Object.keys(c.wetten), inv: c.invloed}; });
+  await p.evaluate(() => { crypto.getRandomValues = window.__echt5; });
+  const cmUI = await p.evaluate(() => { const oud = G.game.spanning; G.game.spanning = Object.fromEntries(CONTINENTS.map(k => [k.naam, 75])); S.view = "wereld"; S.wtab = "spanning"; render(); const t = document.querySelector("main").textContent; G.game.spanning = oud; render(); return /Corpomacht/.test(t) && /Privébeveiligingswet/.test(t) && /PATROUILLES/.test(t); });
+  ok(!cm.te && cm.pa && cm.n === 1 && cm.m1 === cm.m0 + 2 && (!cm.straat || (cm.straat.doel && cm.straat.ok && cm.straat.van === "player")) && cm.w1 && !cm.w2 && /90/.test(cm.w2msg) && cm.dh === 0.8 && cm.wetten.includes("zone") && cmUI,
+    "straatoorlog en corpomacht: patrouille pas bij genoeg spanning, macht +2, straatgevecht verovert een district, corpowetten met drempels, tab toont Corpomacht: " + JSON.stringify(cm));
+  const ct = await p.evaluate(() => { const c = JSON.parse(JSON.stringify(G.game)), ctx = Ctx(); for (const k of CONTINENTS) (c.spanning ??= {})[k.naam] = 80; const r = c.rivals[0]; r.status = "vrede"; r.relatie = -60; const hq = c.districts.find(d => d.id === r.hq), buur = c.districts.find(d => (hq.neighbors || []).includes(d.id) && d.id !== c.player.home_district); if (buur) buur.control = "player";
+    const kand = playerDistricts(c).filter(d => d.id !== c.player.home_district && reachable(c, r.name, d)); const oud = window.kansRol; window.kansRol = () => 0; corpoTick(c, ctx); window.kansRol = oud;
+    return {kand: kand.length, rep: ctx.rep.filter(x => /straat|Straat/.test(x))}; });
+  ok(ct.kand >= 1 && ct.rep.length === 1, "rivalen vechten bij hoge spanning ook op straat (hooguit één per maand): " + JSON.stringify(ct));
   ok(/VERKOOP/.test(verkoop) && /KEURING/.test(verkoop), "tabblad Verkoop en keuring");
   ok(/VARIANT/.test(scherm), "varianten staan op het productblad");
   if (out){ const bl = await p.$('.prodblad'); if (bl) await bl.screenshot({path: out + "/verkoop.png"}); }
