@@ -408,6 +408,19 @@ const html = '<!doctype html><html><head><meta charset=utf8></head><body>' + fs.
     const r = await Store.saveAs("Testpunt"); const L = await Store.slots(); const punt = L.find(x => x.gid === r.gid);
     return {m0, m1, stil: stil === na, reden: reden && reden.tekst, soort: reden && reden.soort, bezet, ok: r.ok, punt: punt && {label: punt.label, opslag: punt.opslag, datum: punt.datum}, nu: ym(G.game), knop: !!document.querySelector('[data-a="opslaan"]')}; }, tijd0.m);
   ok(tijd0.ctl && tijd.m1 !== tijd.m0 && tijd.stil && /Testbesluit/.test(tijd.reden || "") && tijd.soort === "besluit" && tijd.bezet && tijd.ok && tijd.punt && tijd.punt.opslag && tijd.punt.datum === tijd.nu && tijd.knop, "tijd loopt vanzelf op snelheid 5, stopt bij pauze, pauzeert bij een nieuw besluit en als er een venster open is; opslagpunt komt als apart spel in de lijst: " + JSON.stringify({tijd0, tijd}));
+  // 6.10 Weapon Manufacturing als standaardsoort, oude eigen soort wordt omgezet
+  const wmx = await p.evaluate(() => { const c = JSON.parse(JSON.stringify(G.game)); c.custom_types = {...(c.custom_types || {}), "Weapon manufacturing": {rev: 9, cost: 5.5, heat: 1, vol: 0.3, eigen: true}};
+    c.market["Weapon manufacturing"] = {size: 100, player: 3, rivals: {}}; c.divisions.push({name: "Weapon manufacturing", type: "Weapon manufacturing", level: 6, efficiency: 1});
+    const pp = mkProduct(c, c.divisions[c.divisions.length - 1], "Tank X", 3, 50); c.producten.push(pp); migrate(c);
+    const d = c.divisions.find(x => x.name === "Weapon manufacturing"); return {std: !!DT["Weapon Manufacturing"], type: d.type, ptype: pp.type, eigen: !!(c.custom_types || {})["Weapon manufacturing"], markt: !!c.market["Weapon Manufacturing"] && !c.market["Weapon manufacturing"], aard: aardVan("Weapon Manufacturing", "Tank X"), keuze: (S.state.divisie_types || []).includes("Weapon Manufacturing") || SECTORS.includes("Weapon Manufacturing")}; });
+  ok(wmx.std && wmx.type === "Weapon Manufacturing" && wmx.ptype === "Weapon Manufacturing" && !wmx.eigen && wmx.markt && wmx.aard === "wapen" && wmx.keuze, "Weapon Manufacturing is een standaardsoort; een oude eigen soort met die naam wordt omgezet (divisie, producten, markt): " + JSON.stringify(wmx));
+  // 6.10 bedrijven komen zelf met een leveringscontract
+  const baan = await p.evaluate(() => { const c = JSON.parse(JSON.stringify(G.game)); c.keuzes = []; for (const b of c.bedrijven || []){ b.contract = false; b.eigenaar = b.eigenaar === "player" ? null : b.eigenaar; } c.reputation = 40;
+    const oud = window.kansRol; window.kansRol = () => 0; const ctx = Ctx(); bedrijfAanbodTick(c, ctx); window.kansRol = oud;
+    const k = (c.keuzes || []).find(x => /^bedrijfaanbod_/.test(x.soort)); if (!k) return {k: false, n: (c.bedrijven || []).length};
+    const id = k.soort.slice(14), voor = (c.streams || []).length; applyChoice(c, Ctx(), k.opties[0].eff); const b = c.bedrijven.find(x => x.id === id);
+    return {k: true, opties: k.opties.length, contract: b.contract, stream: (c.streams || []).length - voor, std: k.standaard}; });
+  ok(baan.k && baan.opties === 3 && baan.contract && baan.stream === 1 && baan.std === 0, "bedrijven bieden zelf een leveringscontract aan; tekenen geeft meteen een inkomstenbron: " + JSON.stringify(baan));
   ok(/VERKOOP/.test(verkoop) && /KEURING/.test(verkoop), "tabblad Verkoop en keuring");
   ok(/VARIANT/.test(scherm), "varianten staan op het productblad");
   if (out){ const bl = await p.$('.prodblad'); if (bl) await bl.screenshot({path: out + "/verkoop.png"}); }
