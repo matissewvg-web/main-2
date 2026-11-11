@@ -149,6 +149,18 @@ const html = '<!doctype html><html><head><meta charset=utf8></head><body>' + fs.
     const kand = playerDistricts(c).filter(d => d.id !== c.player.home_district && reachable(c, r.name, d)); const oud = window.kansRol; window.kansRol = () => 0; corpoTick(c, ctx); window.kansRol = oud;
     return {kand: kand.length, rep: ctx.rep.filter(x => /straat|Straat/.test(x))}; });
   ok(ct.kand >= 1 && ct.rep.length === 1, "rivalen vechten bij hoge spanning ook op straat (hooguit één per maand): " + JSON.stringify(ct));
+  // 5.6 gebied als dominantie
+  const dm = await p.evaluate(() => { const c = JSON.parse(JSON.stringify(G.game)), ctx = Ctx(); c.cash = 900; c.aanwezig = {}; for (const d of c.districts){ delete d.dom; delete d.domMnd; }
+    domTick(c, ctx); const thuis = c.districts.find(d => d.id === c.player.home_district), thuisPct = Math.round(thuis.dom.player), cont0 = (regionDominance(c).find(r => r.id === thuis.continent).shares.find(x => x.o === "player") || {}).pct || 0;
+    const nb = c.districts.find(d => (thuis.neighbors || []).includes(d.id) && d.control === "neutral"); if (!nb) return {geenBuur: true, thuisPct};
+    const k0 = c.cash, a1 = actAanwezig(c, ctx, nb.id); for (let i = 0; i < 3; i++) actAanwezig(c, ctx, nb.id); const betaald = Math.round((k0 - c.cash) * 10) / 10;
+    const ver = c.districts.find(d => d.control === "neutral" && !reachable(c, "player", d)), nee = ver ? actAanwezig(c, ctx, ver.id).ok : false;
+    const pcts = []; let m = 0; for (; m < 8 && nb.control !== "player"; m++){ domTick(c, ctx); pcts.push(Math.round(nb.dom.player)); }
+    const cont1 = (regionDominance(c).find(r => r.id === thuis.continent).shares.find(x => x.o === "player") || {}).pct || 0;
+    return {thuisPct, cont0, cont1, a1: a1.ok, betaald, kost: aanwezigKost(c, nb), nee, van: nb.control, maanden: m, pcts, melding: ctx.rep.filter(x => /dominantie/.test(x)), ink: aandeelInkomen(c)}; });
+  const dmUI = await p.evaluate(() => { const thuis = G.game.player.home_district; S.view = "kaart"; S.dist = thuis; S.zone = null; render(); const t = document.querySelector("main").textContent; S.dist = null; render(); return /DOMINANTIE IN DIT DISTRICT/.test(t); });
+  ok(dm.geenBuur ? dm.thuisPct >= 60 : (dm.thuisPct >= 60 && dm.a1 && dm.betaald > 0 && !dm.nee && dm.van === "player" && dm.maanden <= 7 && dm.melding.length === 1 && dm.cont1 > dm.cont0) && dmUI,
+    "gebied als dominantie: aandelen per district, aanwezigheid kopen, neutraal district valt je toe na twee maanden boven 55%, continent telt aandelen, kaart toont dominantie: " + JSON.stringify(dm));
   ok(/VERKOOP/.test(verkoop) && /KEURING/.test(verkoop), "tabblad Verkoop en keuring");
   ok(/VARIANT/.test(scherm), "varianten staan op het productblad");
   if (out){ const bl = await p.$('.prodblad'); if (bl) await bl.screenshot({path: out + "/verkoop.png"}); }

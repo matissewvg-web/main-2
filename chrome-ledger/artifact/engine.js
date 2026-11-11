@@ -527,6 +527,7 @@ function tick(s){
   if (streamRev){ rev += streamRev; lines.push(`| Eigen inkomstenbronnen (${(s.streams || []).length}) | ${r1(streamRev)} | 0 |`); }
   for (const x of s.streams || []) if (x.maanden != null && --x.maanden <= 0) ctx.rep.push(`${x.naam} loopt af`);
   s.streams = (s.streams || []).filter(x => x.maanden == null || x.maanden > 0);
+  { const ad = aandeelInkomen(s); if (ad.geld){ rev += ad.geld; lines.push(`| Aandeel in andere districten (${ad.n}) | ${ad.geld} | 0 |`); } } /* 5.6 */
   const dom = dominanceIncome(s, "player");
   if (dom.geld){ rev += dom.geld; ctx.rep.push(`Dominantie: +€${dom.geld}M`); }
   if (dom.inv){ s.invloed = r1((s.invloed || 0) + dom.inv); ctx.rep.push(`Invloed +${dom.inv}`); }
@@ -602,7 +603,7 @@ function tick(s){
   lingeringTick(s, ctx, diff); invoicesTick(s, ctx, diff); marketTick(s, ctx); factionTick(s, ctx);
   npcTick(s, ctx); nomadDemandTick(s, ctx); chaosTick(s, ctx, diff); rumorTick(s, ctx); arcsTick(s, ctx, diff);
   sectorTick(s); regionTick(s, ctx); bedrijfTick(s, ctx); bedrijfLeven(s, ctx); peopleTick(s, ctx, diff);
-  specialTick(s, ctx); productTick(s, ctx); { const pe = productEffectTick(s); if (pe.heat) gz.hDelen.push(["Producten", r1(pe.heat)]); if (pe.morale) gz.mDelen.push(["Producten", r1(pe.morale)]); } productEventTick(s, ctx); tijdlijnTick(s, ctx); spanningTick(s, ctx); corpoTick(s, ctx); vraagTick(s); rivalProductTick(s); wereldInvloedProducten(s); eraTick(s, ctx); if (s.date.month === 12) jaarTick(s, ctx); marktTick(s); klusTick(s);
+  specialTick(s, ctx); productTick(s, ctx); { const pe = productEffectTick(s); if (pe.heat) gz.hDelen.push(["Producten", r1(pe.heat)]); if (pe.morale) gz.mDelen.push(["Producten", r1(pe.morale)]); } productEventTick(s, ctx); tijdlijnTick(s, ctx); spanningTick(s, ctx); corpoTick(s, ctx); domTick(s, ctx); vraagTick(s); rivalProductTick(s); wereldInvloedProducten(s); eraTick(s, ctx); if (s.date.month === 12) jaarTick(s, ctx); marktTick(s); klusTick(s);
   s.accounts.operationeel = s.cash; s.hidden_truth = s.hidden_truth.slice(-30);
 
   let status = "actief";
@@ -659,7 +660,7 @@ function tick(s){
 }
 
 /* ---------- de stad: elke game een andere kaart ---------- */
-const VERSION = "5.5";
+const VERSION = "5.6";
 const MAP_W = 1000, MAP_H = 680;
 const RIVAL_COLORS = ["#ff9a1f", "#3d7bff", "#c6ff2e", "#f2f2f2", "#9b5cff", "#ffd400", "#ff4d4d"];
 const ARCH = {
@@ -881,9 +882,10 @@ function tierOf(pct, tiers = DOM_TIERS){ let t = null; for (const x of tiers) if
 function nextTier(pct, tiers = DOM_TIERS){ return tiers.find(x => pct < x.min) || null; }
 function regionDominance(s){
   const conts = [...new Set(s.districts.map(d => d.continent).filter(Boolean))];
+  const namen = new Set(["player", ...s.rivals.map(r => r.name)]);
   return conts.map(c => {
     const ds = s.districts.filter(d => d.continent === c), tot = ds.reduce((a, d) => a + d.income, 0), by = {};
-    for (const d of ds) if (d.control !== "neutral") by[d.control] = (by[d.control] || 0) + d.income;
+    for (const d of ds){ if (d.dom){ for (const [o, v] of Object.entries(d.dom)) if (namen.has(o)) by[o] = (by[o] || 0) + d.income * v / 100; } else if (d.control !== "neutral") by[d.control] = (by[d.control] || 0) + d.income; } /* 5.6: aandelen per district */
     const shares = Object.entries(by).map(([o, v]) => ({o, pct: Math.round(v / tot * 100)})).sort((a, b) => b.pct - a.pct);
     return {soort: "continent", id: c, naam: c, totaal: tot, waarde: Math.max(2, Math.round(tot * 0.12)), shares, gebieden: ds.length};
   });
@@ -3230,6 +3232,45 @@ function corpoTick(s, ctx){
     if (hit){ d.control = r.name; if (s.patrouille) delete s.patrouille[d.id]; mail(ctx, s, "Head of Security", `${r.name} neemt ${d.name} op straat`, `Zonder oorlogsverklaring, zonder waarschuwing: privélegers van ${r.name} hebben ${d.name} ingenomen. In deze spanning grijpt niemand in.${pat ? "" : " Een patrouille had het moeilijker gemaakt."}`, "KRITIEK"); ctx.rep.push(`${r.name} neemt ${d.name} op straat`); }
     else { mail(ctx, s, "Head of Security", `Straatgevecht in ${d.name} afgeslagen`, `${r.name} probeerde ${d.name} op straat in te nemen. ${pat ? "Onze patrouille hield stand." : "We hielden stand, deze keer."}`, "NORMAAL"); ctx.rep.push(`Straatgevecht in ${d.name} afgeslagen`); }
     break; } }
+/* 5.6: gebied als dominantie. Elk district is verdeeld in aandelen (eigenaar, jij, rivalen, bendes, de staat), net als de zee. Je aandeel groeit door aanwezigheid, patrouilles en buren; continenten en hegemonie tellen aandelen in plaats van eigenaars. */
+const DOM_FLIP = 55, DOM_INKOMEN_MIN = 20;
+function domDoel(s, d, idx){ const o = {}, sp = spanningVan(s, d.continent), staatF = 1 - sp / 100;
+  if (d.control !== "neutral") o[d.control] = 100;
+  o.staat = d.control === "neutral" ? 5 + 40 * staatF : 15 * staatF;
+  const A = s.aanwezig || {}; if (A[d.id]) o.player = (o.player || 0) + A[d.id];
+  if ((s.patrouille || {})[d.id] && d.control === "player") o.player = (o.player || 0) + 15;
+  const adj = {}; for (const n of d.neighbors || []){ const b = idx ? idx.get(n) : s.districts.find(x => x.id === n); if (b && b.control !== "neutral") adj[b.control] = (adj[b.control] || 0) + 4; }
+  for (const [k, v] of Object.entries(adj)) o[k] = (o[k] || 0) + Math.min(12, v);
+  for (const r of s.rivals) if (r.hq === d.id) o[r.name] = (o[r.name] || 0) + 20;
+  for (const g of s.gangs || []){ const v = (g.gebied || {})[d.id]; if (v >= 5) o["bende:" + g.naam] = v * 0.4; }
+  const tot = Object.values(o).reduce((a, b) => a + b, 0) || 1; return Object.fromEntries(Object.entries(o).map(([k, v]) => [k, v / tot * 100])); }
+const domVan = (s, d) => d.dom || domDoel(s, d);
+const domEigenaar = (s, d) => { const D = domVan(s, d); return d.control === "neutral" ? (D.staat || 0) : (D[d.control] || 0); };
+const aanwezigKost = (s, d) => r1(Math.max(4, districtCost(s, d) * 0.25));
+const aanwezigMag = (s, d) => !!d && reachable(s, "player", d);
+function aandeelInkomen(s){ let geld = 0, n = 0; for (const d of s.districts){ if (d.control === "player" || !d.dom) continue; const v = d.dom.player || 0; if (v >= DOM_INKOMEN_MIN){ geld += incOf(d) * v / 100 * 0.4; n++; } } return {geld: r1(geld), n}; }
+function actAanwezig(s, ctx, id){ const d = s.districts.find(x => x.id === id); if (!d) return {ok: false, msg: "Onbekend district."};
+  if (!aanwezigMag(s, d)) return {ok: false, msg: `${d.name} grenst niet aan jouw gebied en ligt niet aan een zee die jij beheerst.`};
+  const kost = aanwezigKost(s, d); if (s.cash < kost) return {ok: false, msg: `Niet genoeg cash (€${kost}M nodig).`};
+  const A = (s.aanwezig ??= {}); if ((A[d.id] || 0) >= 150) return {ok: false, msg: `Je aanwezigheid in ${d.name} is al maximaal.`};
+  s.cash = r1(s.cash - kost); s.accounts.operationeel = s.cash; A[d.id] = Math.min(150, r1((A[d.id] || 0) + 20));
+  const r = s.rivals.find(x => x.name === d.control); if (r){ relShift(r, -4); remember(r, s, `speler bouwt aanwezigheid in ${d.name}`); }
+  addLog(s, `Aanwezigheid in ${d.name} +20 (€${kost}M)`);
+  return {ok: true, msg: `Kantoren, sponsoring, mensen op straat: je aanwezigheid in ${d.name} groeit (+20, zakt 5% per maand). ${d.control === "player" ? "Je houdt je greep sterker." : `Boven ${DOM_FLIP}% en meer dan de ${d.control === "neutral" ? "staat" : "eigenaar"}, twee maanden lang, wordt het district van jou.`}${r ? ` ${r.name} vindt het niets: relatie −4.` : ""}`}; }
+function domTick(s, ctx){
+  const idx = new Map(s.districts.map(x => [x.id, x])), hqs = new Set(s.rivals.map(r => r.hq));
+  for (const d of s.districts){ const doel = domDoel(s, d, idx), oud = d.dom || doel, nw = {};
+    for (const k of new Set([...Object.keys(oud), ...Object.keys(doel)])){ const v = (oud[k] || 0) + ((doel[k] || 0) - (oud[k] || 0)) * 0.4; if (v >= 0.5) nw[k] = Math.round(v * 10) / 10; }
+    d.dom = nw; }
+  for (const d of s.districts){ if (d.control === "player" || hqs.has(d.id)){ delete d.domMnd; continue; }
+    const pj = d.dom.player || 0, eig = domEigenaar(s, d);
+    if (pj >= DOM_FLIP && pj > eig) d.domMnd = (d.domMnd || 0) + 1; else delete d.domMnd;
+    if ((d.domMnd || 0) >= 2){ const r = s.rivals.find(x => x.name === d.control), van = d.control; d.control = "player"; delete d.domMnd;
+      if (r){ relShift(r, -12); remember(r, s, `verloor ${d.name} aan de dominantie van de speler`); }
+      const txt = `${d.name} is van jou: je aandeel (${Math.round(pj)}%) is groter dan dat van ${van === "neutral" ? "de staat" : van}. Zonder één schot.`;
+      mail(ctx, s, "Strategie", `${d.name} valt jou toe`, txt + (r ? ` ${r.name} is woedend: relatie −12.` : ""), "NORMAAL"); ctx.rep.push(`${d.name} valt jou toe door dominantie`);
+      news(s, `${s.player.corp_name} neemt ${d.name} over`, `Geen tanks, geen bod: gewoon overal hun logo, hun mensen en hun geld. ${d.name} draait nu op ${s.player.corp_name}.`, d.continent, "wereld", true); addLog(s, txt); } }
+  if (s.aanwezig) for (const k of Object.keys(s.aanwezig)){ s.aanwezig[k] = r1(s.aanwezig[k] * 0.95); if (s.aanwezig[k] < 1) delete s.aanwezig[k]; } }
 const spanningGem = s => { const v = Object.values(s.spanning || {}); return v.length ? v.reduce((a, b) => a + b, 0) / v.length : 0; };
 function tijdlijnTick(s, ctx){ const nu = ym(s), gehad = (s.tijdlijnGehad ??= []), B = (s.vraagBasis ??= {});
   for (const t of TIJDLIJN){ if (t.d > nu || gehad.includes(t.d)) continue; gehad.push(t.d); const recent = mndNr(nu) - mndNr(t.d) <= 2;
@@ -4237,6 +4278,7 @@ const API = {
     const A = (dv.autoDev ??= {aan: false, schaal: "klein"}); if (d.aan != null) A.aan = !!d.aan; if (PRODUCT_SCHAAL[d.schaal]) A.schaal = d.schaal; if (d.aard && PRODUCT_AARD[d.aard]) A.aard = d.aard; await persist(Ctx());
     return {ok: true, bericht: `${divNaam(dv)}: automatisch ontwikkelen ${A.aan ? `aan (${PRODUCT_SCHAAL[A.schaal].label.toLowerCase()})` : "uit"}.`}; },
   async "/api/autostandaard"(d){ const s = G.game; if (!AUTO[d.k]) return {ok: false, bericht: "Onbekend."}; (s.autoStandaard ??= {})[d.k] = !!d.aan; if (d.alle) for (const p of s.producten || []) (p.auto ??= {})[d.k] = !!d.aan; await persist(Ctx()); return {ok: true, bericht: `${AUTO[d.k].split(" (")[0]}: ${d.aan ? "aan" : "uit"}${d.alle ? " voor alle producten" : " voor nieuwe producten"}.`}; },
+  async "/api/aanwezig"(d){ const s = G.game, ctx = Ctx(); const r = actAanwezig(s, ctx, d.id); if (r.ok) await persist(ctx); return {ok: r.ok, bericht: r.msg}; },
   async "/api/corpo"(d){ const s = G.game, ctx = Ctx(); const r = actCorpo(s, ctx, d.soort, d.id); if (r.ok) await persist(ctx); return {ok: r.ok, bericht: r.msg}; },
   async "/api/huisstijl"(d){ const s = G.game, ctx = Ctx(); const r = actHuisstijl(s, d || {}); if (r.ok) await persist(ctx); return {ok: r.ok, bericht: r.msg}; },
   async "/api/product"(d){ const s = G.game, ctx = Ctx(); const r = actProduct(s, ctx, d.soort, d); if (r.ok) await persist(ctx); return {ok: r.ok, bericht: r.msg}; },
