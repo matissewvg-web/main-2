@@ -366,6 +366,10 @@ pre.rolls{font:13px/1.6 var(--mono);white-space:pre-wrap;color:var(--green);marg
 @keyframes tick{to{transform:translateX(-100%)}}
 
 /* ---- opstart & sync ---- */
+.hmenu{position:fixed;inset:0;z-index:90;background:radial-gradient(ellipse at 50% 30%,rgba(5,217,232,.12),transparent 60%),rgba(3,0,8,.96);display:flex;align-items:center;justify-content:center;padding:16px;overflow:auto;transition:opacity .3s}
+.hmenu.out{opacity:0}.hpanel{width:100%;max-width:440px;text-align:center}.hpanel .titel{font:700 34px/1.1 var(--display,inherit);letter-spacing:.12em;margin:10px 0 2px}.hpanel .titel .neon{color:var(--cyan);text-shadow:var(--glow-c)}.hpanel .titel b{color:var(--mag)}
+.hknoppen{display:flex;flex-direction:column;gap:10px;margin-top:22px}.hk{display:flex;flex-direction:column;align-items:flex-start;gap:2px;width:100%;padding:12px 16px;text-align:left}.hk b{font-size:16px;letter-spacing:.08em}.hk span{font-size:12.5px;opacity:.75;text-transform:none;letter-spacing:0}
+.hslots{text-align:left;margin:0}.hslots .opt{padding:8px 10px}
 .boot,.sync{position:fixed;inset:0;z-index:100;background:#030008;display:flex;align-items:center;justify-content:center;padding:24px}
 .boot pre{font:15px/1.7 var(--mono);color:var(--cyan);text-shadow:var(--glow-c);margin:0;max-width:640px;width:100%;white-space:pre-wrap}
 .boot pre .m{color:var(--mag);text-shadow:var(--glow-m)} .boot pre .g{color:var(--green)}
@@ -635,7 +639,7 @@ function render(){
     </header>
     <nav aria-label="Hoofdmenu">${(() => { let i = 0; return nav.map(n => n[0]==="sep" ? '<div class="sep"></div>' :
       `<button class="${S.view===n[0]?"on":""}" data-view="${n[0]}"><span><span class="ix">${String(++i).padStart(2,"0")}</span>${n[1]}</span>${n[2]}</button>`).join(""); })()}
-      <div class="sys">VERSIE <span class="on">${VERSION}</span><br>OPSLAG <span class="on">● ${G.mode==="db"?"ONLINE":"BROWSER"}</span><br>GM <span class="${G.sample&&!G.sampleOff?"on":""}">● ${G.sample&&!G.sampleOff?"LIVE":"VIA CHAT"}</span><br>HULP <button data-a="help">? regels en toetsen</button><br>EFFECTEN <button data-a="effecten">${S.rustig ? "UIT" : "AAN"}</button><br>GELUID <button data-a="sound">${S.sound?"AAN":"UIT"}</button></div></nav>
+      <div class="sys">VERSIE <span class="on">${VERSION}</span><br>OPSLAG <span class="on">● ${G.mode==="db"?"ONLINE":"BROWSER"}</span><br>GM <span class="${G.sample&&!G.sampleOff?"on":""}">● ${G.sample&&!G.sampleOff?"LIVE":"VIA CHAT"}</span><br>MENU <button data-a="menu">hoofdmenu</button><br>HULP <button data-a="help">? regels en toetsen</button><br>EFFECTEN <button data-a="effecten">${S.rustig ? "UIT" : "AAN"}</button><br>GELUID <button data-a="sound">${S.sound?"AAN":"UIT"}</button></div></nav>
     <main id="main">${over ? gameOver() : (VIEWS[S.view] || VIEWS.overzicht)()}</main>
   </div>${S.help ? helpOverlay() : ""}${S.view === "comms" ? "" : gmDock(st)}`;
   komma(root); pasStijlToe(st.huisstijl); afterRender();
@@ -1019,6 +1023,7 @@ function setupBonus(homeD){
     <p class="dim" style="font-size:13px;margin:6px 0 0">Elk soort land geeft een ander voordeel: havens, financiële centra, datavalleien, sloppen. Klik verschillende landen aan om ze te vergelijken.</p>` : "";
 }
 const VERSIES = [
+  ["5.17.2", "Hoofdmenu", ["Bij het openen van het spel verschijnt een hoofdmenu met je logo: Doorgaan (je huidige bedrijf en datum), Nieuw spel (je huidige spel blijft bewaard) en Laden.", "Laden toont al je bewaarde spellen (save slots) met de datum; één klik en je speelt verder. Hernoemen, verwijderen en exporteren blijft bij Logboek → Spellen.", "Het menu kun je altijd weer openen via MENU links onderaan het zijmenu. Sluiten: Doorgaan, Escape of naast het menu klikken."]],
   ["5.17.1", "Huisstijl bij het oprichten", ["Bij een nieuw spel (Fase 0 · Het bedrijf) kies je meteen je hoofd- en accentkleur, een thema (Neon, Corporate, Terminal, Bloed, Chroom) en je logo: een vorm en symbool, of een eigen afbeelding.", "Je ziet het logo en het thema meteen in het scherm. Later aanpassen kan nog altijd bij Bedrijf → Huisstijl."]],
   ["5.17", "Zelf plannen smeden", ["Rivalen → Zelf een plan smeden: tegen een rivaal een prijsoorlog, mensen wegkopen, een lastercampagne of sabotage; tegen een bende in je gebied: uitroken.", "Een plan heeft drie stappen van twee maanden. Elke stap kost geld en is een worp: je macht tegen de hunne, plus je crew (fixer, speurder, spindokter). Een paranoïde CEO is moeilijker.", "Mislukt een stap, dan is het plan ontdekt: weg, relatie −10, heat +2. Lukt alles, dan volgt de klap (bv. prijsoorlog: hun marktaandeel −20% en jouw producten in die soort +5 populariteit).", "Eén plan tegelijk; afblazen kan altijd. Het lopende plan staat bij Rivalen met de kans op de volgende worp."]],
   ["5.16.1", "Opruimen", ["Spelregels (? rechtsonder in het menu) uitgebreid met De wereld en Handel en groei: een kort overzicht van alles wat er sinds 5.0 bij kwam.", "Winnen: sta je op de beurs, dan telt alleen jouw deel van de bedrijfswaarde (stond nog niet in de regels).", "Alle tests drie keer na elkaar: geen toevallige fouten."]],
@@ -1100,7 +1105,7 @@ const VERSIES = [
   ["1.1", "Wereld", ["Nieuwe tab Wereld: wereldnieuws, een ranglijst van alle bedrijven met waarde en markten per sector.", "25 bedrijven verspreid over de wereld: zakendiner, leveringscontract, aandelen met dividend of een overname.", "Gebeurtenissen per land en continent (stormen, staatsgrepen, handelsakkoorden) veranderen tijdelijk wat gebieden opleveren.", "Startvoordeel per soort land, een eigen stad voor je hoofdkantoor, en per gebied op de kaart: wat het oplevert.", "Geruchten en marktberichten staan in het nieuws in plaats van in je inbox."]],
   ["1.0", "Echte wereld", ["Echte wereldkaart, dominantie per continent en zee, eskaders, rivalen met oorlog en handel, blijvende inkomstenbronnen."]],
 ];
-const PLANNING = [["5.17.2", "Hoofdmenu met Doorgaan, Nieuw spel en Laden (save slots)."], ["5.18", "Krant van de maand."], ["5.19", "De CEO als persoon: leeftijd, opvolging, rivaliserende CEO's."], ["5.20", "Eigen moeilijkheid instellen."], ["5.21", "Rondleiding en spiekbriefjes."]];
+const PLANNING = [["5.18", "Krant van de maand."], ["5.19", "De CEO als persoon: leeftijd, opvolging, rivaliserende CEO's."], ["5.20", "Eigen moeilijkheid instellen."], ["5.21", "Rondleiding en spiekbriefjes."]];
 function versieCard(){
   const vrs = ([v, t, l]) => `<div style="margin:8px 0"><b class="mono" style="color:var(--cyan)">${v}</b> <b>${esc(t)}</b><ul class="ylist">${l.map(x => `<li>${esc(x)}</li>`).join("")}</ul></div>`;
   return `<div class="card" style="margin-top:16px"><h3>Versies</h3>${VERSIES.slice(0, 2).map(vrs).join("")}<details><summary class="muted" style="cursor:pointer;margin:6px 0">Oudere versies (${VERSIES.length - 2})</summary>${VERSIES.slice(2).map(vrs).join("")}</details>
@@ -1663,6 +1668,19 @@ function plannenCard(st){
     <ol class="planstap">${p.stappen.map((x, i) => `<li class="${i < p.stap ? "af" : i === p.stap ? "nu" : ""}">${esc(x)}${i === p.stap ? ` <span class="dim">(rond ${esc(p.wanneer)})</span>` : ""}</li>`).join("")}</ol>
     <div class="dim" style="font-size:13px">Als het slaagt: ${esc(p.eind)}${p.zacht ? " · <b>je bent voorbereid, de klap is half zo groot</b>" : ""}${p.motief ? ` · motief: ${esc(p.motief)}` : ""}</div></div>`).join("")}</div>`;
 }
+/* 5.17.2: hoofdmenu */
+function menuHtml(){ const s = G.game, h = (s && s.huisstijl) || {}, klaar = !!(s && s.setup_done), L = G.slots || [];
+  const lijst = S.menuLaden ? `<div class="opts hslots">${L.length ? L.map(x => `<div class="opt"><div><div class="t">${esc(x.label || x.naam || "Naamloos spel")}${x.gid === G.gid ? ' <span class="tag cyan">nu</span>' : ""}${x.status && x.status !== "actief" ? ` <span class="tag">${esc(x.status)}</span>` : ""}</div><div class="u">${esc(x.datum || "")}</div></div>${x.gid === G.gid ? `<button class="btn sm" data-a="menudoor">Spelen</button>` : `<button class="btn sm primary" data-a="slot" data-s="wissel" data-g="${esc(x.gid)}">Spelen</button>`}</div>`).join("") : '<p class="dim">Nog geen spellen bewaard.</p>'}</div><p class="dim" style="font-size:12px;margin:4px 0 0">Hernoemen, verwijderen en exporteren kan bij Logboek → Spellen.</p>` : "";
+  return `<div class="hpanel" role="dialog" aria-modal="true" aria-label="Hoofdmenu"><div style="display:flex;justify-content:center">${logoHtml(h, klaar ? s.player.corp_name : "Chrome Ledger", 76)}</div>
+    <div class="titel"><span class="neon">CHROME</span><b>//</b>LEDGER</div><div class="dim mono" style="font-size:12px">versie ${esc(VERSION)}</div>
+    <div class="hknoppen">${klaar ? `<button class="btn primary hk" data-a="menudoor"><b>Doorgaan</b><span>${esc(s.player.corp_name)} · ${esc(ym(s))}${s.status && s.status !== "actief" ? " · " + esc(s.status) : ""}</span></button>` : s ? `<button class="btn primary hk" data-a="menudoor"><b>Verder met oprichten</b><span>je nieuwe bedrijf wacht op een naam</span></button>` : ""}
+      <button class="btn hk" data-a="menunieuw"><b>Nieuw spel</b><span>${klaar ? "je huidige spel blijft bewaard" : "een nieuwe corporatie oprichten"}</span></button>
+      <button class="btn hk ${S.menuLaden ? "on" : ""}" data-a="menuladen"><b>Laden</b><span>${L.length} bewaard${L.length === 1 ? " spel" : "e spellen"}</span></button>${lijst}
+      <button class="btn hk" data-a="help"><b>Spelregels</b><span>hoe het werkt, toetsen</span></button></div></div>`; }
+function toonMenu(){ let o = document.querySelector(".hmenu"); if (!o){ o = document.createElement("div"); o.className = "hmenu"; document.body.appendChild(o); o.addEventListener("click", e => { if (e.target === o) sluitMenu(); }); }
+  if (!G.slots && !S.menuSlots){ S.menuSlots = true; Store.slots().then(() => { S.menuSlots = false; if (document.querySelector(".hmenu")) toonMenu(); }).catch(() => { S.menuSlots = false; }); }
+  o.innerHTML = menuHtml(); S.menuOpen = true; }
+function sluitMenu(){ const o = document.querySelector(".hmenu"); if (o){ o.classList.add("out"); setTimeout(() => o.remove(), 300); } S.menuOpen = false; S.menuLaden = false; try { sessionStorage.setItem("cl_menu", "1"); } catch(e){} }
 /* 5.17.1: huisstijl al bij het oprichten */
 function setupHuisstijl(T){ const h = T.huisstijl || {}, L = h.logo || {soort: "gen", symbool: "◆", vorm: "zeshoek"};
   return `<div class="card"><h3>Huisstijl <span class="muted" style="font-weight:400;font-size:13px">kleuren, thema en logo; later aan te passen bij Bedrijf</span></h3>
@@ -2038,7 +2056,7 @@ function helpOverlay(){
     <p class="dim" style="font-size:13px;margin:12px 0 0">Sneltoetsen werken niet terwijl je typt. In de oprichting: 1-4 kiest een stap, Enter gaat verder, pijltjes wisselen van land.</p></div></div>`;
 }
 function goView(v){ S.view = v; localSet("view", v); S.mailBody = v === "inbox" ? S.mailBody : null; render(); document.getElementById("main")?.scrollTo(0, 0); }
-document.addEventListener("keydown", e => {
+document.addEventListener("keydown", e => { if (S.menuOpen){ if (e.key === "Escape") sluitMenu(); return; }
   const tg = e.target, typing = tg && (/^(INPUT|TEXTAREA|SELECT)$/.test(tg.tagName) || tg.isContentEditable);
   if (document.querySelector(".modal")) return;
   if (e.key === "Escape"){
@@ -2132,6 +2150,11 @@ document.addEventListener("click", async e => {
     case "corpo": return act("/api/corpo", {soort: t.dataset.soort, id: t.dataset.id});
     case "autodev": return act("/api/autodev", {divisie: t.dataset.div, aan: t.dataset.aan == null ? undefined : t.dataset.aan === "1", schaal: t.dataset.schaal}, {silent: true});
     case "autostd": return act("/api/autostandaard", {k: t.dataset.k, aan: t.dataset.aan === "1", alle: t.dataset.alle === "1"});
+    case "menu": toonMenu(); return;
+    case "menudoor": sluitMenu(); return;
+    case "menuladen": S.menuLaden = !S.menuLaden; toonMenu(); return;
+    case "menunieuw": { if (!G.game || !G.game.setup_done){ sluitMenu(); S.sstep = 0; render(); return; }
+      sluitMenu(); if (!await ask("Nieuw spel beginnen?", "Je huidige bedrijf blijft bewaard: je vindt het terug via Menu → Laden of Logboek → Spellen.", "Nieuw spel")) return; S.setup = null; S.sstep = 0; return act("/api/nieuw", {zeker: true}); }
     case "shsthema": setupHs().thema = t.dataset.t; bewaarSetup(); render(); if (typeof pasStijlToe === "function") pasStijlToe(S.setup.huisstijl); return;
     case "shslogo": { const h = setupHs(), L = h.logo && h.logo.soort === "gen" ? h.logo : {soort: "gen", symbool: "◆", vorm: "zeshoek"}; h.logo = {soort: "gen", symbool: t.dataset.sym || L.symbool, vorm: t.dataset.vorm || L.vorm}; bewaarSetup(); render(); return; }
     case "hsthema": S.hsOpen = true; return act("/api/huisstijl", {thema: t.dataset.t}, {silent: true});
@@ -2188,7 +2211,7 @@ document.addEventListener("click", async e => {
     case "pfilter": S.pfilter = t.dataset.f; localSet("pfilter", S.pfilter); render(); return;
     case "szoom": S.szoom = +t.dataset.z; render(); return;
     case "slot": { const g = t.dataset.g, x = (G.slots || []).find(y => y.gid === g), nm = x ? (x.label || x.naam || "dit spel") : "dit spel";
-      if (t.dataset.s === "wissel"){ if (S.busy) return; S.busy = true; try { await Store.switchSlot(g); } finally { S.busy = false; } S.view = "overzicht"; S.mailBody = null; S.backups = null; S.setup = null; toast(`Je speelt nu ${nm}.`); render(); return; }
+      if (t.dataset.s === "wissel"){ if (S.busy) return; if (S.menuOpen) sluitMenu(); S.busy = true; try { await Store.switchSlot(g); } finally { S.busy = false; } S.view = "overzicht"; S.mailBody = null; S.backups = null; S.setup = null; toast(`Je speelt nu ${nm}.`); render(); return; }
       if (t.dataset.s === "naam"){ const v = await naamModal("Spel hernoemen", x ? x.label || x.naam : ""); if (v == null) return; await Store.renameSlot(g, v); render(); return; }
       if (t.dataset.s === "weg"){ if (!await ask(`${nm} verwijderen?`, "Het spel, zijn mail, chats en back-ups worden gewist. Dit kan niet ongedaan worden. Exporteer het eerst als je het wilt bewaren.", "Verwijderen", true)) return;
         toast("Bezig met wissen…"); await Store.deleteSlot(g); toast(`${nm} is verwijderd.`); render(); return; }
@@ -2387,6 +2410,8 @@ window.addEventListener("hashchange", () => { const v = location.hash.slice(1); 
 render();
 (async () => {
   const sp = (async () => { try { G.sample = window.claude && window.claude.use ? await window.claude.use("sample") : null; } catch(e){ G.sample = null; } })();
-  await Store.init(); await sp; render(); boot();
+  await Store.init(); await sp; render(); await boot();
+  let gezien = false; try { gezien = sessionStorage.getItem("cl_menu") === "1"; } catch(e){}
+  if (!gezien && !navigator.webdriver) toonMenu(); /* 5.17.2: hoofdmenu bij het openen (niet in geautomatiseerde tests) */
 })();
 </script>

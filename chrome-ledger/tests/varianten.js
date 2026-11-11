@@ -288,6 +288,16 @@ const html = '<!doctype html><html><head><meta charset=utf8></head><body>' + fs.
     const n = newGame(set).s, kaart = setupHuisstijl({corp_name: "Stijl BV", huisstijl: set.huisstijl});
     return {h: n.huisstijl, kaart: /Hoofdkleur/.test(kaart) && /THEMA/.test(kaart) && /LOGO/.test(kaart)}; });
   ok(hs1.h && hs1.h.kleur === "#123456" && !hs1.h.accent && hs1.h.thema === "bloed" && hs1.h.logo.vorm === "cirkel" && hs1.kaart, "huisstijl bij het oprichten: kleuren, thema en logo uit de setup komen in het spel (ongeldige kleur genegeerd): " + JSON.stringify(hs1));
+  // 5.17.2 hoofdmenu
+  const autoMenu = await p.evaluate(() => !!document.querySelector(".hmenu"));
+  await p.evaluate(() => toonMenu()); await p.waitForTimeout(100);
+  const mn1 = await p.evaluate(() => { const o = document.querySelector(".hmenu"); return o ? o.textContent : ""; });
+  await p.click('.hmenu [data-a="menuladen"]'); await p.waitForTimeout(150);
+  const mn2 = await p.evaluate(() => ({slots: document.querySelectorAll(".hmenu .hslots .opt").length, nu: /nu/.test((document.querySelector(".hmenu .hslots") || {}).textContent || "")}));
+  await p.click('.hmenu .hknoppen > [data-a="menudoor"]'); await p.waitForTimeout(400);
+  const mn3 = await p.evaluate(() => ({weg: !document.querySelector(".hmenu"), open: S.menuOpen, sessie: sessionStorage.getItem("cl_menu")}));
+  await p.evaluate(() => toonMenu()); await p.keyboard.press("Escape"); await p.waitForTimeout(400); const esc = await p.evaluate(() => !document.querySelector(".hmenu"));
+  ok(!autoMenu && /Doorgaan/.test(mn1) && /Nieuw spel/.test(mn1) && /Laden/.test(mn1) && mn2.slots >= 1 && mn2.nu && mn3.weg && !mn3.open && mn3.sessie === "1" && esc, "hoofdmenu: Doorgaan, Nieuw spel, Laden met save slots; sluiten met Doorgaan of Escape; niet automatisch in tests: " + JSON.stringify({autoMenu, mn2, mn3, esc}));
   ok(/VERKOOP/.test(verkoop) && /KEURING/.test(verkoop), "tabblad Verkoop en keuring");
   ok(/VARIANT/.test(scherm), "varianten staan op het productblad");
   if (out){ const bl = await p.$('.prodblad'); if (bl) await bl.screenshot({path: out + "/verkoop.png"}); }
