@@ -226,6 +226,19 @@ const html = '<!doctype html><html><head><meta charset=utf8></head><body>' + fs.
     const c2 = JSON.parse(JSON.stringify(c)); c2.voorraad = {staal: {mnd: 3, prijs: 1}}; for (let i = 0; i < 3; i++) grondstofTick(c2, Ctx()); const op = !(c2.voorraad || {}).staal;
     return {p0, pS, pNa, staal, mf, kf0: Math.round(kf0 * 100) / 100, kf1: Math.round(kf1 * 100) / 100, k3, betaald, v: v.ok, mfV, te, op}; });
   ok(gs.geen || (Math.abs(gs.p0 - 1) < 0.06 && gs.pS > gs.p0 && gs.pNa > gs.p0 && gs.staal > 1.3 && gs.kf1 > gs.kf0 && gs.v && gs.betaald === gs.k3 && gs.mfV < gs.mf && !gs.te && gs.op), "toelevering: grondstof rond ×1, chiptekort 2020, spanning op het broncontinent maakt duurder en kost meer, voorraad betaalt vooruit en verlaagt de kosten, max 24 mnd, raakt op: " + JSON.stringify(gs));
+  // 5.13 patenten en namaak
+  const pt = await p.evaluate(() => { const c = JSON.parse(JSON.stringify(G.game)), ctx = Ctx(); c.cash = 500; c.keuzes = []; c.rivaalPatent = {}; c.flags = {...c.flags}; const pm = c.producten.find(x => x.status === "markt"); if (!pm) return {geen: true};
+    delete pm.patent; pm.kwaliteit = 5; pm.nadruk = 0; const aard = pm.aard || aardVan(pm.type, pm.naam), b = besteSpec(pm); if (b.v < PATENT_MIN) return {laag: b};
+    const w0 = prodGewicht(pm, c), r = actPatent(c, ctx, pm.id), w1 = prodGewicht(pm, c), dubbel = actPatent(c, ctx, pm.id).ok;
+    const riv = c.rivals[0]; riv.producten = [...(riv.producten || []), {naam: "Kopie", aard, kwaliteit: 3, pop: 40}];
+    const cash0 = c.cash, oud = window.kansRol; let i = 0; window.kansRol = () => (i++ === 0 ? 0 : 0.99); const ctx2 = Ctx(); patentTick(c, ctx2); window.kansRol = oud;
+    const lic = Math.round((c.cash - cash0) * 10) / 10, k = c.keuzes.find(x => x.soort === "patent_" + pm.id);
+    if (k) actKeuze(c, Ctx(), k.id, 2); const naNegeren = patentF(c, pm);
+    const q = c.producten.find(x => x !== pm && x.status === "markt") || pm; const a2 = q.aard || aardVan(q.type, q.naam); delete q.patent; c.rivaalPatent[a2] = {rival: riv.name, tot: "2099-01"}; const metRiv = q === pm ? null : patentF(c, q), beschermd = eigenPatentIn(c, a2);
+    c.flags["patentweg_" + a2] = true; patentTick(c, Ctx()); const weg = !c.rivaalPatent[a2]; const q2 = {...pm, id: "pq2", aard: "wapen"}; delete q2.patent; c.rivaalPatent.wapen = {rival: riv.name, tot: "2099-01"}; const wp = patentF(c, q2);
+    return {r: r.ok, w: Math.round(w1 / w0 * 100) / 100, dubbel, lic, keuze: !!k, opties: k && k.opties.map(o => o.label), naNegeren, metRiv, beschermd, weg, wp}; });
+  const ptUI = await p.evaluate(() => { const pm = G.game.producten.find(x => x.status === "markt"); if (!pm) return true; S.view = "bedrijf"; S.prodSheet = pm.id; (S.prodTab ??= {})[pm.id] = "markt"; render(); return /PATENT/.test(document.querySelector("main").textContent); });
+  ok(pt.geen || pt.laag || (pt.r && pt.w === 1.08 && !pt.dubbel && pt.lic >= 0.2 && pt.keuze && pt.opties.length === 3 && pt.naNegeren === 1 && (pt.metRiv == null || pt.metRiv === (pt.beschermd ? 1 : 0.95)) && pt.weg && pt.wp === 0.95) && ptUI, "patenten: +8% omzet, licentiegeld, namaak als keuze (negeren = een jaar geen voordeel), rivaalpatent −5% tot vernietigd: " + JSON.stringify(pt));
   ok(/VERKOOP/.test(verkoop) && /KEURING/.test(verkoop), "tabblad Verkoop en keuring");
   ok(/VARIANT/.test(scherm), "varianten staan op het productblad");
   if (out){ const bl = await p.$('.prodblad'); if (bl) await bl.screenshot({path: out + "/verkoop.png"}); }
