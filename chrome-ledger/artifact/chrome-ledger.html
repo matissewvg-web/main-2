@@ -620,7 +620,7 @@ function render(){
   const over = st.status !== "actief";
   root.innerHTML = `<div class="app ${S.gmDock && S.view !== "comms" ? "gmopen" : ""}">
     <header class="top">
-      <div class="brand"><span class="neon">CHROME</span><b>//</b>LEDGER<small>${esc(st.speler.corp_name)}</small></div>
+      <div class="brand">${st.huisstijl && st.huisstijl.logo ? `<span class="brandlogo" style="display:inline-block;vertical-align:middle;margin-right:8px">${logoHtml(st.huisstijl, st.speler.corp_name, 30)}</span>` : ""}<span class="neon">CHROME</span><b>//</b>LEDGER<small>${esc(st.speler.corp_name)}</small></div>
       <div class="date">${MONTHS[st.datum.month-1].toUpperCase()} ${st.datum.year}</div>
       <div class="stats">
         ${stat("Cash", eur(st.cash), null, st.cash < 30 ? "var(--amber)" : null)}
@@ -637,7 +637,7 @@ function render(){
       <div class="sys">VERSIE <span class="on">${VERSION}</span><br>OPSLAG <span class="on">● ${G.mode==="db"?"ONLINE":"BROWSER"}</span><br>GM <span class="${G.sample&&!G.sampleOff?"on":""}">● ${G.sample&&!G.sampleOff?"LIVE":"VIA CHAT"}</span><br>HULP <button data-a="help">? regels en toetsen</button><br>EFFECTEN <button data-a="effecten">${S.rustig ? "UIT" : "AAN"}</button><br>GELUID <button data-a="sound">${S.sound?"AAN":"UIT"}</button></div></nav>
     <main id="main">${over ? gameOver() : (VIEWS[S.view] || VIEWS.overzicht)()}</main>
   </div>${S.help ? helpOverlay() : ""}${S.view === "comms" ? "" : gmDock(st)}`;
-  komma(root); afterRender();
+  komma(root); pasStijlToe(st.huisstijl); afterRender();
   restoreUI(_ui);
 }
 function stat(label, val, pct, color, cls=""){
@@ -798,7 +798,7 @@ bedrijf(){
   const eff = Math.round((p.count >= st.nodig ? 1 : 0.45 + 0.55 * p.count / st.nodig) * 100);
   const eigen = st.soorten.filter(x => x.eigen);
   return `<h1>Bedrijf</h1>
-  ${focusCard(st)}${dochtersCard(st)}
+  ${huisstijlCard(st)}${focusCard(st)}${dochtersCard(st)}
   <h2>Divisies</h2><div class="grid g3">${st.divisies.map(d => `<div class="card">
       <div class="spread"><h3>${esc(d.naam)}</h3><span class="tag cyan">L${d.level}</span></div>
       <div class="muted" style="font-size:14px">${esc(d.type)}${d.eigen?' <span class="tag">eigen soort</span>':""} · marktaandeel ${d.aandeel}%</div>
@@ -1009,6 +1009,7 @@ function setupBonus(homeD){
     <p class="dim" style="font-size:13px;margin:6px 0 0">Elk soort land geeft een ander voordeel: havens, financiële centra, datavalleien, sloppen. Klik verschillende landen aan om ze te vergelijken.</p>` : "";
 }
 const VERSIES = [
+  ["5.1", "Eigen huisstijl", ["Bovenaan bij Bedrijf staat Huisstijl: kies een hoofdkleur en een accentkleur (die vervangen het neonblauw en roze in het hele scherm), een thema (Neon, Corporate, Terminal, Bloed of Chroom) en een logo.", "Logo: de generator maakt er een uit een vorm (zeshoek, cirkel, ruit, schild), een symbool en de initialen van je bedrijf, in je eigen kleuren. Of upload een eigen PNG, JPG of WebP: die wordt verkleind tot 96×96 en in je save bewaard. Het logo staat linksboven naast je bedrijfsnaam."]],
   ["5.0", "Opruimen", ["De zwarte markt is een echt risico: elke maand ±4% kans per product dat een journalist het spoor volgt (reputatie −3, heat +3).", "Op het overzicht staan nog maar twee besluiten volledig; de rest zit ingeklapt onder Nog N besluiten (en staat ook bij Inbox).", "Het kwaliteitsblok zegt nu basiskwaliteit 2 van 5 in plaats van lage kwaliteit, zodat het niet botst met hoge eigenschappen.", "Winstdrempel omhoog: €12.400M bij 20 jaar (was €11.000M), €7.200M bij 10 jaar, €16.800M eindeloos. Verstandige bot op Realistisch: 52% (was 58%). Verder omhoog maakte weinig verschil: wie verliest, verliest door razzia's.", "Orders hebben een vaste test."]],
   ["4.7.11", "Geen wachtrij meer", ["Producten ontwikkelen nu tegelijk: een nieuw product start altijd meteen, ook als er al iets in ontwikkeling is. Wat nog in de wachtrij stond, start volgende maand allemaal tegelijk (gratis plekken blijven gratis). Varianten kunnen ook starten terwijl er iets loopt. De enige grens is het aantal producten per divisie."]],
   ["4.7.10", "Zelf je wapenlijn bouwen", ["Op verzoek: de teruggezette wapenproducten zijn weg zodat je ze zelf ontwerpt. Weapon manufacturing staat op niveau 6, je kas kreeg €60M erbij en je eerste 5 productontwikkelingen zijn gratis (op elke schaal). Het ontwikkelformulier toont hoeveel gratis er nog over zijn."]],
@@ -1064,7 +1065,7 @@ const VERSIES = [
   ["1.1", "Wereld", ["Nieuwe tab Wereld: wereldnieuws, een ranglijst van alle bedrijven met waarde en markten per sector.", "25 bedrijven verspreid over de wereld: zakendiner, leveringscontract, aandelen met dividend of een overname.", "Gebeurtenissen per land en continent (stormen, staatsgrepen, handelsakkoorden) veranderen tijdelijk wat gebieden opleveren.", "Startvoordeel per soort land, een eigen stad voor je hoofdkantoor, en per gebied op de kaart: wat het oplevert.", "Geruchten en marktberichten staan in het nieuws in plaats van in je inbox."]],
   ["1.0", "Echte wereld", ["Echte wereldkaart, dominantie per continent en zee, eskaders, rivalen met oorlog en handel, blijvende inkomstenbronnen."]],
 ];
-const PLANNING = [["5.1", "Eigen huisstijl: kleuren, thema en logo (generator of PNG)."], ["5.2", "Slimme automatisering: autopilot voor prijs, capaciteit, keuring en ontwikkeling."], ["5.3", "Echte-wereldtijdlijn: trends per jaar (smartphones, crypto, drones, pandemie, AI, ruimtevaart)."], ["5.4", "Corpospanning per regio, zoals world tension."], ["5.5", "Straatoorlog en corpomacht."], ["5.6", "Gebied als dominantie: invloedsaandelen in plaats van één eigenaar."], ["5.7", "Elk spel een nieuwe wereld."], ["5.8", "Mensen doen echt werk: directie en personeel als assistenten."], ["5.9", "Klanten komen naar jou: B2B-orders en aanbestedingen."], ["5.10", "Export en vergunningen."], ["5.11", "Regionale markten."], ["5.12", "Toelevering en voorraad."], ["5.13", "Patenten en namaak."], ["5.14", "Onderzoek en nieuwe productlijnen."], ["5.15", "Realistische financiën en de beurs."], ["5.16", "Productdashboard en statistieken."], ["5.17", "Zelf plannen smeden."], ["5.18", "Krant van de maand."], ["5.19", "De CEO als persoon: leeftijd, opvolging, rivaliserende CEO's."], ["5.20", "Eigen moeilijkheid instellen."], ["5.21", "Rondleiding en spiekbriefjes."]];
+const PLANNING = [["5.2", "Slimme automatisering: autopilot voor prijs, capaciteit, keuring en ontwikkeling."], ["5.3", "Echte-wereldtijdlijn: trends per jaar (smartphones, crypto, drones, pandemie, AI, ruimtevaart)."], ["5.4", "Corpospanning per regio, zoals world tension."], ["5.5", "Straatoorlog en corpomacht."], ["5.6", "Gebied als dominantie: invloedsaandelen in plaats van één eigenaar."], ["5.7", "Elk spel een nieuwe wereld."], ["5.8", "Mensen doen echt werk: directie en personeel als assistenten."], ["5.9", "Klanten komen naar jou: B2B-orders en aanbestedingen."], ["5.10", "Export en vergunningen."], ["5.11", "Regionale markten."], ["5.12", "Toelevering en voorraad."], ["5.13", "Patenten en namaak."], ["5.14", "Onderzoek en nieuwe productlijnen."], ["5.15", "Realistische financiën en de beurs."], ["5.16", "Productdashboard en statistieken."], ["5.17", "Zelf plannen smeden."], ["5.18", "Krant van de maand."], ["5.19", "De CEO als persoon: leeftijd, opvolging, rivaliserende CEO's."], ["5.20", "Eigen moeilijkheid instellen."], ["5.21", "Rondleiding en spiekbriefjes."]];
 function versieCard(){
   const vrs = ([v, t, l]) => `<div style="margin:8px 0"><b class="mono" style="color:var(--cyan)">${v}</b> <b>${esc(t)}</b><ul class="ylist">${l.map(x => `<li>${esc(x)}</li>`).join("")}</ul></div>`;
   return `<div class="card" style="margin-top:16px"><h3>Versies</h3>${VERSIES.slice(0, 2).map(vrs).join("")}<details><summary class="muted" style="cursor:pointer;margin:6px 0">Oudere versies (${VERSIES.length - 2})</summary>${VERSIES.slice(2).map(vrs).join("")}</details>
@@ -1458,6 +1459,29 @@ function naamModal(titel, waarde){
     document.body.appendChild(m); inp().focus(); inp().select();
   });
 }
+/* 5.1: huisstijl */
+const hexA = (hx, a) => { const n = parseInt(String(hx).slice(1), 16); return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${a})`; };
+function pasStijlToe(h){ const r = document.documentElement.style, T = THEMAS[(h && h.thema) || "neon"] || {};
+  for (const k of ["bg", "panel", "panel2", "panel3", "line", "line2"]) if (T[k]) r.setProperty("--" + k, T[k]); else r.removeProperty("--" + k);
+  if (h && h.kleur){ r.setProperty("--cyan", h.kleur); r.setProperty("--cyan-d", hexA(h.kleur, 0.12)); } else { r.removeProperty("--cyan"); r.removeProperty("--cyan-d"); }
+  if (h && h.accent){ r.setProperty("--mag", h.accent); r.setProperty("--mag-d", hexA(h.accent, 0.13)); } else { r.removeProperty("--mag"); r.removeProperty("--mag-d"); } }
+function logoHtml(h, naam, size){ const L = (h && h.logo) || {soort: "gen", symbool: "◆", vorm: "zeshoek"}, kl = (h && h.kleur) || "#05d9e8", ac = (h && h.accent) || "#ff2a6d", sz = size || 48;
+  if (L.soort === "png") return `<img src="${esc(L.data)}" alt="logo" width="${sz}" height="${sz}" style="object-fit:contain;border-radius:4px">`;
+  const ini = String(naam || "").split(/\s+/).filter(w => /^[A-Za-z0-9]/.test(w)).slice(0, 2).map(w => w[0].toUpperCase()).join("") || "C";
+  const vorm = {zeshoek: '<polygon points="50,4 92,27 92,73 50,96 8,73 8,27"', cirkel: '<circle cx="50" cy="50" r="45"', ruit: '<polygon points="50,3 97,50 50,97 3,50"', schild: '<path d="M50 4 L90 16 L86 60 Q76 86 50 96 Q24 86 14 60 L10 16 Z"'}[L.vorm] || '<polygon points="50,4 92,27 92,73 50,96 8,73 8,27"';
+  return `<svg viewBox="0 0 100 100" width="${sz}" height="${sz}" role="img" aria-label="logo">${vorm} fill="${hexA(kl, 0.15)}" stroke="${kl}" stroke-width="5"/><text x="50" y="47" text-anchor="middle" font-size="34" fill="${ac}">${esc(L.symbool)}</text><text x="50" y="80" text-anchor="middle" font-size="22" font-family="monospace" fill="${kl}" font-weight="700">${esc(ini)}</text></svg>`; }
+function huisstijlCard(st){ const h = st.huisstijl || {}, L = h.logo || {soort: "gen", symbool: "◆", vorm: "zeshoek"};
+  return `<details class="card huisstijl" style="margin-bottom:14px" ${S.hsOpen ? "open" : ""}><summary style="cursor:pointer;display:flex;align-items:center;gap:10px"><span>${logoHtml(h, st.speler.corp_name, 34)}</span><b>Huisstijl</b><span class="dim" style="font-size:13px">kleuren, thema en logo van ${esc(st.speler.corp_name)}</span></summary>
+    <div style="margin-top:10px;display:flex;flex-wrap:wrap;gap:16px;align-items:flex-start">
+      <div>${logoHtml(h, st.speler.corp_name, 96)}</div>
+      <div style="flex:1;min-width:240px">
+        <div class="row" style="gap:10px;flex-wrap:wrap;align-items:center"><label class="dim" style="font-size:13px">Hoofdkleur <input type="color" data-hs="kleur" value="${esc(h.kleur || "#05d9e8")}"></label><label class="dim" style="font-size:13px">Accent <input type="color" data-hs="accent" value="${esc(h.accent || "#ff2a6d")}"></label><button class="btn sm" data-a="hsreset">Standaardkleuren</button></div>
+        <div class="kpi" style="margin-top:10px">THEMA</div><div class="prijzen" style="margin:0">${Object.entries(THEMAS).map(([k, T]) => `<button class="chip ${(h.thema || "neon") === k ? "on" : ""}" data-a="hsthema" data-t="${k}">${esc(T.label)}</button>`).join("")}</div>
+        <div class="kpi" style="margin-top:10px">LOGO</div>
+        <div class="prijzen" style="margin:0">${LOGO_VORMEN.map(v => `<button class="chip ${L.soort === "gen" && L.vorm === v ? "on" : ""}" data-a="hslogo" data-vorm="${v}">${v}</button>`).join("")}</div>
+        <div class="prijzen" style="margin:6px 0 0">${LOGO_SYMBOLEN.map(x => `<button class="chip ${L.soort === "gen" && L.symbool === x ? "on" : ""}" data-a="hslogo" data-sym="${esc(x)}" aria-label="symbool ${esc(x)}">${esc(x)}</button>`).join("")}</div>
+        <div class="row" style="gap:8px;margin-top:8px;align-items:center;flex-wrap:wrap"><label class="btn sm" style="cursor:pointer">Eigen afbeelding uploaden<input type="file" accept="image/png,image/jpeg,image/webp" data-hsfile="1" style="display:none"></label>${L.soort === "png" ? `<button class="btn sm" data-a="hslogo" data-vorm="zeshoek">Terug naar de generator</button>` : ""}<span class="dim" style="font-size:12.5px">PNG, JPG of WebP; wordt verkleind tot 96×96 en in je save bewaard.</span></div>
+      </div></div></details>`; }
 function focusCard(st){
   const F = st.focus || [];
   return `<div class="card" style="margin-bottom:14px"><div class="spread"><h3>Koers</h3><span class="dim" style="font-size:13px">volgende strategiedag over ${st.volgendeFocus} maand(en)</span></div>
@@ -1901,6 +1925,9 @@ document.addEventListener("click", async e => {
     case "gmprefill": { const el = document.getElementById("gmtxt"); if (el){ el.value = "Wat kost het om "; el.focus(); el.setSelectionRange(el.value.length, el.value.length); } return; }
     case "dochter": { if (t.dataset.x === "verkoop" && !await ask("Dochter verkopen?", "Je krijgt 90% van de waarde in één keer, en het vaste maandbedrag stopt.", "Verkopen", true)) return; return act("/api/dochter", {id: t.dataset.id, actie: t.dataset.x}); }
     case "prodsheet": S.prodSheet = S.prodSheet === t.dataset.id ? null : t.dataset.id; render(); return;
+    case "hsthema": S.hsOpen = true; return act("/api/huisstijl", {thema: t.dataset.t}, {silent: true});
+    case "hsreset": S.hsOpen = true; { const h = (G.game && G.game.huisstijl) || {}; delete h.kleur; delete h.accent; } return act("/api/huisstijl", {}, {silent: true});
+    case "hslogo": { S.hsOpen = true; const L = ((G.game && G.game.huisstijl) || {}).logo; const cur = L && L.soort === "gen" ? L : {symbool: "◆", vorm: "zeshoek"}; return act("/api/huisstijl", {logo: {soort: "gen", symbool: t.dataset.sym || cur.symbool, vorm: t.dataset.vorm || cur.vorm}}, {silent: true}); }
     case "prodtab": (S.prodTab ??= {})[t.dataset.id] = t.dataset.t; render(); return;
     case "nieuwgelezen": localSet("gezien_versie", VERSIES[0][0]); render(); return;
     case "stappenweg": if (G.game){ G.game.flags.stappen_weg = true; await Store.saveGame(); } render(); return;
@@ -2029,7 +2056,9 @@ document.addEventListener("click", async e => {
     }
   }
 });
-document.addEventListener("change", e => { const t = e.target; if (t && t.dataset && t.dataset.dev){ (S.devSel ??= {})[t.dataset.dev] = {...((S.devSel || {})[t.dataset.dev] || {}), [t.dataset.k]: t.value}; render(); } });
+document.addEventListener("change", e => { const t = e.target; if (t && t.dataset && t.dataset.hs){ S.hsOpen = true; act("/api/huisstijl", {[t.dataset.hs]: t.value}, {silent: true}); return; }
+  if (t && t.dataset && t.dataset.hsfile && t.files && t.files[0]){ S.hsOpen = true; const fr = new FileReader(); fr.onload = () => { const img = new Image(); img.onload = () => { const c = document.createElement("canvas"); c.width = c.height = 96; const g = c.getContext("2d"), sc = Math.min(96 / img.width, 96 / img.height), w = img.width * sc, hh = img.height * sc; g.drawImage(img, (96 - w) / 2, (96 - hh) / 2, w, hh); act("/api/huisstijl", {logo: {soort: "png", data: c.toDataURL("image/png")}}); }; img.onerror = () => toast("Dat bestand kon niet als afbeelding gelezen worden.", true); img.src = fr.result; }; fr.readAsDataURL(t.files[0]); return; }
+  if (t && t.dataset && t.dataset.dev){ (S.devSel ??= {})[t.dataset.dev] = {...((S.devSel || {})[t.dataset.dev] || {}), [t.dataset.k]: t.value}; render(); } });
 document.addEventListener("keydown", e => {
   if ((e.key === "Enter" || e.key === " ") && e.target && e.target.matches && e.target.matches("g[data-dist][tabindex]")){ e.preventDefault(); e.target.dispatchEvent(new MouseEvent("click", {bubbles: true})); return; }
   if (e.target && (e.target.id === "chattxt" || e.target.id === "gmtxt") && e.key === "Enter" && !e.shiftKey && !e.isComposing){ e.preventDefault(); document.querySelector(e.target.id === "gmtxt" ? '[data-a="gmsend"]' : '[data-a="chatsend"]')?.click(); }

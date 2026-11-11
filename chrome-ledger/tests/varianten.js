@@ -96,6 +96,14 @@ const html = '<!doctype html><html><head><meta charset=utf8></head><body>' + fs.
     window.kansRol = () => 0; const ctx = Ctx(), a = orderOmzet(s, ctx, q, 3); window.kansRol = () => 0.9; const b2 = orderOmzet(s, Ctx(), q, 3); window.kansRol = echt;
     return {met: Math.round(a * 10) / 10, zonder: b2, orders: (q.orders || []).length, stuks: (q.orders || [{}])[0].stuks, melding: ctx.rep.join(" ")}; });
   ok(od.met === 10 && od.zonder === 0 && od.orders === 1 && od.stuks >= 1 && /Order:/.test(od.melding), "orders: met een order de omzet van ±3 maanden in één keer, zonder order niets (vaste kans): " + JSON.stringify(od));
+  // 5.1 huisstijl
+  const hs = await p.evaluate(async () => { const r1_ = await API["/api/huisstijl"]({kleur: "#ffaa00", accent: "#00ff88", thema: "terminal", logo: {soort: "gen", symbool: "☢", vorm: "schild"}});
+    S.view = "bedrijf"; S.hsOpen = true; render(); const css = getComputedStyle(document.documentElement), cyan = css.getPropertyValue("--cyan").trim(), bg = css.getPropertyValue("--bg").trim(), kop = !!document.querySelector(".brand .brandlogo svg"), kaart = !!document.querySelector(".huisstijl svg");
+    const png = "data:image/png;base64," + btoa("x".repeat(60)), r2 = await API["/api/huisstijl"]({logo: {soort: "png", data: png}}), r3 = await API["/api/huisstijl"]({logo: {soort: "png", data: "javascript:alert(1)"}}), r4 = await API["/api/huisstijl"]({kleur: "rood"});
+    render(); const img = !!document.querySelector(".brand .brandlogo img"); return {ok: r1_.ok, cyan, bg, kop, kaart, png: r2.ok, slecht: r3.ok, kleurBlijft: G.game.huisstijl.kleur, img, thema: G.game.huisstijl.thema}; });
+  ok(hs.ok && hs.cyan === "#ffaa00" && hs.bg === "#020a04" && hs.kop && hs.kaart && hs.png && hs.slecht === false && hs.kleurBlijft === "#ffaa00" && hs.img, "huisstijl: kleuren en thema in het scherm, logo in de kopregel, PNG ja, onzin nee: " + JSON.stringify(hs));
+  if (out){ await p.evaluate(async () => { await API["/api/huisstijl"]({logo: {soort: "gen", symbool: "☢", vorm: "schild"}}); S.view = "bedrijf"; S.hsOpen = true; render(); window.scrollTo(0, 0); }); await p.waitForTimeout(200); await p.screenshot({path: out + "/huisstijl.png"}); }
+  await p.evaluate(async () => { G.game.huisstijl = {}; render(); });
   // 7. scherm
   await p.evaluate(() => { S.view = "bedrijf"; render(); }); const ds = await p.$('[data-a=prodsheet]'); if (ds){ await ds.click(); await p.waitForTimeout(200); }
   const scherm = await p.evaluate(() => { const el = document.querySelector(".prodblad"); return el ? el.textContent : ""; });

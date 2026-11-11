@@ -53,7 +53,7 @@ function template(){
       {name: "Jorik Maes", role: "Head of Security", loyalty: 60, ambition: 40, secret: "Heeft een schuld bij Brigada Volk."},
       {name: "Lien Verstraeten", role: "PR", loyalty: 50, ambition: 75, secret: "Lekt af en toe aan een journalist."},
     ],
-    flags: {compensatie_473: true, eigen_475: true, overname_477: true},
+    flags: {compensatie_473: true, eigen_475: true, overname_477: true, herstel_wm_479: true, herstel_wm_4710: true, overname_herstel_478: true},
   };
 }
 
@@ -658,7 +658,7 @@ function tick(s){
 }
 
 /* ---------- de stad: elke game een andere kaart ---------- */
-const VERSION = "5.0";
+const VERSION = "5.1";
 const MAP_W = 1000, MAP_H = 680;
 const RIVAL_COLORS = ["#ff9a1f", "#3d7bff", "#c6ff2e", "#f2f2f2", "#9b5cff", "#ffd400", "#ff4d4d"];
 const ARCH = {
@@ -2952,6 +2952,18 @@ function defectTick(s, ctx, p){ if (p.status !== "markt") return; { const dp = d
         {label: `Stil repareren · €${k2}M`, kost: k2, uitleg: `Kans ${snapKans(55)}%: niemand merkt het. Mislukt: reputatie −6, populariteit −20.`, eff: {kans: 55, succes: {tekst: "De reparaties verlopen stil."}, falen: {reputation: -6, product: {[p.id]: {pop: -20}}}}},
         {label: "Niets doen", uitleg: "Reputatie −3, populariteit −8.", eff: {reputation: -3, product: {[p.id]: {pop: -8}}}}], standaard: 2}); prodLog(p, s, `Defecten ${dp}%: terugroepactie overwogen`); } } }
 const garantie = (p, omzet) => omzet * defectPct(p) / 100;
+/* 5.1: huisstijl: bedrijfskleuren, thema en logo (generator of PNG) */
+const THEMAS = {neon: {label: "Neon"}, corporate: {label: "Corporate", bg: "#0b0f14", panel: "rgba(18,24,32,.9)", panel2: "#18212c", panel3: "#202c3a", line: "#263445", line2: "#3b5068"},
+  terminal: {label: "Terminal", bg: "#020a04", panel: "rgba(6,20,10,.9)", panel2: "#0b2412", panel3: "#103018", line: "#14401f", line2: "#1f6b33"},
+  bloed: {label: "Bloed", bg: "#0e0204", panel: "rgba(30,6,10,.88)", panel2: "#2a0a10", panel3: "#3a0e16", line: "#4a1420", line2: "#7a2030"},
+  chroom: {label: "Chroom", bg: "#0d0d10", panel: "rgba(26,26,32,.9)", panel2: "#22222a", panel3: "#2c2c36", line: "#3a3a46", line2: "#5a5a6a"}};
+const LOGO_SYMBOLEN = ["◆", "▲", "⬢", "✦", "☢", "⚙", "✪", "Ω", "Ψ", "⌬", "☠", "⚡"], LOGO_VORMEN = ["zeshoek", "cirkel", "ruit", "schild"];
+function actHuisstijl(s, a){ const h = (s.huisstijl ??= {}), kleur = x => typeof x === "string" && /^#[0-9a-fA-F]{6}$/.test(x);
+  if (kleur(a.kleur)) h.kleur = a.kleur; if (kleur(a.accent)) h.accent = a.accent; if (THEMAS[a.thema]) h.thema = a.thema;
+  if (a.logo && a.logo.soort === "png"){ if (typeof a.logo.data !== "string" || !/^data:image\/(png|jpeg|webp);base64,/.test(a.logo.data) || a.logo.data.length > 90000) return {ok: false, msg: "Dat plaatje is te groot of geen afbeelding."}; h.logo = {soort: "png", data: a.logo.data}; }
+  else if (a.logo && a.logo.soort === "gen") h.logo = {soort: "gen", symbool: LOGO_SYMBOLEN.includes(a.logo.symbool) ? a.logo.symbool : "◆", vorm: LOGO_VORMEN.includes(a.logo.vorm) ? a.logo.vorm : "zeshoek"};
+  else if (a.logo === null) delete h.logo;
+  addLog(s, "Huisstijl aangepast"); return {ok: true, msg: "Huisstijl bijgewerkt."}; }
 const omschakelKost = s => r1(2 * (DIFF[(s && s.player.difficulty)] || 1));
 const nadrukVan = v => v === "" || v == null || isNaN(+v) || +v < 0 || +v > 2 ? null : +v;
 function prodSpecs(p){ const names = SPECS[p.aard] || SPECS.consument, F = {kwaliteit: [1, 1, 1], veilig: [0, 2, 0], snel: [0, -1, 0], goedkoop: [-1, -1, 0], innovatief: [2, -1, 0]}[p.focus] || [0, 0, 0];
@@ -4056,7 +4068,7 @@ function vm(){
     dochters: (s.bedrijven || []).filter(b => b.eigenaar === "player" && b.koppeling === "dochter").map(b => ({id: b.id, naam: b.naam, sector: b.sector, land: landNaam(s, b.land), waarde: Math.round(b.waarde), bedrag: ((s.streams || []).find(x => x.naam === "Dochter " + b.naam) || {}).bedrag || 0, verkoop: r1(b.waarde * 0.9), samen: s.divisions.some(d => d.type === b.sector) ? `samenvoegen met ${divNaam(s.divisions.find(d => d.type === b.sector))}` : `eigen divisie (${b.sector})`})),
     focus: (s.focus || []).map(k => ({naam: FOCUS[k].naam, tekst: FOCUS[k].tekst})), volgendeFocus: (() => { const mg = maandenGespeeld(s); return mg < 12 ? 12 - mg : (12 - (mg % 12)) % 12 || 12; })(),
     plannen: (s.plannen || []).filter(p => p.ontdekt).map(p => ({titel: p.titel, wie: p.wie, stap: p.stap, van: p.stappen.length, stappen: p.stappen, wanneer: p.volgende, zacht: !!p.zacht, eind: PLAN_SOORT[p.soort].eindTekst, motief: p.motief || ""})),
-    adviezen: adviezen(s), doelen: doelen(s), scoreNu: score(s), lengte: spelLengte(s), gezondheid: s.gezondheid || null, eind: s.eind || null,
+    huisstijl: s.huisstijl || null, adviezen: adviezen(s), doelen: doelen(s), scoreNu: score(s), lengte: spelLengte(s), gezondheid: s.gezondheid || null, eind: s.eind || null,
     crewv: crewVM(s), tijd: tijdVM(s), productlijn: productVM(s), projectRisico: projectRisico(s),
     verdedigingInfo: {waarde: verdediging(s, null), macht: playerPower(s), intel: (s.crew || []).some(m => ["speurder", "fixer"].includes(m.rol)), open: (s.dreigingen || []).map(t => ({label: t.label, van: t.van, maand: t.maand}))},
     keuzes: s.keuzes || [], keuzesKlaar: s.keuzes_klaar || [], wereld: wereldVM(s), mensen: mensenVM(s), onderwereld: gangVM(s), startbonus: startBonus(s), hq_stad: s.player.hq_stad || "",
@@ -4099,6 +4111,7 @@ const API = {
   async "/api/divisieconcept"(){ const s = G.game, ctx = Ctx(); const r = actDivisieConcept(s, ctx, G.divConcept); if (r.ok){ G.divConcept = null; await persist(ctx); } return {ok: r.ok, bericht: r.msg}; },
   async "/api/concept"(d){ const s = G.game, ctx = Ctx(); const r = actConcept(s, ctx, (G.concepten || {})[d.divisie]); if (r.ok){ delete G.concepten[d.divisie]; await persist(ctx); } return {ok: r.ok, bericht: r.msg}; },
   async "/api/dochter"(d){ const s = G.game, ctx = Ctx(); const r = actDochter(s, d.id, d.actie); if (r.ok) await persist(ctx); return {ok: r.ok, bericht: r.msg}; },
+  async "/api/huisstijl"(d){ const s = G.game, ctx = Ctx(); const r = actHuisstijl(s, d || {}); if (r.ok) await persist(ctx); return {ok: r.ok, bericht: r.msg}; },
   async "/api/product"(d){ const s = G.game, ctx = Ctx(); const r = actProduct(s, ctx, d.soort, d); if (r.ok) await persist(ctx); return {ok: r.ok, bericht: r.msg}; },
   async "/api/missie"(d){ const s = G.game, ctx = Ctx(); const r = actMissie(s, ctx, d.crew, d.missie, d.doel); if (r.ok) await persist(ctx); return {ok: r.ok, bericht: r.msg}; },
   async "/api/crew"(d){ const s = G.game, ctx = Ctx(); const r = actCrew(s, ctx, d.soort, d.id); if (r.ok) await persist(ctx); return {ok: r.ok, bericht: r.msg}; },
