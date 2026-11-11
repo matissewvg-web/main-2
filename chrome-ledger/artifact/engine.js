@@ -583,6 +583,7 @@ function tick(s){
     const oc = p.on_complete || {};
     if (oc.new_division){ s.divisions.push(oc.new_division); divisieOpening(s, ctx, p, oc.new_division); }
     if (oc.upgrade_division) for (const d of s.divisions) if ((d.name || d.type) === oc.upgrade_division){ d.level += oc.levels || 1; d.upM = ym(s); }
+    if ((oc.upgrade_division || oc.new_division) && s.staff.count < staffNeed(s)){ const t = staffNeed(s) - s.staff.count; mail(ctx, s, "HR", `${t} mensen tekort`, `${p.name} is klaar, maar we hebben nu ${staffNeed(s)} mensen nodig en er werken er ${s.staff.count}. Onderbezet draait alles op halve kracht, we maken verlies en de morale zakt; twee maanden morale onder 10 en de raad zet je af. Neem ${t} mensen aan bij Bedrijf → Personeel.`, "HOOG"); } /* 7.3 */
     if (oc.district_control) for (const d of s.districts) if (d.id === oc.district_control) d.control = "player";
     if (oc.effect) applyEffect(s, oc.effect);
   }
@@ -679,7 +680,7 @@ function tick(s){
 }
 
 /* ---------- de stad: elke game een andere kaart ---------- */
-const VERSION = "7.2";
+const VERSION = "7.3";
 const MAP_W = 1000, MAP_H = 680;
 const RIVAL_COLORS = ["#ff9a1f", "#3d7bff", "#c6ff2e", "#f2f2f2", "#9b5cff", "#ffd400", "#ff4d4d"];
 const ARCH = {
@@ -1402,7 +1403,8 @@ function actProject(s, kind, a){
   s.cash = r1(s.cash - cost); s.accounts.operationeel = s.cash; proj.kost = cost; s.projects.push(proj);
   addLog(s, `Project gestart: ${proj.name} (€${cost}M + €${proj.cost_per_month}M/maand, ${proj.eta_months} mnd).`);
   const rk = projectRisico(s);
-  return {ok: true, msg: `${proj.name} gestart. €${cost}M betaald, klaar over ${proj.eta_months} maanden. Risico: ${rk.vertraging}% vertraging, ${rk.mislukt}% mislukt.`};
+  const extraMensen = kind === "upgrade" || kind === "divisie" ? 4 : kind === "district" ? 1 : 0, nodig = staffNeed(s) + extraMensen; /* 7.3: personeel vooraf melden */
+  return {ok: true, msg: `${proj.name} gestart. €${cost}M betaald, klaar over ${proj.eta_months} maanden. Risico: ${rk.vertraging}% vertraging, ${rk.mislukt}% mislukt.${extraMensen && s.staff.count < nodig ? ` Na afloop heb je ${nodig} mensen nodig en je hebt er ${s.staff.count}: neem er op tijd ${nodig - s.staff.count} aan (Bedrijf → Personeel), anders draait alles op halve kracht en zakt de morale.` : ""}`};
 }
 /* ===================== 1.1 WERELD: startvoordeel, markten, nieuws, bedrijven ===================== */
 const START_BONUS = {
