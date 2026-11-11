@@ -146,9 +146,9 @@ const html = '<!doctype html><html><head><meta charset=utf8></head><body>' + fs.
   ok(!cm.te && cm.pa && cm.n === 1 && cm.m1 === cm.m0 + 2 && (!cm.straat || (cm.straat.doel && cm.straat.ok && cm.straat.van === "player")) && cm.w1 && !cm.w2 && /90/.test(cm.w2msg) && cm.dh === 0.8 && cm.wetten.includes("zone") && cmUI,
     "straatoorlog en corpomacht: patrouille pas bij genoeg spanning, macht +2, straatgevecht verovert een district, corpowetten met drempels, tab toont Corpomacht: " + JSON.stringify(cm));
   const ct = await p.evaluate(() => { const c = JSON.parse(JSON.stringify(G.game)), ctx = Ctx(); for (const k of CONTINENTS) (c.spanning ??= {})[k.naam] = 80; const r = c.rivals[0]; r.status = "vrede"; r.relatie = -60; const hq = c.districts.find(d => d.id === r.hq), buur = c.districts.find(d => (hq.neighbors || []).includes(d.id) && d.id !== c.player.home_district); if (buur) buur.control = "player";
-    const kand = playerDistricts(c).filter(d => d.id !== c.player.home_district && reachable(c, r.name, d)); const oud = window.kansRol; window.kansRol = () => 0; corpoTick(c, ctx); window.kansRol = oud;
-    return {kand: kand.length, rep: ctx.rep.filter(x => /straat|Straat/.test(x))}; });
-  ok(ct.kand >= 1 && ct.rep.length === 1, "rivalen vechten bij hoge spanning ook op straat (hooguit één per maand): " + JSON.stringify(ct));
+    const kand = playerDistricts(c).filter(d => d.id !== c.player.home_district && reachable(c, r.name, d)); const adv = adviezen(c).some(x => /op straat innemen/.test(x.tekst)); const oud = window.kansRol; window.kansRol = () => 0; corpoTick(c, ctx); window.kansRol = oud;
+    return {kand: kand.length, adv, rep: ctx.rep.filter(x => /straat|Straat/.test(x))}; });
+  ok(ct.kand >= 1 && ct.adv && ct.rep.length === 1, "rivalen vechten bij hoge spanning ook op straat (hooguit één per maand), Wat nu? waarschuwt: " + JSON.stringify(ct));
   // 5.6 gebied als dominantie
   const dm = await p.evaluate(() => { const c = JSON.parse(JSON.stringify(G.game)), ctx = Ctx(); c.cash = 900; c.aanwezig = {}; for (const d of c.districts){ delete d.dom; delete d.domMnd; }
     domTick(c, ctx); const thuis = c.districts.find(d => d.id === c.player.home_district), thuisPct = Math.round(thuis.dom.player), cont0 = (regionDominance(c).find(r => r.id === thuis.continent).shares.find(x => x.o === "player") || {}).pct || 0;

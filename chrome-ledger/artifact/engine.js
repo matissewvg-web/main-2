@@ -599,6 +599,7 @@ function tick(s){
     }
   }
 
+  if (s.reputation < 25) s.reputation = clamp(r1(s.reputation + (25 - s.reputation) * 0.04)); /* 5.6.1: mensen vergeten; een lage reputatie herstelt langzaam vanzelf */
   s.accounts.operationeel = s.cash;
   lingeringTick(s, ctx, diff); invoicesTick(s, ctx, diff); marketTick(s, ctx); factionTick(s, ctx);
   npcTick(s, ctx); nomadDemandTick(s, ctx); chaosTick(s, ctx, diff); rumorTick(s, ctx); arcsTick(s, ctx, diff);
@@ -660,7 +661,7 @@ function tick(s){
 }
 
 /* ---------- de stad: elke game een andere kaart ---------- */
-const VERSION = "5.6";
+const VERSION = "5.6.1";
 const MAP_W = 1000, MAP_H = 680;
 const RIVAL_COLORS = ["#ff9a1f", "#3d7bff", "#c6ff2e", "#f2f2f2", "#9b5cff", "#ffd400", "#ff4d4d"];
 const ARCH = {
@@ -2768,7 +2769,7 @@ function migrate21(s){
 /* ===================== 2.2 DOEL, SCORE EN EINDE ===================== */
 const SPEL_LENGTE = {kort: {label: "10 jaar", maanden: 120}, normaal: {label: "20 jaar", maanden: 240}, eindeloos: {label: "Eindeloos", maanden: 0}};
 const WIN_WAARDE = 8000, HEG_PCT = 60, HEG_N = 3, RIVAAL_DOEL = 3;
-const WIN_LENGTE = {kort: 0.9, normaal: 1.55, eindeloos: 2.1}; /* 5.0: was 0,8 / 1,38 / 1,9; het spel was na de kostenverlagingen te makkelijk */
+const WIN_LENGTE = {kort: 0.9, normaal: 1.55, eindeloos: 2.1}; /* 5.0: was 0,8 / 1,38 / 1,9; het spel was na de kostenverlagingen te makkelijk. 5.6.1: hoger (1,8) testte geen verschil, dus zo gelaten */
 const winWaardeVoor = lengte => Math.round(WIN_WAARDE * (WIN_LENGTE[lengte] || 1) / 100) * 100;
 const winWaarde = s => winWaardeVoor(s.player.lengte);
 const RIVAAL_MULT = {Casual: 0.85, Realistisch: 1, Genadeloos: 1.2};
@@ -3428,6 +3429,11 @@ function adviezen(s){
       : smaad && smaad * 3 >= daling / 2 ? `Reputatie zakt (−${dl} in 6 maanden), vooral door ${smaad === 1 ? "een lastercampagne" : `${smaad} lastercampagnes`} van een concurrent. Herstel gaat via een spindokter met de klus Campagne (Crew), producten met een goede naam (medisch, beveiliging) of premium prijzen.`
       : smaad ? `Reputatie zakt (−${dl} in 6 maanden). ${smaad === 1 ? "Een lastercampagne" : `${smaad} lastercampagnes`} van een concurrent verklaren maar een deel; de rest is onduidelijk. Laat een speurder je directie natrekken (Crew), of kijk in Logboek wat er gebeurde.`
       : `Reputatie zakt (−${dl} in 6 maanden). Wat er gebeurde staat in Logboek. Herstel gaat via een spindokter met de klus Campagne (Crew), producten met een goede naam (medisch, beveiliging) of premium prijzen.`, "crew"); }
+  { /* 5.6.1: straatoorlog, corpowetten en dominantie in Wat nu? */
+    const dreig = []; for (const r of s.rivals){ if (r.status === "oorlog" || (r.relatie || 0) > -20) continue; for (const d of playerDistricts(s)) if (d.id !== s.player.home_district && !(s.patrouille || {})[d.id] && spanningVan(s, d.continent) >= STRAAT.drempel && reachable(s, r.name, d)) dreig.push([r, d]); }
+    if (dreig.length){ const [r, d] = dreig[0]; add(8, `${r.name} mag je niet en kan ${d.name} op straat innemen (spanning ${Math.round(spanningVan(s, d.continent))}). Een patrouille maakt dat veel moeilijker: Wereld → Corpospanning.`, "wereld"); }
+    const wet = Object.keys(CORPOWETTEN).find(k => wetStatus(s, k).ok); if (wet) add(5, `Corpowet ${CORPOWETTEN[wet].label} kan nu: ${CORPOWETTEN[wet].uitleg} Wereld → Corpospanning.`, "wereld");
+    const bijna = s.districts.find(d => (d.domMnd || 0) >= 1); if (bijna) add(6, `${bijna.name} valt je volgende maand toe als je aandeel boven ${DOM_FLIP}% blijft (Kaart).`, "kaart"); }
   if (s.heat > 55) add(9, `Heat ${Math.round(s.heat)}: boven 90 volgt een razzia. Laat een netrunner sporen wissen (Crew), vraag de commissaris om een gunst (Mensen) of gebruik invloed (Kaart).`, "crew");
   const vrijeCrew = (s.crew || []).filter(m => crewStatus(s, m) === "vrij");
   for (const k of (s.klussen || [])){ const m = vrijeCrew.find(x => x.rol === k.rol); if (m){ add(6, `${m.naam} kan de klus "${k.titel}" doen: +€${k.beloning}M, ${kans2d6(crewBonus(s, m, k.gevaar), k.doel, m.trait === "slordig")}% kans.`, "crew"); break; } }
