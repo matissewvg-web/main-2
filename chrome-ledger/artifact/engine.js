@@ -666,7 +666,7 @@ function tick(s){
 }
 
 /* ---------- de stad: elke game een andere kaart ---------- */
-const VERSION = "5.14";
+const VERSION = "5.14.1";
 const MAP_W = 1000, MAP_H = 680;
 const RIVAL_COLORS = ["#ff9a1f", "#3d7bff", "#c6ff2e", "#f2f2f2", "#9b5cff", "#ffd400", "#ff4d4d"];
 const ARCH = {
@@ -3412,11 +3412,16 @@ const REGIO = {"Noord-Amerika": {w: 0.24, kk: 1.25}, "Europa": {w: 0.22, kk: 1.2
 const REGIO_KK = Object.values(REGIO).reduce((a, r) => a + r.w * r.kk, 0), REGIO_FOCUS = 0.6;
 const regioNamen = () => Object.keys(REGIO);
 const regioMarkten = p => (p.markten && p.markten.length ? p.markten : regioNamen());
-function regioVraag(s, c, aard){ const v = ((s.regioVraag || {})[c] || {})[aard] ?? 1; if (aard !== "wapen" && aard !== "beveiliging") return v; return v * (1 + (spanningVan(s, c) - spanningGem(s)) / 200); }
-function regioConc(s, c, aard){ const hqC = r => (s.districts.find(d => d.id === r.hq) || {}).continent; return Math.pow(0.85, s.rivals.filter(r => hqC(r) === c && (r.producten || []).some(x => x.aard === aard)).length); }
+function regioVraag(s, c, aard, gem){ const v = ((s.regioVraag || {})[c] || {})[aard] ?? 1; if (aard !== "wapen" && aard !== "beveiliging") return v; return v * (1 + (spanningVan(s, c) - (gem ?? spanningGem(s))) / 200); }
+function regioConc(s, c, aard, n){ if (n) return Math.pow(0.85, n[c] || 0); const hqC = r => (s.districts.find(d => d.id === r.hq) || {}).continent; return Math.pow(0.85, s.rivals.filter(r => hqC(r) === c && (r.producten || []).some(x => x.aard === aard)).length); }
 const regioTol = (c, p) => clamp(1 + (REGIO[c].kk - REGIO_KK) * (prijsF(p) - 1) * 2, 0.5, 1.5);
-function regioDelen(s, p){ const aard = p.aard || aardVan(p.type, p.naam), alle = regioNamen(), cg = alle.reduce((a, c) => a + REGIO[c].w * regioConc(s, c, aard), 0) || 1;
-  return alle.map(c => ({c, w: REGIO[c].w, v: regioVraag(s, c, aard), conc: regioConc(s, c, aard) / cg, tol: regioTol(c, p)})); }
+const regioCache = new WeakMap(); /* 5.14.1: per tick/render gelijk; sleutel = spel + maand + aard */
+function regioBasis(s, aard){ let C = regioCache.get(s); const k = ym(s) + "|" + (s.rivals || []).length; if (!C || C.k !== k){ C = {k, a: {}}; regioCache.set(s, C); }
+  const V = s.regioVraag || {}, sig = regioNamen().map(c => ((V[c] || {})[aard] ?? 1) + (aard === "wapen" || aard === "beveiliging" ? ":" + spanningVan(s, c) : "")).join(",");
+  if (C.a[aard] && C.a[aard].sig === sig) return C.a[aard].d; const n = {}; for (const r of s.rivals || []) if ((r.producten || []).some(x => x.aard === aard)){ const c = (s.districts.find(d => d.id === r.hq) || {}).continent; if (c) n[c] = (n[c] || 0) + 1; }
+  const gem = spanningGem(s), alle = regioNamen(), cg = alle.reduce((a, c) => a + REGIO[c].w * regioConc(s, c, aard, n), 0) || 1;
+  const d = alle.map(c => ({c, w: REGIO[c].w, v: regioVraag(s, c, aard, gem), conc: regioConc(s, c, aard, n) / cg})); C.a[aard] = {sig, d}; return d; }
+function regioDelen(s, p){ const aard = p.aard || aardVan(p.type, p.naam); return regioBasis(s, aard).map(x => ({...x, tol: regioTol(x.c, p)})); }
 function regioF(s, p){ if (!s || !s.districts) return 1; const sel = new Set(regioMarkten(p)), D = regioDelen(s, p); let num = 0, selW = 0;
   for (const x of D) if (sel.has(x.c)){ num += x.w * x.v * x.conc * x.tol; selW += x.w; }
   return num * (1 + REGIO_FOCUS * (1 - selW)); }
