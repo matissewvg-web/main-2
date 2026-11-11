@@ -261,6 +261,15 @@ const html = '<!doctype html><html><head><meta charset=utf8></head><body>' + fs.
   const fbUI = await p.evaluate(() => { S.view = "financien"; render(); const t = document.querySelector("main").textContent; return /Balans/.test(t) && /Termijnlening/.test(t) && /Beurs/.test(t) && /Kasstroom|Boekhouding/.test(t); });
   ok(fb.t && fb.cap1 < fb.cap0 && fb.klaar && fb.rente > 0 && fb.rente < 10 && !fb.fout && !fb.ipoNee && fb.pv0 === fb.V && fb.ipo && fb.V1 > fb.V && fb.pv1 < fb.pv0 && fb.u1 && fb.u2 && !fb.u3 && fb.pub === 40 && fb.tk && fb.pub2 === 30 && fb.ava && fbUI,
     "financiën en beurs: termijnlening met annuïteit (rente betaald, leenruimte lager), beursgang geeft geld maar jouw deel telt, max 49% publiek, terugkopen, aandeelhoudersvergadering in juni, scherm Financiën: " + JSON.stringify(fb));
+  // 5.16 dashboard
+  const db = await p.evaluate(() => { const c = JSON.parse(JSON.stringify(G.game)); c.divHist = {}; c.divomzet = {}; const pm = c.producten.find(x => x.status === "markt"); if (!pm) return {geen: true}; c.prodomzet = {[pm.id]: 3};
+    divHistTick(c); c.prodomzet[pm.id] = 4.5; c.date = {...c.date, month: (c.date.month % 12) + 1}; divHistTick(c); const reeks = c.divHist[pm.divisie].map(x => x.o);
+    c.history = [{m: "2009-11", omzet: 10, kosten: 8, netto: 2, cash: 50, waarde: 300}, {m: "2009-12", omzet: 12, kosten: 9, netto: 3, cash: 53, waarde: 320}, {m: "2010-01", omzet: 14, kosten: 10, netto: 4, cash: 57}];
+    const J = jaarOverzicht(c); const top = rivaalTop(c, pm.aard || aardVan(pm.type, pm.naam));
+    return {reeks, J, top: top.pop >= 0}; });
+  const dbUI = await p.evaluate(() => { const s = G.game, oudH = s.divHist, oudHi = s.history; const d = divNaam(s.divisions[0]); s.divHist = {[d]: [{m: "a", o: 1}, {m: "b", o: 2}, {m: "c", o: 3}]}; s.history = [...(s.history || []), {m: "2005-01", omzet: 5, kosten: 4, netto: 1, cash: 10, waarde: 100}];
+    S.view = "financien"; render(); const t = document.querySelector("main").textContent, svg = !!document.querySelector("main svg polyline"); s.divHist = oudH; s.history = oudHi; render(); return /Omzet per divisie/.test(t) && /Jaaroverzicht/.test(t) && svg; });
+  ok(db.geen || (db.reeks.join() === "3,4.5" && db.J.length === 2 && db.J[0].jaar === "2010" && db.J[1].omzet === 22 && db.J[1].waarde === 320 && db.J[0].waarde == null && db.top) && dbUI, "dashboard: omzet per divisie per maand, jaaroverzicht per jaar (met waarde aan het eind), grafieken op Financiën: " + JSON.stringify(db));
   ok(/VERKOOP/.test(verkoop) && /KEURING/.test(verkoop), "tabblad Verkoop en keuring");
   ok(/VARIANT/.test(scherm), "varianten staan op het productblad");
   if (out){ const bl = await p.$('.prodblad'); if (bl) await bl.screenshot({path: out + "/verkoop.png"}); }

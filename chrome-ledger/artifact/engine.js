@@ -656,7 +656,8 @@ function tick(s){
   ctx.reportIndex = ctx.mails.length - 1;
   s.maanden = maandenGespeeld(s) + 1;
   try { adviesTick(s); } catch(e){ foutLog && foutLog("adviesTick", e); }
-  s.history.push({m: played, cash: shown.cash, netto: shown.net, omzet: r1(rev), kosten: r1(cost), heat: r1(shown.heat), rep: r1(s.reputation), morale: r1(s.morale)});
+  s.history.push({m: played, cash: shown.cash, netto: shown.net, omzet: r1(rev), kosten: r1(cost), heat: r1(shown.heat), rep: r1(s.reputation), morale: r1(s.morale), waarde: playerValue(s)}); /* 5.16: waarde voor het jaaroverzicht */
+  divHistTick(s);
   s.history = s.history.slice(-48); s.log = s.log.slice(-200);
   s.laatste_rapport = {maand: played, netto: shown.net, omzet: r1(rev), kosten: r1(cost), cash_offset: r1(shown.cash - s.cash), heat_offset: r1(shown.heat - s.heat), gebeurd: rep};
   addLog(s, `Maand gespeeld: netto ${shown.net >= 0 ? "+" : ""}${shown.net}M${status !== "actief" ? " · " + status : ""}`);
@@ -667,7 +668,7 @@ function tick(s){
 }
 
 /* ---------- de stad: elke game een andere kaart ---------- */
-const VERSION = "5.15";
+const VERSION = "5.16";
 const MAP_W = 1000, MAP_H = 680;
 const RIVAL_COLORS = ["#ff9a1f", "#3d7bff", "#c6ff2e", "#f2f2f2", "#9b5cff", "#ffd400", "#ff4d4d"];
 const ARCH = {
@@ -3086,7 +3087,7 @@ function productEffectTick(s){
   for (const p of (s.producten || []).filter(x => x.status === "markt")){
     p.aard ??= aardVan(p.type, p.naam); p.prijs ??= "standaard";
     for (const [k2, v] of Object.entries(prodEffecten(p))) tot[k2] = (tot[k2] || 0) + v;
-    { const omz = (s.prodomzet || {})[p.id] || 0; p.hist = [...(p.hist || []), {m: ym(s), pop: Math.round(bereik(p)), omzet: r1(omz)}].slice(-12); }
+    { const omz = (s.prodomzet || {})[p.id] || 0; p.hist = [...(p.hist || []), {m: ym(s), pop: Math.round(bereik(p)), omzet: r1(omz), riv: rivaalTop(s, p.aard || aardVan(p.type, p.naam)).pop}].slice(-24); } /* 5.16: 24 mnd en de sterkste concurrent */
     p.omzetTotaal = r1((p.omzetTotaal || 0) + ((s.prodomzet || {})[p.id] || 0));
   }
   if (tot.reputation) s.reputation = clamp(s.reputation + tot.reputation);
@@ -3535,6 +3536,12 @@ function beursTick(s, ctx){ const B = s.beurs; if (!B) return; B.koersHist = [..
     addKeuze(s, ctx, {soort: "ava_" + s.date.year, van: "Investor Relations", titel: `Aandeelhoudersvergadering ${s.date.year}`, tekst: `De koers ${kr >= 0 ? "steeg" : "daalde"} ${Math.abs(kr)}% dit jaar. De beleggers (${B.publiek}%) willen weten wat ze krijgen.`,
       opties: [{label: `Dividend · €${div}M`, kost: div, uitleg: "Beleggers tevreden: reputatie +3.", eff: {reputation: 3}}, {label: "Herinvesteren", uitleg: kr >= 10 ? "Met deze groei accepteren ze het: geen gevolgen." : "Ze morren: reputatie −3.", eff: kr >= 10 ? {} : {reputation: -3}},
         {label: "Bonus voor de directie", uitleg: "Je directie +10 loyaliteit, beleggers boos: reputatie −6.", eff: {reputation: -6, loyaliteit: Object.fromEntries((s.npcs || []).map(n => [n.name, 10]))}}], standaard: 1}); } }
+/* 5.16: dashboard. Omzet per divisie over tijd, per product naast de sterkste concurrent, en een jaaroverzicht. */
+function rivaalTop(s, aard){ let best = {pop: 0, naam: "", wie: ""}; for (const r of s.rivals) for (const x of r.producten || []) if (x.aard === aard && (x.pop || 0) * (x.kwaliteit || 1) > best.pop * (best.kw || 1)) best = {pop: Math.round(x.pop || 0), kw: x.kwaliteit, naam: x.naam, wie: r.name}; return best; }
+function divHistTick(s){ const H = (s.divHist ??= {}); for (const d of s.divisions){ const nm = divNaam(d), o = r1(((s.divomzet || {})[nm] || 0) + (s.producten || []).filter(p => p.divisie === nm).reduce((a, p) => a + ((s.prodomzet || {})[p.id] || 0) + ((s.exportOmzet || {})[p.id] || 0), 0));
+  H[nm] = [...(H[nm] || []), {m: ym(s), o}].slice(-36); } for (const k of Object.keys(H)) if (!s.divisions.some(d => divNaam(d) === k)) delete H[k]; }
+function jaarOverzicht(s){ const J = {}; for (const h of s.history || []){ const y = String(h.m).slice(0, 4); if (!/^\d{4}$/.test(y)) continue; const x = (J[y] ??= {jaar: y, omzet: 0, kosten: 0, netto: 0, mnd: 0}); x.omzet += h.omzet || 0; x.kosten += h.kosten || 0; x.netto += h.netto || 0; x.mnd++; x.kas = h.cash; if (h.waarde != null) x.waarde = h.waarde; }
+  return Object.values(J).map(x => ({...x, omzet: r1(x.omzet), kosten: r1(x.kosten), netto: r1(x.netto)})).sort((a, b) => b.jaar.localeCompare(a.jaar)); }
 const spanningGem = s => { const v = Object.values(s.spanning || {}); return v.length ? v.reduce((a, b) => a + b, 0) / v.length : 0; };
 function tijdlijnTick(s, ctx){ const nu = ym(s), gehad = (s.tijdlijnGehad ??= []), B = (s.vraagBasis ??= {});
   for (const t of TIJDLIJN){ if (t.d > nu || gehad.includes(t.d)) continue; gehad.push(t.d); const recent = mndNr(nu) - mndNr(t.d) <= 2;
