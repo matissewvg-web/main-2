@@ -69,6 +69,15 @@ function foutLog(waar, e){
 /* 3.6: de wereldkaart komt altijd uit WORLD_DATA; ze hoeft niet in elke save (was 75% van de grootte) */
 const pak = s => s && s.map && s.map.kind === "wereld" && s.map.versie === 2 && s.map.frame ? {...s, map: {kind: "wereld", versie: 2, gedeeld: true}} : s;
 function migrate(s){
+  if (s.flags && !s.flags.armor_611 && (s.producten || []).some(p => p.id === "peb221407")){ /* 6.11.1: op verzoek, na de update midden in een lancering: armorpakket terug, Directe Verkoop weer aan het publiek */
+    const dv = s.producten.find(p => p.id === "peb221407"); if (dv.schaal === "vlag") dv.schaal = "groot";
+    const d = (s.divisions || []).find(x => x.type === "Weapon Manufacturing" || /weapon manufacturing/i.test(x.name || "")) || (s.divisions || [])[0];
+    if (d && !s.producten.some(p => /armor ?pakket/i.test(p.naam)) && typeof mkProduct === "function"){ const p = mkProduct(s, d, "Pax Armata Armor Pakket", 3, 55);
+      Object.assign(p, {aard: "wapen", schaal: "groot", keuring: "ok", prijs: "standaard", trait: null, stuk: {eenheid: "armorpakketten", enkel: "armorpakket", prijs: 4800},
+        doelgroep: "Legers, politie, particuliere beveiligingsbedrijven en wie liever niet geraakt wordt",
+        pitch: "Alles om heelhuids thuis te komen, in één pakket: kogelwerende vesten (plaat en zacht), helmen met nachtzicht-rail, militaire uniformen, handschoenen en knie- en elleboogbescherming. Eén keer betalen, geen abonnement. Uit onze eigen fabriek."});
+      try { maakReview(p); } catch(e){} s.producten.push(p); }
+    s.flags.armor_611 = true; (s.log ??= []).push(`${s.date ? s.date.year + "-" + String(s.date.month).padStart(2, "0") : ""} · Pax Armata Armor Pakket op de markt (body armor, helmen, uniformen; geen abonnement) en Directe Verkoop weer aan het publiek`); }
   if (s.custom_types){ const wm = Object.keys(s.custom_types).find(k => /^weapon\s*manufactur/i.test(k)); /* 6.10: eigen soort Weapon manufacturing wordt de standaardsoort */
     if (wm && wm !== "Weapon Manufacturing"){ const N = "Weapon Manufacturing";
       for (const d of s.divisions || []) if (d.type === wm) d.type = N; for (const p of s.producten || []) if (p.type === wm) p.type = N;
@@ -676,7 +685,7 @@ function tick(s){
 }
 
 /* ---------- de stad: elke game een andere kaart ---------- */
-const VERSION = "6.11";
+const VERSION = "6.11.1";
 const MAP_W = 1000, MAP_H = 680;
 const RIVAL_COLORS = ["#ff9a1f", "#3d7bff", "#c6ff2e", "#f2f2f2", "#9b5cff", "#ffd400", "#ff4d4d"];
 const ARCH = {
