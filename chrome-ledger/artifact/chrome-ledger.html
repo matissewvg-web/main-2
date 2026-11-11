@@ -746,7 +746,7 @@ comms(){
       <div class="spread"><b>${esc(x.naam)}</b>${x.open?'<span class="tag HOOG">voorstel</span>':x.bezig?'<span class="dots"></span>':""}</div>
       <div class="crol">${esc(x.rol)}</div>${x.laatste?`<div class="prev">${esc(x.laatste)}</div>`:""}</button>`).join(""); }).join("");
   const msgs = (ch ? ch.berichten : []).map(b => bubble(b, c)).join("") || `<div class="empty" style="text-transform:none;letter-spacing:0">${c.soort==="gm"
-    ? "Zeg wat er moet gebeuren. Bijvoorbeeld: <br>“Huur een hacker om de servers van Saito te bekijken, max €20M.”<br>“Zoek een nieuw hoofd R&amp;D.”<br>“Koop een douanier in de haven van Rotterdam om.”"
+    ? "Zeg wat er moet gebeuren. Bijvoorbeeld: <br>“Huur een hacker om de servers van een rivaal te bekijken, max €20M.”<br>“Zoek een nieuw hoofd R&amp;D.”<br>“Koop een douanier in de haven van Rotterdam om.”"
     : `Begin een gesprek met ${esc(c.naam)}.`}</div>`;
   return `<h1>Comms</h1>
   <div class="comms ${S.chatOpen?"reading":""}">
@@ -890,6 +890,7 @@ financien(){
 rivalen(){
   const st = S.state, P = st.macht;
   return `<h1>Rivalen</h1>
+  ${st.zaad ? `<p class="dim" style="font-size:13px;margin:-6px 0 12px">Wereldzaad <b class="mono" style="color:var(--cyan)">${esc(st.zaad)}</b> · met deze code speelt iemand anders dezelfde wereld (dezelfde rivalen, CEO's en bedrijven).</p>` : ""}
   ${plannenCard(st)}
   <div class="card"><div class="spread" style="flex-wrap:wrap"><div class="row" style="gap:26px">
       <div><div class="kpi">JOUW MACHT</div><div class="big">${P.speler}</div></div>
@@ -1014,6 +1015,7 @@ function setupBonus(homeD){
     <p class="dim" style="font-size:13px;margin:6px 0 0">Elk soort land geeft een ander voordeel: havens, financiële centra, datavalleien, sloppen. Klik verschillende landen aan om ze te vergelijken.</p>` : "";
 }
 const VERSIES = [
+  ["5.7", "Elk spel een nieuwe wereld", ["Elk nieuw spel maakt nieuwe rivalen (namen passend bij hun sector), nieuwe CEO's en een nieuwe set bedrijven in de wereld. Ook rivalen die later opduiken krijgen een nieuwe naam.", "Elke rivaal-CEO heeft een karakter: Haai, Diplomaat, Paranoïde, Visionair, Opportunist of Traditioneel. Dat verandert hun agressie, hebzucht, beveiliging of groei (Rivalen).", "Wereldzaad: bij het oprichten kun je een code invullen. Dezelfde code geeft dezelfde wereld, zodat je met een vriend dezelfde start kunt spelen. Je eigen code staat bovenaan Rivalen.", "Bestaande spellen houden hun wereld en rivalen."]],
   ["5.6.1", "Opruimen: waarschuwingen en reputatie", ["Wat nu? waarschuwt als een rivaal die je niet mag een district van je op straat kan innemen, als een corpowet te koop is en als een district je volgende maand toevalt.", "Een lage reputatie herstelt langzaam vanzelf (onder 25: elke maand 4% van het verschil terug). Wie elke beslissing laat liggen, zakte in tests van 30 naar 5; nu blijft het rond 10-15.", "Getest: een hogere winstdrempel (€14.400M) veranderde het winstpercentage niet; de drempel blijft €12.400M."]],
   ["5.6", "Gebied als dominantie", ["Elk district is nu verdeeld in aandelen, net als de zee: de eigenaar, jij, rivalen ernaast, bendes en de staat. Kaart → klik een district → Dominantie in dit district.", "Je aandeel groeit met Aanwezigheid opbouwen (+20, kost een kwart van een vestiging, zakt 5% per maand), patrouilles en je eigen districten ernaast. De staat wordt zwakker naarmate de corpospanning stijgt.", "Ben je twee maanden boven 55% en groter dan de eigenaar of de staat, dan valt het district je toe, zonder oorlog (niet bij een hoofdkantoor). Een rivaal die zo een district verliest, wordt woedend.", "Vanaf 20% in een district dat niet van jou is krijg je een deel van het inkomen. Continenten, dominantie-inkomen en hegemonie tellen nu aandelen in plaats van eigenaars."]],
   ["5.5", "Straatoorlog en corpomacht", ["Wereld → Corpospanning heeft nu een blok Corpomacht. Hoe hoger de spanning, hoe meer je mag.", "Patrouilles: vanaf 70 spanning (of 50 met de Privébeveiligingswet) zet je eigen beveiliging op straat in je districten. €1,5M per district per maand, macht +2, bendes krijgen minder grip en een straataanval van een rivaal wordt veel moeilijker.", "Straatgevechten: vanaf 70 spanning val je een district van een rivaal aan dat aan je gebied grenst, zonder oorlogsverklaring (€12M, kans op basis van macht en patrouilles ernaast). Rivalen die je niet mogen, doen dat dan ook bij jou: hooguit één gevecht per maand.", "Corpowetten kopen met invloed en geld: Privébeveiligingswet, Bedrijfsimmuniteit (heat zakt sneller), Belastingvrije corpozone (−5 procentpunt winstbelasting) en Eigen rechtspraak (razzia half zo vaak). Elke wet vraagt een minimum spanning op je thuiscontinent en zwaardere wetten ook een minimum macht."]],
@@ -1078,7 +1080,7 @@ const VERSIES = [
   ["1.1", "Wereld", ["Nieuwe tab Wereld: wereldnieuws, een ranglijst van alle bedrijven met waarde en markten per sector.", "25 bedrijven verspreid over de wereld: zakendiner, leveringscontract, aandelen met dividend of een overname.", "Gebeurtenissen per land en continent (stormen, staatsgrepen, handelsakkoorden) veranderen tijdelijk wat gebieden opleveren.", "Startvoordeel per soort land, een eigen stad voor je hoofdkantoor, en per gebied op de kaart: wat het oplevert.", "Geruchten en marktberichten staan in het nieuws in plaats van in je inbox."]],
   ["1.0", "Echte wereld", ["Echte wereldkaart, dominantie per continent en zee, eskaders, rivalen met oorlog en handel, blijvende inkomstenbronnen."]],
 ];
-const PLANNING = [["5.7", "Elk spel een nieuwe wereld."], ["5.8", "Mensen doen echt werk: directie en personeel als assistenten."], ["5.9", "Klanten komen naar jou: B2B-orders en aanbestedingen."], ["5.10", "Export en vergunningen."], ["5.11", "Regionale markten."], ["5.12", "Toelevering en voorraad."], ["5.13", "Patenten en namaak."], ["5.14", "Onderzoek en nieuwe productlijnen."], ["5.15", "Realistische financiën en de beurs."], ["5.16", "Productdashboard en statistieken."], ["5.17", "Zelf plannen smeden."], ["5.18", "Krant van de maand."], ["5.19", "De CEO als persoon: leeftijd, opvolging, rivaliserende CEO's."], ["5.20", "Eigen moeilijkheid instellen."], ["5.21", "Rondleiding en spiekbriefjes."]];
+const PLANNING = [["5.8", "Mensen doen echt werk: directie en personeel als assistenten."], ["5.9", "Klanten komen naar jou: B2B-orders en aanbestedingen."], ["5.10", "Export en vergunningen."], ["5.11", "Regionale markten."], ["5.12", "Toelevering en voorraad."], ["5.13", "Patenten en namaak."], ["5.14", "Onderzoek en nieuwe productlijnen."], ["5.15", "Realistische financiën en de beurs."], ["5.16", "Productdashboard en statistieken."], ["5.17", "Zelf plannen smeden."], ["5.18", "Krant van de maand."], ["5.19", "De CEO als persoon: leeftijd, opvolging, rivaliserende CEO's."], ["5.20", "Eigen moeilijkheid instellen."], ["5.21", "Rondleiding en spiekbriefjes."]];
 function versieCard(){
   const vrs = ([v, t, l]) => `<div style="margin:8px 0"><b class="mono" style="color:var(--cyan)">${v}</b> <b>${esc(t)}</b><ul class="ylist">${l.map(x => `<li>${esc(x)}</li>`).join("")}</ul></div>`;
   return `<div class="card" style="margin-top:16px"><h3>Versies</h3>${VERSIES.slice(0, 2).map(vrs).join("")}<details><summary class="muted" style="cursor:pointer;margin:6px 0">Oudere versies (${VERSIES.length - 2})</summary>${VERSIES.slice(2).map(vrs).join("")}</details>
@@ -1686,7 +1688,7 @@ function rivalCard(r, st){
     <div class="spread"><h3>${esc(r.naam)}</h3><span class="tag ${STATUS_TAG[r.status] || ""}">${esc(r.status)}${r.verdragen.length ? " · handel" : ""}</span></div>
     <dl class="kv"><dt>CEO</dt><dd>${esc(r.ceo)}</dd><dt>Sector</dt><dd>${esc(r.sector)} (~${r.aandeel}%)</dd><dt>Kas</dt><dd>~${eur(r.kas_schatting)} <span class="dim">(schatting)</span></dd>
       <dt>Macht</dt><dd>${r.macht} <span class="dim">tegen jouw ${st.macht.speler}</span></dd>
-      <dt>Gebied</dt><dd>${r.districten.map(d => `${d.id}${d.hq ? "★" : ""}`).join(" ") || "-"}</dd><dt>Agressie</dt><dd>${esc(r.agressie)}</dd></dl>
+      <dt>Gebied</dt><dd>${r.districten.map(d => `${d.id}${d.hq ? "★" : ""}`).join(" ") || "-"}</dd><dt>Agressie</dt><dd>${esc(r.agressie)}</dd>${r.karakter ? `<dt>Karakter</dt><dd>${esc(r.karakter.label)} <span class="dim">· ${esc(r.karakter.tekst)}</span></dd>` : ""}</dl>
     <div class="fac" style="grid-template-columns:70px 1fr 70px"><span class="kpi">RELATIE</span>${relBar(r.relatie)}<span class="muted" style="font-size:14px">${r.relatie}</span></div>
     ${r.producten.length ? `<div class="ptags" style="margin:6px 0"><span class="kpi">PRODUCTEN</span>${r.producten.map(p => `<span class="pe" title="${esc(p.label || "")}">${esc(p.naam)} · ${"◆".repeat(p.kwaliteit)} · ${p.pop}</span>`).join("")}</div>` : ""}
     ${r.geheugen.length ? `<div style="margin-top:4px;font-size:13.5px"><span class="muted">Wat ze onthouden:</span> ${esc(r.geheugen.join(" · "))}</div>` : ""}
@@ -1801,7 +1803,7 @@ function setupView(){
   const st = S.state;
   if (!S.setup){ try { const sv = JSON.parse(localGet("setup") || "null"); if (sv && typeof sv === "object") S.setup = sv; } catch(e){} }
   const T = S.setup = Object.assign({corp_name:"", motto:"", background:"Ex-havenarbeider", doctrine:["Logistiek"], difficulty:"Realistisch", year:2004,
-    kapitaal:"normaal", home:"BNL", hq_stad:"", lengte:"normaal", ontslag:"normaal", bonus:"geen", ethiek:"normaal", slogan:"", divisie_naam:"", namen:{}, eigen_naam:"", eigen_omschrijving:"", eigen_profiel:"gebalanceerd"}, S.setup || {});
+    kapitaal:"normaal", home:"BNL", hq_stad:"", zaad:"", lengte:"normaal", ontslag:"normaal", bonus:"geen", ethiek:"normaal", slogan:"", divisie_naam:"", namen:{}, eigen_naam:"", eigen_omschrijving:"", eigen_profiel:"gebalanceerd"}, S.setup || {});
   const types = (st.divisie_types||["Biotech","Cyberware","Logistiek","Media & Data","Private Security","Financieel","Smokkel"]);
   const chips = (key, opts, multi) => `<div class="chips">${opts.map(([v,l]) => `<button class="chip ${(multi?T[key].includes(v):T[key]===v)?"on":""}" data-chip="${key}" data-v="${esc(v)}" data-multi="${multi?1:""}">${esc(l)}</button>`).join("")}</div>`;
   const city = genWorld();
@@ -1839,7 +1841,8 @@ function setupView(){
       <label class="f">Motto<input type="text" data-f="motto" value="${esc(T.motto)}" placeholder="Bijv. Wij vragen niet wat er in de container zit."></label>
       <label class="f">Achtergrond oprichter<input type="text" data-f="background" value="${esc(T.background)}" list="bgs"></label>
       <label class="f">Stad van je hoofdkantoor (optioneel)<input type="text" data-f="hq_stad" value="${esc(T.hq_stad||"")}" placeholder="Bijv. Rotterdam"></label>
-      <label class="f">Naam eerste divisie (optioneel)<input type="text" data-f="divisie_naam" value="${esc(T.divisie_naam)}" placeholder="Bijv. Havenlijn"></label></div>
+      <label class="f">Naam eerste divisie (optioneel)<input type="text" data-f="divisie_naam" value="${esc(T.divisie_naam)}" placeholder="Bijv. Havenlijn"></label>
+      <label class="f">Wereldzaad (optioneel)<input type="text" data-f="zaad" value="${esc(T.zaad||"")}" placeholder="Leeg = nieuwe wereld. Of de code van een vriend."></label></div>
       <datalist id="bgs"><option>Ex-militair</option><option>Hacker</option><option>Erfgenaam</option><option>Ex-vakbondsman</option><option>Ex-havenarbeider</option><option>Gevallen bankier</option></datalist></div>
     <div class="card"><h3>Doctrine <span class="muted" style="font-weight:400;font-size:13px">kies 1 (sterk, niveau 2) of 2 (breed, elk niveau 1)</span></h3>${chips("doctrine", types.map(t => [t, t + (B && B.sector[t] ? ` +${Math.round(B.sector[t] * 100)}%` : "")]), true)}
       ${B && Object.keys(B.sector).length ? `<p class="dim" style="font-size:13px;margin:6px 0 0">Het percentage is je startvoordeel in ${esc(homeD.name)}.</p>` : ""}

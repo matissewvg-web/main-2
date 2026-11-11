@@ -161,6 +161,12 @@ const html = '<!doctype html><html><head><meta charset=utf8></head><body>' + fs.
   const dmUI = await p.evaluate(() => { const thuis = G.game.player.home_district; S.view = "kaart"; S.dist = thuis; S.zone = null; render(); const t = document.querySelector("main").textContent; S.dist = null; render(); return /DOMINANTIE IN DIT DISTRICT/.test(t); });
   ok(dm.geenBuur ? dm.thuisPct >= 60 : (dm.thuisPct >= 60 && dm.a1 && dm.betaald > 0 && !dm.nee && dm.van === "player" && dm.maanden <= 7 && dm.melding.length === 1 && dm.cont1 > dm.cont0) && dmUI,
     "gebied als dominantie: aandelen per district, aanwezigheid kopen, neutraal district valt je toe na twee maanden boven 55%, continent telt aandelen, kaart toont dominantie: " + JSON.stringify(dm));
+  // 5.7 elk spel een nieuwe wereld
+  const wz = await p.evaluate(() => { const set = {...S.setup, corp_name: "Zaad BV", doctrine: ["Biotech"], home: "BNL"}, sig = s => JSON.stringify([s.rivals.map(r => [r.name, r.ceo, r.karakter, r.hq]), s.bedrijven.map(b => [b.naam, b.land])]);
+    const a = newGame({...set, zaad: "neon-77"}).s, b = newGame({...set, zaad: "NEON77"}).s, c = newGame({...set, zaad: "ANDERS1"}).s, d = newGame(set).s, e = newGame(set).s;
+    const namen = a.rivals.map(r => r.name), kar = a.rivals.every(r => RIVAAL_KARAKTER[r.karakter]);
+    return {zaad: a.zaad, gelijk: sig(a) === sig(b), anders: sig(a) !== sig(c), auto: d.zaad && d.zaad.length === 6 && d.zaad !== e.zaad, autoAnders: sig(d) !== sig(e), uniek: new Set(namen).size === namen.length, kar, namen, randomNa: Math.random !== RNG ? "fout" : "ok"}; });
+  ok(wz.zaad === "NEON77" && wz.gelijk && wz.anders && wz.auto && wz.autoAnders && wz.uniek && wz.kar && wz.randomNa === "ok", "elk spel een nieuwe wereld: zelfde zaad = zelfde rivalen, CEO's, karakters en bedrijven; ander of geen zaad = andere wereld: " + JSON.stringify(wz));
   ok(/VERKOOP/.test(verkoop) && /KEURING/.test(verkoop), "tabblad Verkoop en keuring");
   ok(/VARIANT/.test(scherm), "varianten staan op het productblad");
   if (out){ const bl = await p.$('.prodblad'); if (bl) await bl.screenshot({path: out + "/verkoop.png"}); }

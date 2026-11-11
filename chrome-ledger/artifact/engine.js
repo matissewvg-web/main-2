@@ -16,7 +16,8 @@ const DT = {
   "Smokkel": {rev: 14, cost: 4, heat: 4, vol: 0.50},
 };
 const SECTORS = Object.keys(DT);
-const R = Math.random, U = (a, b) => a + R() * (b - a), RI = (a, b) => a + Math.floor(R() * (b - a + 1));
+let RNG = Math.random; /* 5.7: tijdens het maken van een wereld een vast zaad */
+const R = () => RNG(), U = (a, b) => a + R() * (b - a), RI = (a, b) => a + Math.floor(R() * (b - a + 1));
 const CH = a => a[Math.floor(R() * a.length)];
 const clamp = (x, lo = 0, hi = 100) => Math.max(lo, Math.min(hi, x));
 const r1 = x => Math.round(x * 10) / 10;
@@ -288,9 +289,9 @@ function marketTick(s, ctx){
     }
   }
   if (R() < 0.04){
-    const naam = CH(["Tessera Holdings", "Zwarte Meridiaan Groep", "Iron Bloom Corp", "Zenith Haven Co", "Roest & Zonen", "Albatros Mutual", "Kovač-Ndiaye"]);
+    const sec = CH(SECTORS), naam = genRivaalNaam(sec, new Set([...s.rivals.map(r => r.name), ...(s.flags.start_rivalen || [])]));
     if (!s.rivals.some(r => r.name === naam)){
-      const sec = CH(SECTORS), free = s.districts.filter(d => d.control === "neutral"), home = free.length ? CH(free) : null;
+      const free = s.districts.filter(d => d.control === "neutral"), home = free.length ? CH(free) : null;
       const nr = initRival({name: naam, ceo: CH(RIVAL_CEO_NAMEN.filter(x => !s.rivals.some(r => r.ceo === x))), cash: RI(80, 300),
         aggression: r1(U(0.2, 0.7) * 10) / 10, memory: [], hq: home ? home.id : null, sector: sec, divs: {[sec]: 2}});
       s.rivals.push(nr); if (home) home.control = naam;
@@ -661,7 +662,7 @@ function tick(s){
 }
 
 /* ---------- de stad: elke game een andere kaart ---------- */
-const VERSION = "5.6.1";
+const VERSION = "5.7";
 const MAP_W = 1000, MAP_H = 680;
 const RIVAL_COLORS = ["#ff9a1f", "#3d7bff", "#c6ff2e", "#f2f2f2", "#9b5cff", "#ffd400", "#ff4d4d"];
 const ARCH = {
@@ -1476,11 +1477,37 @@ const BEDRIJF_NAMEN = {
 };
 const CEO_NAMEN = ["Ilse Verhoeven", "Chen Wei", "Rafael Ortega", "Dr. Amara Vos", "Kenji Mori", "Olga Petrenko", "Thabo Ndlovu", "Lucía Marín", "Farid Haddad", "Sigrid Holm", "Priya Raman",
   "Jonas Brandt", "Mei Lin", "Kwame Asante", "Hana Novak", "Diego Alvarez", "Yusuf Demir", "Ines Duarte", "Arjun Mehta", "Freya Lund", "Tomasz Wójcik", "Ngozi Eze", "Sven Aalto", "Laila Karimi", "Noa Ben-David"];
+/* 5.7: elk spel een nieuwe wereld. Rivalen, hun CEO's (met karakter) en de bedrijven in de wereld worden per spel gemaakt uit een wereldzaad; hetzelfde zaad geeft dezelfde wereld. */
+const NAAM_STAM = ["Okonkwo", "Brandt", "Vanderhoeven", "Saito", "Tessera", "Kovač", "Ndiaye", "Halvorsen", "Moreau", "Takeda", "Ibarra", "Volkov", "Achterberg", "Lindqvist", "Mbeki", "Castellanos", "Hayashi", "Oyelaran", "Petrov", "Ferreira", "Nakamura", "Adebayo", "Kowalski", "Delacroix", "Rahimi", "Sørensen", "Zhou", "Okafor", "Varga", "Quispe"];
+const NAAM_WOORD = ["Zwarte Meridiaan", "Iron Bloom", "Zenith", "Albatros", "Obsidian", "Helix", "Northgate", "Crimson", "Vector", "Paragon", "Monolith", "Halcyon", "Kestrel", "Sable", "Aurora", "Titan", "Cobalt", "Ember", "Quasar", "Basalt", "Roest & Zonen", "Glasvezel", "Nachtwacht", "Kraanvogel"];
+const NAAM_SUFFIX = {Financieel: ["Holdings", "Kapital", "Trust", "Capital Group"], Logistiek: ["Logistics", "Freight", "Shipping", "Transport"], Cyberware: ["Neurosystems", "Cybernetics", "Dynamics", "Augmentics"], "Media & Data": ["Media", "Data Group", "Networks", "Broadcast"], Biotech: ["Biolabs", "Genomics", "Life Sciences", "Pharma"], "Private Security": ["Security", "Defense", "Arms", "Tactical"], Smokkel: ["Trading", "Import-Export", "Exchange", "Mutual"]};
+const VOORNAMEN = ["Adaeze", "Pieter", "Haruki", "Helena", "Idris", "Marcus", "Yuki", "Ruben", "Olena", "Sofia", "Haruto", "Carmen", "Viktor", "Amara", "Kenji", "Thabo", "Lucía", "Farid", "Sigrid", "Priya", "Jonas", "Mei", "Kwame", "Hana", "Diego", "Yusuf", "Ines", "Arjun", "Freya", "Tomasz", "Ngozi", "Sven", "Laila", "Noor", "Ezra", "Ayla"];
+const RIVAAL_KARAKTER = {
+  haai: {label: "Haai", tekst: "Valt aan zodra je zwak lijkt.", agr: 0.15, heb: 0.1},
+  diplomaat: {label: "Diplomaat", tekst: "Zoekt deals en vergeet niets.", agr: -0.12, rel: 15},
+  paranoide: {label: "Paranoïde", tekst: "Investeert in beveiliging en vertrouwt niemand.", def: 1, agr: 0.05, rel: -5},
+  visionair: {label: "Visionair", tekst: "Groeit snel in de eigen sector.", div: 1},
+  opportunist: {label: "Opportunist", tekst: "Koopt en verkoopt alles voor de juiste prijs.", heb: 0.2},
+  traditioneel: {label: "Traditioneel", tekst: "Langzaam en voorzichtig, maar moeilijk te verdrijven.", agr: -0.08, def: 1},
+};
+const zaadNorm = z => { const t = String(z || "").toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 12); return t.length >= 3 ? t : ""; };
+const nieuwZaad = () => { const A = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; let z = ""; for (let i = 0; i < 6; i++) z += A[Math.floor(Math.random() * A.length)]; return z; };
+function genRivaalNaam(sector, bezet){ const suf = NAAM_SUFFIX[sector] || ["Group"];
+  for (let i = 0; i < 40; i++){ const v = R(), a = CH(NAAM_STAM), b = CH(NAAM_STAM);
+    const n = v < 0.35 && a !== b ? `${a}-${b} ${CH(suf)}` : v < 0.65 ? `${a} ${CH(suf)}` : `${CH(NAAM_WOORD)} ${CH(suf)}`; if (!bezet.has(n)) return n; }
+  return `${CH(NAAM_WOORD)} ${CH(suf)} ${RI(2, 99)}`; }
+function genCeoNaam(bezet){ for (let i = 0; i < 40; i++){ const n = `${CH(VOORNAMEN)} ${CH(NAAM_STAM)}`; if (!bezet.has(n)) return n; } return CH(RIVAL_CEO_NAMEN); }
+function geefKarakter(r){ if (r.karakter) return r; const k = CH(Object.keys(RIVAAL_KARAKTER)), K = RIVAAL_KARAKTER[k]; r.karakter = k;
+  if (K.agr) r.aggression = r1(clamp(r.aggression + K.agr, 0.05, 0.95) * 100) / 100; if (K.heb) r.hebzucht = r1(clamp((r.hebzucht || 0.5) + K.heb, 0.1, 1) * 100) / 100;
+  if (K.rel) r.relatie = Math.round(clamp((r.relatie || 0) + K.rel, -100, 100)); if (K.def) r.defensie = (r.defensie || 0) + K.def; if (K.div) r.divs[r.sector] = (r.divs[r.sector] || 3) + K.div; return r; }
+function genBedrijfNamen(sec, n, bezet){ const pool = [...(BEDRIJF_NAMEN[sec] || [])], suf = NAAM_SUFFIX[sec] || ["Group"]; for (let i = 0; i < 6; i++) pool.push(`${CH(NAAM_WOORD)} ${CH(suf)}`);
+  const out = []; while (out.length < n && pool.length){ const x = pool.splice(Math.floor(R() * pool.length), 1)[0]; if (!bezet.has(x) && !out.includes(x)) out.push(x); } return out; }
 function genBedrijven(s){
   const out = [], lands = s.districts.filter(d => d.id !== s.player.home_district); let i = 0;
-  for (const [sec, names] of Object.entries(BEDRIJF_NAMEN)) for (const n of names){
+  const bezet = new Set(s.rivals.map(r => r.name));
+  for (const [sec, names0] of Object.entries(BEDRIJF_NAMEN)) for (const n of genBedrijfNamen(sec, names0.length, bezet)){ bezet.add(n);
     const fit = lands.filter(d => (ARCH_SECTOR[d.arch] || []).includes(sec)), land = (fit.length && R() < 0.65) ? CH(fit) : CH(lands);
-    out.push({id: "b" + i, naam: n, sector: sec, land: land.id, ceo: CEO_NAMEN[i % CEO_NAMEN.length], waarde: RI(60, 320), vorige: 0, relatie: RI(-10, 20), aandeel: 0, eigenaar: null, contract: false, actie: null});
+    out.push({id: "b" + i, naam: n, sector: sec, land: land.id, ceo: genCeoNaam(new Set()), waarde: RI(60, 320), vorige: 0, relatie: RI(-10, 20), aandeel: 0, eigenaar: null, contract: false, actie: null});
     i++;
   }
   for (const b of out) b.vorige = b.waarde;
@@ -3630,6 +3657,9 @@ async function verhaalBeurt(s){
 }
 
 function newGame(d){
+  const zaad = zaadNorm(d.zaad) || nieuwZaad(); RNG = seeded("wereld:" + zaad);
+  try { const r = newGame0(d); r.s.zaad = zaad; return r; } finally { RNG = Math.random; } }
+function newGame0(d){
   const s = migrate(template()), p = s.player, ctx = Ctx();
   p.corp_name = String(d.corp_name || "Naamloos BV").trim().slice(0, 60);
   p.motto = String(d.motto || "").trim().slice(0, 120);
@@ -3647,9 +3677,10 @@ function newGame(d){
   const home = s.districts.some(x => x.id === d.home) ? d.home : "BNL"; p.home_district = home;
   const homeCont = s.districts.find(x => x.id === home).continent;
   for (const r of [{name: "Tessera Holdings", ceo: "Helena Voss", cash: 320, aggression: 0.5, memory: [], sector: "Media & Data"}, {name: "Kovač-Ndiaye Group", ceo: "Idris Bello", cash: 380, aggression: 0.45, memory: [], sector: "Biotech"}]) if (!s.rivals.some(x => x.name === r.name)) s.rivals.push(r);
+  { const bezet = new Set(); for (const r of s.rivals){ r.name = genRivaalNaam(r.sector, bezet); bezet.add(r.name); r.ceo = genCeoNaam(new Set(s.rivals.map(x => x.ceo))); r.aggression = r1(clamp(r.aggression + U(-0.12, 0.12), 0.1, 0.8) * 100) / 100; } } /* 5.7: elk spel nieuwe rivalen */
   const hoofd = doctrine.find(t => DT[t]); if (hoofd && !s.rivals.some(r => r.sector === hoofd)) s.rivals[3].sector = hoofd;
   const thuisR = s.rivals.find(r => r.sector === hoofd) || s.rivals[3];
-  for (const r of s.rivals){ r.cash = RI(280, 480); r.divs = {[r.sector]: 3}; r.divs[CH(SECTORS.filter(x => x !== r.sector))] = 1; initRival(r); if (!r.kleur) r.kleur = RIVAL_COLORS.find(c => !s.rivals.some(x => x.kleur === c)) || "#cccccc"; }
+  for (const r of s.rivals){ r.cash = RI(280, 480); r.divs = {[r.sector]: 3}; r.divs[CH(SECTORS.filter(x => x !== r.sector))] = 1; initRival(r); geefKarakter(r); if (!r.kleur) r.kleur = RIVAL_COLORS.find(c => !s.rivals.some(x => x.kleur === c)) || "#cccccc"; }
   for (const m of Object.values(s.market)) for (const r of s.rivals) m.rivals[r.name] ??= 0;
   const pref = {Financieel: "corporate", Logistiek: "haven", Cyberware: "campus", "Media & Data": "nacht", "Private Security": "industrie", Biotech: "campus", Smokkel: "haven"};
   const taken = new Set([home, ...s.districts.filter(x => x.neighbors.includes(home)).map(x => x.id)]);
@@ -4213,6 +4244,7 @@ function vm(){
       buren: d.neighbors || [], zee: d.zee || [], bereik: reachable(s, "player", d), continent: d.continent || "", opbrengst: districtYield(s, d)})),
     kaart: mapView(s), vloot: {schepen: s.schepen || 0, vrij: shipsFree(s), max: SHIP_MAX, kost: shipCost(s), inzet: s.inzet || {}}, stad: s.city,
     rivalen: s.rivals.map(r => ({naam: r.name, ceo: r.ceo, sector: r.sector, hq: r.hq, key: "riv-" + slug(r.name), agressie: r.aggression < 0.35 ? "laag" : r.aggression < 0.6 ? "gemiddeld" : "hoog",
+      karakter: r.karakter ? RIVAAL_KARAKTER[r.karakter] : null,
       kas_schatting: Math.round(r.cash * (0.7 + 0.6 * seeded(r.name + ym(s))()) / 10) * 10, aandeel: Math.round(((s.market[r.sector] || {rivals: {}}).rivals[r.name] || 0) * 100), geheugen: r.memory.slice(-3), producten: (r.producten || []).map(p => ({naam: p.naam, aard: p.aard, label: (PRODUCT_AARD[p.aard] || {}).label, kwaliteit: p.kwaliteit, pop: p.pop})),
       status: r.status, relatie: r.relatie, macht: rivalPower(s, r), verdragen: r.verdragen, moe: r.moeheid > 55 ? "hoog" : r.moeheid > 25 ? "merkbaar" : "laag",
       vredeKans: peaceChance(s, r, 0), handelKans: tradeChance(s, r), handelBedrag: tradeAmount(s, r),
@@ -4237,7 +4269,7 @@ function vm(){
     dochters: (s.bedrijven || []).filter(b => b.eigenaar === "player" && b.koppeling === "dochter").map(b => ({id: b.id, naam: b.naam, sector: b.sector, land: landNaam(s, b.land), waarde: Math.round(b.waarde), bedrag: ((s.streams || []).find(x => x.naam === "Dochter " + b.naam) || {}).bedrag || 0, verkoop: r1(b.waarde * 0.9), samen: s.divisions.some(d => d.type === b.sector) ? `samenvoegen met ${divNaam(s.divisions.find(d => d.type === b.sector))}` : `eigen divisie (${b.sector})`})),
     focus: (s.focus || []).map(k => ({naam: FOCUS[k].naam, tekst: FOCUS[k].tekst})), volgendeFocus: (() => { const mg = maandenGespeeld(s); return mg < 12 ? 12 - mg : (12 - (mg % 12)) % 12 || 12; })(),
     plannen: (s.plannen || []).filter(p => p.ontdekt).map(p => ({titel: p.titel, wie: p.wie, stap: p.stap, van: p.stappen.length, stappen: p.stappen, wanneer: p.volgende, zacht: !!p.zacht, eind: PLAN_SOORT[p.soort].eindTekst, motief: p.motief || ""})),
-    huisstijl: s.huisstijl || null, autoStandaard: s.autoStandaard || {}, adviezen: adviezen(s), doelen: doelen(s), scoreNu: score(s), lengte: spelLengte(s), gezondheid: s.gezondheid || null, eind: s.eind || null,
+    zaad: s.zaad || null, huisstijl: s.huisstijl || null, autoStandaard: s.autoStandaard || {}, adviezen: adviezen(s), doelen: doelen(s), scoreNu: score(s), lengte: spelLengte(s), gezondheid: s.gezondheid || null, eind: s.eind || null,
     crewv: crewVM(s), tijd: tijdVM(s), productlijn: productVM(s), projectRisico: projectRisico(s),
     verdedigingInfo: {waarde: verdediging(s, null), macht: playerPower(s), intel: (s.crew || []).some(m => ["speurder", "fixer"].includes(m.rol)), open: (s.dreigingen || []).map(t => ({label: t.label, van: t.van, maand: t.maand}))},
     keuzes: s.keuzes || [], keuzesKlaar: s.keuzes_klaar || [], wereld: wereldVM(s), mensen: mensenVM(s), onderwereld: gangVM(s), startbonus: startBonus(s), hq_stad: s.player.hq_stad || "",
