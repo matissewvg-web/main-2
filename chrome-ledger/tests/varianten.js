@@ -178,7 +178,7 @@ const html = '<!doctype html><html><head><meta charset=utf8></head><body>' + fs.
     const oud = window.kansRol; window.kansRol = () => 0; aanvraagTick(c, ctx); window.kansRol = oud; const n1 = c.aanvragen.length, a0 = c.aanvragen[0];
     if (a0) a0.minKwal = 1; c.reputation = 40; const k = a0 ? [aanvraagKans(c, a0, "laag"), aanvraagKans(c, a0, "normaal"), aanvraagKans(c, a0, "hoog")] : [];
     const e = maakAanvraag(c); e.raam = false; e.bedrag = 10; delete e.maanden; delete e.perMaand; e.soort = "staat"; c.aanvragen.push(e); const cash0 = c.cash, r1 = actAanvraag(c, ctx, e.id, "normaal"), winst = Math.round((c.cash - cash0) * 10) / 10;
-    const f = maakAanvraag(c); f.raam = true; f.maanden = 6; f.perMaand = 4; delete f.bedrag; f.soort = "staat"; c.aanvragen.push(f); actAanvraag(c, ctx, f.id, "hoog"); const con = c.contracten.find(x => x.id === f.id);
+    const f = maakAanvraag(c); f.raam = true; f.maanden = 6; f.perMaand = 4; delete f.bedrag; f.soort = "staat"; f.minKwal = 1; c.aanvragen.push(f); actAanvraag(c, ctx, f.id, "hoog"); const con = c.contracten.find(x => x.id === f.id);
     const cash1 = c.cash; window.kansRol = () => 0.99; aanvraagTick(c, Ctx()); const maand = Math.round((c.cash - cash1) * 10) / 10;
     for (const p of c.producten) if ((p.aard || aardVan(p.type, p.naam)) === f.aard) p.status = "teruggeroepen"; const rep0 = c.reputation; const ctx4 = Ctx(); aanvraagTick(c, ctx4); window.kansRol = oud;
     return {n1, k, r1: r1.ok, winst, con: con ? {perMaand: con.perMaand, over: con.over} : null, maand, verbroken: ctx4.rep.some(x => /verbroken/.test(x)), repDaling: Math.round((rep0 - c.reputation) * 10) / 10, over: c.contracten.length}; });
@@ -454,6 +454,17 @@ const html = '<!doctype html><html><head><meta charset=utf8></head><body>' + fs.
   // 7.5 druk groeit met je waarde
   const dk = await p.evaluate(() => { const c = JSON.parse(JSON.stringify(G.game)); const r = c.rivals[0]; r.aggression = 0.3; r.cash = 10; c.cash = 20000; const a0 = r.aggression; rivalAI(c, Ctx(), 1); return {a0, a1: r.aggression, groot: playerValue(c) > rivalValue(c, r) * 1.5}; });
   ok(dk.groot && dk.a1 > dk.a0, "7.5: wie veel groter is dan een rivaal, maakt die agressiever: " + JSON.stringify(dk));
+  // 7.7 contracten deel 2: langer als tegenbod, kwaliteitsplicht, productplicht
+  const c7 = await p.evaluate(() => { const c = JSON.parse(JSON.stringify(G.game)); c.aanvragen = []; c.contracten = []; c.cash = 500; const d = c.divisions[0];
+    const pr = mkProduct(c, d, "Vest K", 3, 60); Object.assign(pr, {aard: "wapen", schaal: "groot", keuring: "ok"}); c.producten.push(pr);
+    const a = {id: "aT1", m: ym(c), soort: "staat", klant: "Testministerie", aard: "wapen", raam: true, maanden: 12, perMaand: 2, product: pr.id, minKwal: 3, verloopt: 3, cont: null}; c.aanvragen.push(a);
+    const oud = window.kansRol; window.kansRol = () => 0; window.__e7 = crypto.getRandomValues; crypto.getRandomValues = x => { x[0] = 5; return x; };
+    const r = actAanvraag(c, Ctx(), "aT1", "lang"); crypto.getRandomValues = window.__e7; const con = c.contracten[0] || {};
+    const eenm = {id: "aT2", soort: "staat", klant: "X", aard: "wapen", raam: false, bedrag: 5, verloopt: 3}; c.aanvragen.push(eenm); const r2 = actAanvraag(c, Ctx(), "aT2", "lang");
+    pr.kwaliteit = 2; const cash0 = c.cash; window.kansRol = () => 0.99; const ctx = Ctx(); aanvraagTick(c, ctx); aanvraagTick(c, ctx); const boete = cash0 > c.cash - con.perMaand * 2 * AANVRAAG_MARGE; aanvraagTick(c, ctx); const opgezegd = con.over === 0;
+    const c2 = JSON.parse(JSON.stringify(c)); c2.contracten = [{id: "k", klant: "Y", aard: "wapen", product: pr.id, perMaand: 1, over: 6, maanden: 6}]; const pr2 = c2.producten.find(x => x.id === pr.id); pr2.status = "uit"; const pr3 = mkProduct(c2, d, "Ander wapen", 4, 50); Object.assign(pr3, {aard: "wapen", keuring: "ok"}); c2.producten.push(pr3); aanvraagTick(c2, Ctx()); window.kansRol = oud;
+    return {ok: r.ok, mnd: con.maanden, min: con.minKwal, r2: r2.ok, boete, opgezegd, verbroken: c2.contracten.length === 0 || c2.contracten[0].over === 0}; });
+  ok(c7.ok && c7.mnd === 18 && c7.min === 3 && !c7.r2 && c7.boete && c7.opgezegd && c7.verbroken, "7.7: tegenbod 'langer' geeft 50% meer maanden; onder de afgesproken kwaliteit boetes en na drie maanden opzegging; een contract voor een product breekt als dat product weg is, ook als er een ander wapen is: " + JSON.stringify(c7));
   ok(/VERKOOP/.test(verkoop) && /KEURING/.test(verkoop), "tabblad Verkoop en keuring");
   ok(/VARIANT/.test(scherm), "varianten staan op het productblad");
   if (out){ const bl = await p.$('.prodblad'); if (bl) await bl.screenshot({path: out + "/verkoop.png"}); }
