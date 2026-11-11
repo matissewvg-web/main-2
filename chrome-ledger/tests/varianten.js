@@ -26,7 +26,7 @@ const html = '<!doctype html><html><head><meta charset=utf8></head><body>' + fs.
     const dubbel = await API["/api/product"]({soort: "variant", id: x.id, v: "pro"});
     return {ok: r.ok, bericht: r.bericht, betaald: Math.round((c0 - s.cash) * 10) / 10, k: variantKost(s), q: q && {status: q.status, prijsF: q.prijsF, delen: q.delen.map(z => z.kwal), kw: q.kwaliteit, van: q.variantVan === x.id}, kwOud: x.kwaliteit, dubbel: dubbel.ok}; });
   ok(v0.ok && v0.betaald === v0.k && v0.q && v0.q.status === "ontwikkeling" && v0.q.prijsF === 1.25 && v0.q.delen.every(z => z === "premium") && v0.q.van && v0.q.kw === v0.kwOud && v0.dubbel === false, "variant Pro: betaald, in ontwikkeling, 125%, premium onderdelen, geen dubbele: " + JSON.stringify(v0));
-  await vast(); const v1 = await p.evaluate(async () => { const s = G.game, x = s.producten.find(y => y.naam === "Basisdosis"), voor = x.pop; s.cash = Math.max(s.cash, 300); s.accounts.operationeel = s.cash; /* geen wachtrij door toevallig weinig cash */ await API["/api/tick"]({force: true}); const q = s.producten.find(y => y.naam === "Basisdosis Pro"); return {status: q.status, eta: q.eta, cash: s.cash, xs: x.status, start: q.variantStart, voor, na: x.pop, log: (x.log || []).map(l => l.tekst).join(" | ")}; }); await los();
+  await vast(); const v1 = await p.evaluate(async () => { const s = G.game, x = s.producten.find(y => y.naam === "Basisdosis"), voor = x.pop; s.cash = Math.max(s.cash, 300); s.accounts.operationeel = s.cash; /* geen wachtrij door toevallig weinig cash */ for (let i = 0; i < 4; i++){ await API["/api/tick"]({force: true}); const q0 = s.producten.find(y => y.naam === "Basisdosis Pro"); if (!q0 || q0.status !== "ontwikkeling") break; } /* een toevallige inbraak bij R&D kan twee maanden vertragen */ const q = s.producten.find(y => y.naam === "Basisdosis Pro"); return {status: q.status, eta: q.eta, cash: s.cash, xs: x.status, start: q.variantStart, voor, na: x.pop, log: (x.log || []).map(l => l.tekst).join(" | ")}; }); await los();
   ok(v1.status === "markt" && v1.start && v1.start.pop === Math.round(v1.start.origineelVoor * 0.6) && /neemt klanten over/.test(v1.log), "bij de lancering neemt de variant klanten over: " + JSON.stringify(v1));
   // 4. keuring (4.5.1): na de lancering niet gekeurd, 60% van de afzet; officieel keuren met vaste worp; omkopen
   const k0 = await p.evaluate(() => { const s = G.game, x = s.producten.find(y => y.naam === "Basisdosis"), q = s.producten.find(y => y.naam === "Basisdosis Pro"); const g1 = prodGewicht(x, s), st = keurStatus(x); const ok = {...x, keuring: "ok"}; return {st, stPro: keurStatus(q), ratio: Math.round(g1 / prodGewicht(ok, s) * 100) / 100}; });
@@ -529,5 +529,30 @@ const html = '<!doctype html><html><head><meta charset=utf8></head><body>' + fs.
   ok(/VERKOOP/.test(verkoop) && /KEURING/.test(verkoop), "tabblad Verkoop en keuring");
   ok(/VARIANT/.test(scherm), "varianten staan op het productblad");
   if (out){ const bl = await p.$('.prodblad'); if (bl) await bl.screenshot({path: out + "/verkoop.png"}); }
+  // 10.1 klantrelaties en 10.2 capaciteit
+  const klr = await p.evaluate(() => { const c = JSON.parse(JSON.stringify(G.game)), ctx = Ctx(), oud = window.kansRol; window.kansRol = () => 0.99; c.cash = 500; c.klanten = {};
+    const p = c.producten.find(x => x.status === "markt"); if (!p) return {geen: true}; const aard = p.aard || aardVan(p.type, p.naam);
+    const a = {id: "t1", klant: "Testleger (Nergens)", soort: "staat", aard, product: p.id, minKwal: 1, cont: null, raam: true, perMaand: 1, maanden: 12, verloopt: 3};
+    const b0 = bodScore(c, a, "normaal");
+    c.contracten = [{id: "t1", klant: a.klant, soort: "staat", aard, product: p.id, perMaand: 1, over: 1, maanden: 12, sinds: ym(c)}]; aanvraagTick(c, ctx);
+    const band1 = (c.klanten[a.klant] || {}).band, b1 = bodScore(c, a, "normaal");
+    const vrij0 = effBereik(p, c), cap = prodCap(c, p), groot = r1((cap + 20) / LAST_PER_M);
+    c.contracten = [{id: "t2", klant: "Grootafnemer BV", soort: "bedrijf", aard, product: p.id, perMaand: groot, over: 6, maanden: 6, sinds: ym(c)}];
+    const vrij1 = effBereik(p, c), k0 = c.cash; aanvraagTick(c, ctx); const tekort = (c.klanten["Grootafnemer BV"] || {}).band, mel = ctx.rep.some(x => /niet geleverd/.test(x));
+    c.klanten["Boos Ministerie (X)"] = {band: -40, log: []}; const weg = pasTerugKlantToe(c, {klant: "Boos Ministerie (X)", tekst: "x", aard}, ["staat"]);
+    window.kansRol = () => 0; c.aanvragen = []; c.klanten["Trouwe Marine (Y)"] = {band: 30, soort: "leger", cont: "Europa", aarden: [aard], log: []}; const terug = pasTerugKlantToe(c, {klant: "Iemand (Z)", tekst: "Iemand (Z) zoekt iets", aard, soort: "staat"}, ["leger", "staat"]);
+    window.kansRol = oud; return {band1, b0, b1, vrij0: Math.round(vrij0), vrij1: Math.round(vrij1), tekort, mel, weg: weg === null, terug: terug && terug.klant, terugTekst: terug && terug.tekst}; });
+  const klrUI = await p.evaluate(() => { S.view = "contracten"; render(); const t = document.querySelector("main").textContent; return /Klanten/.test(t) && /Klanten onthouden/.test(t); });
+  ok(klr.geen || (klr.band1 >= 12 && klr.b1 > klr.b0 && klr.vrij1 === 0 && klr.vrij0 > 0 && klr.tekort < 0 && klr.mel && klr.weg && klr.terug === "Trouwe Marine (Y)" && /Trouwe Marine/.test(klr.terugTekst)) && klrUI,
+    "klantrelaties en capaciteit: netjes afgerond = tevreden en sterker bod, contracten nemen capaciteit, tekort = boete en bozere klant, wantrouwen = geen aanvraag, tevreden klant komt terug: " + JSON.stringify(klr));
+  // 10.0 onderhandelen met rivalen
+  const ond = await p.evaluate(() => { const c = JSON.parse(JSON.stringify(G.game)), ctx = Ctx(), r = c.rivals[0], oud = window.rolKans; r.status = "vrede"; r.relatie = 0; r.cash = 300;
+    c.aanbiedingen = [{id: "h1", rival: r.name, type: "handel", bedrag: 2, verloopt: "2999-01"}, {id: "u1", rival: r.name, type: "ultimatum", bedrag: 20, verloopt: "2999-01"}];
+    window.rolKans = () => ({ok: true, txt: "test"}); const k = offerZetKans(c, c.aanbiedingen[0], "meer"), z1 = offerZet(c, ctx, "h1", "meer"), z2 = offerZet(c, ctx, "h1", "langer"), z3 = offerZet(c, ctx, "h1", "meer"), b = c.aanbiedingen[0].bedrag, m = c.aanbiedingen[0].maanden;
+    const ja = offerDecide(c, ctx, "h1", true), verdrag = r.verdragen.slice(-1)[0];
+    window.rolKans = () => ({ok: false, txt: "test"}); const d = offerZet(c, ctx, "u1", "dreigen"); window.rolKans = oud;
+    return {k, z1: z1.ok, z2: z2.ok, z3: z3.ok, b, m, ja: ja.ok, verdrag, oorlog: r.status === "oorlog", ultWeg: !c.aanbiedingen.some(o => o.id === "u1")}; });
+  ok(ond.k > 0 && ond.z1 && ond.z2 && !ond.z3 && ond.b === 2.6 && ond.m === 18 && ond.ja && ond.verdrag && ond.verdrag.bedrag === 2.6 && ond.verdrag.maanden === 18 && ond.oorlog && ond.ultWeg,
+    "onderhandelen met rivalen: twee zetten, meer en langer komen in het verdrag, mislukt dreigen = oorlog: " + JSON.stringify(ond));
   console.log(log.join("\n")); console.log("FOUTEN OP DE PAGINA:", JSON.stringify(errs)); await b.close(); process.exit(log.some(l => l.startsWith("FOUT")) || errs.length ? 1 : 0);
 })();

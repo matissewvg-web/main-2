@@ -605,6 +605,7 @@ const API = {
   async "/api/mens"(d){ const s = G.game, ctx = Ctx(); const r = actMens(s, ctx, d.key, d.soort); if (r.ok) await persist(ctx); return {ok: r.ok, bericht: r.msg}; },
   async "/api/bedrijf"(d){ const s = G.game, ctx = Ctx(); const r = actBedrijf(s, ctx, d.id, d.soort); if (r.ok) await persist(ctx); return {ok: r.ok, bericht: r.msg}; },
   async "/api/gang"(d){ const s = G.game, ctx = Ctx(); const r = actGang(s, ctx, d.id, d.soort, d.land); if (r.ok) await persist(ctx); return {ok: r.ok, bericht: r.msg}; },
+  async "/api/aanbodzet"(d){ const s = G.game, ctx = Ctx(); const r = offerZet(s, ctx, d.id, d.zet); if (r.ok) await persist(ctx); return {ok: r.ok, bericht: r.msg}; }, /* 10.0 */
   async "/api/aanbod"(d){ const s = G.game, ctx = Ctx(); const r = offerDecide(s, ctx, d.id, d.ja); if (r.ok) await persist(ctx); return {ok: r.ok, bericht: r.msg}; },
   async "/api/geld"(d){
     const s = G.game, ctx = Ctx();

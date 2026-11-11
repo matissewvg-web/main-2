@@ -1,6 +1,6 @@
 /* Chrome Ledger engine, deel engine-wereld.js: wereld: kaart, zee, dominantie, eigen soorten, personeel, rivalen en acties. 7.4: de engine staat in zes bestanden die in deze volgorde laden (kern, wereld, leven, producten, gm, opslag); alles deelt dezelfde globale scope. */
 /* ---------- de stad: elke game een andere kaart ---------- */
-const VERSION = "11.0";
+const VERSION = "11.1";
 const MAP_W = 1000, MAP_H = 680;
 const RIVAL_COLORS = ["#ff9a1f", "#3d7bff", "#c6ff2e", "#f2f2f2", "#9b5cff", "#ffd400", "#ff4d4d"];
 const ARCH = {
@@ -518,6 +518,37 @@ function actDefense(s){
   s.cash = r1(s.cash - kost); s.defensie = lvl + 1; s.accounts.operationeel = s.cash;
   const msg = `Beveiliging naar niveau ${s.defensie}. Eenmalig €${kost}M, voortaan €${s.defensie * 2}M per maand.`; addLog(s, msg); return {ok: true, msg};
 }
+/* 10.0: onderhandelen met rivalen. Op een handelsverdrag, wapenstilstand of ultimatum kun je twee zetten doen voor je beslist. Het karakter van de CEO, jullie relatie en (bij vrede) hun oorlogsmoeheid bepalen de kans; een mislukte zet kost relatie en soms trekken ze het aanbod in. */
+const OFFER_ZET = {
+  handel: {meer: {label: "Meer vragen (+30%)", mod: -5}, langer: {label: "Langer vastleggen (18 mnd)", mod: 5}},
+  vrede: {langer: {label: "Twaalf maanden in plaats van zes", mod: 0}, compensatie: {label: "Schadevergoeding eisen", mod: -15}},
+  ultimatum: {afdingen: {label: "Afdingen (−40%)", mod: -5}, dreigen: {label: "Terugdreigen", mod: 0}},
+};
+const KARAKTER_ZET = {diplomaat: 15, opportunist: 5, traditioneel: 0, visionair: 0, paranoide: -10, haai: -15};
+function offerZetKans(s, o, zet){ const r = s.rivals.find(x => x.name === o.rival), Z = (OFFER_ZET[o.type] || {})[zet]; if (!r || !Z) return 0;
+  let k = 50 + Z.mod + (KARAKTER_ZET[r.karakter] || 0) + (r.relatie || 0) / 4 + (o.type === "vrede" ? (r.moeheid || 0) / 3 : 0);
+  if (zet === "dreigen"){ const mij = playerPower(s), hun = Math.max(1, rivalPower(s, r)); k = 30 + (mij / hun - 1) * 40 + (KARAKTER_ZET[r.karakter] || 0) / 2; }
+  return snapKans(Math.round(clamp(k, 8, 92))); }
+function offerZet(s, ctx, id, zet){ const o = (s.aanbiedingen || []).find(x => x.id === id); if (!o) return {ok: false, msg: "Dit aanbod is verlopen."};
+  const r = s.rivals.find(x => x.name === o.rival), Z = (OFFER_ZET[o.type] || {})[zet]; if (!r || !Z) return {ok: false, msg: "Daar valt niet over te praten."};
+  o.zetten ??= []; if (o.zetten.length >= 2) return {ok: false, msg: `${r.ceo} wil een antwoord, geen nieuwe voorstellen.`}; if (o.zetten.some(z => z.zet === zet)) return {ok: false, msg: "Dat heb je al gevraagd."};
+  const kans = offerZetKans(s, o, zet), roll = rolKans(kans); addRoll(s, `Onderhandelen met ${r.name} (${Z.label.toLowerCase()}): ${roll.txt} → ${roll.ok ? "GELUKT" : "NIET"}`);
+  const ceo = r.ceo || r.name; let txt, weg = false;
+  if (roll.ok){
+    if (zet === "meer"){ o.bedrag = r1(o.bedrag * 1.3); txt = `${ceo}: "Goed. €${o.bedrag}M per maand voor allebei, maar dan wil ik geen klachten horen."`; }
+    else if (zet === "langer"){ o.maanden = o.type === "vrede" ? 12 : 18; txt = `${ceo}: "${o.maanden} maanden dan. Stabiliteit is ook iets waard."`; }
+    else if (zet === "compensatie"){ o.compensatie = r1(Math.min(r.cash * 0.2, 8 + (r.moeheid || 0) / 3)); txt = `${ceo}: "€${o.compensatie}M, en daarmee is het klaar. Niet verder vertellen."`; }
+    else if (zet === "afdingen"){ o.bedrag = r1(o.bedrag * 0.6); txt = `${ceo}: "€${o.bedrag}M. Mijn laatste woord."`; }
+    else if (zet === "dreigen"){ weg = true; relShift(r, -5); txt = `${ceo} denkt even na en trekt het ultimatum in. "U bent sterker dan ik dacht. We spreken elkaar nog."`; }
+  } else {
+    relShift(r, -4);
+    if (zet === "dreigen"){ weg = true; r.status = "oorlog"; r.statusMaanden = 0; r.moeheid = 0; relShift(r, -20); txt = `${ceo}: "Dan weten we waar we staan." Het is oorlog.`; mail(ctx, s, ceo, "Dan oorlog", "U dreigt? Wij doen het gewoon.", "KRITIEK"); }
+    else if (zet === "afdingen"){ o.bedrag = r1(o.bedrag * 1.2); txt = `${ceo}: "Afdingen? Nu is het €${o.bedrag}M."`; }
+    else if (R() < (r.karakter === "haai" || r.karakter === "paranoide" ? 0.5 : 0.3)){ weg = true; txt = `${ceo}: "Dan niet." Het aanbod is van tafel. Relatie −4.`; }
+    else txt = `${ceo}: "Nee. Het aanbod staat zoals het stond." Relatie −4.`; }
+  o.zetten.push({zet, ok: roll.ok, txt}); if (weg) s.aanbiedingen = s.aanbiedingen.filter(x => x !== o);
+  remember(r, s, `onderhandelde met de speler over ${o.type} (${roll.ok ? "gaf toe" : "gaf niet toe"})`); addLog(s, `Onderhandeling ${r.name}: ${txt}`);
+  return {ok: true, msg: `${txt} (${roll.txt}, kans ${kans}%)`}; }
 function offerDecide(s, ctx, id, yes){
   const o = s.aanbiedingen.find(x => x.id === id); if (!o) return {ok: false, msg: "Dit aanbod is verlopen."};
   const r = s.rivals.find(x => x.name === o.rival); s.aanbiedingen = s.aanbiedingen.filter(x => x !== o);
@@ -529,8 +560,8 @@ function offerDecide(s, ctx, id, yes){
     else { relShift(r, -3); msg = `Aanbod van ${r.name} afgewezen.`; }
     addLog(s, msg); return {ok: true, msg};
   }
-  if (o.type === "handel"){ r.verdragen.push({type: "handel", bedrag: o.bedrag, maanden: 12}); relShift(r, 10); msg = `Handelsverdrag met ${r.name}: +€${o.bedrag}M per maand, 12 maanden.`; }
-  else if (o.type === "vrede"){ r.status = "wapenstilstand"; r.statusMaanden = 6; r.moeheid = 0; relShift(r, 20); msg = `Wapenstilstand met ${r.name}, 6 maanden.`; }
+  if (o.type === "handel"){ const mnd = o.maanden || 12; r.verdragen.push({type: "handel", bedrag: o.bedrag, maanden: mnd}); relShift(r, 10); msg = `Handelsverdrag met ${r.name}: +€${o.bedrag}M per maand, ${mnd} maanden.`; }
+  else if (o.type === "vrede"){ const mnd = o.maanden || 6; r.status = "wapenstilstand"; r.statusMaanden = mnd; r.moeheid = 0; relShift(r, 20); if (o.compensatie){ s.cash = r1(s.cash + o.compensatie); r.cash = r1(r.cash - o.compensatie); } msg = `Wapenstilstand met ${r.name}, ${mnd} maanden.${o.compensatie ? ` Zij betalen €${o.compensatie}M schadevergoeding.` : ""}`; }
   else if (o.type === "ultimatum"){ if (s.cash < o.bedrag) return {ok: false, msg: `Je hebt de €${o.bedrag}M niet.`}; s.cash = r1(s.cash - o.bedrag); r.cash = r1(r.cash + o.bedrag); relShift(r, 15); r.aggression = Math.min(1, r.aggression + 0.03); msg = `€${o.bedrag}M betaald aan ${r.name}. Voor nu is het rustig. Ze weten nu wel dat je betaalt.`; }
   else if (o.type === "district_koop" || o.type === "district_verkoop") return {ok: false, msg: "Landen koop of verkoop je niet meer. Dit aanbod vervalt."}; /* 11.0 */
   else if (o.type === "district_koop"){ const d = s.districts.find(x => x.id === o.district && x.control === "player"); if (!d) return {ok: false, msg: "Dat district is niet meer van jou."}; if (r.cash < o.bedrag) return {ok: false, msg: `${r.name} kan het niet meer betalen.`};

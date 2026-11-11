@@ -97,9 +97,9 @@ Wens: "niet dingen locken, maak het duurder; dieper gaan; contracten cleaner; ni
 ### Roadmap 10 (voor vanavond, 11 nov: "dieper gaan, echte communicatie")
 | # | Stap | Wat | Prio |
 |---|---|---|---|
-| 1 | 10.0 | Gesprekken ook met rivalen en bedrijven: een handelsverdrag, vrede of een overname onderhandel je in beurten (zelfde systeem als contractgesprekken, met karakter van de CEO) | 1 |
-| 2 | 10.1 | Klantrelaties: klanten onthouden wat je beloofde en hoe je leverde (vaste klant, wantrouwen na wanbetaling of een gebroken belofte); volgende aanvragen beginnen daarmee | 1 |
-| 3 | 10.2 | Contractlevering: capaciteit per maand tegen je productie; tekort = boete en een bozere klant | 2 |
+| 1 | 10.0 ✓ (11.1) | Gesprekken ook met rivalen en bedrijven: een handelsverdrag, vrede of een overname onderhandel je in beurten (zelfde systeem als contractgesprekken, met karakter van de CEO) | 1 |
+| 2 | 10.1 ✓ (11.1) | Klantrelaties: klanten onthouden wat je beloofde en hoe je leverde (vaste klant, wantrouwen na wanbetaling of een gebroken belofte); volgende aanvragen beginnen daarmee | 1 |
+| 3 | 10.2 ✓ (11.1) | Contractlevering: capaciteit per maand tegen je productie; tekort = boete en een bozere klant | 2 |
 | 4 | 10.3 | Opruimstap en balans (de testbot leert ook een gesprek voeren) | 1 |
 | 5 | 10.4 ✓ | (wens 20:11) Contracten vaker langdurig in plaats van eenmalig, langer, en in het gesprek om te zetten | 1 |
 | 6 | 10.5 ✓ | Save blijft online: opnieuw proberen, keuzescherm, nieuwere browserstand als apart spel online zetten | 1 |
