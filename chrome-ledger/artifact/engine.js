@@ -669,7 +669,7 @@ function tick(s){
 }
 
 /* ---------- de stad: elke game een andere kaart ---------- */
-const VERSION = "6.2";
+const VERSION = "6.3";
 const MAP_W = 1000, MAP_H = 680;
 const RIVAL_COLORS = ["#ff9a1f", "#3d7bff", "#c6ff2e", "#f2f2f2", "#9b5cff", "#ffd400", "#ff4d4d"];
 const ARCH = {
@@ -2803,7 +2803,7 @@ function migrate21(s){
 
 /* ===================== 2.2 DOEL, SCORE EN EINDE ===================== */
 const SPEL_LENGTE = {kort: {label: "10 jaar", maanden: 120}, normaal: {label: "20 jaar", maanden: 240}, eindeloos: {label: "Eindeloos", maanden: 0}};
-const WIN_WAARDE = 8000, HEG_PCT = 60, HEG_N = 3, RIVAAL_DOEL = 3;
+const WIN_WAARDE = 8000, HEG_PCT = 60, HEG_N = 3, RIVAAL_DOEL = 3, CZ_PCT = 60; /* 6.3: corporate zone */
 const WIN_LENGTE = {kort: 0.9, normaal: 1.55, eindeloos: 2.1}; /* 5.0: was 0,8 / 1,38 / 1,9; het spel was na de kostenverlagingen te makkelijk. 5.6.1: hoger (1,8) testte geen verschil, dus zo gelaten */
 const winWaardeVoor = lengte => Math.round(WIN_WAARDE * (WIN_LENGTE[lengte] || 1) / 100) * 100;
 const winWaarde = s => Math.round(winWaardeVoor(s.player.lengte) * inst(s, "winst") / 100) * 100;
@@ -2819,6 +2819,8 @@ function doelen(s){
     {id: "hegemonie", naam: "Hegemonie", tekst: `${HEG_PCT}% of meer op ${HEG_N} continenten`, pct: Math.round(clamp(cp.slice(0, HEG_N).reduce((a, c) => a + Math.min(HEG_PCT, c.pct), 0) / (HEG_PCT * HEG_N) * 100, 0, 100)), klaar: heg >= HEG_N, nu: cp.slice(0, 3).map(c => `${c.naam} ${c.pct}%`).join(", ")},
     {id: "uitschakeling", naam: "Marktmeester", tekst: `${RD} van de ${rw.van} oorspronkelijke rivalen uitgeschakeld (overgenomen, failliet of kapotgemaakt)`, pct: RD ? Math.round(clamp(rw.weg / RD, 0, 1) * 100) : 0, klaar: RD > 0 && rw.weg >= RD, nu: `${rw.weg} van ${RD}`},
   ];
+  { const thuis = (s.districts.find(x => x.id === s.player.home_district) || {}).continent, sp = spanningVan(s, thuis), aand = (cp.find(c => c.naam === thuis) || {}).pct || 0; /* 6.3: corporate zone */
+    out.push({id: "corpzone", naam: "Corporate zone", tekst: `${thuis} wordt een corporate zone (spanning 90+) en jij hebt er ${CZ_PCT}% of meer`, pct: Math.round(clamp((Math.min(1, sp / 90) + Math.min(1, aand / CZ_PCT)) / 2, 0, 1) * 100), klaar: sp >= 90 && aand >= CZ_PCT, nu: `spanning ${Math.round(sp)}, aandeel ${aand}%`}); }
   if (L) out.push({id: "termijn", naam: "Einde van de termijn", tekst: `Na ${L / 12} jaar telt je score`, pct: Math.round(clamp(n / L * 100, 0, 100)), klaar: n >= L, nu: `nog ${Math.max(0, L - n)} maanden`});
   return out;
 }
@@ -2836,7 +2838,7 @@ function score(s, einde){
 }
 function eindCheck(s){
   const d = doelen(s).find(x => x.klaar && x.id !== "termijn");
-  if (d) return "OVERWINNING: " + ({economisch: "ECONOMISCHE MACHT", hegemonie: "HEGEMONIE", uitschakeling: "MARKTMEESTER"}[d.id] || d.naam.toUpperCase());
+  if (d) return "OVERWINNING: " + ({economisch: "ECONOMISCHE MACHT", hegemonie: "HEGEMONIE", uitschakeling: "MARKTMEESTER", corpzone: "CORPORATE ZONE"}[d.id] || d.naam.toUpperCase());
   if (doelen(s).some(x => x.id === "termijn" && x.klaar)) return "EINDE TERMIJN";
   return "actief";
 }
@@ -3781,7 +3783,7 @@ function upgradePlan(s, d){
 function vestigingPlan(s, d){ const kost = districtCost(s, d), extra = r1((incOf(d) - d.upkeep) * 0.8); return {kost, extra, terug: extra > 0.2 ? Math.round(kost / extra) : null}; }
 const adviesSleutel = t => String(t).replace(/[\d.,€±%−+]+/g, "#").slice(0, 60);
 function adviesTick(s){ const nieuw = {}, T = s.adviesTel || {}; for (const a of adviezen(s)) { const k = adviesSleutel(a.tekst); nieuw[k] = (T[k] || 0) + 1; } s.adviesTel = nieuw; }
-function adviezen(s){
+function adviezen(s, alles){
   const out = [], add = (prio, tekst, view) => out.push({prio, tekst, view});
   const markt = (s.producten || []).filter(p => p.status === "markt"), dev = (s.producten || []).filter(p => p.status === "ontwikkeling" || p.status === "wachtrij");
   const net = ((s.history || []).slice(-1)[0] || {}).netto;
@@ -3830,7 +3832,7 @@ function adviezen(s){
   if (best) add(1, `Dichtst bij winst: ${best.naam} (${best.pct}%, ${best.nu}).`, "overzicht");
   /* 4.5.2: een niet-dringend advies dat al drie maanden onveranderd staat, zakt naar "staat al een tijdje" */
   const T = s.adviesTel || {}; for (const a of out){ a.maanden = T[adviesSleutel(a.tekst)] || 0; a.oud = a.maanden >= 3 && a.prio < 9; }
-  out.sort((a, b) => b.prio - a.prio); return [...out.filter(a => !a.oud).slice(0, 6), ...out.filter(a => a.oud).slice(0, 4)];
+  out.sort((a, b) => b.prio - a.prio); if (alles) return out; return [...out.filter(a => !a.oud).slice(0, 6), ...out.filter(a => a.oud).slice(0, 4)];
 }
 function adviesCard(st){
   const A = st.adviezen; if (!A.length) return "";
@@ -3845,6 +3847,7 @@ const SPELREGELS = [
   ["Morale en heat", "Morale onder 10, twee maanden lang: coup. Heat boven 90, twee maanden lang: razzia. Heat komt vooral uit riskante en illegale divisies (Smokkel, Cyberware, Private Security), die met elk niveau meer aandacht trekken; legale divisies trekken boven niveau 6 geen extra aandacht meer. Het overzicht laat zien waarom ze bewegen en waarschuwt ruim op tijd."],
   ["Stilstand", "Verkoopt een divisie een jaar lang niets, dan lopen klanten naar rivalen: de omzet zakt elke maand verder, tot −20%. Eén product op de markt stopt het meteen."],
   ["Winnen", "Een bedrijfswaarde van €12.400M (10 jaar: €7.200M, eindeloos: €16.800M), 60% op drie continenten, of 3 van de 5 oorspronkelijke rivalen uitgeschakeld. Anders telt na de gekozen speellengte je score. Sta je op de beurs, dan telt alleen jouw deel van de bedrijfswaarde."],
+  ["Corporate zone", "Een vierde manier om te winnen: wordt je thuiscontinent een corporate zone (corpospanning 90+) terwijl jij er 60% of meer van de dominantie hebt, dan regeert jouw corporatie daar. Spanning stijgt vanzelf, en sneller door oorlogen, straatgevechten en bendeoorlogen."],
   ["De wereld", "Elk continent heeft een corpospanning (Wereld → Corpospanning): hoe hoger, hoe meer corporaties mogen (patrouilles, straatgevechten, corpowetten), maar ook sancties en duurdere grondstoffen. Districten zijn verdeeld in aandelen; met aanwezigheid neem je ze zonder oorlog over (Kaart)."],
   ["Handel en groei", "Klanten sturen aanvragen en raamcontracten (Bedrijf → Klanten). Exportvergunningen openen continenten voor wapens, beveiliging en implantaten. Grondstoffen kun je vooruit inkopen (Toelevering). Onderzoek en patenten maken je producten sterker. Per product kies je in welke regio's je verkoopt (productblad → Markt)."],
   ["Score", "Bedrijfswaarde telt met de wortel (40 × √waarde), plus dominantie, reputatie, jaren, uitgeschakelde rivalen en status. Winnen ×1,25 plus tempo, termijn uitdienen ×1, verliezen ×0,75 en zonder de waarde van je bedrijf: een verlies scoort dus nooit hoger dan overleven met hetzelfde bedrijf."],

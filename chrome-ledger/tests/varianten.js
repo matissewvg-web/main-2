@@ -146,11 +146,11 @@ const html = '<!doctype html><html><head><meta charset=utf8></head><body>' + fs.
   ok(!cm.te && cm.pa && cm.n === 1 && cm.m1 === cm.m0 + 2 && (!cm.straat || (cm.straat.doel && cm.straat.ok && cm.straat.van === "player")) && cm.w1 && !cm.w2 && /90/.test(cm.w2msg) && cm.dh === 0.8 && cm.wetten.includes("zone") && cmUI,
     "straatoorlog en corpomacht: patrouille pas bij genoeg spanning, macht +2, straatgevecht verovert een district, corpowetten met drempels, tab toont Corpomacht: " + JSON.stringify(cm));
   const ct = await p.evaluate(() => { const c = JSON.parse(JSON.stringify(G.game)), ctx = Ctx(); for (const k of CONTINENTS) (c.spanning ??= {})[k.naam] = 80; const r = c.rivals[0]; r.status = "vrede"; r.relatie = -60; const hq = c.districts.find(d => d.id === r.hq), buur = c.districts.find(d => (hq.neighbors || []).includes(d.id) && d.id !== c.player.home_district); if (buur) buur.control = "player";
-    const kand = playerDistricts(c).filter(d => d.id !== c.player.home_district && reachable(c, r.name, d)); const adv = adviezen(c).some(x => /op straat innemen/.test(x.tekst)); const oud = window.kansRol; window.kansRol = () => 0; corpoTick(c, ctx); window.kansRol = oud;
+    const kand = playerDistricts(c).filter(d => d.id !== c.player.home_district && reachable(c, r.name, d)); const adv = adviezen(c, true).some(x => /op straat innemen/.test(x.tekst)); const oud = window.kansRol; window.kansRol = () => 0; corpoTick(c, ctx); window.kansRol = oud;
     return {kand: kand.length, adv, rep: ctx.rep.filter(x => /straat|Straat/.test(x))}; });
   ok(ct.kand >= 1 && ct.adv && ct.rep.length === 1, "rivalen vechten bij hoge spanning ook op straat (hooguit één per maand), Wat nu? waarschuwt: " + JSON.stringify(ct));
   // 5.6 gebied als dominantie
-  const dm = await p.evaluate(() => { const c = JSON.parse(JSON.stringify(G.game)), ctx = Ctx(); c.cash = 900; c.aanwezig = {}; for (const d of c.districts){ delete d.dom; delete d.domMnd; }
+  const dm = await p.evaluate(() => { const c = JSON.parse(JSON.stringify(G.game)), ctx = Ctx(); c.cash = 900; c.aanwezig = {}; c.rivAanwezig = {}; for (const d of c.districts){ delete d.dom; delete d.domMnd; delete d.domRiv; }
     domTick(c, ctx); const thuis = c.districts.find(d => d.id === c.player.home_district), thuisPct = Math.round(thuis.dom.player), cont0 = (regionDominance(c).find(r => r.id === thuis.continent).shares.find(x => x.o === "player") || {}).pct || 0;
     const nb = c.districts.find(d => (thuis.neighbors || []).includes(d.id) && d.control === "neutral"); if (!nb) return {geenBuur: true, thuisPct};
     for (const g of c.gangs || []) if (g.gebied) delete g.gebied[nb.id]; const k0 = c.cash, a1 = actAanwezig(c, ctx, nb.id); for (let i = 0; i < 4; i++) actAanwezig(c, ctx, nb.id); const betaald = Math.round((k0 - c.cash) * 10) / 10;
@@ -310,7 +310,7 @@ const html = '<!doctype html><html><head><meta charset=utf8></head><body>' + fs.
     c.morale = 60; const m0 = c.morale; C.gezondheid = 0.1; C.stress = 90; C.opvolger = null; c.date = {...c.date, month: 5}; ceoTick(c, Ctx()); const zonder = {naam: C.naam, gen: C.generatie, morale: Math.round(m0 - c.morale)};
     C.kinderen = 1; const opv = actCeo(c, ctx, "opvolger", "kind0").ok; C.gezondheid = 0.1; C.stress = 90; ceoTick(c, Ctx()); const dyn = {naam: C.naam, gen: C.generatie, leeftijd: Math.floor(C.leeftijd)};
     const r = c.rivals[0]; r.relatie = 0; r.ceoRel = 0; delete r.golf; c.cash = 300; const rel0 = r.relatie, golf = actCeo(c, ctx, "golf", r.name).ok, band = r.ceoRel, relUp = r.relatie - rel0; r.ceoLeeftijd = 80; const oudCeo = r.ceo; c.date = {...c.date, month: 1}; ceoTick(c, Ctx());
-    C.stress = 85; C.opvolger = null; C.leeftijd = 60; const adv = adviezen(c).map(x => x.tekst).join(" | "), advOk = /stress is 85/.test(adv) && /geen opvolger/.test(adv);
+    C.stress = 85; C.opvolger = null; C.leeftijd = 60; const adv = adviezen(c, true).map(x => x.tekst).join(" | "), advOk = /stress is 85/.test(adv) && /geen opvolger/.test(adv);
     return {naam0, l0, v, st1, nogeens, zonder, opv, dyn, golf, band, relUp, advOk, nieuweCeo: r.ceo !== oudCeo && r.ceoLeeftijd < 60}; });
   const ceUI = await p.evaluate(() => { S.view = "mensen"; render(); const t = document.querySelector("main").textContent; return /Jij, de CEO/.test(t) && /GEZONDHEID/.test(t) && /Andere CEO/.test(t); });
   ok(ce.naam0 === "Mira Kade" && ce.l0 >= 34 && ce.v && ce.st1 === 50 && !ce.nogeens && ce.zonder.naam !== "Mira Kade" && ce.zonder.gen === 2 && ce.zonder.morale >= 12 && ce.opv && / jr\.$/.test(ce.dyn.naam) && ce.dyn.gen === 3 && ce.dyn.leeftijd <= 34 && ce.golf && ce.band === 10 && ce.relUp === 4 && ce.nieuweCeo && ce.advOk && ceUI,
@@ -347,6 +347,12 @@ const html = '<!doctype html><html><head><meta charset=utf8></head><body>' + fs.
     const oud = window.kansRol; window.kansRol = () => 0.99; const ctx = Ctx(); for (let i = 0; i < 6; i++) domTick(c, ctx); window.kansRol = oud;
     return {neu: neu.control === r.name, mijn: mijn ? mijn.control === r.name : null, thuis: thuis.control === "player", mail: ctx.mails.some(m => /toe$/.test(m.onderwerp || m.subject || "")) || ctx.rep.some(x => /valt .* toe/.test(x))}; });
   ok(ra.geen || (ra.neu && (ra.mijn === null || ra.mijn) && ra.thuis && (ra.mijn === null || ra.mail)), "rivalen met dezelfde regels: hun aanwezigheid neemt een neutraal district en een district van jou over, je thuisdistrict nooit: " + JSON.stringify(ra));
+  // 6.3 corporate zone
+  const cz = await p.evaluate(() => { const c = JSON.parse(JSON.stringify(G.game)), thuis = c.districts.find(d => d.id === c.player.home_district).continent; c.cash = 50; c.debt = 0;
+    for (const k of CONTINENTS) (c.spanning ??= {})[k.naam] = 30; const d0 = doelen(c).find(x => x.id === "corpzone"), e0 = eindCheck(c);
+    c.spanning[thuis] = 95; for (const d of c.districts) if (d.continent === thuis){ d.control = "player"; delete d.dom; } const d1 = doelen(c).find(x => x.id === "corpzone"), e1 = eindCheck(c);
+    return {d0: d0 && d0.klaar, pct0: d0 && d0.pct, d1: d1 && d1.klaar, e0, e1}; });
+  ok(cz.d0 === false && cz.pct0 < 100 && cz.d1 && cz.e1 === "OVERWINNING: CORPORATE ZONE" && cz.e0 !== "OVERWINNING: CORPORATE ZONE", "corporate zone: nieuwe overwinning bij spanning 90+ op je thuiscontinent en 60% dominantie: " + JSON.stringify(cz));
   ok(/VERKOOP/.test(verkoop) && /KEURING/.test(verkoop), "tabblad Verkoop en keuring");
   ok(/VARIANT/.test(scherm), "varianten staan op het productblad");
   if (out){ const bl = await p.$('.prodblad'); if (bl) await bl.screenshot({path: out + "/verkoop.png"}); }
