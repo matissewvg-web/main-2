@@ -298,6 +298,12 @@ const html = '<!doctype html><html><head><meta charset=utf8></head><body>' + fs.
   const mn3 = await p.evaluate(() => ({weg: !document.querySelector(".hmenu"), open: S.menuOpen, sessie: sessionStorage.getItem("cl_menu")}));
   await p.evaluate(() => toonMenu()); await p.keyboard.press("Escape"); await p.waitForTimeout(400); const esc = await p.evaluate(() => !document.querySelector(".hmenu"));
   ok(!autoMenu && /Doorgaan/.test(mn1) && /Nieuw spel/.test(mn1) && /Laden/.test(mn1) && mn2.slots >= 1 && mn2.nu && mn3.weg && !mn3.open && mn3.sessie === "1" && esc, "hoofdmenu: Doorgaan, Nieuw spel, Laden met save slots; sluiten met Doorgaan of Escape; niet automatisch in tests: " + JSON.stringify({autoMenu, mn2, mn3, esc}));
+  // 5.18 krant van de maand
+  const krt = await p.evaluate(() => { const s = G.game, oud = s.nieuws; const nu = ym(s), r = s.rivals[0];
+    s.nieuws = [{m: nu, kop: "Doorbraak bij jou", tekst: "x", regio: "", soort: "markt", jij: true}, {m: nu, kop: `${r.name} breidt uit`, tekst: "y", regio: "", soort: "markt", jij: false}, {m: nu, kop: "Staking in Europa", tekst: "z", regio: "Europa", soort: "wereld", jij: false}, {m: "1999-01", kop: "Oud nieuws", tekst: "", regio: "", soort: "wereld", jij: false}];
+    const K = krantData(); S.view = "wereld"; S.wtab = "krant"; render(); const t = document.querySelector("main").textContent; S.view = "overzicht"; render(); const teaser = /Lees de krant/.test(document.querySelector("main").textContent); s.nieuws = oud; render();
+    return {kop: K.kop.kop, riv: K.riv.map(n => n.kop), wereld: K.wereld.map(n => n.kop), oud: /Oud nieuws/.test(t), mast: /NEON NEWS 24/.test(t) && /Corpospanning/.test(t), teaser}; });
+  ok(krt.kop === "Doorbraak bij jou" && krt.riv.length === 1 && krt.wereld[0] === "Staking in Europa" && !krt.oud && krt.mast && krt.teaser, "krant: kop uit je eigen nieuws, rubrieken rivalen/wereld, alleen recent nieuws, krant bij Wereld en een teaser op het overzicht: " + JSON.stringify(krt));
   ok(/VERKOOP/.test(verkoop) && /KEURING/.test(verkoop), "tabblad Verkoop en keuring");
   ok(/VARIANT/.test(scherm), "varianten staan op het productblad");
   if (out){ const bl = await p.$('.prodblad'); if (bl) await bl.screenshot({path: out + "/verkoop.png"}); }

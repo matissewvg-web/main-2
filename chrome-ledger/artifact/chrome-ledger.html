@@ -367,6 +367,12 @@ pre.rolls{font:13px/1.6 var(--mono);white-space:pre-wrap;color:var(--green);marg
 @keyframes tick{to{transform:translateX(-100%)}}
 
 /* ---- opstart & sync ---- */
+.krant{background:linear-gradient(180deg,rgba(255,255,255,.035),rgba(255,255,255,.01));box-shadow:inset 0 0 0 1px var(--line);padding:18px 20px}
+.kmast{text-align:center;border-bottom:3px double var(--line);padding-bottom:8px;margin-bottom:12px}.kmast-t{font:800 32px/1 var(--disp);letter-spacing:.2em;color:var(--mag);text-shadow:var(--glow-m)}.kmast-s{font:12px var(--mono);color:var(--dim);margin-top:6px;letter-spacing:.08em}
+.kkop{font:800 26px/1.2 var(--disp);margin:6px 0;color:#fff}.khead p{margin:0 0 12px;font-size:15px;color:var(--muted)}.khead{border-bottom:1px solid var(--line);padding-bottom:10px;margin-bottom:12px}
+.kgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px 22px}.ksec{font:700 11px var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--cyan);border-bottom:1px solid var(--line);padding-bottom:3px;margin-bottom:6px}
+.kart{margin-bottom:10px}.kart b{font-size:14.5px}.kart p{margin:2px 0 0;font-size:13px;color:var(--muted);line-height:1.45}.klist{list-style:none;padding:0;margin:0;font-size:13.5px}.klist li{padding:2px 0}
+.kad{margin-top:12px;padding:8px;border:1px dashed var(--line);font:12px var(--mono);color:var(--amber);text-align:center}
 .hmenu{position:fixed;inset:0;z-index:90;background:radial-gradient(ellipse at 50% 30%,rgba(5,217,232,.12),transparent 60%),rgba(3,0,8,.96);display:flex;align-items:center;justify-content:center;padding:16px;overflow:auto;transition:opacity .3s}
 .hmenu.out{opacity:0}.hpanel{width:100%;max-width:440px;text-align:center}.hpanel .titel{font:700 34px/1.1 var(--display,inherit);letter-spacing:.12em;margin:10px 0 2px}.hpanel .titel .neon{color:var(--cyan);text-shadow:var(--glow-c)}.hpanel .titel b{color:var(--mag)}
 .hknoppen{display:flex;flex-direction:column;gap:10px;margin-top:22px}.hk{display:flex;flex-direction:column;align-items:flex-start;gap:2px;width:100%;padding:12px 16px;text-align:left}.hk b{font-size:16px;letter-spacing:.08em}.hk span{font-size:12.5px;opacity:.75;text-transform:none;letter-spacing:0}
@@ -668,7 +674,7 @@ overzicht(){
   const st = S.state, r = st.rapport;
   const recent = st.mails.filter(m => !m.archief).slice(0,5);
   return `<h1>Overzicht</h1>
-  ${nieuwCard()}${eersteStappen()}${adviesCard(st)}
+  ${nieuwCard()}${eersteStappen()}${adviesCard(st)}${krantTeaser()}
   ${st.besluiten.length || st.aanbiedingen.length || st.keuzes.length ? (() => { const K = [...st.besluiten.map(decisionCard), ...st.keuzes.map(k => keuzeCard(k)), ...st.aanbiedingen.map(offerCard)]; return `<h2>Wacht op uw besluit</h2><div class="grid g2">${K.slice(0, 2).join("")}</div>${K.length > 2 ? `<details class="meerbesluiten" style="margin-top:8px"><summary class="muted" style="cursor:pointer">Nog ${K.length - 2} ${K.length - 2 === 1 ? "besluit" : "besluiten"} (ook bij Inbox)</summary><div class="grid g2" style="margin-top:8px">${K.slice(2).join("")}</div></details>` : ""}`; })() : ""}
   ${st.macht.oorlogen ? `<div class="card war-banner" style="margin-top:12px"><div class="spread"><span><b>OORLOG</b> met ${esc(st.rivalen.filter(r => r.status === "oorlog").map(r => r.naam).join(", "))}. Elke maand kost dit morale en reputatie.</span><button class="btn sm danger" data-view="rivalen">Naar het front</button></div></div>` : ""}
   <div class="grid g2" style="margin-top:14px">
@@ -1024,6 +1030,7 @@ function setupBonus(homeD){
     <p class="dim" style="font-size:13px;margin:6px 0 0">Elk soort land geeft een ander voordeel: havens, financiële centra, datavalleien, sloppen. Klik verschillende landen aan om ze te vergelijken.</p>` : "";
 }
 const VERSIES = [
+  ["5.18", "Krant van de maand", ["Wereld → Krant: NEON NEWS 24, de maandeditie. Een voorpagina (jouw grootste nieuws of het grootste wereldnieuws), rubrieken Uit de bestuurskamer, Wereld, Rivalen en Markten, de vraag die het hardst beweegt, dure of goedkope grondstoffen, je beurskoers en de corpospanning per continent. Plus een advertentie.", "Op het overzicht staat de kop van de krant met een knop Lees de krant."]],
   ["5.17.3", "Opruimen", ["Op de telefoon was het hoofdmenu niet terug te vinden (het zijmenu is daar verborgen). Nu staat er een ☰-knop links in de kop, op elk scherm.", "Gemeten: balans verstandig 47%, reputatie gemiddeld −8 in twee jaar als je alle beslissingen laat liggen (vooral lastercampagnes van je concurrent; daartegen kun je nu zelf een plan smeden)."]],
   ["5.17.2", "Hoofdmenu", ["Bij het openen van het spel verschijnt een hoofdmenu met je logo: Doorgaan (je huidige bedrijf en datum), Nieuw spel (je huidige spel blijft bewaard) en Laden.", "Laden toont al je bewaarde spellen (save slots) met de datum; één klik en je speelt verder. Hernoemen, verwijderen en exporteren blijft bij Logboek → Spellen.", "Het menu kun je altijd weer openen via MENU links onderaan het zijmenu. Sluiten: Doorgaan, Escape of naast het menu klikken."]],
   ["5.17.1", "Huisstijl bij het oprichten", ["Bij een nieuw spel (Fase 0 · Het bedrijf) kies je meteen je hoofd- en accentkleur, een thema (Neon, Corporate, Terminal, Bloed, Chroom) en je logo: een vorm en symbool, of een eigen afbeelding.", "Je ziet het logo en het thema meteen in het scherm. Later aanpassen kan nog altijd bij Bedrijf → Huisstijl."]],
@@ -1107,7 +1114,7 @@ const VERSIES = [
   ["1.1", "Wereld", ["Nieuwe tab Wereld: wereldnieuws, een ranglijst van alle bedrijven met waarde en markten per sector.", "25 bedrijven verspreid over de wereld: zakendiner, leveringscontract, aandelen met dividend of een overname.", "Gebeurtenissen per land en continent (stormen, staatsgrepen, handelsakkoorden) veranderen tijdelijk wat gebieden opleveren.", "Startvoordeel per soort land, een eigen stad voor je hoofdkantoor, en per gebied op de kaart: wat het oplevert.", "Geruchten en marktberichten staan in het nieuws in plaats van in je inbox."]],
   ["1.0", "Echte wereld", ["Echte wereldkaart, dominantie per continent en zee, eskaders, rivalen met oorlog en handel, blijvende inkomstenbronnen."]],
 ];
-const PLANNING = [["5.18", "Krant van de maand."], ["5.19", "De CEO als persoon: leeftijd, opvolging, rivaliserende CEO's."], ["5.20", "Eigen moeilijkheid instellen."], ["5.21", "Rondleiding en spiekbriefjes."]];
+const PLANNING = [["5.19", "De CEO als persoon: leeftijd, opvolging, rivaliserende CEO's."], ["5.20", "Eigen moeilijkheid instellen."], ["5.21", "Rondleiding en spiekbriefjes."]];
 function versieCard(){
   const vrs = ([v, t, l]) => `<div style="margin:8px 0"><b class="mono" style="color:var(--cyan)">${v}</b> <b>${esc(t)}</b><ul class="ylist">${l.map(x => `<li>${esc(x)}</li>`).join("")}</ul></div>`;
   return `<div class="card" style="margin-top:16px"><h3>Versies</h3>${VERSIES.slice(0, 2).map(vrs).join("")}<details><summary class="muted" style="cursor:pointer;margin:6px 0">Oudere versies (${VERSIES.length - 2})</summary>${VERSIES.slice(2).map(vrs).join("")}</details>
@@ -1149,9 +1156,10 @@ mensen(){
 },
 wereld(){
   const st = S.state, W = st.wereld, tab = S.wtab || "nieuws";
-  const tabs = [["nieuws", "Nieuws"], ["bedrijven", "Bedrijven"], ["producten", "Producten"], ["markten", "Markten"], ["spanning", "Corpospanning"]].map(([id, l]) => `<button class="${tab === id ? "on" : ""}" data-a="wtab" data-t="${id}">${l}</button>`).join("");
+  const tabs = [["krant", "Krant"], ["nieuws", "Nieuws"], ["bedrijven", "Bedrijven"], ["producten", "Producten"], ["markten", "Markten"], ["spanning", "Corpospanning"]].map(([id, l]) => `<button class="${tab === id ? "on" : ""}" data-a="wtab" data-t="${id}">${l}</button>`).join("");
   let body;
-  if (tab === "producten"){
+  if (tab === "krant") body = krantHtml();
+  else if (tab === "producten"){
     const L = W.catalogus.filter(x => pfilterOk(x.aard)), vr = Object.fromEntries(W.vraag.map(v => [v.aard, v]));
     body = `${pfilterChips(st)}<div class="card" style="padding:6px 10px"><div class="crow head"><span>#</span><span>Product</span><span class="hm">Soort</span><span class="hm">Van</span><span class="num">Populariteit</span><span class="num hm">Kwaliteit</span></div>
       ${L.map((x, i) => `<div class="crow ${x.eigenaar === "jij" ? "speler" : ""}"><span class="mono dim">${i + 1}</span><span><i class="dot" style="background:${x.kleur}"></i><b>${esc(x.naam)}</b>${x.trait ? ` <span class="dim">· ${esc(x.trait)}</span>` : ""}</span><span class="hm muted">${esc((PRODUCT_AARD[x.aard] || {}).label || "")} <span class="dim">×${((vr[x.aard] || {}).factor || 1).toFixed(2)}</span></span><span class="hm muted">${esc(x.eigenaar)}</span><span class="num mono">${x.pop}</span><span class="num hm mono" style="color:var(--cyan)">${"◆".repeat(x.kwaliteit)}</span></div>`).join("") || '<p class="muted" style="margin:8px">Geen producten in deze soort.</p>'}
@@ -1670,6 +1678,27 @@ function plannenCard(st){
     <ol class="planstap">${p.stappen.map((x, i) => `<li class="${i < p.stap ? "af" : i === p.stap ? "nu" : ""}">${esc(x)}${i === p.stap ? ` <span class="dim">(rond ${esc(p.wanneer)})</span>` : ""}</li>`).join("")}</ol>
     <div class="dim" style="font-size:13px">Als het slaagt: ${esc(p.eind)}${p.zacht ? " · <b>je bent voorbereid, de klap is half zo groot</b>" : ""}${p.motief ? ` · motief: ${esc(p.motief)}` : ""}</div></div>`).join("")}</div>`;
 }
+/* 5.18: krant van de maand */
+const KRANT_ADS = ["CHROOM-ARMEN VANAF €999. Eerste maand rente 0%. Daarna praten we verder.", "VERLOREN: één ziel, lichtgebruikt. Vinder mag hem houden.", "NEURAL-LINK SALE. Herinneringen tot 40% korting. Zolang de voorraad strekt.", "DE STAD ZOEKT AGENTEN. Pensioen niet gegarandeerd. Kogelvrij vest wel.", "DRONE-BEZORGING IN 9 MINUTEN. Of uw pakket is van ons.", "KLONEN TE HUUR. Alle maten. Geen vragen, geen garantie.", "HYPOTHEEK OP UW ORGANEN? Bel Saffron Trust. Wij lenen graag.", "SYNTHETISCHE KOFFIE. Smaakt bijna naar vroeger."];
+function krantData(){ const s = G.game, N = s.nieuws || []; if (!N.length) return null; const nu = ym(s), d = new Date(s.date.year, s.date.month - 2, 1), ed = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`, d3 = new Date(s.date.year, s.date.month - 4, 1), van = `${d3.getFullYear()}-${String(d3.getMonth() + 1).padStart(2, "0")}`, L = N.filter(n => n.m >= van && n.m <= nu); if (!L.length) return null; /* 5.18: editie = vorige maand, nieuws van de laatste drie maanden */
+  const rivN = new Set(s.rivals.map(r => r.name)), isRiv = n => [...rivN].some(r => (n.kop + " " + n.tekst).includes(r));
+  const kop = L.find(n => n.jij) || L.find(n => n.soort === "wereld" && !isRiv(n)) || L.find(n => n.soort === "regio") || L.find(n => !isRiv(n)) || L[0], rest = L.filter(n => n !== kop);
+  const vr = Object.entries(s.vraag || {}).map(([a, x]) => ({a, t: x.trend || 0, idx: Math.round(x.idx)})).sort((a, b) => Math.abs(b.t) - Math.abs(a.t)).slice(0, 3);
+  return {ed, kop, jij: rest.filter(n => n.jij), wereld: rest.filter(n => !n.jij && (n.soort === "wereld" || n.soort === "regio") && !isRiv(n)), riv: rest.filter(n => !n.jij && isRiv(n)), markt: rest.filter(n => !n.jij && !isRiv(n) && n.soort !== "wereld" && n.soort !== "regio"), vr}; }
+function krantTeaser(){ const K = G.game && krantData(); if (!K) return ""; const [y, m] = K.ed.split("-");
+  return `<div class="card krantteaser" style="margin-bottom:14px;display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap"><span><span class="kpi">NEON NEWS 24 · ${esc(MONTHS[(+m || 1) - 1].toUpperCase())} ${esc(y)}</span><br><b>${esc(K.kop.kop)}</b></span><button class="btn sm" data-a="krant">Lees de krant</button></div>`; }
+function krantHtml(){ const s = G.game, K = krantData(); if (!K) return '<div class="card"><p class="muted">De drukpersen staan nog stil. Speel een maand.</p></div>';
+  const [y, m] = K.ed.split("-"), lab = a => (PRODUCT_AARD[a] || {}).label || a, art = n => `<div class="kart"><b>${esc(n.kop)}</b><p>${esc(n.tekst)}</p></div>`, kol = (t, L) => L.length ? `<div class="kkol"><div class="ksec">${esc(t)}</div>${L.slice(0, 4).map(art).join("")}</div>` : "";
+  const span = (CONTINENTS || []).map(c => { const v = Math.round(spanningVan(s, c.naam)); return `<li>${esc(c.naam)} <b class="mono">${v}</b> <span class="dim">${esc(spanningFase(v)[1])}</span></li>`; }).join("");
+  const gs = Object.entries(GRONDSTOF).map(([k, g]) => [g.label, gsPrijs(s, k)]).filter(([, p]) => p >= 1.15 || p <= 0.88);
+  const ad = KRANT_ADS[hashN(K.ed, 3) % KRANT_ADS.length];
+  return `<div class="krant"><div class="kmast"><div class="kmast-t">NEON NEWS 24</div><div class="kmast-s">Maandeditie · ${esc(MONTHS[(+m || 1) - 1])} ${esc(y)} · Wereld · prijs: 2 credits</div></div>
+    <div class="khead"><div class="ksec">${K.kop.jij ? "Uit de bestuurskamer" : "Voorpagina"}</div><div class="kkop">${esc(K.kop.kop)}</div><p>${esc(K.kop.tekst)}</p></div>
+    <div class="kgrid">${kol("Uit de bestuurskamer", K.jij)}${kol("Wereld", K.wereld)}${kol("Rivalen", K.riv)}${kol("Markten", K.markt)}
+      <div class="kkol"><div class="ksec">Vraag naar</div><ul class="klist">${K.vr.map(x => `<li>${esc(lab(x.a))} <b class="mono">${x.idx}</b> <span style="color:${x.t >= 0 ? "var(--green)" : "var(--red)"}">${x.t >= 0 ? "▲" : "▼"}</span></li>`).join("")}</ul>
+        ${gs.length ? `<div class="ksec" style="margin-top:10px">Grondstoffen</div><ul class="klist">${gs.map(([l, p]) => `<li>${esc(l)} <b class="mono" style="color:${p >= 1.15 ? "var(--red)" : "var(--green)"}">×${p.toFixed(2)}</b></li>`).join("")}</ul>` : ""}
+        ${s.beurs ? `<div class="ksec" style="margin-top:10px">Beurs</div><p>${esc(s.player.corp_name)} noteert op <b class="mono">${beursKoers(s)}</b>.</p>` : ""}</div>
+      <div class="kkol"><div class="ksec">Corpospanning</div><ul class="klist">${span}</ul><div class="kad">${esc(ad)}</div></div></div></div>`; }
 /* 5.17.2: hoofdmenu */
 function menuHtml(){ const s = G.game, h = (s && s.huisstijl) || {}, klaar = !!(s && s.setup_done), L = G.slots || [];
   const lijst = S.menuLaden ? `<div class="opts hslots">${L.length ? L.map(x => `<div class="opt"><div><div class="t">${esc(x.label || x.naam || "Naamloos spel")}${x.gid === G.gid ? ' <span class="tag cyan">nu</span>' : ""}${x.status && x.status !== "actief" ? ` <span class="tag">${esc(x.status)}</span>` : ""}</div><div class="u">${esc(x.datum || "")}</div></div>${x.gid === G.gid ? `<button class="btn sm" data-a="menudoor">Spelen</button>` : `<button class="btn sm primary" data-a="slot" data-s="wissel" data-g="${esc(x.gid)}">Spelen</button>`}</div>`).join("") : '<p class="dim">Nog geen spellen bewaard.</p>'}</div><p class="dim" style="font-size:12px;margin:4px 0 0">Hernoemen, verwijderen en exporteren kan bij Logboek → Spellen.</p>` : "";
@@ -2153,6 +2182,7 @@ document.addEventListener("click", async e => {
     case "autodev": return act("/api/autodev", {divisie: t.dataset.div, aan: t.dataset.aan == null ? undefined : t.dataset.aan === "1", schaal: t.dataset.schaal}, {silent: true});
     case "autostd": return act("/api/autostandaard", {k: t.dataset.k, aan: t.dataset.aan === "1", alle: t.dataset.alle === "1"});
     case "menu": toonMenu(); return;
+    case "krant": S.view = "wereld"; S.wtab = "krant"; render(); window.scrollTo(0, 0); return;
     case "menudoor": sluitMenu(); return;
     case "menuladen": S.menuLaden = !S.menuLaden; toonMenu(); return;
     case "menunieuw": { if (!G.game || !G.game.setup_done){ sluitMenu(); S.sstep = 0; render(); return; }
