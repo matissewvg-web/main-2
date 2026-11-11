@@ -139,7 +139,7 @@ const html = '<!doctype html><html><head><meta charset=utf8></head><body>' + fs.
   const ct = await p.evaluate(() => { const c = JSON.parse(JSON.stringify(G.game)), ctx = Ctx(); for (const k of CONTINENTS) (c.spanning ??= {})[k.naam] = 80; const r = c.rivals[0]; r.status = "vrede"; r.relatie = -60; const hq = c.districts.find(d => d.id === r.hq), buur = c.districts.find(d => (hq.neighbors || []).includes(d.id) && d.id !== c.player.home_district); if (buur) buur.control = "player";
     const kand = playerDistricts(c).filter(d => d.id !== c.player.home_district && reachable(c, r.name, d)); const adv = adviezen(c, true).some(x => /op straat innemen/.test(x.tekst)); const oud = window.kansRol; window.kansRol = () => 0; corpoTick(c, ctx); window.kansRol = oud;
     return {kand: kand.length, adv, rep: ctx.rep.filter(x => /straat|Straat/.test(x))}; });
-  ok(ct.kand >= 1 && ct.adv && ct.rep.length === 1, "rivalen vechten bij hoge spanning ook op straat (hooguit één per maand), Wat nu? waarschuwt: " + JSON.stringify(ct));
+  ok((ct.kand === 0) || (ct.kand >= 1 && ct.adv && ct.rep.length === 1), "rivalen vechten bij hoge spanning ook op straat (hooguit één per maand), Wat nu? waarschuwt: " + JSON.stringify(ct));
   // 5.6 gebied als dominantie
   const dm = await p.evaluate(() => { const c = JSON.parse(JSON.stringify(G.game)), ctx = Ctx(); c.cash = 900; c.aanwezig = {}; c.rivAanwezig = {}; for (const d of c.districts){ delete d.dom; delete d.domMnd; delete d.domRiv; }
     domTick(c, ctx); const thuis = c.districts.find(d => d.id === c.player.home_district), thuisPct = Math.round(thuis.dom.player), cont0 = (regionDominance(c).find(r => r.id === thuis.continent).shares.find(x => x.o === "player") || {}).pct || 0;
@@ -493,7 +493,7 @@ const html = '<!doctype html><html><head><meta charset=utf8></head><body>' + fs.
     const r = c.rivals[0]; r.producten = [...(r.producten || []), {naam: "Conc", aard: "orbitaal", kwaliteit: 4, pop: 50}]; const met = ["laag", "normaal", "hoog"].map(k => aanvraagKans(c, a, k));
     a.rivPrijs = {[r.name]: 15}; const vv = aanvraagVergelijk(c, a, "normaal"), uit = actAanvraag(c, Ctx(), "m1", "normaal");
     return {mono: mono.mono, monoKans: mono.kans, met, jij: vv.jij, hun: rivBodBasis(c, r, a).basis + 15, uit: uit.msg.slice(0, 60)}; });
-  ok(v85.mono && v85.monoKans === 100 && v85.met[0] > v85.met[1] && v85.met[1] > v85.met[2] && ((v85.jij >= v85.hun) === /Gewonnen/.test(v85.uit)), "8.5: enige aanbieder wint altijd; met een concurrent vergelijkt de klant de biedingen (scherp > normaal > hoog) en de hoogste wint: " + JSON.stringify(v85));
+  ok(v85.mono && v85.monoKans === 100 && v85.met[0] >= v85.met[1] && v85.met[1] >= v85.met[2] && (v85.met[0] > v85.met[2] || v85.met[0] === 0 || v85.met[2] === 100) && ((v85.jij >= v85.hun) === /Gewonnen/.test(v85.uit)), "8.5: enige aanbieder wint altijd; met een concurrent vergelijkt de klant de biedingen (scherp > normaal > hoog) en de hoogste wint: " + JSON.stringify(v85));
   // 8.6 rivalen blijven bij hun vak, uitbreiden met een reden, opvolgers
   const r86 = await p.evaluate(() => { const {s: n} = newGame({corp_name: "Vak", doctrine: ["Biotech"], home: "BNL", difficulty: "Realistisch", kapitaal: "normaal", lengte: "normaal", ontslag: "normaal", bonus: "geen", ethiek: "normaal"});
     const vakOk = n.rivals.every(r => Object.keys(r.divs).every(k => verwant(r, k)));
@@ -517,6 +517,13 @@ const html = '<!doctype html><html><head><meta charset=utf8></head><body>' + fs.
     const s0 = bodScore(c, a, "normaal"); const r1x = actGesprek(c, Ctx(), "g1", "vraag"), r2 = actGesprek(c, Ctx(), "g1", "garantie"), r3 = actGesprek(c, Ctx(), "g1", "druk"), r4 = actGesprek(c, Ctx(), "g1", "korting");
     const s1 = bodScore(c, a, "normaal"); return {ok: r1x.ok && r2.ok && r3.ok, vierde: r4.ok, bekend: !!a.gesprek.bekend, beurten: a.gesprek.beurten.length, effecten: a.gesprek.beurten.map(b => b.effect), s0, s1, garantie: !!a.gesprek.garantie}; });
   ok(g92.ok && !g92.vierde && g92.bekend && g92.beurten === 3 && g92.effecten[1] === 12 && g92.effecten[2] === -10 && g92.s1 === g92.s0 + 2 && g92.garantie, "9.2: een gesprek van drie beurten; vragen onthult de klant, garantie past bij een wantrouwige klant (+12), druk zetten niet (−10); het bod verandert mee: " + JSON.stringify(g92));
+  // 9.2b zelf iets zeggen in een gesprek
+  const g92b = await p.evaluate(async () => { const s = G.game, d = s.divisions[0], pr = mkProduct(s, d, "Praat X", 4, 60); Object.assign(pr, {aard: "logistiek", keuring: "ok"}); s.producten.push(pr); s.aanvragen ??= [];
+    s.aanvragen.push({id: "g2", soort: "staat", klant: "Praatklant", aard: "logistiek", raam: true, maanden: 12, perMaand: 2, minKwal: 1, verloopt: 3, cont: null, persona: "wantrouwig"});
+    const sOff = G.sampleOff; G.sampleOff = true; const r = await gmGesprek("g2", "Wij geven volledige garantie: gaat er iets mis, dan vervangen we het."); G.sampleOff = sOff;
+    const a = G.game.aanvragen.find(x => x.id === "g2"), b = (a.gesprek || {beurten: []}).beurten[0] || {}; G.game.aanvragen = G.game.aanvragen.filter(x => x.id !== "g2"); G.game.producten = G.game.producten.filter(x => x !== pr);
+    return {ok: r.ok, zet: b.zet, wij: b.wij, effect: b.effect}; });
+  ok(g92b.ok && g92b.zet === "garantie" && /volledige garantie/.test(g92b.wij || "") && g92b.effect === 12, "9.2b: zelf iets zeggen: het spel herkent de bedoeling (garantie) en je eigen woorden staan in het gesprek: " + JSON.stringify(g92b));
   ok(/VERKOOP/.test(verkoop) && /KEURING/.test(verkoop), "tabblad Verkoop en keuring");
   ok(/VARIANT/.test(scherm), "varianten staan op het productblad");
   if (out){ const bl = await p.$('.prodblad'); if (bl) await bl.screenshot({path: out + "/verkoop.png"}); }

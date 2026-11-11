@@ -287,3 +287,17 @@ function applyGmEffect(s, e){
   return out;
 }
 
+
+/* 9.2b: de GM speelt de klant in een contractgesprek. De engine bepaalt het effect (welke zet het is en wat die bij deze klant doet); de GM schrijft alleen het antwoord. */
+async function gmGesprek(id, tekst){ const s = G.game, a = s && (s.aanvragen || []).find(x => x.id === id); if (!a) return {ok: false, bericht: "Die aanvraag is er niet meer."};
+  tekst = cStr(tekst, 300); if (tekst.length < 2) return {ok: false, bericht: "Zeg eerst iets."}; const zet0 = zetVanTekst(tekst);
+  if (!live()){ const r = actGesprek(s, Ctx(), id, (a.gesprek || {gedaan: []}).gedaan && (a.gesprek || {gedaan: []}).gedaan.includes(zet0) ? Object.keys(GESPREK_ZET).find(k => !(a.gesprek.gedaan || []).includes(k) && (!GESPREK_ZET[k].raam || a.raam)) : zet0, {wij: tekst}); if (r.ok) await persist(Ctx()); return {ok: r.ok, bericht: r.msg}; }
+  const P = KLANT_PERSONA[personaVan(a)], hist = ((a.gesprek || {}).beurten || []).map(b => `CEO: ${b.wij}\nKlant: ${b.zij}`).join("\n");
+  try { const r = await G.sample.json(`Je speelt een klant in CHROME LEDGER (cyberpunk-bedrijfssimulatie, Nederlands, droog en zakelijk). Klant: ${a.klant} (${KLANT_SOORT[a.soort].label}). Ze willen: ${a.tekst}. Hun karakter (geheim, niet letterlijk noemen): ${P.label}, wil vooral ${P.wil}.
+Eerdere beurten:\n${hist || "(nog geen)"}
+De CEO van ${s.player.corp_name} zegt nu: "${tekst}"
+Kies welke zet dit het best is: ${Object.keys(GESPREK_ZET).filter(k => !((a.gesprek || {}).gedaan || []).includes(k) && (!GESPREK_ZET[k].raam || a.raam)).join(", ")} (vraag = de CEO vraagt naar wensen). Schrijf het antwoord van de klant: 1 of 2 zinnen, in karakter, zonder getallen over kansen.
+Antwoord met alleen JSON: {"zet": "...", "antwoord": "..."}`, {modelTier: "quick"});
+    let zet = GESPREK_ZET[r && r.zet] ? r.zet : zet0; if (((a.gesprek || {}).gedaan || []).includes(zet)) zet = zet0;
+    const res = actGesprek(s, Ctx(), id, zet, {wij: tekst, zij: cStr(r && r.antwoord, 300)}); if (res.ok) await persist(Ctx()); return {ok: res.ok, bericht: res.msg}; }
+  catch(e){ return {ok: false, bericht: sampleErrorText(e)}; } }

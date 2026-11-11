@@ -1135,7 +1135,10 @@ const GESPREK_ZET = {
 const GESPREK_BEURTEN = 3;
 const personaVan = a => a.persona || (a.persona = Object.keys(KLANT_PERSONA)[hashN(a.id || a.klant || "x", 0) % Object.keys(KLANT_PERSONA).length]);
 const gesprekBonus = a => ((a.gesprek || {}).bonus || 0), gesprekF = a => ((a.gesprek || {}).f || 1);
-function actGesprek(s, ctx, id, zet){ const a = (s.aanvragen || []).find(x => x.id === id); if (!a) return {ok: false, msg: "Die aanvraag is er niet meer."};
+/* 9.2b: zelf iets zeggen. Zonder live GM herkent het spel je bedoeling aan woorden; met de GM antwoordt de klant in eigen woorden (zie gmGesprek). */
+const ZET_WOORD = [[/kort|goedkop|prijs omlaag|procent|%|deal/i, "korting"], [/garant|zeker|vervang|verzeker|beloof.*kost|risico/i, "garantie"], [/kwalit|test|demo|fabriek|bewijs|rapport|laat.*zien/i, "kwaliteit"], [/lang|jaren|samenwerk|partner|toekomst/i, "lang"], [/snel|morgen|direct|week|meteen|vandaag/i, "snel"], [/concurrent|anders|beslis nu|laatste kans|capaciteit/i, "druk"], [/\?|wat (wilt|zoekt|vindt)|belangrijk|vertel/i, "vraag"]];
+const zetVanTekst = t => (ZET_WOORD.find(([re]) => re.test(String(t || ""))) || [null, "vraag"])[1];
+function actGesprek(s, ctx, id, zet, eigen){ const a = (s.aanvragen || []).find(x => x.id === id); if (!a) return {ok: false, msg: "Die aanvraag is er niet meer."};
   const Z = GESPREK_ZET[zet]; if (!Z) return {ok: false, msg: "Onbekende zet."}; const G2 = (a.gesprek ??= {beurten: [], bonus: 0, f: 1, gedaan: []});
   if (G2.beurten.length >= GESPREK_BEURTEN) return {ok: false, msg: `${a.klant} heeft genoeg gehoord. Schrijf in of laat het.`}; if (G2.gedaan.includes(zet)) return {ok: false, msg: "Dat heb je al gezegd."}; if (Z.raam && !a.raam) return {ok: false, msg: "Een langer contract kan alleen bij een raamcontract."};
   const P = KLANT_PERSONA[personaVan(a)], p = aanvraagProduct(s, a); let e = P.eff[zet] || 0;
@@ -1143,8 +1146,8 @@ function actGesprek(s, ctx, id, zet){ const a = (s.aanvragen || []).find(x => x.
   if (zet === "garantie"){ G2.garantie = true; } if (zet === "lang"){ G2.lang = true; } if (Z.f) G2.f = Math.round(G2.f * Z.f * 100) / 100; if (zet === "vraag") G2.bekend = true;
   G2.bonus += e; G2.gedaan.push(zet);
   const antwoord = zet === "vraag" ? `${P.stem[0]} Wat wij zoeken: ${P.wil}.` : e >= 8 ? CH([P.stem[1], "Nu praten we.", "Dat is precies wat we zoeken."]) : e >= 3 ? CH(["Goed. Dat nemen we mee.", "Dat helpt.", "Interessant."]) : e > -4 ? CH(["Mm.", "Dat zegt me weinig.", "Dat doet iedereen."]) : CH(["Dat valt niet goed.", "Is dat een dreigement?", "Dan weten we genoeg over u."]);
-  G2.beurten.push({zet, wij: Z.tekst, zij: antwoord, effect: e});
-  return {ok: true, msg: `${a.klant}: "${antwoord}"`}; }
+  G2.beurten.push({zet, wij: eigen && eigen.wij ? cStr(eigen.wij, 300) : Z.tekst, zij: eigen && eigen.zij ? cStr(eigen.zij, 300) : antwoord, effect: e});
+  return {ok: true, msg: `${a.klant}: "${eigen && eigen.zij ? cStr(eigen.zij, 300) : antwoord}"`}; }
 function actLobby(s, ctx, id){ const a = (s.aanvragen || []).find(x => x.id === id); if (!a) return {ok: false, msg: "Die aanvraag is er niet meer."}; if (a.lobby) return {ok: false, msg: "Daar is al voor gelobbyd."};
   if ((s.invloed || 0) < LOBBY_INV) return {ok: false, msg: `Lobbyen kost ${LOBBY_INV} invloed.`}; s.invloed = r1(s.invloed - LOBBY_INV); a.lobby = true; return {ok: true, msg: `Een paar diners, een paar telefoontjes: +12 kans bij ${a.klant}.`}; }
 function contractHist(s, a, uitkomst, wie, bedrag){ const pp = a.product ? (s.producten || []).find(x => x.id === a.product) : null;
