@@ -193,7 +193,7 @@ const html = '<!doctype html><html><head><meta charset=utf8></head><body>' + fs.
     return {n1, k, r1: r1.ok, winst, con: con ? {perMaand: con.perMaand, over: con.over} : null, maand, verbroken: ctx4.rep.some(x => /verbroken/.test(x)), repDaling: Math.round((rep0 - c.reputation) * 10) / 10, over: c.contracten.length}; });
   await p.evaluate(() => { crypto.getRandomValues = window.__echt9; });
   const klUI = await p.evaluate(() => { const s = G.game, a = maakAanvraag(s); (s.aanvragen ??= []).push(a); S.view = "bedrijf"; render(); const t = document.querySelector("main").textContent; s.aanvragen = s.aanvragen.filter(x => x !== a); render(); return /Klanten/.test(t) && /Scherp/.test(t) && /Afwijzen/.test(t); });
-  ok(kl.n1 === 1 && kl.k[0] > kl.k[2] && kl.k[0] >= kl.k[1] && kl.k[1] >= kl.k[2] && kl.r1 && kl.winst === 4.5 && kl.con && kl.con.perMaand === 4.8 && kl.maand === 2.2 && kl.verbroken && kl.repDaling >= 5 && kl.over === 0 && klUI,
+  ok(kl.n1 >= 1 && kl.k[0] > kl.k[2] && kl.k[0] >= kl.k[1] && kl.k[1] >= kl.k[2] && kl.r1 && kl.winst === 4.5 && kl.con && kl.con.perMaand === 4.8 && kl.maand === 2.2 && kl.verbroken && kl.repDaling >= 5 && kl.over === 0 && klUI,
     "klanten komen naar jou: aanvraag verschijnt, scherp geeft meer kans dan hoog, levering betaalt 45% marge, raamcontract betaalt elke maand, zonder product verbroken met boete, kaart op Bedrijf: " + JSON.stringify(kl));
   // 5.10 export en vergunningen
   const ex = await p.evaluate(() => { const c = JSON.parse(JSON.stringify(G.game)), ctx = Ctx(); c.cash = 500; c.exportVergunning = {}; c.smokkelroute = {}; const pm = c.producten.find(x => x.status === "markt"); if (!pm) return {geen: true}; pm.aard = "wapen";
@@ -379,6 +379,23 @@ const html = '<!doctype html><html><head><meta charset=utf8></head><body>' + fs.
     S.rustig = true; document.documentElement.classList.add("rustig"); S.view = "kaart"; render(); const rustig = !document.getElementById("main").classList.contains("viewin");
     S.rustig = oudR; document.documentElement.classList.toggle("rustig", !!oudR); S.view = "overzicht"; render(); return {wissel, zelfde, tab, op, neer, golf, scan, rustig}; });
   ok(fx.wissel && !fx.zelfde && fx.tab && fx.op && fx.neer && fx.golf && fx.scan && fx.rustig, "effecten: animatie bij een ander scherm of tabblad (niet bij elke klik), cijfers lichten op bij een verandering, klikgolf, maandscan, uit met EFFECTEN UIT: " + JSON.stringify(fx));
+  // 6.8 zware producten alleen via contracten, meer aanvragen
+  await p.evaluate(() => { window.__echt68 = crypto.getRandomValues; crypto.getRandomValues = a => { a[0] = 5; return a; }; });
+  const zp = await p.evaluate(() => { const c = JSON.parse(JSON.stringify(G.game)); c.aanvragen = []; c.contracten = []; c.cash = 500; c.reputation = 40; const d = c.divisions[0];
+    const t = mkProduct(c, d, "Testtank", 4, 60); t.aard = "wapen"; t.schaal = "vlag"; c.producten.push(t); const order = stukInfo(t).order;
+    const oud = window.kansRol; window.kansRol = () => 0; const ctx = Ctx(); aanvraagTick(c, ctx); window.kansRol = oud; const ca = c.aanvragen.filter(a => a.product === t.id), alg = c.aanvragen.filter(a => !a.product).length;
+    const a0 = ca[0]; let gewonnen = null; if (a0){ a0.raam = false; a0.bedrag = 20; delete a0.maanden; delete a0.perMaand; c.prodomzet = {}; const r = actAanvraag(c, Ctx(), a0.id, "normaal"); gewonnen = {ok: r.ok, omzet: (c.prodomzet || {})[t.id], orders: (t.orders || []).length}; }
+    return {order, contract: ca.length, klant: a0 && a0.soort, tekst: a0 && a0.tekst, alg, gewonnen, max: AANVRAAG_MAX, doel: keurDoel({...t, kwaliteit: 3})}; });
+  await p.evaluate(() => { crypto.getRandomValues = window.__echt68; });
+  ok(zp.order && zp.contract === 1 && ["leger", "staat"].includes(zp.klant) && /Testtank/.test(zp.tekst) && zp.alg === 2 && zp.gewonnen && zp.gewonnen.ok && zp.gewonnen.omzet === 20 && zp.gewonnen.orders === 1 && zp.max === 6 && zp.doel <= 6, "zware producten: alleen via contracten van legers/staten, die vaak komen; gewonnen levering telt als omzet van het product; tot 2 aanvragen per maand; keuring makkelijker: " + JSON.stringify(zp));
+  // 6.8 handel geeft dominantie, aanwezigheid goedkoper, spanning werkt hard
+  const hdom = await p.evaluate(() => { const c = JSON.parse(JSON.stringify(G.game)); const thuis = exportThuis(c), d = c.districts.find(x => x.continent === thuis && x.control !== "player");
+    c.aanwezig = {}; c.patrouille = {}; c.handel = {}; const zonder = domDoel(c, d).player || 0;
+    c.handel = {[thuis]: 36}; const met = domDoel(c, d).player || 0, h = handelAanwezig(c, thuis);
+    const p1 = (c.producten || []).find(x => x.status === "markt"); let verdeeld = null; if (p1){ c.prodomzet = {[p1.id]: 20}; handelTick(c); verdeeld = Object.values(c.handel).reduce((a, b) => a + b, 0); }
+    c.spanning[thuis] = 95; const ef = spanningEffecten(c, thuis).map(e => e.t).join("|");
+    return {zonder, met, h, verdeeld, kost: aanwezigKost(c, d), cost: districtCost(c, d), w: spanningVraagF("wapen", 95), cons: spanningVraagF("consument", 95), rust: spanningVraagF("wapen", 20), ef, kop: !!document.querySelector(".spstat")}; });
+  ok(hdom.zonder === 0 && hdom.met > 10 && hdom.h === 20 && (hdom.verdeeld == null || Math.abs(hdom.verdeeld - 20) < 0.3) && hdom.kost <= Math.max(2, hdom.cost * 0.15) + 0.05 && hdom.w > 1.8 && hdom.cons < 0.7 && hdom.rust === 1 && /Wapens ×/.test(hdom.ef) && /Heat zakt sneller/.test(hdom.ef) && /Straatgevechten/.test(hdom.ef) && hdom.kop, "omzet op een continent geeft aanwezigheid in elk district daar; aanwezigheid kopen is goedkoper; corpospanning verdubbelt bijna de wapenvraag en drukt consument; effecten per continent en in de header: " + JSON.stringify(hdom));
   ok(/VERKOOP/.test(verkoop) && /KEURING/.test(verkoop), "tabblad Verkoop en keuring");
   ok(/VARIANT/.test(scherm), "varianten staan op het productblad");
   if (out){ const bl = await p.$('.prodblad'); if (bl) await bl.screenshot({path: out + "/verkoop.png"}); }
