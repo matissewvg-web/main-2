@@ -205,6 +205,17 @@ const html = '<!doctype html><html><head><meta charset=utf8></head><body>' + fs.
   const exUI = await p.evaluate(() => { const s = G.game, pm = s.producten.find(x => x.status === "markt"); if (!pm) return true; const oud = pm.aard; pm.aard = "wapen"; S.view = "bedrijf"; render(); const t = document.querySelector("main").textContent; pm.aard = oud; render(); return /Export/.test(t) && /Vergunning ·/.test(t); });
   ok(ex.geen || (ex.e0.legaal === 0 && !ex.thuisNee && ex.v && ex.k2 > ex.k1 && Math.abs(ex.e1.legaal - 0.6) < 1e-9 && ex.e2.legaal === 0 && ex.e2.zwart === 0 && ex.sm && Math.abs(ex.e3.zwart - 0.48) < 1e-9 && ex.e3.heat === 0.3 && Math.abs(ex.e4.legaal - 0.6) < 1e-9 && ex.e5.legaal === 0) && exUI,
     "export: vergunning per continent +6%, duurder per vergunning, embargo bij spanning 50-89 tenzij smokkelroute (zwart, heat), alleen wapens/beveiliging/implantaten, kaart op Bedrijf: " + JSON.stringify(ex));
+  // 5.11 regionale markten
+  const rg = await p.evaluate(() => { const c = JSON.parse(JSON.stringify(G.game)); delete c.regioVraag; regioTick(c); const pm = c.producten.find(x => x.status === "markt"); if (!pm) return {geen: true}; delete pm.markten;
+    const een = Object.values(c.regioVraag).every(v => Object.values(v).every(x => x === 1)); const oudP = pm.prijsF; pm.prijsF = 1; const f1 = regioF(c, pm);
+    pm.prijsF = 1.5; const f15 = regioF(c, pm); const D = regioDelen(c, pm), naRijk = D.find(x => x.c === "Noord-Amerika").tol, afr = D.find(x => x.c === "Afrika").tol;
+    pm.prijsF = 1; c.regioVraag["Afrika"][pm.aard || aardVan(pm.type, pm.naam)] = 0.3; const voor = regioF(c, pm), r1 = actRegio(c, pm.id, "Afrika"), na = regioF(c, pm), mk = (pm.markten || []).length;
+    for (const k of regioNamen()) if (k !== "Europa" && regioMarkten(pm).includes(k)) actRegio(c, pm.id, k); const laatste = actRegio(c, pm.id, "Europa").ok, nu = regioMarkten(pm);
+    for (const k of regioNamen()) if (!regioMarkten(pm).includes(k)) actRegio(c, pm.id, k); const terug = pm.markten == null;
+    const n = newGame({...S.setup, corp_name: "Regio BV", doctrine: ["Biotech"], home: "BNL", zaad: "REGIO1"}).s, varieert = new Set(Object.values(n.regioVraag).map(v => v.medisch)).size > 1;
+    return {een, f1: Math.round(f1 * 1000) / 1000, f15: Math.round(f15 * 100) / 100, naRijk, afr, voor: Math.round(voor * 1000) / 1000, na: Math.round(na * 1000) / 1000, r1: r1.ok, mk, laatste, nu, terug, varieert}; });
+  const rgUI = await p.evaluate(() => { const pm = G.game.producten.find(x => x.status === "markt"); if (!pm) return true; S.view = "bedrijf"; S.prodSheet = pm.id; (S.prodTab ??= {})[pm.id] = "markt"; render(); return /REGIO'S/.test(document.querySelector("main").textContent); });
+  ok(rg.geen || (rg.een && rg.f1 === 1 && rg.f15 > 0.9 && rg.f15 < 1.1 && rg.naRijk > 1 && rg.afr < 1 && rg.r1 && rg.mk === 6 && rg.na > rg.voor && !rg.laatste && rg.nu.length === 1 && rg.terug && rg.varieert), "regionale markten: neutraal ×1 bij alles verkopen, rijk/arm per prijs, slechte regio laten vallen loont door focus, minstens één markt, nieuw spel varieert per continent: " + JSON.stringify(rg) + " ui " + rgUI);
   ok(/VERKOOP/.test(verkoop) && /KEURING/.test(verkoop), "tabblad Verkoop en keuring");
   ok(/VARIANT/.test(scherm), "varianten staan op het productblad");
   if (out){ const bl = await p.$('.prodblad'); if (bl) await bl.screenshot({path: out + "/verkoop.png"}); }

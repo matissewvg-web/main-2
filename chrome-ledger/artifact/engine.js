@@ -609,7 +609,7 @@ function tick(s){
   lingeringTick(s, ctx, diff); invoicesTick(s, ctx, diff); marketTick(s, ctx); factionTick(s, ctx);
   npcTick(s, ctx); nomadDemandTick(s, ctx); chaosTick(s, ctx, diff); rumorTick(s, ctx); arcsTick(s, ctx, diff);
   sectorTick(s); regionTick(s, ctx); bedrijfTick(s, ctx); bedrijfLeven(s, ctx); peopleTick(s, ctx, diff);
-  specialTick(s, ctx); productTick(s, ctx); { const pe = productEffectTick(s); if (pe.heat) gz.hDelen.push(["Producten", r1(pe.heat)]); if (pe.morale) gz.mDelen.push(["Producten", r1(pe.morale)]); } productEventTick(s, ctx); tijdlijnTick(s, ctx); spanningTick(s, ctx); corpoTick(s, ctx); domTick(s, ctx); assistentTick(s, ctx); aanvraagTick(s, ctx); vraagTick(s); rivalProductTick(s); wereldInvloedProducten(s); eraTick(s, ctx); if (s.date.month === 12) jaarTick(s, ctx); marktTick(s); klusTick(s);
+  specialTick(s, ctx); productTick(s, ctx); { const pe = productEffectTick(s); if (pe.heat) gz.hDelen.push(["Producten", r1(pe.heat)]); if (pe.morale) gz.mDelen.push(["Producten", r1(pe.morale)]); } productEventTick(s, ctx); tijdlijnTick(s, ctx); spanningTick(s, ctx); corpoTick(s, ctx); domTick(s, ctx); assistentTick(s, ctx); aanvraagTick(s, ctx); regioTick(s); vraagTick(s); rivalProductTick(s); wereldInvloedProducten(s); eraTick(s, ctx); if (s.date.month === 12) jaarTick(s, ctx); marktTick(s); klusTick(s);
   s.accounts.operationeel = s.cash; s.hidden_truth = s.hidden_truth.slice(-30);
 
   let status = "actief";
@@ -666,7 +666,7 @@ function tick(s){
 }
 
 /* ---------- de stad: elke game een andere kaart ---------- */
-const VERSION = "5.10.1";
+const VERSION = "5.11";
 const MAP_W = 1000, MAP_H = 680;
 const RIVAL_COLORS = ["#ff9a1f", "#3d7bff", "#c6ff2e", "#f2f2f2", "#9b5cff", "#ffd400", "#ff4d4d"];
 const ARCH = {
@@ -3064,7 +3064,7 @@ function prodDetail(s, p, omzet){
     cap, vraag: Math.round(vraag), uitverkocht: vraag > cap, gemist: vraag > cap ? Math.round((vraag - cap) / vraag * 100) : 0, capKost: capKost(s, p), capVast: capVast(s, p), capKrimp: prodCap(s, p) - 15 >= 45, seg: segment(s, p), hist: (p.hist || []).slice(-12), prijsF: prijsF(p), elast: elast(p), segmenten: segmenten(p, s).rows.map(({vol, ...r}) => r), delen: delenVan(p).map((d, i) => { const k = deelKwal(p, i), eigen = eigenDeel(p, i), lv = leverancier(s, p, i), per = (abo ? sp / prijsF(p) : basisPrijs(p)) * PROD_KOST * d[1] * DEEL_KWAL[k].kost * (eigen ? EIGEN_KORTING : 1);
       return {naam: d[0], aandeel: d[1], spec: (SPECS[p.aard] || SPECS.consument)[d[2]], kwal: k, kost: Math.round(per * 100) / 100, eigen, lev: eigen ? "eigen fabriek" : lv ? lv.naam : "eigen werkplaats"}; }), zelfKost: zelfKost(s), arbeid: Math.round((abo ? sp / prijsF(p) : basisPrijs(p)) * PROD_KOST * ARBEID * 100) / 100, omschakel: omschakelKost(s), auto: {...(p.auto || {})}, marketing: {actief: p.mkt ? {...p.mkt, label: MARKETING[p.mkt.kanaal] ? MARKETING[p.mkt.kanaal].label : "Campagne", seg: (SEGMENTEN[p.aard] || SEGMENTEN.consument)[p.mkt.seg][0]} : null, dezeMaand: p.actie === ym(s), opties: Object.entries(MARKETING).map(([k, M]) => ({key: k, label: M.label, kost: M.kost, zwart: !!M.zwart, tekst: M.tekst, seg: M.doel ? (SEGMENTEN[p.aard] || SEGMENTEN.consument)[mktSegIndex(p, M.doel)][0] : null}))}, kanaal: {key: kanaalVan(p), wissel: kanaalWissel(s), opties: Object.entries(KANAAL).map(([k, K]) => ({key: k, label: K.label, vol: Math.round(K.vol(p) * 100), marge: Math.round(K.marge * 100), vast: K.vast, heat: K.heat, zwart: K.zwart || 0, tekst: K.tekst}))}, keuring: KEURING_AARD.has(p.aard) || p.keuring != null ? {status: keurStatus(p), maanden: keurStatus(p) === "bezig" ? p.keuring.maanden : 0, kost: keurKost(s), omkoop: omkoopKost(s), kans: kans2d6(0, keurDoel(p)), omkoopKans: kans2d6(0, 7), instantie: keurInstantie(p)} : null, defect: defectPct(p), garantie: r1(garantie(p, omzet)), garantieEur: Math.round(garantie(p, omzet) * 1e6), defectRisico: Math.max(0, Math.round((defectPct(p) - DEFECT_DREMPEL) * 10) / 10), beste: p.status === "markt" ? besteprijs(s, p) : null};
 }
-const prodGewicht = (p, s) => keurF(p) * kanaalF(p) * p.kwaliteit * effBereik(p, s) / 100 * prijsF(p) * (s ? vraagFactor(s, p.aard || aardVan(p.type, p.naam)) : 1) * (p.trait === "goedkoop" ? 1.15 : 1);
+const prodGewicht = (p, s) => keurF(p) * kanaalF(p) * p.kwaliteit * effBereik(p, s) / 100 * prijsF(p) * (s ? vraagFactor(s, p.aard || aardVan(p.type, p.naam)) * regioF(s, p) : 1) * (p.trait === "goedkoop" ? 1.15 : 1); /* 5.11: regio's */
 const prodSterkte = p => bereik(p) / 100 * (0.5 + p.kwaliteit * 0.15);
 function prodEffecten(p){ const A = PRODUCT_AARD[p.aard || "consument"] || PRODUCT_AARD.consument, f = prodSterkte(p), out = {};
   for (const [k2, v] of Object.entries(p.eigenEff || A.eff)) out[k2] = Math.round(v * f * 10) / 10; const pr = ((PRIJS[p.prijs || "standaard"] || {}).rep || 0) + (prijsF(p) > 1.5 ? -0.25 : 0); if (pr) out.reputation = Math.round(((out.reputation || 0) + pr) * 10) / 10;
@@ -3407,6 +3407,25 @@ function actExport(s, ctx, soort, cont){ if (!CONTINENTS.some(c => c.naam === co
     const k = smokkelKost(s); if (s.cash < k) return {ok: false, msg: `Een smokkelroute opzetten kost €${k}M.`}; s.cash = r1(s.cash - k); s.accounts.operationeel = s.cash; S0[cont] = ym(s); addLog(s, `Smokkelroute ${cont} (€${k}M)`);
     return {ok: true, msg: `Smokkelroute naar ${cont}: tijdens een embargo gaat de handel door, als zwart geld (80%) en met heat.`}; }
   return {ok: false, msg: "Onbekende actie."}; }
+/* 5.11: regionale markten. Elk continent heeft een eigen marktgrootte, koopkracht, vraag per soort en concurrenten (rivalen met een hoofdkantoor daar). Per product kies je waar je verkoopt; minder markten = meer focus. Neutraal geijkt: alles verkopen tegen standaardprijs bij gemiddelde vraag = ×1. */
+const REGIO = {"Noord-Amerika": {w: 0.24, kk: 1.25}, "Europa": {w: 0.22, kk: 1.2}, "Azië": {w: 0.28, kk: 1.0}, "Midden-Oosten": {w: 0.07, kk: 1.05}, "Zuid-Amerika": {w: 0.07, kk: 0.85}, "Afrika": {w: 0.06, kk: 0.75}, "Oceanië": {w: 0.06, kk: 1.15}};
+const REGIO_KK = Object.values(REGIO).reduce((a, r) => a + r.w * r.kk, 0), REGIO_FOCUS = 0.6;
+const regioNamen = () => Object.keys(REGIO);
+const regioMarkten = p => (p.markten && p.markten.length ? p.markten : regioNamen());
+function regioVraag(s, c, aard){ const v = ((s.regioVraag || {})[c] || {})[aard] ?? 1; if (aard !== "wapen" && aard !== "beveiliging") return v; return v * (1 + (spanningVan(s, c) - spanningGem(s)) / 200); }
+function regioConc(s, c, aard){ const hqC = r => (s.districts.find(d => d.id === r.hq) || {}).continent; return Math.pow(0.85, s.rivals.filter(r => hqC(r) === c && (r.producten || []).some(x => x.aard === aard)).length); }
+const regioTol = (c, p) => clamp(1 + (REGIO[c].kk - REGIO_KK) * (prijsF(p) - 1) * 2, 0.5, 1.5);
+function regioDelen(s, p){ const aard = p.aard || aardVan(p.type, p.naam), alle = regioNamen(), cg = alle.reduce((a, c) => a + REGIO[c].w * regioConc(s, c, aard), 0) || 1;
+  return alle.map(c => ({c, w: REGIO[c].w, v: regioVraag(s, c, aard), conc: regioConc(s, c, aard) / cg, tol: regioTol(c, p)})); }
+function regioF(s, p){ if (!s || !s.districts) return 1; const sel = new Set(regioMarkten(p)), D = regioDelen(s, p); let num = 0, selW = 0;
+  for (const x of D) if (sel.has(x.c)){ num += x.w * x.v * x.conc * x.tol; selW += x.w; }
+  return num * (1 + REGIO_FOCUS * (1 - selW)); }
+function regioTick(s, newGame){ const V = (s.regioVraag ??= {}); const nieuw = !Object.keys(V).length;
+  for (const c of regioNamen()){ V[c] ??= {}; for (const a of Object.keys(PRODUCT_AARD)){ if (V[c][a] == null){ V[c][a] = nieuw && newGame ? r1(U(0.75, 1.25) * 100) / 100 : 1; continue; } if (!newGame) V[c][a] = Math.round(clamp(V[c][a] + (1 - V[c][a]) * 0.02 + U(-0.03, 0.03), 0.5, 1.6) * 100) / 100; } } }
+function actRegio(s, id, c){ const p = (s.producten || []).find(x => x.id === id); if (!p) return {ok: false, msg: "Onbekend product."}; if (!REGIO[c]) return {ok: false, msg: "Onbekend continent."};
+  const sel = new Set(regioMarkten(p)); if (sel.has(c)){ if (sel.size <= 1) return {ok: false, msg: "Je moet minstens op één continent verkopen."}; sel.delete(c); } else sel.add(c);
+  p.markten = sel.size === regioNamen().length ? null : [...sel]; if (!p.markten) delete p.markten;
+  return {ok: true, msg: `${p.naam} verkoopt nu in ${sel.size === regioNamen().length ? "de hele wereld" : [...sel].join(", ")}.`}; }
 const spanningGem = s => { const v = Object.values(s.spanning || {}); return v.length ? v.reduce((a, b) => a + b, 0) / v.length : 0; };
 function tijdlijnTick(s, ctx){ const nu = ym(s), gehad = (s.tijdlijnGehad ??= []), B = (s.vraagBasis ??= {});
   for (const t of TIJDLIJN){ if (t.d > nu || gehad.includes(t.d)) continue; gehad.push(t.d); const recent = mndNr(nu) - mndNr(t.d) <= 2;
@@ -3833,7 +3852,7 @@ function newGame0(d){
   const agr = {Casual: -0.1, Realistisch: 0, Genadeloos: 0.12}[p.difficulty] || 0; for (const r of s.rivals) r.aggression = r1(clamp(r.aggression + agr, 0.05, 0.95) * 100) / 100;
   s.stats = {piekWaarde: 0, bestePlek: 99, hits: 0, flops: 0, aanslagenAf: 0, aanslagenRaak: 0, klussen: 0, oorlogen: 0};
   { const c0 = genKandidaat(s); c0.rol = "fixer"; c0.niveau = 1; c0.trait = "trouw"; c0.loon = crewLoon(s, c0); c0.sinds = ym(s); s.crew.push(c0); }
-  marktTick(s); klusTick(s); s.dreigingen = []; startProducten(s); vraagInit(s); rivalProductInit(s);
+  marktTick(s); klusTick(s); s.dreigingen = []; regioTick(s, true); startProducten(s); vraagInit(s); rivalProductInit(s);
   news(s, `Nieuwe corporatie: ${p.corp_name}`, `${p.corp_name} vestigt zich in ${s.districts.find(x => x.id === home).name}${p.hq_stad ? " (" + p.hq_stad + ")" : ""}. Doctrine: ${p.doctrine}. De concurrentie kijkt mee.`, homeCont, "markt", true);
   s.setup_done = true; s.accounts.operationeel = s.cash;
   const hn = s.districts.find(x => x.id === home).name;
@@ -4430,6 +4449,7 @@ const API = {
   async "/api/taak"(d){ const s = G.game, ctx = Ctx(); const r = d.rol ? actAannemen(s, ctx, d.rol) : actTaak(s, ctx, d.k, !!d.aan); if (r.ok) await persist(ctx); return {ok: r.ok, bericht: r.msg}; },
   async "/api/aanvraag"(d){ const s = G.game, ctx = Ctx(); const r = actAanvraag(s, ctx, d.id, d.keuze); if (r.ok) await persist(ctx); return {ok: r.ok, bericht: r.msg}; },
   async "/api/export"(d){ const s = G.game, ctx = Ctx(); const r = actExport(s, ctx, d.soort, d.cont); if (r.ok) await persist(ctx); return {ok: r.ok, bericht: r.msg}; },
+  async "/api/regio"(d){ const s = G.game, ctx = Ctx(); const r = actRegio(s, d.id, d.cont); if (r.ok) await persist(ctx); return {ok: r.ok, bericht: r.msg}; },
   async "/api/corpo"(d){ const s = G.game, ctx = Ctx(); const r = actCorpo(s, ctx, d.soort, d.id); if (r.ok) await persist(ctx); return {ok: r.ok, bericht: r.msg}; },
   async "/api/huisstijl"(d){ const s = G.game, ctx = Ctx(); const r = actHuisstijl(s, d || {}); if (r.ok) await persist(ctx); return {ok: r.ok, bericht: r.msg}; },
   async "/api/product"(d){ const s = G.game, ctx = Ctx(); const r = actProduct(s, ctx, d.soort, d); if (r.ok) await persist(ctx); return {ok: r.ok, bericht: r.msg}; },
