@@ -541,6 +541,7 @@ function tick(s){
   const crewKost = crewLoonTotaal(s) + legerKostNu(s);
   if (crewKost) lines.push(`| Crew${s.huurleger ? " en huurleger" : ""} (${(s.crew || []).length}) | 0 | ${r1(crewKost)} |`);
   cost += payroll + (s.culture.bonus_cost || 0) + interest + projCost + (s.defensie || 0) * 2 + (s.schepen || 0) * 1.2 + crewKost;
+  { const tl = termijnTick(s); if (tl){ cost += tl; lines.push(`| Termijnleningen (rente en aflossing) | 0 | ${tl} |`); } } /* 5.15 */
   { const dl = directieLoon(s); if (dl){ cost += dl; lines.push(`| Directie: loon nieuwe assistenten | 0 | ${dl} |`); } } /* 5.8 */
   { const np = patrouilles(s).length, pk = r1(np * patrouilleKost(s)); if (pk){ cost += pk; lines.push(`| Patrouilles op straat (${np}) | 0 | ${pk} |`); if (!heeftWet(s, "beveiliging")) heatAdd += np * 0.25; } } /* 5.5 */
   if (npcActive(s, "kosten")) cost *= 0.97;
@@ -609,7 +610,7 @@ function tick(s){
   lingeringTick(s, ctx, diff); invoicesTick(s, ctx, diff); marketTick(s, ctx); factionTick(s, ctx);
   npcTick(s, ctx); nomadDemandTick(s, ctx); chaosTick(s, ctx, diff); rumorTick(s, ctx); arcsTick(s, ctx, diff);
   sectorTick(s); regionTick(s, ctx); bedrijfTick(s, ctx); bedrijfLeven(s, ctx); peopleTick(s, ctx, diff);
-  specialTick(s, ctx); productTick(s, ctx); { const pe = productEffectTick(s); if (pe.heat) gz.hDelen.push(["Producten", r1(pe.heat)]); if (pe.morale) gz.mDelen.push(["Producten", r1(pe.morale)]); } productEventTick(s, ctx); tijdlijnTick(s, ctx); spanningTick(s, ctx); corpoTick(s, ctx); domTick(s, ctx); assistentTick(s, ctx); aanvraagTick(s, ctx); regioTick(s); grondstofTick(s, ctx); patentTick(s, ctx); onderzoekTick(s, ctx); vraagTick(s); rivalProductTick(s); wereldInvloedProducten(s); eraTick(s, ctx); if (s.date.month === 12) jaarTick(s, ctx); marktTick(s); klusTick(s);
+  specialTick(s, ctx); productTick(s, ctx); { const pe = productEffectTick(s); if (pe.heat) gz.hDelen.push(["Producten", r1(pe.heat)]); if (pe.morale) gz.mDelen.push(["Producten", r1(pe.morale)]); } productEventTick(s, ctx); tijdlijnTick(s, ctx); spanningTick(s, ctx); corpoTick(s, ctx); domTick(s, ctx); assistentTick(s, ctx); aanvraagTick(s, ctx); regioTick(s); grondstofTick(s, ctx); patentTick(s, ctx); onderzoekTick(s, ctx); beursTick(s, ctx); vraagTick(s); rivalProductTick(s); wereldInvloedProducten(s); eraTick(s, ctx); if (s.date.month === 12) jaarTick(s, ctx); marktTick(s); klusTick(s);
   s.accounts.operationeel = s.cash; s.hidden_truth = s.hidden_truth.slice(-30);
 
   let status = "actief";
@@ -666,7 +667,7 @@ function tick(s){
 }
 
 /* ---------- de stad: elke game een andere kaart ---------- */
-const VERSION = "5.14.1";
+const VERSION = "5.15";
 const MAP_W = 1000, MAP_H = 680;
 const RIVAL_COLORS = ["#ff9a1f", "#3d7bff", "#c6ff2e", "#f2f2f2", "#9b5cff", "#ffd400", "#ff4d4d"];
 const ARCH = {
@@ -1276,7 +1277,7 @@ function rivalAI(s, ctx, diff){
 }
 
 /* ---------- acties van de speler ---------- */
-const loanCap = s => r1(Math.max(0, s.reputation * 4 - s.debt + Math.max(0, s.cash) * 0.5 + (relV(s, "bank") >= 40 ? 50 : 0)));
+const loanCap = s => r1(Math.max(0, s.reputation * 4 - s.debt - termijnRest(s) + Math.max(0, s.cash) * 0.5 + (relV(s, "bank") >= 40 ? 50 : 0)));
 const districtCost = (s, d) => r1((d.upkeep * 8 + d.income * 4) * (s.rivals.some(r => r.hq === d.id) ? 2 : 1) * (DIFF[s.player.difficulty] || 1) * vestigingMult(s) * (1 + 0.12 * Math.max(0, playerDistricts(s).length - 1)));
 const upgradeCost = (s, d) => r1(20 * Math.pow(d.level, 1.3) * (DIFF[s.player.difficulty] || 1));
 const newDivCost = s => r1(30 * (DIFF[s.player.difficulty] || 1));
@@ -1686,8 +1687,9 @@ function rivalValue(s, r){
   for (const b of s.bedrijven || []) if (b.eigenaar === r.name) v += b.waarde;
   return Math.round(v);
 }
-function playerValue(s){
-  let v = s.cash + s.accounts.offshore + s.accounts.zwart * 0.5 - s.debt + s.divisions.reduce((a, d) => a + d.level * 45, 0) + playerDistricts(s).reduce((a, d) => a + districtValue(d), 0)
+function playerValue(s){ return Math.round(bedrijfWaarde(s) * (1 - publiekDeel(s))); } /* 5.15: jouw deel; na een beursgang is een deel van de aandeelhouders */
+function bedrijfWaarde(s){
+  let v = s.cash + s.accounts.offshore + s.accounts.zwart * 0.5 - s.debt - termijnRest(s) + voorraadWaarde(s) + s.divisions.reduce((a, d) => a + d.level * 45, 0) + playerDistricts(s).reduce((a, d) => a + districtValue(d), 0)
     + (s.streams || []).reduce((a, x) => a + x.bedrag * (x.maanden != null ? Math.min(12, x.maanden) : 12), 0) + (s.schepen || 0) * 15;
   for (const b of s.bedrijven || []) if (b.eigenaar !== "player") v += b.waarde * b.aandeel / 100;
   return Math.round(v);
@@ -3452,7 +3454,7 @@ function grondstofTick(s, ctx){ const G0 = (s.grondstof ??= {}), sch = (s.gsScho
 function actVoorraad(s, ctx, m, n){ if (!GRONDSTOF[m]) return {ok: false, msg: "Onbekende grondstof."}; n = Math.round(+n || 0); if (![3, 6, 12].includes(n)) return {ok: false, msg: "Kies 3, 6 of 12 maanden."};
   if (gsVoorraad(s, m) + n > 24) return {ok: false, msg: "Meer dan twee jaar voorraad past niet in je loodsen."};
   const k = voorraadKost(s, m, n); if (s.cash < k) return {ok: false, msg: `Niet genoeg cash (€${k}M nodig).`};
-  s.cash = r1(s.cash - k); s.accounts.operationeel = s.cash; const V = (s.voorraad ??= {}); V[m] = {mnd: gsVoorraad(s, m) + n, prijs: gsPrijs(s, m), sinds: ym(s)};
+  s.cash = r1(s.cash - k); s.accounts.operationeel = s.cash; const V = (s.voorraad ??= {}); V[m] = {mnd: gsVoorraad(s, m) + n, prijs: gsPrijs(s, m), verbruik: gsVerbruik(s, m), sinds: ym(s)};
   for (const p of s.producten || []){ const L = grondstoffenVan(p); if (!L.includes(m)) continue; p.matF = Math.round(L.reduce((a, x) => a + (gsVoorraad(s, x) > 0 ? 0 : gsPrijs(s, x)), 0) / L.length * 100) / 100; }
   addLog(s, `Voorraad ${GRONDSTOF[m].label.toLowerCase()} ${n} mnd (€${k}M)`);
   return {ok: true, msg: `${n} maanden ${GRONDSTOF[m].label.toLowerCase()} ingekocht voor €${k}M (prijs ×${gsPrijs(s, m)}). Zolang de voorraad strekt, kost die grondstof je niets extra, wat de markt ook doet.`}; }
@@ -3500,6 +3502,39 @@ function onderzoekTick(s, ctx){ const O = (s.onderzoek ??= {niveau: {}}); O.nive
       mail(ctx, s, "Hoofd R&D", `Onderzoek klaar: ${L.naam}`, `Ons onderzoek is af. Voor al onze ${PRODUCT_AARD[L.aard].label.toLowerCase()}: ${TECH_EFFECT[L.n - 1]}.`, "NORMAAL"); } }
   for (const p of s.producten || []){ const t = techNiveau(s, p.aard || aardVan(p.type, p.naam)); if (t) p.tech = t; else delete p.tech; }
   if (s.date.month === 1) for (const r of s.rivals){ const a = SECTOR_AARD[r.sector] || "consument", T = (r.tech ??= {}); if ((T[a] || 0) < 3 && R() < 0.3){ T[a] = (T[a] || 0) + 1; news(s, `${r.name} meldt een doorbraak`, `${r.name} heeft ${TECH_NAMEN[a] ? TECH_NAMEN[a][T[a] - 1].toLowerCase() : "iets nieuws"} onder de knie. Hun volgende producten worden beter.`, "", "markt", false); } } }
+/* 5.15: realistische financiën en de beurs. Termijnleningen met vaste rente en looptijd (annuïteit), een balans en kasstroom, en zelf naar de beurs: een deel van de aandelen verkopen voor geld, daarna is dat deel niet meer van jou (je bedrijfswaarde voor de winst telt alleen jouw deel). Elk jaar een aandeelhoudersvergadering. */
+const termijnRest = s => r1((s.leningen || []).reduce((a, l) => a + l.rest, 0));
+const publiekDeel = s => ((s.beurs || {}).publiek || 0) / 100;
+const voorraadWaarde = s => r1(Object.entries(s.voorraad || {}).reduce((a, [m, v]) => a + (v.mnd || 0) * (v.verbruik || 0) * (v.prijs || 1), 0));
+const termijnRente = (s, n) => Math.round((0.045 + Math.max(0, 50 - s.reputation) / 600 + (s.heat > 40 ? 0.02 : 0) + (n >= 48 ? 0.01 : 0)) * 1000) / 1000;
+function annuiteit(P, rj, n){ const r = rj / 12; return r1(r ? P * r / (1 - Math.pow(1 + r, -n)) : P / n); }
+function actTermijn(s, ctx, bedrag, n){ bedrag = Math.round(+bedrag || 0); n = Math.round(+n || 0); if (![12, 24, 48].includes(n)) return {ok: false, msg: "Kies 12, 24 of 48 maanden."};
+  if (bedrag < 5) return {ok: false, msg: "Minimaal €5M."}; const cap = loanCap(s); if (bedrag > cap) return {ok: false, msg: `De bank weigert: maximaal €${cap}M.`};
+  const rj = termijnRente(s, n), A = annuiteit(bedrag, rj, n); (s.leningen ??= []).push({id: "l" + hex8(), bedrag, rente: rj, looptijd: n, over: n, rest: bedrag, annuiteit: A, sinds: ym(s)});
+  s.cash = r1(s.cash + bedrag); s.accounts.operationeel = s.cash; addLog(s, `Termijnlening €${bedrag}M, ${n} mnd, ${Math.round(rj * 1000) / 10}%`);
+  return {ok: true, msg: `Termijnlening van €${bedrag}M: ${n} maanden ${Math.round(rj * 1000) / 10}% vast, €${A}M per maand (rente en aflossing samen).`}; }
+function termijnTick(s){ let tot = 0; for (const l of s.leningen || []){ const r = l.rente / 12, rente = l.rest * r, af = Math.min(l.rest, l.annuiteit - rente); l.rest = r1(Math.max(0, l.rest - af)); l.over -= 1; tot += rente + af; }
+  s.leningen = (s.leningen || []).filter(l => l.over > 0 && l.rest > 0.05); return r1(tot); }
+const beursMag = s => bedrijfWaarde(s) >= 500 && s.reputation >= 25;
+const beursKoers = s => { const B = s.beurs; return B ? Math.round(100 * bedrijfWaarde(s) / Math.max(1, B.basis)) : 100; };
+function actBeurs(s, ctx, soort, pct){ const B = s.beurs; pct = Math.round(+pct || 0); const V = bedrijfWaarde(s);
+  if (soort === "ipo"){ if (B) return {ok: false, msg: "Je staat al op de beurs."}; if (!beursMag(s)) return {ok: false, msg: "Een beursgang kan vanaf €500M bedrijfswaarde en reputatie 25."}; if (![10, 20, 30].includes(pct)) return {ok: false, msg: "Kies 10, 20 of 30%."};
+    const opbr = r1(V * pct / 100 * 0.9); s.cash = r1(s.cash + opbr); s.accounts.operationeel = s.cash; s.beurs = {publiek: pct, sinds: ym(s), basis: bedrijfWaarde(s), dividend: 0};
+    news(s, `${s.player.corp_name} naar de beurs`, `De beursgang van ${s.player.corp_name} haalt €${opbr}M op. ${pct}% van de aandelen is nu in handen van beleggers.`, "", "markt", true); addLog(s, `Beursgang: ${pct}% voor €${opbr}M`);
+    return {ok: true, msg: `Beursgang: ${pct}% verkocht voor €${opbr}M (10% onder de waarde, dat is de prijs van een beursgang). Voor de winst telt voortaan jouw deel: ${100 - pct}%.`}; }
+  if (!B) return {ok: false, msg: "Je staat niet op de beurs."};
+  if (soort === "uitgeven"){ if (![5, 10].includes(pct)) return {ok: false, msg: "Kies 5 of 10%."}; if (B.publiek + pct > 49) return {ok: false, msg: "Boven 49% verlies je de meerderheid. Dat doen we niet."};
+    const opbr = r1(V * pct / 100 * 0.95); s.cash = r1(s.cash + opbr); s.accounts.operationeel = s.cash; B.publiek += pct; s.reputation = clamp(s.reputation - 1); addLog(s, `Aandelen uitgegeven: ${pct}% voor €${opbr}M`);
+    return {ok: true, msg: `${pct}% nieuwe aandelen voor €${opbr}M. Bestaande beleggers zijn niet blij met de verwatering: reputatie −1. Jouw deel: ${100 - B.publiek}%.`}; }
+  if (soort === "terugkopen"){ if (![5, 10].includes(pct)) return {ok: false, msg: "Kies 5 of 10%."}; pct = Math.min(pct, B.publiek); const k = r1(V * pct / 100 * 1.1); if (s.cash < k + 20) return {ok: false, msg: `Terugkopen kost €${k}M (10% boven de waarde).`};
+    s.cash = r1(s.cash - k); s.accounts.operationeel = s.cash; B.publiek -= pct; addLog(s, `Aandelen teruggekocht: ${pct}% voor €${k}M`); if (B.publiek <= 0){ delete s.beurs; return {ok: true, msg: `Alle aandelen teruggekocht voor €${k}M: je bent weer volledig eigenaar en van de beurs af.`}; }
+    return {ok: true, msg: `${pct}% teruggekocht voor €${k}M. Jouw deel: ${100 - B.publiek}%.`}; }
+  return {ok: false, msg: "Onbekende actie."}; }
+function beursTick(s, ctx){ const B = s.beurs; if (!B) return; B.koersHist = [...(B.koersHist || []), beursKoers(s)].slice(-24);
+  if (s.date.month === 6){ const V = bedrijfWaarde(s), div = r1(Math.max(1, V * B.publiek / 100 * 0.03)), kr = B.koersHist.length >= 12 ? Math.round((B.koersHist[B.koersHist.length - 1] / B.koersHist[B.koersHist.length - 12] - 1) * 100) : 0;
+    addKeuze(s, ctx, {soort: "ava_" + s.date.year, van: "Investor Relations", titel: `Aandeelhoudersvergadering ${s.date.year}`, tekst: `De koers ${kr >= 0 ? "steeg" : "daalde"} ${Math.abs(kr)}% dit jaar. De beleggers (${B.publiek}%) willen weten wat ze krijgen.`,
+      opties: [{label: `Dividend · €${div}M`, kost: div, uitleg: "Beleggers tevreden: reputatie +3.", eff: {reputation: 3}}, {label: "Herinvesteren", uitleg: kr >= 10 ? "Met deze groei accepteren ze het: geen gevolgen." : "Ze morren: reputatie −3.", eff: kr >= 10 ? {} : {reputation: -3}},
+        {label: "Bonus voor de directie", uitleg: "Je directie +10 loyaliteit, beleggers boos: reputatie −6.", eff: {reputation: -6, loyaliteit: Object.fromEntries((s.npcs || []).map(n => [n.name, 10]))}}], standaard: 1}); } }
 const spanningGem = s => { const v = Object.values(s.spanning || {}); return v.length ? v.reduce((a, b) => a + b, 0) / v.length : 0; };
 function tijdlijnTick(s, ctx){ const nu = ym(s), gehad = (s.tijdlijnGehad ??= []), B = (s.vraagBasis ??= {});
   for (const t of TIJDLIJN){ if (t.d > nu || gehad.includes(t.d)) continue; gehad.push(t.d); const recent = mndNr(nu) - mndNr(t.d) <= 2;
@@ -4532,6 +4567,8 @@ const API = {
   async "/api/voorraad"(d){ const s = G.game, ctx = Ctx(); const r = actVoorraad(s, ctx, d.m, d.n); if (r.ok) await persist(ctx); return {ok: r.ok, bericht: r.msg}; },
   async "/api/patent"(d){ const s = G.game, ctx = Ctx(); const r = actPatent(s, ctx, d.id); if (r.ok) await persist(ctx); return {ok: r.ok, bericht: r.msg}; },
   async "/api/onderzoek"(d){ const s = G.game, ctx = Ctx(); const r = d.stop ? actOnderzoekStop(s) : actOnderzoek(s, ctx, d.aard); if (r.ok) await persist(ctx); return {ok: r.ok, bericht: r.msg}; },
+  async "/api/termijn"(d){ const s = G.game, ctx = Ctx(); const r = actTermijn(s, ctx, d.bedrag, d.n); if (r.ok) await persist(ctx); return {ok: r.ok, bericht: r.msg}; },
+  async "/api/beurs"(d){ const s = G.game, ctx = Ctx(); const r = actBeurs(s, ctx, d.soort, d.pct); if (r.ok) await persist(ctx); return {ok: r.ok, bericht: r.msg}; },
   async "/api/corpo"(d){ const s = G.game, ctx = Ctx(); const r = actCorpo(s, ctx, d.soort, d.id); if (r.ok) await persist(ctx); return {ok: r.ok, bericht: r.msg}; },
   async "/api/huisstijl"(d){ const s = G.game, ctx = Ctx(); const r = actHuisstijl(s, d || {}); if (r.ok) await persist(ctx); return {ok: r.ok, bericht: r.msg}; },
   async "/api/product"(d){ const s = G.game, ctx = Ctx(); const r = actProduct(s, ctx, d.soort, d); if (r.ok) await persist(ctx); return {ok: r.ok, bericht: r.msg}; },

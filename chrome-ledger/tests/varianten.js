@@ -250,6 +250,17 @@ const html = '<!doctype html><html><head><meta charset=utf8></head><body>' + fs.
     return {r1: r1.ok, dubbel, m, betaald, kost: techKost(c, 1), n1, w: Math.round(w1 / w0 * 100) / 100, kf: Math.round(kf3 / kf0 * 100) / 100, spec: sp3.every((v, i) => v >= sp0[i]) && sp3.some((v, i) => v > sp0[i]), vol, rpKw: rp.kwaliteit, stop}; });
   const ozUI = await p.evaluate(() => { S.view = "bedrijf"; S.ozOpen = true; render(); const t = document.querySelector("main").textContent; S.ozOpen = false; render(); return /Onderzoek/.test(t) && /mnd ×/.test(t); });
   ok(oz.geen || (oz.r1 && !oz.dubbel && Math.abs(oz.betaald - oz.kost) < 0.2 && oz.n1 === 1 && oz.w === 1.05 && oz.kf < 1 && oz.spec && !oz.vol && oz.rpKw >= 2 && oz.stop) && ozUI, "onderzoek: één tegelijk, per maand betaald, niveau 1 +5% omzet, niveau 2 goedkoper, niveau 3 betere eigenschappen, rivalen beter, stoppen kan: " + JSON.stringify(oz));
+  // 5.15 financiën en beurs
+  const fb = await p.evaluate(() => { const c = JSON.parse(JSON.stringify(G.game)), ctx = Ctx(); c.reputation = 50; c.heat = 5; c.leningen = []; delete c.beurs; c.keuzes = []; c.cash = 100;
+    const cap0 = loanCap(c), cash0 = c.cash, t = actTermijn(c, ctx, 60, 24), cap1 = loanCap(c), w0 = bedrijfWaarde(c); let betaald = 0; for (let i = 0; i < 24; i++) betaald += termijnTick(c);
+    const klaar = !(c.leningen || []).length, rente = Math.round((betaald - 60) * 10) / 10, fout = actTermijn(c, ctx, 60, 36).ok;
+    const ipoNee = actBeurs(c, ctx, "ipo", 20).ok; c.cash = 900; const V = bedrijfWaarde(c), pv0 = playerValue(c), ipo = actBeurs(c, ctx, "ipo", 20), V1 = bedrijfWaarde(c), pv1 = playerValue(c);
+    const u1 = actBeurs(c, ctx, "uitgeven", 10).ok, u2 = actBeurs(c, ctx, "uitgeven", 10).ok, u3 = actBeurs(c, ctx, "uitgeven", 10).ok, pub = c.beurs.publiek, tk = actBeurs(c, ctx, "terugkopen", 10).ok, pub2 = c.beurs.publiek;
+    c.date = {year: 2010, month: 6}; beursTick(c, ctx); const ava = c.keuzes.some(k => /^ava_/.test(k.soort));
+    return {t: t.ok, lening: Math.round((c.cash - cash0) * 10) / 10, cap0, cap1, klaar, rente, fout, ipoNee, V, pv0, V1, pv1, ipo: ipo.ok, u1, u2, u3, pub, tk, pub2, ava}; });
+  const fbUI = await p.evaluate(() => { S.view = "financien"; render(); const t = document.querySelector("main").textContent; return /Balans/.test(t) && /Termijnlening/.test(t) && /Beurs/.test(t) && /Kasstroom|Boekhouding/.test(t); });
+  ok(fb.t && fb.cap1 < fb.cap0 && fb.klaar && fb.rente > 0 && fb.rente < 10 && !fb.fout && !fb.ipoNee && fb.pv0 === fb.V && fb.ipo && fb.V1 > fb.V && fb.pv1 < fb.pv0 && fb.u1 && fb.u2 && !fb.u3 && fb.pub === 40 && fb.tk && fb.pub2 === 30 && fb.ava && fbUI,
+    "financiën en beurs: termijnlening met annuïteit (rente betaald, leenruimte lager), beursgang geeft geld maar jouw deel telt, max 49% publiek, terugkopen, aandeelhoudersvergadering in juni, scherm Financiën: " + JSON.stringify(fb));
   ok(/VERKOOP/.test(verkoop) && /KEURING/.test(verkoop), "tabblad Verkoop en keuring");
   ok(/VARIANT/.test(scherm), "varianten staan op het productblad");
   if (out){ const bl = await p.$('.prodblad'); if (bl) await bl.screenshot({path: out + "/verkoop.png"}); }
