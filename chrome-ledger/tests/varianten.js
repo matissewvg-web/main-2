@@ -104,6 +104,13 @@ const html = '<!doctype html><html><head><meta charset=utf8></head><body>' + fs.
   ok(hs.ok && hs.cyan === "#ffaa00" && hs.bg === "#020a04" && hs.kop && hs.kaart && hs.png && hs.slecht === false && hs.kleurBlijft === "#ffaa00" && hs.img, "huisstijl: kleuren en thema in het scherm, logo in de kopregel, PNG ja, onzin nee: " + JSON.stringify(hs));
   if (out){ await p.evaluate(async () => { await API["/api/huisstijl"]({logo: {soort: "gen", symbool: "☢", vorm: "schild"}}); S.view = "bedrijf"; S.hsOpen = true; render(); window.scrollTo(0, 0); }); await p.waitForTimeout(200); await p.screenshot({path: out + "/huisstijl.png"}); }
   await p.evaluate(async () => { G.game.huisstijl = {}; render(); });
+  // 5.2 autopilot
+  const ap = await p.evaluate(async () => { const s = G.game, x = s.producten.find(y => y.naam === "Basisdosis"); s.cash += 100; x.keuring = "nodig"; x.kanaal = "groothandel"; x.prijsF = 0.6; x.pop = 95; x.capExtra = -15; x.auto = {};
+    await API["/api/product"]({soort: "auto", id: x.id, k: "prijs", aan: true}); await API["/api/product"]({soort: "auto", id: x.id, k: "cap", aan: true}); await API["/api/product"]({soort: "auto", id: x.id, k: "keuring", aan: true});
+    const c0 = prodCap(s, x), v0 = Math.round(vraagNa(x)), ctx = Ctx(); autoTick(s, ctx, x); const best = besteprijs(s, x);
+    const std = await API["/api/autostandaard"]({k: "prijs", aan: true}), nieuw = mkProduct(s, s.divisions[0], "Autonieuw", 3, 50); s.autoStandaard = {};
+    return {aan: x.auto, keur: keurStatus(x), f: x.prijsF, c0, c1: prodCap(s, x), v0, melding: ctx.rep.join(" "), nieuw: nieuw.auto.prijs === true, std: std.ok}; });
+  ok(ap.aan.prijs && ap.aan.cap && ap.aan.keuring && ap.keur === "bezig" && ap.f > 0.6 && ap.f <= 1.5 && ap.c1 > ap.c0 && /Autopilot/.test(ap.melding) && ap.nieuw, "autopilot: keuring aangevraagd, prijs omhoog naar de beste, capaciteit erbij bij uitverkocht, standaard voor nieuwe producten: " + JSON.stringify(ap));
   // 7. scherm
   await p.evaluate(() => { S.view = "bedrijf"; render(); }); const ds = await p.$('[data-a=prodsheet]'); if (ds){ await ds.click(); await p.waitForTimeout(200); }
   const scherm = await p.evaluate(() => { const el = document.querySelector(".prodblad"); return el ? el.textContent : ""; });
