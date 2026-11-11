@@ -676,7 +676,7 @@ function tick(s){
 }
 
 /* ---------- de stad: elke game een andere kaart ---------- */
-const VERSION = "6.10";
+const VERSION = "6.11";
 const MAP_W = 1000, MAP_H = 680;
 const RIVAL_COLORS = ["#ff9a1f", "#3d7bff", "#c6ff2e", "#f2f2f2", "#9b5cff", "#ffd400", "#ff4d4d"];
 const ARCH = {
@@ -3418,7 +3418,7 @@ function bedrijfAanbodTick(s, ctx){ const open = (s.keuzes || []).filter(k => /^
       {label: "Afslaan", uitleg: "Relatie −3.", eff: {bedrijf: {[b.id]: {relatie: -3}}}}], standaard: 0});
   ctx.rep.push(`Aanbod: ${b.naam} wil een leveringscontract`); }
 function aanvraagTick(s, ctx){ s.aanvragen ??= []; s.contracten ??= []; bedrijfAanbodTick(s, ctx);
-  for (const a of s.aanvragen) a.verloopt -= 1; /* 6.8: meer aanvragen, langer geldig */ const weg = s.aanvragen.filter(a => a.verloopt <= 0); if (weg.length) ctx.rep.push(`${weg.length} aanvra${weg.length > 1 ? "gen" : "ag"} verlopen`); s.aanvragen = s.aanvragen.filter(a => a.verloopt > 0);
+  for (const a of s.aanvragen) a.verloopt -= 1; /* 6.8: meer aanvragen, langer geldig */ const weg = s.aanvragen.filter(a => a.verloopt <= 0); for (const a of weg){ const rv = aanvraagRivalen(s, a.aard); contractHist(s, a, "verlopen", rv.length ? CH(rv).name : null); } if (weg.length) ctx.rep.push(`${weg.length} aanvra${weg.length > 1 ? "gen" : "ag"} verlopen`); s.aanvragen = s.aanvragen.filter(a => a.verloopt > 0);
   const nP = (s.producten || []).filter(p => p.status === "markt").length;
   for (let poging = 0; poging < 2; poging++) if (nP && s.aanvragen.length < AANVRAAG_MAX && kansRol() < Math.min(0.8, 0.4 + 0.06 * nP)){ const a = maakAanvraag(s); if (a){ s.aanvragen.push(a); ctx.rep.push(`Aanvraag: ${a.klant}`); mail(ctx, s, "Verkoop", `Aanvraag van ${a.klant}`, a.tekst + " Inschrijven kan bij Bedrijf → Klanten, binnen drie maanden.", "NORMAAL"); } }
   const zwaar = (s.producten || []).filter(x => x.status === "markt" && stukInfo(x).order && !isAbo(x));
@@ -3430,8 +3430,11 @@ function aanvraagTick(s, ctx){ s.aanvragen ??= []; s.contracten ??= []; bedrijfA
     if (c.over <= 0){ ctx.rep.push(`Contract ${c.klant} afgerond`); if (!c.zwart) s.reputation = clamp(s.reputation + 1); } }
   const n0 = s.contracten.length; s.contracten = s.contracten.filter(c => c.over > 0); if (s.contracten.length || n0){ const tot = r1(s.contracten.reduce((a, c) => a + c.perMaand * AANVRAAG_MARGE, 0)); if (tot) ctx.rep.push(`Raamcontracten: +€${tot}M netto per maand`); }
   s.accounts.operationeel = s.cash; }
+/* 6.11: geschiedenis van alle aanvragen: gewonnen, verloren (aan wie), verlopen, afgewezen */
+function contractHist(s, a, uitkomst, wie, bedrag){ const pp = a.product ? (s.producten || []).find(x => x.id === a.product) : null;
+  (s.contractHist ??= []).unshift({m: ym(s), klant: a.klant, soort: a.soort, aard: a.aard, product: pp ? pp.naam : null, uitkomst, wie: wie || null, bedrag: r1(bedrag ?? (a.raam ? a.perMaand * a.maanden : a.bedrag) ?? 0), raam: !!a.raam}); s.contractHist = s.contractHist.slice(0, 40); }
 function actAanvraag(s, ctx, id, keuze){ const a = (s.aanvragen || []).find(x => x.id === id); if (!a) return {ok: false, msg: "Die aanvraag is er niet meer."};
-  if (keuze === "afwijzen"){ s.aanvragen = s.aanvragen.filter(x => x !== a); if (a.gang){ const g = (s.gangs || []).find(x => x.id === a.gang); if (g) g.relatie = Math.round(g.relatie - 5); } return {ok: true, msg: `Aanvraag van ${a.klant} afgewezen.${a.gang ? " Ze onthouden het: relatie −5." : ""}`}; }
+  if (keuze === "afwijzen"){ s.aanvragen = s.aanvragen.filter(x => x !== a); { const rv = aanvraagRivalen(s, a.aard); contractHist(s, a, "afgewezen", rv.length ? CH(rv).name : null); } if (a.gang){ const g = (s.gangs || []).find(x => x.id === a.gang); if (g) g.relatie = Math.round(g.relatie - 5); } return {ok: true, msg: `Aanvraag van ${a.klant} afgewezen.${a.gang ? " Ze onthouden het: relatie −5." : ""}`}; }
   const P = AANVRAAG_PRIJS[keuze]; if (!P) return {ok: false, msg: "Kies een prijs."}; const p = aanvraagProduct(s, a); if (!p) return {ok: false, msg: `Je hebt geen ${PRODUCT_AARD[a.aard].label.toLowerCase()} op de markt.`};
   const kans = aanvraagKans(s, a, keuze), roll = rolKans(kans), K = KLANT_SOORT[a.soort], riv = aanvraagRivalen(s, a.aard); s.aanvragen = s.aanvragen.filter(x => x !== a);
   addRoll(s, `Inschrijving ${a.klant} (${P.label.toLowerCase()}): ${roll.txt} → ${roll.ok ? "GEWONNEN" : "VERLOREN"}`); let msg;
@@ -3440,7 +3443,8 @@ function actAanvraag(s, ctx, id, keuze){ const a = (s.aanvragen || []).find(x =>
     else { const netto = r1(a.bedrag * P.f * AANVRAAG_MARGE); if (a.product){ const pp = (s.producten || []).find(x => x.id === a.product); if (pp){ (s.prodomzet ??= {})[pp.id] = r1(((s.prodomzet || {})[pp.id] || 0) + a.bedrag * P.f); (pp.orders ??= []).push({m: ym(s), stuks: Math.max(1, Math.round(a.bedrag * P.f * 1e6 / Math.max(1, stukPrijs(pp)))), bedrag: r1(a.bedrag * P.f), klant: a.klant}); pp.orders = pp.orders.slice(-6); } } if (K.zwart) s.accounts.zwart = r1(s.accounts.zwart + netto); else s.cash = r1(s.cash + netto); msg = `Gewonnen: levering aan ${a.klant} voor €${r1(a.bedrag * P.f)}M (±€${netto}M netto${K.zwart ? ", zwart" : ""}).`; }
     if (K.rep) s.reputation = clamp(s.reputation + 1); if (a.gang){ const g = (s.gangs || []).find(x => x.id === a.gang); if (g) g.relatie = Math.round(g.relatie + 8); }
     if (K.zwart && kansRol() < 0.15){ s.reputation = clamp(s.reputation - 4); msg += " Een journalist zag de levering: reputatie −4."; } }
-  else msg = `Verloren: ${a.klant} kiest ${riv.length ? CH(riv).name : "een andere leverancier"}.`;
+  else { const w = riv.length ? CH(riv).name : null; msg = `Verloren: ${a.klant} kiest ${w || "een andere leverancier"}.`; contractHist(s, a, "verloren", w); }
+  if (roll.ok) contractHist(s, a, "gewonnen", "jij", (a.raam ? a.perMaand * a.maanden : a.bedrag) * P.f);
   s.accounts.operationeel = s.cash; addLog(s, msg); mail(ctx, s, "Verkoop", `Inschrijving ${a.klant}: ${roll.ok ? "gewonnen" : "verloren"}`, msg + ` (Worp ${roll.txt}.)`, "NORMAAL");
   return {ok: true, msg: msg + ` Worp ${roll.txt}.`}; }
 /* 5.10: export en vergunningen. Wapens, beveiliging en implantaten verkopen standaard op je eigen continent; een exportvergunning per ander continent (blijvend) geeft +6% omzet per continent. Bij Sancties of Privélegers (spanning 50-89) ligt daar een embargo: de vergunning telt niet, tenzij je een smokkelroute hebt (zwart geld, heat). */
