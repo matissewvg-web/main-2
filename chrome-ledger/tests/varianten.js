@@ -369,6 +369,16 @@ const html = '<!doctype html><html><head><meta charset=utf8></head><body>' + fs.
       grijsNeutraal: grijs[0] === grijs[1] && grijs[1] === grijs[2], roodBlijftRood: rood[0] > rood[1] + 60 && rood[0] > rood[2] + 40, gelijkVerschoven: !!gelijk.a.verschoven, andersNiet: !anders.a.verschoven, namen: n.divisions.map(d => d.name), dubbel: n2.divisions.map(d => d.name)}; });
   ok(zw66.neutraal && zw66.licht && zw66.accentAnders && zw66.verschoven && zw66.ck >= 4.5 && zw66.ca >= 4.5 && zw66.grijsNeutraal && zw66.roodBlijftRood && zw66.gelijkVerschoven && zw66.andersNiet && zw66.namen.join() === "Havenlijn,Genlab" && zw66.dubbel.join() === "Kern,Kern 2",
     "zwart en gelijke kleuren: zwart wordt neutraal zilver (geen roze), te gelijk accent wordt een andere kleur, donkerrood blijft rood, twee divisies krijgen elk hun naam: " + JSON.stringify(zw66));
+  // 6.7 effecten
+  const fx = await p.evaluate(async () => { const oudR = S.rustig; S.rustig = false; document.documentElement.classList.remove("rustig");
+    S.view = "overzicht"; render(); S.view = "bedrijf"; render(); const wissel = document.getElementById("main").classList.contains("viewin"); render(); const zelfde = document.getElementById("main").classList.contains("viewin") || document.getElementById("main").classList.contains("tabin");
+    S.view = "wereld"; S.wtab = "nieuws"; render(); S.wtab = "krant"; render(); const tab = document.getElementById("main").classList.contains("tabin");
+    const c0 = G.game.cash; G.game.cash = c0 + 50; render(); const op = !!document.querySelector(".top .stat .v.op"); G.game.cash = c0; render(); const neer = !!document.querySelector(".top .stat .v.neer");
+    const knop = document.querySelector('[data-view="inbox"]'), r = knop.getBoundingClientRect(); knop.dispatchEvent(new PointerEvent("pointerdown", {bubbles: true, clientX: r.left + 5, clientY: r.top + 5, button: 0})); const golf = !!document.querySelector(".klikgolf");
+    maandScan(); const scan = !!document.querySelector(".maandscan");
+    S.rustig = true; document.documentElement.classList.add("rustig"); S.view = "kaart"; render(); const rustig = !document.getElementById("main").classList.contains("viewin");
+    S.rustig = oudR; document.documentElement.classList.toggle("rustig", !!oudR); S.view = "overzicht"; render(); return {wissel, zelfde, tab, op, neer, golf, scan, rustig}; });
+  ok(fx.wissel && !fx.zelfde && fx.tab && fx.op && fx.neer && fx.golf && fx.scan && fx.rustig, "effecten: animatie bij een ander scherm of tabblad (niet bij elke klik), cijfers lichten op bij een verandering, klikgolf, maandscan, uit met EFFECTEN UIT: " + JSON.stringify(fx));
   ok(/VERKOOP/.test(verkoop) && /KEURING/.test(verkoop), "tabblad Verkoop en keuring");
   ok(/VARIANT/.test(scherm), "varianten staan op het productblad");
   if (out){ const bl = await p.$('.prodblad'); if (bl) await bl.screenshot({path: out + "/verkoop.png"}); }
