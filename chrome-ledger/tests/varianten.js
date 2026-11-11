@@ -421,6 +421,11 @@ const html = '<!doctype html><html><head><meta charset=utf8></head><body>' + fs.
     const id = k.soort.slice(14), voor = (c.streams || []).length; applyChoice(c, Ctx(), k.opties[0].eff); const b = c.bedrijven.find(x => x.id === id);
     return {k: true, opties: k.opties.length, contract: b.contract, stream: (c.streams || []).length - voor, std: k.standaard}; });
   ok(baan.k && baan.opties === 3 && baan.contract && baan.stream === 1 && baan.std === 0, "bedrijven bieden zelf een leveringscontract aan; tekenen geeft meteen een inkomstenbron: " + JSON.stringify(baan));
+  // 6.12 concepten en halve invoer overleven een herlaad
+  const cpt = await p.evaluate(() => { S.view = "overzicht"; render(); const dv = divNaam(G.game.divisions[0]); (G.concepten ??= {})[dv] = {naam: "Armor Test", pitch: "vesten en helmen", vraagVan: "armor"}; S.keep.pc_test = "half getypt"; render();
+    const opgeslagen = !!localGet("concept_" + G.gid); S._conceptGid = null; G.concepten = undefined; S.keep = {}; render();
+    const terug = ((G.concepten || {})[dv] || {}).naam, keep = S.keep.pc_test; delete G.concepten[dv]; delete S.keep.pc_test; render(); return {opgeslagen, terug, keep, leeg: !localGet("concept_" + G.gid) || !/Armor Test/.test(localGet("concept_" + G.gid))}; });
+  ok(cpt.opgeslagen && cpt.terug === "Armor Test" && cpt.keep === "half getypt" && cpt.leeg, "een concept van de GM en half ingevulde velden overleven een herlaad of update: " + JSON.stringify(cpt));
   ok(/VERKOOP/.test(verkoop) && /KEURING/.test(verkoop), "tabblad Verkoop en keuring");
   ok(/VARIANT/.test(scherm), "varianten staan op het productblad");
   if (out){ const bl = await p.$('.prodblad'); if (bl) await bl.screenshot({path: out + "/verkoop.png"}); }

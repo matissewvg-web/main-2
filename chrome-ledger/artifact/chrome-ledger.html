@@ -672,7 +672,7 @@ function render(){
   if (G.game && G.game.flags && !G.game.flags.overname_herstel_478 && !G._herstel){ G._herstel = true; Store.herstelOvername().then(r => { if (r && r.length){ toast("Teruggezet: " + r.join(", ")); render(); } else if (r){ toast("Je verloren divisie zat niet meer in de back-ups (die gaan drie maanden terug). Zeg in de chat welke divisie het was en hoe groot, dan zet ik haar terug.", true); } }).catch(e => foutLog("herstel overname", e)); }
   const root = document.getElementById("root");
   if (!S.loaded){ root.innerHTML = `<div class="loading"><div class="t">CHROME<span style="color:var(--mag)">//</span>LEDGER</div><div class="s"><span class="dots"></span> VERBINDEN MET CORPNET · ${VERSION}</div>${S.loadNote?`<div class="muted">${esc(S.loadNote)}</div>`:""}</div>`; return; }
-  const _ui = snapUI(), _stats = leesStats();
+  conceptLaden(); const _ui = snapUI(), _stats = leesStats();
   S.state = vm(); const st = S.state;
   if (!VIEWS[S.view]) S.view = "overzicht";
   if (st.geen_spel || !st.setup_done) { root.innerHTML = setupView(); bindSetup(); pasStijlToe((S.setup || {}).huisstijl || {}); /* 6.6: de setup toont je stijl meteen */ document.getElementById("ticker").hidden = true; return; }
@@ -704,7 +704,7 @@ function render(){
     <main id="main">${over ? gameOver() : simPauzeHtml() + spiekHtml(S.view) + (VIEWS[S.view] || VIEWS.overzicht)()}</main>
   </div>${S.help ? helpOverlay() : ""}${S.view === "comms" ? "" : gmDock(st)}`;
   komma(root); pasStijlToe(st.huisstijl); afterRender();
-  restoreUI(_ui); effectenNaRender(_stats);
+  restoreUI(_ui); effectenNaRender(_stats); conceptBewaren();
 }
 function stat(label, val, pct, color, cls=""){
   return `<div class="stat"><div class="k">${label}</div><div class="v" ${color?`style="color:${color}"`:""}>${val}</div>${pct!=null?`<div class="bar ${cls}"><i style="width:${Math.max(0,Math.min(100,pct))}%"></i></div>`:""}</div>`;
@@ -1085,6 +1085,7 @@ function setupBonus(homeD){
     <p class="dim" style="font-size:13px;margin:6px 0 0">Elk soort land geeft een ander voordeel: havens, financiële centra, datavalleien, sloppen. Klik verschillende landen aan om ze te vergelijken.</p>` : "";
 }
 const VERSIES = [
+  ["6.12", "Opruimen: niets meer kwijt bij een update", ["Een productconcept van de GM (of een divisieconcept) en half ingevulde velden (productnaam, chat, mail) blijven bewaard als de pagina herlaadt of er een update komt. Na het herladen krijg je een melding dat je concept er nog staat. Per spel, in deze browser, 14 dagen.", "De tijd pauzeert niet meer bij kleine besluiten (sponsoring, interviews, leveringsaanbiedingen, productnieuws): die beslissen zichzelf na twee maanden en geven alleen een melding. In een test van vijf jaar ging het aantal pauzes van 42 naar 20. Echte besluiten (headhunts, bendes, pacten, wereldgebeurtenissen, plannen tegen jou) stoppen de tijd nog wel.", "Gecontroleerd: tien jaar op turbo zonder fouten of kapotte getallen op elk scherm, ±40 ms per maand."]],
   ["6.11.1", "Armorpakket terug", ["Op verzoek: de update kwam midden in je lancering. Weapon Manufacturing heeft nu het Pax Armata Armor Pakket op de markt: kogelwerende vesten, helmen, militaire uniformen en bescherming, per stuk verkocht (geen abonnement), al gekeurd.", "Pax Armata Directe Verkoop stond op vlag (tanks-schaal) en verkocht daardoor sinds 6.8 alleen via contracten, dus €0 aan het publiek. Het staat nu op groot: het publiek koopt het weer, legers en staten blijven via contracten kopen."]],
   ["6.11", "Contracten", ["Nieuw scherm Contracten (menu, of toets T): bovenaan wat je verdient aan het publiek tegenover contracten, open aanvragen, lopende contracten en leveringsdeals.", "Open aanvragen: inschrijven met scherp, normaal of hoog, de kortst geldige eerst. Lopende contracten met een balk hoe ver ze zijn en wat ze al opleverden. Leveringsdeals met bedrijven met sector, land en relatie.", "Publiek of contract: per product wat het publiek koopt en wat via contracten gaat. Wie levert wat: per soort jij en de rivalen die op dezelfde aanvragen inschrijven, met hun beste product.", "Oorlogen en brandhaarden: jouw oorlogen, bendeoorlogen en elk continent met spanning, met wat wapens en beveiliging daar extra doen en wie er levert. Geschiedenis: elke inschrijving, verloren (aan wie), verlopen of afgewezen aanvraag.", "Bedrijf toont nog een korte samenvatting met een knop naar Contracten."]],
   ["6.10", "Weapon Manufacturing en aanbiedingen", ["Weapon Manufacturing is nu een standaardsoort, naast Biotech, Private Security en de rest: kiezen bij het oprichten (doctrine), rivalen kunnen het ook zijn. Wapens, pantser, drones; tanks en vliegtuigen (vlagschepen) verkoop je via contracten. Omzet 12, kosten 7, heat 3 per niveau; telt half mee voor je macht. Een Industrieel hart geeft er +20% op.", "Had je al een eigen soort Weapon manufacturing? Die is omgezet naar de standaardsoort, met dezelfde divisie, producten en markt.", "Bedrijven komen zelf: elke maand ±25-45% kans (meer met reputatie) dat een bedrijf een leveringscontract aanbiedt. Tekenen kost niets en lukt altijd; hoger inzetten geeft 40% meer, met een kans dat ze afhaken. Zonder antwoord teken je vanzelf."]],
@@ -2059,6 +2060,14 @@ function sparkCard(h){
     <div class="legend" style="margin-top:4px"><span><i style="background:var(--mag)"></i>heat</span><span><i style="background:var(--violet)"></i>reputatie</span><span><i style="background:var(--green)"></i>morale</span></div>`;
 }
 /* ---- invoer en scrollpositie bewaren als het scherm ververst ---- */
+/* 6.12: concepten van de GM en half ingevulde velden overleven een herlaad of update (per spel, in deze browser, 14 dagen) */
+function conceptLaden(){ if (!G.gid || S._conceptGid === G.gid) return; S._conceptGid = G.gid; let d = null; try { d = JSON.parse(localGet("concept_" + G.gid) || "null"); } catch(e){}
+  if (!d || Date.now() - (d.t || 0) > 14 * 864e5){ G.concepten = {}; G.divConcept = null; return; }
+  G.concepten = d.c || {}; G.divConcept = d.d || null; S.keep = {...(d.k || {}), ...S.keep}; S._conceptStr = JSON.stringify([d.c || {}, d.d || null, d.k || {}]);
+  const n = Object.keys(G.concepten).length + (G.divConcept ? 1 : 0); if (n) setTimeout(() => toast(`Je ${n === 1 ? "concept" : n + " concepten"} van de GM ${n === 1 ? "staat" : "staan"} er nog (Bedrijf → Productlijn).`), 600); }
+function conceptBewaren(){ if (!G.gid || S._conceptGid !== G.gid) return; const k = Object.fromEntries(Object.entries(S.keep || {}).filter(([id, v]) => v && String(v).length <= 2000 && id !== "q"));
+  const str = JSON.stringify([G.concepten || {}, G.divConcept || null, k]); if (str === S._conceptStr) return; S._conceptStr = str;
+  try { if (str === "[{},null,{}]") localStorage.removeItem("cl_concept_" + G.gid); else localSet("concept_" + G.gid, JSON.stringify({c: G.concepten || {}, d: G.divConcept || null, k, t: Date.now()})); } catch(e){} }
 function snapUI(){
   const r = document.getElementById("root"), o = {focus: null, scroll: {}, view: S.view, chat: S.chat, mail: S.mailBody && S.mailBody.id};
   if (!r) return o;
@@ -2608,6 +2617,8 @@ function simCtl(over){ const dur = SIM_MS[S.snel] || 2000, gedaan = S.loopt && S
     <button class="btn primary next" data-a="tick" title="Eén maand verder (N)" ${over ? "disabled" : ""}>+1<span class="nx-long"> MAAND</span> ▸</button>
     ${S.loopt ? `<span class="simbar"><i style="animation-duration:${dur}ms;animation-delay:-${gedaan}ms"></i></span>` : ""}</div>`; }
 function simPauzeHtml(){ if (S.loopt || !S.simPauze) return ""; return `<div class="simpauze" role="status"><span><b>❚❚ GEPAUZEERD</b> ${esc(S.simPauze.tekst)}</span><span class="row" style="gap:6px">${S.simPauze.view ? `<button class="btn sm" data-view="${S.simPauze.view}">Bekijken</button>` : ""}${S.simPauze.soort ? `<button class="btn sm" data-a="simniet" data-k="${S.simPauze.soort}" title="Terugzetten kan bij ? (sneltoetsen en spelregels)">Hierbij niet meer pauzeren</button>` : ""}<button class="btn sm primary" data-a="simplay">Verder ▶</button><button class="btn sm" data-a="simweg" aria-label="Sluiten">✕</button></span></div>`; }
+/* 6.12: kleine besluiten (sponsoring, interviews, aanbiedingen, productnieuws) pauzeren de tijd niet; ze beslissen zichzelf na twee maanden */
+const kleinBesluit = k => !!k && (FLAVOR_KEUZE.has(k.soort) || /^(bedrijfaanbod_|prod_|rpatent_)/.test(k.soort || "") || ["data", "tip", "klant", "subsidie", "sponsor", "interview"].includes(k.soort));
 const simNiet = () => { try { return JSON.parse(localGet("simniet") || "[]"); } catch(e){ return []; } };
 const besluitSleutels = st => [...(st.besluiten || []).map(b => "b:" + (b.arc || b.titel)), ...(st.keuzes || []).map(k => "k:" + (k.id || k.titel))];
 function simSnap(){ const st = S.state || {}; return {besluit: new Set(besluitSleutels(st)), mails: new Set((st.mails || []).map(m => m.id)), oorlog: ((st.macht || {}).oorlogen) || 0, heat: st.heat || 0, cash: st.cash || 0}; }
@@ -2615,8 +2626,9 @@ function simReden(v){ const st = S.state || {}; if (!st.setup_done) return null;
   if (st.status && st.status !== "actief") return {tekst: "Het spel is voorbij."};
   const niet = new Set(simNiet()), nieuw = (st.mails || []).filter(m => !v.mails.has(m.id));
   const krit = nieuw.find(m => m.prio === "KRITIEK"); if (krit && !niet.has("kritiek")) return {tekst: `Kritieke mail: ${krit.onderwerp}`, view: "inbox", soort: "kritiek"};
-  const nb = [...(st.besluiten || []).filter(b => !v.besluit.has("b:" + (b.arc || b.titel))), ...(st.keuzes || []).filter(k => !v.besluit.has("k:" + (k.id || k.titel)))];
+  const nk = (st.keuzes || []).filter(k => !v.besluit.has("k:" + (k.id || k.titel))), nb = [...(st.besluiten || []).filter(b => !v.besluit.has("b:" + (b.arc || b.titel))), ...nk.filter(k => !kleinBesluit(k))];
   if (nb.length && !niet.has("besluit")) return {tekst: `Er wacht een besluit: ${nb[0].titel}${nb.length > 1 ? ` (en nog ${nb.length - 1})` : ""}.`, view: "overzicht", soort: "besluit"};
+  const kl = nk.filter(kleinBesluit); if (kl.length && S.snel < 5) toast(`${kl.length === 1 ? `Klein besluit: ${kl[0].titel}` : `${kl.length} kleine besluiten`} (beslist zichzelf na twee maanden).`);
   if (((st.macht || {}).oorlogen || 0) > v.oorlog) return {tekst: "Er is oorlog uitgebroken.", view: "rivalen"};
   if (st.heat >= 85 && v.heat < 85 && !niet.has("gevaar")) return {tekst: `Heat is ${Math.round(st.heat)}: een razzia komt dichtbij.`, view: "financien", soort: "gevaar"};
   if (st.cash < 0 && v.cash >= 0 && !niet.has("gevaar")) return {tekst: "Je kas staat rood.", view: "financien", soort: "gevaar"};
