@@ -53,7 +53,7 @@ function template(){
       {name: "Jorik Maes", role: "Head of Security", loyalty: 60, ambition: 40, secret: "Heeft een schuld bij Brigada Volk."},
       {name: "Lien Verstraeten", role: "PR", loyalty: 50, ambition: 75, secret: "Lekt af en toe aan een journalist."},
     ],
-    flags: {compensatie_473: true, eigen_475: true, overname_477: true, herstel_wm_479: true, herstel_wm_4710: true, overname_herstel_478: true},
+    flags: {compensatie_473: true, eigen_475: true, overname_477: true, herstel_wm_479: true, herstel_wm_4710: true, overname_herstel_478: true}, autoStandaard: {keuring: true}, /* 5.4.1: nieuwe spellen laten nieuwe producten vanzelf officieel keuren */
   };
 }
 
@@ -518,7 +518,7 @@ function tick(s){
     rev += r; cost += c; heatAdd += t.heat * Math.pow(t.heat <= 1 ? Math.min(d.level, 6) : d.level, 0.75) * 0.5;
     lines.push(`| ${d.name || d.type} (${d.type} L${d.level}) | ${r1(r)} | ${r1(c)} |`); (s.divomzet ??= {})[d.name || d.type] = r1(r);
     const mk = opMarkt(s, d); if (mk.length){ let po = 0, pk = 0, zw = 0, vk = 0; for (const p of mk){ const K = KANAAL[kanaalVan(p)]; let o = prodOmzet(s, p) * eff; if (stukInfo(p).order && !isAbo(p)) o = orderOmzet(s, ctx, p, o); (s.prodomzet ??= {})[p.id] = r1(o); pk += prodKost(p, o);
-        if (K.zwart){ zw += o * K.zwart; po += o * (1 - K.zwart); if (o > 0 && kansRol() < 0.04){ s.reputation = clamp(s.reputation - 3); heatAdd += 3; mail(ctx, s, "Journalist", `${p.naam} op de zwarte markt`, `Een reportage volgt een lading ${p.naam} van een kofferbak in een steeg tot een bende. Uw naam staat erbij. Reputatie −3, heat +3.`, "HOOG"); } } else po += o; /* 5.0: zwarte markt is een echt risico */ vk += K.vast * diff + capVast(s, p); heatAdd += K.heat; }
+        if (K.zwart){ zw += o * K.zwart; po += o * (1 - K.zwart); if (o > 0 && !ctx.journo && kansRol() < 0.04){ ctx.journo = true; s.reputation = clamp(s.reputation - 3); heatAdd += 3; mail(ctx, s, "Journalist", `${p.naam} op de zwarte markt`, `Een reportage volgt een lading ${p.naam} van een kofferbak in een steeg tot een bende. Uw naam staat erbij. Reputatie −3, heat +3.`, "HOOG"); } } else po += o; /* 5.0: zwarte markt is een echt risico */ vk += K.vast * diff + capVast(s, p); heatAdd += K.heat; }
       rev += po; cost += pk + vk; lines.push(`| Producten ${d.name || d.type} (${mk.length}) | ${r1(po)} | ${r1(pk + vk)} |`);
       if (zw){ s.accounts.zwart = r1((s.accounts.zwart || 0) + zw); lines.push(`| Zwarte markt ${d.name || d.type} (naar zwart geld) | ${r1(zw)} | 0 |`); } }
   }
@@ -542,7 +542,7 @@ function tick(s){
   if (belasting){ cost += belasting; lines.push(`| Winstbelasting (${Math.round((0.2 - off) * 100)}% tot €60M, ${Math.round((0.35 - off) * 100)}% daarboven${off ? ", offshore" : ""}) | 0 | ${belasting} |`); }
   const net = r1(rev - cost); s.cash = r1(s.cash + net);
 
-  { const h0 = s.heat, ha = heatAdd * 0.7 * (s.player.difficulty === "Casual" ? 0.9 : 1) * (heeftFocus(s, "juristen") ? 0.9 : 1), dec = (s.culture.heat_decay ?? 2) + s.heat * 0.07 + ((s.spanning || {})[(s.districts.find(x => x.id === s.player.home_district) || {}).continent] >= 90 ? 1 : 0); s.heat = clamp(s.heat + ha - dec); gz.hDelen.push(["Divisies (omzet trekt aandacht)", r1(ha)], ["Vanzelf afnemen", r1(s.heat - h0 - ha)]); }
+  { const h0 = s.heat, ha = heatAdd * 0.7 * (s.player.difficulty === "Casual" ? 0.9 : 1) * (heeftFocus(s, "juristen") ? 0.9 : 1), dec = (s.culture.heat_decay ?? 2) + s.heat * 0.07 + spanningHeat(s); s.heat = clamp(s.heat + ha - dec); gz.hDelen.push(["Divisies (omzet trekt aandacht)", r1(ha)], ["Vanzelf afnemen", r1(s.heat - h0 - ha)]); }
   let drift = (s.culture.morale_drift || 0) + (net > 0 ? 1 : -2); if (s.culture.layoff_policy === "hard") drift -= 2;
   drift += clamp((s.staff.avg_salary - 30) / 6, -2, 2);
   if (sf < 0.8){ drift -= 1; rep.push(`Onderbezetting: ${s.staff.count} mensen voor ${need} plekken`); }
@@ -658,7 +658,7 @@ function tick(s){
 }
 
 /* ---------- de stad: elke game een andere kaart ---------- */
-const VERSION = "5.4";
+const VERSION = "5.4.1";
 const MAP_W = 1000, MAP_H = 680;
 const RIVAL_COLORS = ["#ff9a1f", "#3d7bff", "#c6ff2e", "#f2f2f2", "#9b5cff", "#ffd400", "#ff4d4d"];
 const ARCH = {
@@ -3155,7 +3155,7 @@ const TIJDLIJN = [
   {d: "2038-01", kop: "Chroom-mode", tekst: "Implantaten zijn mode. Wie geen chroom draagt, valt op.", schok: {implantaat: 0.1, consument: 0.04}, basis: {implantaat: 6}},
   {d: "2040-01", kop: "Corporate steden", tekst: "De eerste stad wordt bestuurd door een bedrijf. Andere volgen.", schok: {beveiliging: 0.08, smokkel: 0.05}, basis: {beveiliging: 5}}];
 /* 5.4: corpospanning per continent (zoals world tension): stijgt met de tijd, oorlogen, bendeoorlogen, corpomacht en wereldgebeurtenissen */
-const SPANNING_FASEN = [[90, "Corporate zone", "De corporaties regeren. De politie kijkt de andere kant op; heat zakt sneller op je eigen continent."], [70, "Privélegers", "Bedrijven zetten eigen legers op straat. Vraag naar wapens en beveiliging piekt."], [50, "Sancties", "Embargo's en sancties. Staten proberen de corporaties terug te dringen."], [30, "Onrust", "Protesten, stakingen en sabotage. De sfeer wordt grimmig."], [0, "Rustig", "Zaken zoals altijd."]];
+const SPANNING_FASEN = [[90, "Corporate zone", "De corporaties regeren. De politie kijkt de andere kant op; heat zakt sneller op je eigen continent."], [70, "Privélegers", "Bedrijven zetten eigen legers op straat. Vraag naar wapens en beveiliging piekt; op je eigen continent zakt heat trager."], [50, "Sancties", "Embargo's en sancties. Staten proberen de corporaties terug te dringen; op je eigen continent zakt heat trager."], [30, "Onrust", "Protesten, stakingen en sabotage. De sfeer wordt grimmig."], [0, "Rustig", "Zaken zoals altijd."]];
 const spanningFase = v => SPANNING_FASEN.find(([d]) => v >= d);
 const SPANNING_TIJDLIJN = {"2015-03": {"Midden-Oosten": 5}, "2020-09": {"Midden-Oosten": 5, "Azië": 3}, "2022-02": {"Europa": 12}, "2032-05": {"*": 8}, "2040-01": {"*": 10}};
 function spanningTick(s, ctx){ const S0 = (s.spanning ??= {}), nu = ym(s); for (const c of CONTINENTS) S0[c.naam] ??= RI(8, 25);
@@ -3169,6 +3169,9 @@ function spanningTick(s, ctx){ const S0 = (s.spanning ??= {}), nu = ym(s); for (
     if (oud > 15) d -= 0.04;
     S0[n] = Math.round(clamp(oud + d, 0, 100) * 10) / 10;
     const f0 = spanningFase(oud), f1 = spanningFase(S0[n]); if (f1[0] > f0[0]){ news(s, `${n}: ${f1[1]}`, `De corpospanning in ${n} loopt op tot ${Math.round(S0[n])}. ${f1[2]}`, n, "wereld", true); ctx.rep.push(`Corpospanning ${n}: ${f1[1]}`); } } }
+/* 5.4.1: Sancties en Privélegers op je thuiscontinent: staten zitten corporaties op de huid (heat zakt trager); Corporate zone: politie kijkt weg */
+const spanningThuis = s => (s.spanning || {})[(s.districts.find(x => x.id === s.player.home_district) || {}).continent] || 0;
+const spanningHeat = s => { const v = spanningThuis(s); return v >= 90 ? 1 : v >= 50 ? -0.6 : 0; };
 const spanningGem = s => { const v = Object.values(s.spanning || {}); return v.length ? v.reduce((a, b) => a + b, 0) / v.length : 0; };
 function tijdlijnTick(s, ctx){ const nu = ym(s), gehad = (s.tijdlijnGehad ??= []), B = (s.vraagBasis ??= {});
   for (const t of TIJDLIJN){ if (t.d > nu || gehad.includes(t.d)) continue; gehad.push(t.d); const recent = mndNr(nu) - mndNr(t.d) <= 2;
