@@ -503,13 +503,14 @@ const html = '<!doctype html><html><head><meta charset=utf8></head><body>' + fs.
     r.cash = 900; r.expM = null; delete r.divs["Biotech"]; const oudR = RNG; RNG = () => 0; rivUitbreiding(c, r); RNG = oudR;
     return {vakOk, opgeruimd, uitgebreid: !!r.divs["Biotech"], reden: (r.divReden || {})["Biotech"] || ""}; });
   ok(r86.vakOk && r86.opgeruimd && r86.uitgebreid && /alleen/.test(r86.reden), "8.6: rivalen starten in verwante sectoren, losse vreemde divisies (en hun producten) verdwijnen, en ze breiden uit met een reden (bv. jij hebt een markt alleen): " + JSON.stringify(r86));
-  // 8.7 vakgebied, niveaugrenzen, onderzoek in je vak, zeldzaamheid
+  // 8.7/9.0 vakgebied en niveau: niet op slot, wel duurder; zeldzaamheid
   const v87 = await p.evaluate(() => { const c = JSON.parse(JSON.stringify(G.game)), d = c.divisions[0]; d.type = "Biotech"; d.level = 1; c.cash = 900; c.gratisDev = 0;
-    const tank = actProduct(c, Ctx(), "ontwikkel", {divisie: divNaam(d), schaal: "klein", aard: "wapen"}), vlag = actProduct(c, Ctx(), "ontwikkel", {divisie: divNaam(d), schaal: "vlag", aard: "medisch"});
-    const mag = divAarden(c, d); c.divisions = [d]; const ozWapen = actOnderzoek(c, Ctx(), "wapen").ok, ozMed = onderzoekMag(c, "medisch");
+    const inVak = devPlan(c, d, "klein", "standaard", "medisch"), buiten = devPlan(c, d, "klein", "standaard", "wapen"), vlag1 = devPlan(c, d, "vlag", "standaard", "medisch"); d.level = 3; const vlag3 = devPlan(c, d, "vlag", "standaard", "medisch"); d.level = 1;
+    const tank = actProduct(c, Ctx(), "ontwikkel", {divisie: divNaam(d), schaal: "klein", aard: "wapen"});
+    c.divisions = [d]; const kIn = techKost(c, 1, "medisch"), kUit = techKost(c, 1, "wapen"), ozWapen = actOnderzoek(c, Ctx(), "wapen").ok;
     const tel = {}; for (let i = 0; i < 4000; i++){ const k = kiesSector(c); tel[k] = (tel[k] || 0) + 1; }
-    return {tank: tank.ok, vlag: vlag.ok, mag, ozWapen, ozMed, log: tel["Logistiek"], cyber: tel["Cyberware"], wm: tel["Weapon Manufacturing"]}; });
-  ok(!v87.tank && !v87.vlag && v87.mag.includes("medisch") && !v87.mag.includes("wapen") && !v87.ozWapen && v87.ozMed && v87.log > v87.cyber * 2 && v87.log > v87.wm * 2, "8.7: een medische divisie maakt geen wapens en kan op niveau 1 geen vlaggenschip; onderzoek alleen in je vak; logistiek komt veel vaker voor dan cyberware en wapenmakers: " + JSON.stringify(v87));
+    return {tank: tank.ok, duurder: buiten.kost > inVak.kost * 2, kwLager: buiten.kw < inVak.kw || inVak.kw === 1, flag: buiten.buitenVak, vlagDuur: vlag1.kost > vlag3.kost && vlag1.doel > vlag3.doel, kUit: kUit > kIn * 1.5, ozWapen, log: tel["Logistiek"], cyber: tel["Cyberware"], wm: tel["Weapon Manufacturing"]}; });
+  ok(v87.tank && v87.duurder && v87.kwLager && v87.flag && v87.vlagDuur && v87.kUit && v87.ozWapen && v87.log > v87.cyber * 2 && v87.log > v87.wm * 2, "8.7/9.0: buiten het vak en onder het niveau kan, maar duurder en moeilijker; onderzoek buiten je vak dubbel zo duur; logistiek komt veel vaker voor dan cyberware en wapenmakers: " + JSON.stringify(v87));
   ok(/VERKOOP/.test(verkoop) && /KEURING/.test(verkoop), "tabblad Verkoop en keuring");
   ok(/VARIANT/.test(scherm), "varianten staan op het productblad");
   if (out){ const bl = await p.$('.prodblad'); if (bl) await bl.screenshot({path: out + "/verkoop.png"}); }

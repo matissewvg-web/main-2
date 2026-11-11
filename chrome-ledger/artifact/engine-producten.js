@@ -85,8 +85,7 @@ function actProduct(s, ctx, soort, a){
     const sc = PRODUCT_SCHAAL[a.schaal]; if (!sc) return {ok: false, msg: "Kies een schaal."};
     const alle = (s.producten || []).filter(p => p.divisie === divNaam(d) && p.status !== "teruggeroepen");
     if (alle.length >= maxProducten(d)) return {ok: false, msg: `${divNaam(d)} kan op niveau ${d.level} maximaal ${maxProducten(d)} producten dragen (inclusief de wachtrij). Haal er een uit de markt of breid de divisie uit.`};
-    if (d.level < (SCHAAL_NIVEAU[a.schaal] || 1)) return {ok: false, msg: `${sc.label} vraagt een divisie van minstens niveau ${SCHAAL_NIVEAU[a.schaal]}; ${divNaam(d)} is niveau ${d.level}. Breid eerst uit.`}; /* 8.7 */
-    if (a.aard && PRODUCT_AARD[a.aard] && !divAarden(s, d).includes(a.aard)) return {ok: false, msg: `${divNaam(d)} (${d.type}) maakt geen ${PRODUCT_AARD[a.aard].label.toLowerCase()}. Dat is niet haar vak: kies ${divAarden(s, d).map(x => PRODUCT_AARD[x].label.toLowerCase()).join(", ")}, of start een divisie in die sector.`}; /* 8.7 */
+    /* 9.0: schaal onder het niveau en producten buiten het vak kunnen, maar zijn duurder en moeilijker (zie devPlan) */
     const focus = DEV_FOCUS[a.focus] ? a.focus : "standaard", F = DEV_FOCUS[focus], aardK = PRODUCT_AARD[a.aard] ? a.aard : null, beta = a.beta === true || a.beta === "ja", plan = devPlan(s, d, a.schaal, focus, aardK || aardVan(d.type, a.naam || ""), beta);
     const gratis = (s.gratisDev || 0) > 0, kost = gratis ? 0 : plan.kost, bezig = false; /* 4.7.11: geen wachtrij meer, alles start meteen */ /* 4.7.10: gratis ontwikkelingen */
     if (bezig){ if (alle.filter(p => p.status === "wachtrij").length >= 3) return {ok: false, msg: "De wachtrij is vol (3)."};
@@ -1245,14 +1244,14 @@ const TECH_EFFECT = ["+5% omzet", "+5% omzet en 8% goedkopere onderdelen", "+5% 
 const TECH_EXTRA = {wapen: ["Railgun-miniaturisatie", "Autonome wapenplatforms"], beveiliging: ["Gedragsvoorspelling", "Stadsbrede schilden"], implantaat: ["Geheugenimplantaten", "Volledige lichaamsvervanging"], medisch: ["Orgaankweek op bestelling", "Verouderingsremmers"], data: ["Kwantumversleuteling", "Collectief geheugen"], logistiek: ["Hyperloopnetten", "Zelfbouwende depots"], financieel: ["Algoritmische centrale bank", "Schaduwvaluta"], smokkel: ["Spookcontainers", "Grensloze routes"], orbitaal: ["Ruimteliften", "Asteroïdemijnbouw"], consument: ["Persoonlijke AI-assistent", "Neurale reclame"]};
 const TECH_MAX = 5, techNaam = (aard, n) => n <= 3 ? (TECH_NAMEN[aard] || [])[n - 1] : (TECH_EXTRA[aard] || [])[n - 4] || `Generatie ${n}`;
 const onderzoekDivisie = (s, aard) => s.divisions.filter(d => divAarden(s, d).includes(aard)).sort((a, b) => b.level - a.level)[0] || null;
-const onderzoekMag = (s, aard) => !!onderzoekDivisie(s, aard);
+const onderzoekMag = (s, aard) => !!TECH_NAMEN[aard]; /* 9.0: alles mag; buiten je vak duurder en trager */
+const onderzoekInVak = (s, aard) => !!onderzoekDivisie(s, aard);
 const techNiveau = (s, aard) => ((s.onderzoek || {}).niveau || {})[aard] || 0;
 const techF = (s, p) => { const n = techNiveau(s, p.aard || aardVan(p.type, p.naam)); return 1 + 0.05 * Math.min(3, n) + (n >= 5 ? 0.1 : 0); };
-const techKost = (s, n, aard) => { const d = aard ? onderzoekDivisie(s, aard) : null; return r1(15 * n * (DIFF[s.player.difficulty] || 1) * clamp(omvang(s), 1, 4) * (d ? Math.max(0.6, 1 - 0.05 * d.level) : 1)); }; /* 6.0: groter bedrijf = duurder; 8.7: hogere divisie = goedkoper */
-const techMaanden = (n, s, aard) => { const d = s && aard ? onderzoekDivisie(s, aard) : null; return Math.max(3, 4 + 2 * n - (d ? Math.floor(d.level / 3) : 0)); };
+const techKost = (s, n, aard) => { const d = aard ? onderzoekDivisie(s, aard) : null; return r1(15 * n * (DIFF[s.player.difficulty] || 1) * clamp(omvang(s), 1, 4) * (d ? Math.max(0.6, 1 - 0.05 * d.level) : (aard ? 2 : 1))); }; /* 6.0: groter bedrijf = duurder; 8.7: hogere divisie = goedkoper; 9.0: buiten je vak dubbel */
+const techMaanden = (n, s, aard) => { const d = s && aard ? onderzoekDivisie(s, aard) : null; return Math.max(3, 4 + 2 * n - (d ? Math.floor(d.level / 3) : (s && aard ? -3 : 0))); }; /* 9.0: buiten je vak 3 maanden langer */
 const techDoel = n => 5 + n, techBonus = (s, aard) => { const d = onderzoekDivisie(s, aard); return d ? Math.floor(d.level / 2) : 0; };
 function actOnderzoek(s, ctx, aard){ if (!TECH_NAMEN[aard]) return {ok: false, msg: "Onbekende soort."}; const O = (s.onderzoek ??= {niveau: {}}); if (O.lopend) return {ok: false, msg: `Er loopt al onderzoek: ${O.lopend.naam}.`};
-  if (!onderzoekMag(s, aard)) return {ok: false, msg: `Je hebt geen divisie die ${PRODUCT_AARD[aard].label.toLowerCase()} maakt. Onderzoek doe je in je eigen vak.`}; /* 8.7 */
   const n = techNiveau(s, aard) + 1; if (n > TECH_MAX) return {ok: false, msg: "Deze soort is volledig onderzocht."}; const k = techKost(s, n, aard), m = techMaanden(n, s, aard), pm = r1(k / m); if (s.cash < pm + 10) return {ok: false, msg: `Niet genoeg cash voor de eerste maand (€${pm}M).`};
   O.lopend = {aard, n, naam: techNaam(aard, n), over: m, maanden: m, perMaand: pm, sinds: ym(s)}; addLog(s, `Onderzoek gestart: ${O.lopend.naam}`);
   return {ok: true, msg: `Onderzoek "${O.lopend.naam}" gestart: ${m} maanden, €${pm}M per maand, ${kans2d6(techBonus(s, aard), techDoel(n))}% kans dat het op tijd lukt (anders 2 maanden vertraging). Daarna: ${TECH_EFFECT[n - 1]} op ${PRODUCT_AARD[aard].label.toLowerCase()}.`}; }
@@ -1560,8 +1559,10 @@ function devKansen(bonus, doel, focus){
 }
 function devPlan(s, d, schaal, focus, aard, beta){
   const sc = PRODUCT_SCHAAL[schaal] || PRODUCT_SCHAAL.klein, F = DEV_FOCUS[focus] || DEV_FOCUS.standaard, k = productKans(s, d, schaal), dif = DIFF[s.player.difficulty] || 1;
-  const doel = k.doel + (F.doel || 0), a = PRODUCT_AARD[aard] ? aard : aardVan(d.type, ""), bb = beta ? 1 : 0;
-  return {kost: r1(sc.kost * dif * (F.kost || 1) * (beta ? 1.2 : 1)), maanden: Math.max(1, sc.maanden + (F.maanden || 0) - (heeftFocus(s, "rd") ? 1 : 0)) + bb, kw: clamp(1 + Math.floor(d.level / 2) + sc.kw + (F.kw || 0) + (techNiveau(s, PRODUCT_AARD[aard] ? aard : aardVan(d.type, "")) >= 4 ? 1 : 0), 1, 5), /* 8.7: onderzoek niveau 4 */ bonus: k.bonus + bb, doel, beta: !!beta,
+  const a = PRODUCT_AARD[aard] ? aard : aardVan(d.type, ""), bb = beta ? 1 : 0;
+  const buitenVak = !divAarden(s, d).includes(a), onder = Math.max(0, (SCHAAL_NIVEAU[schaal] || 1) - d.level); /* 9.0: niet op slot, wel duurder en moeilijker */
+  const doel = k.doel + (F.doel || 0) + onder + (buitenVak ? 2 : 0), extraF = (1 + 0.6 * onder) * (buitenVak ? 2.5 : 1);
+  return {buitenVak, onder, kost: r1(sc.kost * dif * (F.kost || 1) * (beta ? 1.2 : 1) * extraF), maanden: Math.max(1, sc.maanden + (F.maanden || 0) - (heeftFocus(s, "rd") ? 1 : 0)) + bb, kw: clamp(1 + Math.floor(d.level / 2) + sc.kw + (F.kw || 0) + (techNiveau(s, a) >= 4 ? 1 : 0) - (buitenVak ? 1 : 0), 1, 5), /* 8.7: onderzoek niveau 4; 9.0: buiten je vak −1 */ bonus: k.bonus + bb, doel, beta: !!beta,
     kansen: devKansen(k.bonus + bb, doel, focus), aard: a, markt: vraagFactor(s, a), vraag: Math.round((((s.vraag || {})[a]) || {idx: 100}).idx),
     concurrenten: s.rivals.reduce((n, r) => n + (r.producten || []).filter(p => p.aard === a).length, 0)};
 }
