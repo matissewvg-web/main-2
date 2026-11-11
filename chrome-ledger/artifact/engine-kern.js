@@ -115,6 +115,7 @@ function migrate(s){
   if (s.schepen === undefined){ s.schepen = (s.vloot || 0) * 2; s.inzet = {}; const z0 = (s.districts.find(d => d.control === "player" && (d.zee || []).length) || {}).zee; if (z0 && s.schepen) s.inzet[z0[0]] = s.schepen; }
   s.inzet ??= {};
   for (const r of s.rivals) if (!r.kleur) r.kleur = RIVAL_COLORS.find(c => !s.rivals.some(x => x.kleur === c)) || "#cccccc";
+  if (typeof kleurenUniek === "function") kleurenUniek(s); /* 8.0 */
   for (const r of s.rivals){
     let d = s.districts.find(x => x.id === r.hq);
     if (d && d.control !== "neutral" && d.control !== r.name){ const alt = s.districts.filter(x => x.control === "neutral"); d = alt.length ? alt[Math.floor(R() * alt.length)] : null; r.hq = d ? d.id : null; }
@@ -291,10 +292,10 @@ function marketTick(s, ctx){
   if (R() < 0.04){
     const sec = CH(SECTORS), naam = genRivaalNaam(sec, new Set([...s.rivals.map(r => r.name), ...(s.flags.start_rivalen || [])]));
     if (!s.rivals.some(r => r.name === naam)){
-      const free = s.districts.filter(d => d.control === "neutral"), home = free.length ? CH(free) : null;
+      const free = s.districts.filter(d => d.control === "neutral"), hqs = new Set(s.rivals.map(r => r.hq)), afsplits = s.districts.filter(d => d.control !== "player" && d.control !== "neutral" && !hqs.has(d.id)), home = free.length ? CH(free) : afsplits.length ? CH(afsplits) : null; /* 8.0: elke nieuwkomer krijgt een plek op de kaart (desnoods een afsplitsing van een rivaal) */
       const nr = initRival({name: naam, ceo: CH(RIVAL_CEO_NAMEN.filter(x => !s.rivals.some(r => r.ceo === x))), cash: RI(80, 300),
         aggression: r1(U(0.2, 0.7) * 10) / 10, memory: [], hq: home ? home.id : null, sector: sec, divs: {[sec]: 2}});
-      s.rivals.push(nr); if (home) home.control = naam;
+      s.rivals.push(nr); nr.kleur = uniekeKleur(s, nr); if (home) home.control = naam;
       for (const m of Object.values(s.market)) m.rivals[naam] = 0;
       news(s, `Nieuwe speler: ${naam}`, `Nieuwkomer in ${sec}${home ? ", met een hoofdkantoor in " + home.name : ""}. Geld uit onduidelijke bron. Dat is gewoonlijk een signaal.`, home ? home.continent : "", "markt", true);
       ctx.rep.push(`Nieuwe concurrent: ${naam}`);

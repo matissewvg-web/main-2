@@ -465,6 +465,11 @@ const html = '<!doctype html><html><head><meta charset=utf8></head><body>' + fs.
     const c2 = JSON.parse(JSON.stringify(c)); c2.contracten = [{id: "k", klant: "Y", aard: "wapen", product: pr.id, perMaand: 1, over: 6, maanden: 6}]; const pr2 = c2.producten.find(x => x.id === pr.id); pr2.status = "uit"; const pr3 = mkProduct(c2, d, "Ander wapen", 4, 50); Object.assign(pr3, {aard: "wapen", keuring: "ok"}); c2.producten.push(pr3); aanvraagTick(c2, Ctx()); window.kansRol = oud;
     return {ok: r.ok, mnd: con.maanden, min: con.minKwal, r2: r2.ok, boete, opgezegd, verbroken: c2.contracten.length === 0 || c2.contracten[0].over === 0}; });
   ok(c7.ok && c7.mnd === 18 && c7.min === 3 && !c7.r2 && c7.boete && c7.opgezegd && c7.verbroken, "7.7: tegenbod 'langer' geeft 50% meer maanden; onder de afgesproken kwaliteit boetes en na drie maanden opzegging; een contract voor een product breekt als dat product weg is, ook als er een ander wapen is: " + JSON.stringify(c7));
+  // 8.0 unieke kleuren en iedereen op de kaart
+  const k8 = await p.evaluate(() => { const c = JSON.parse(JSON.stringify(G.game)); c.huisstijl = {...(c.huisstijl || {}), kleur: "#ff9a1f"}; for (const r of c.rivals) r.kleur = "#cccccc"; c.rivals[0].kleur = "#ff9a1f"; kleurenUniek(c);
+    const H = [ownerColor(c, "player"), ...c.rivals.map(r => r.kleur)].map(k => hexHsl(k).h), min = Math.min(...H.flatMap((a, i) => H.slice(i + 1).map(b => hueAfstand(a, b))));
+    S.view = "kaart"; render(); const leg = document.querySelectorAll(".corpleg").length; S.view = "overzicht"; render(); return {min, leg, n: G.game.rivals.length, neutraal: ownerColor(c, "neutral")}; });
+  ok(k8.min >= 24 && k8.leg === k8.n + 2 && k8.neutraal === "#3a3550", "8.0: elke corporatie een eigen kleur ver van de andere (ook van de speler), neutraal grijs, legenda met iedereen op de kaart: " + JSON.stringify(k8));
   ok(/VERKOOP/.test(verkoop) && /KEURING/.test(verkoop), "tabblad Verkoop en keuring");
   ok(/VARIANT/.test(scherm), "varianten staan op het productblad");
   if (out){ const bl = await p.$('.prodblad'); if (bl) await bl.screenshot({path: out + "/verkoop.png"}); }

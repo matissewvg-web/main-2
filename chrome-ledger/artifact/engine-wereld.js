@@ -1,6 +1,6 @@
 /* Chrome Ledger engine, deel engine-wereld.js: wereld: kaart, zee, dominantie, eigen soorten, personeel, rivalen en acties. 7.4: de engine staat in zes bestanden die in deze volgorde laden (kern, wereld, leven, producten, gm, opslag); alles deelt dezelfde globale scope. */
 /* ---------- de stad: elke game een andere kaart ---------- */
-const VERSION = "7.7";
+const VERSION = "8.0";
 const MAP_W = 1000, MAP_H = 680;
 const RIVAL_COLORS = ["#ff9a1f", "#3d7bff", "#c6ff2e", "#f2f2f2", "#9b5cff", "#ffd400", "#ff4d4d"];
 const ARCH = {
@@ -108,7 +108,18 @@ function buildMapForExisting(s){
   s.city ??= "Meridian Bay";
   s.map = genGeometry("oud:" + (s.player.corp_name || "x"), s.districts, s.city);
 }
-function ownerColor(s, o){ if (o === "player") return (typeof stijlKleuren === "function" && s.huisstijl && (stijlKleuren(s.huisstijl).k || {}).hex) || (s.huisstijl && s.huisstijl.kleur) || "#05d9e8"; /* 6.5: jouw (leesbare) kleur op de kaart */ if (o === "neutral") return s.map && s.map.frame ? "#b8155c" : "#2c1f4f"; const r = s.rivals.find(x => x.name === o); return r && r.kleur ? r.kleur : "#8a8aa0"; }
+/* 8.0: elke corporatie een eigen kleur: de tint die het verst ligt van alle andere (ook die van de speler); grijs blijft voor neutraal */
+function hexHsl(hex){ const m = String(hex || "").match(/^#?([0-9a-f]{6})$/i); if (!m) return null; const n = parseInt(m[1], 16), r = (n >> 16 & 255) / 255, g = (n >> 8 & 255) / 255, b = (n & 255) / 255, mx = Math.max(r, g, b), mn = Math.min(r, g, b), l = (mx + mn) / 2, d = mx - mn;
+  if (!d) return {h: null, s: 0, l}; const sat = d / (1 - Math.abs(2 * l - 1)); let h = mx === r ? ((g - b) / d) % 6 : mx === g ? (b - r) / d + 2 : (r - g) / d + 4; return {h: (h * 60 + 360) % 360, s: sat, l}; }
+function hslHex(h, s2, l){ const c = (1 - Math.abs(2 * l - 1)) * s2, x = c * (1 - Math.abs((h / 60) % 2 - 1)), m = l - c / 2; const [r, g, b] = h < 60 ? [c, x, 0] : h < 120 ? [x, c, 0] : h < 180 ? [0, c, x] : h < 240 ? [0, x, c] : h < 300 ? [x, 0, c] : [c, 0, x];
+  return "#" + [r, g, b].map(v => Math.round((v + m) * 255).toString(16).padStart(2, "0")).join(""); }
+const hueAfstand = (a, b) => { const d = Math.abs(a - b) % 360; return Math.min(d, 360 - d); };
+function bezetteTinten(s, zonder){ const H = []; const pk = hexHsl(ownerColor(s, "player")); if (pk && pk.h != null && pk.s > 0.25) H.push(pk.h); for (const r of s.rivals || []) if (r !== zonder && r.kleur){ const k = hexHsl(r.kleur); if (k && k.h != null) H.push(k.h); } return H; }
+function uniekeKleur(s, zonder){ const H = bezetteTinten(s, zonder); let best = 0, bd = -1; for (let h = 0; h < 360; h += 5){ const d = H.length ? Math.min(...H.map(x => hueAfstand(x, h))) : 180; if (d > bd){ bd = d; best = h; } } return hslHex(best, 0.85, 0.6); }
+const KLEUR_MIN_AFSTAND = 24;
+function kleurenUniek(s){ if (!Array.isArray(s.rivals)) return; for (const r of s.rivals){ const k = hexHsl(r.kleur), H = bezetteTinten(s, r);
+    if (!k || k.h == null || k.s < 0.3 || H.some(x => hueAfstand(x, k.h) < KLEUR_MIN_AFSTAND)) r.kleur = uniekeKleur(s, r); } }
+function ownerColor(s, o){ if (o === "player") return (typeof stijlKleuren === "function" && s.huisstijl && (stijlKleuren(s.huisstijl).k || {}).hex) || (s.huisstijl && s.huisstijl.kleur) || "#05d9e8"; /* 6.5: jouw (leesbare) kleur op de kaart */ if (o === "neutral") return "#3a3550"; /* 8.0: neutraal is grijs, geen corporatiekleur */ const r = s.rivals.find(x => x.name === o); return r && r.kleur ? r.kleur : "#8a8aa0"; }
 
 /* --- zee: eskaders, overwicht per zeezone, konvooioorlog en zeeslagen (in de geest van een grand strategy-marine) --- */
 const SHIP_MAX = 16, SHIP_POWER = 4;

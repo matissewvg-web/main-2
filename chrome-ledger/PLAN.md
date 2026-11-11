@@ -76,6 +76,15 @@ Gemeten met tests/balans.js (STRATS=niets, 30 spellen, 20 jaar) vóór → na 7.
 | 8 | 7.7 ✓ | Contracten deel 2: onderhandelen (tegenbod), leveringscapaciteit (stuks per maand tegen je productie), boete bij niet leveren, exclusiviteit | 2 |
 Bevroren tot 7.1-7.3 klaar zijn: nieuwe systemen. Ideeën blijven in de lijst hieronder.
 
+### Roadmap 8 (wens 11 nov, na roadmap 7)
+Wens: "elke corpo een unieke kleur; iedereen vecht voor controle van regio's, niet kopen en daar blijven zitten, maar vechten met winkels, contracten, bases, alles; minder winst daarvan; elke corpo op de kaart; daarna doorwerken."
+| # | Stap | Wat | Prio |
+|---|---|---|---|
+| 1 | 8.0 ✓ | Unieke kleuren per corporatie (ook tegen de spelerkleur), neutraal grijs, elke rivaal op de kaart, legenda | 1 |
+| 2 | 8.1 | Controle door concurrentie: dominantie per district uit winkels (verkoop), contracten met klanten daar, bases (districten, HQ, patrouilles) en aanwezigheid, voor jou én rivalen; bezit is een basis, geen garantie | 1 |
+| 3 | 8.2 | Minder winst uit gebied, en balans opnieuw meten op alle niveaus | 1 |
+| 4 | 8.3 | Opruimstap | 1 |
+
 ### Ideeën (brainstorm 11 nov, aangevuld na de review)
 - Rivalen voeren onderling corpo-oorlogen; legers van beide kanten kopen bij jou (of bij je concurrent).
 - Klantrelaties: vaste klanten die terugkomen als je goed levert, en wegblijven na wanbetaling of te late levering.
@@ -238,6 +247,7 @@ Werkwijze: elk uur een ronde (automatisch). Grote punten zijn verdeeld in stappe
 - 6.4b Controleronde (11 nov, vangnet): diepeplay zonder fouten; nieuwe vaste tests tests/alleschermen.js (60 mnd met alle systemen, elk scherm/tabblad/productblad zonder NaN/undefined; 3 zaden schoon) en tests/oudesave.js (alle velden van na 5.0 weg → alles wordt vanzelf aangemaakt, geen fouten). Geen codewijziging nodig. Wacht op feedback uit een echte speelronde.
 - 6.5 Kleuren (11 nov, wens 'verbeter de kleur optie, echt alles die kleur en altijd leesbaar'): CSS-kleuren via variabelen (--cyan-rgb, --mag-rgb, --violet-rgb, --violet2-rgb, --bg-rgb, --on-cyan, --on-mag, --cyan-l, --mag-l, --top1/2): 30+15+7+2 rgba-literals en 13 bg-overlays omgezet; .stat, nav, kopbalk volgen het thema; thema's hebben eigen muted/dim. leesbaar(): HSL-lichtheid omhoog met dezelfde tint tot contrast ≥4,5 tegen panel3 (en dus ook bg); tekstOp() kiest zwart/wit. Logo, kaart (ownerColor) en grafieken gebruiken de leesbare kleur. --dim neon #6d6299 (3,3:1) → #8f86c2 (≥5:1). Huisstijl toont wanneer een kleur is aangepast. Test meet echte contrasten op 3 combinaties.
 - 6.6 Kleuren en divisies (11 nov, wens 'zwart bedrijf buggy, kleuren onduidelijk, divisienaam bij 2 divisies'): leesbaar() zette bij zwart s=0,25 met tint 0 → roze; nu blijft grijs/zwart neutraal en donkergrijs wordt zilverwit (l 0,86). stijlKleuren: accent dat < 110 (RGB-afstand) van de hoofdkleur ligt, wordt vervangen (tint + 162°, of #ff2a6d bij grijs). kleurNoot korter. Setup past pasStijlToe(S.setup.huisstijl) toe. Setup: twee naamvelden bij twee divisies (divisie_naam2), dubbele naam → ' 2'. Test op neutraliteit, contrast, verschuiving en namen.
+- 8.0 Kleuren (11 nov): hexHsl/hslHex/hueAfstand, uniekeKleur (tint met de grootste afstand tot de speler en alle rivalen, s 0,85, l 0,6), kleurenUniek in migrate (grijs, te flets of < 24° van een ander → nieuwe kleur), nieuwkomers meteen uniekeKleur en een HQ (neutraal, anders een afsplitsing van een rivaal); neutraal #3a3550; corpLegenda onder de kaart. Gemeten: 8 corporaties, minimaal 35° tussen tinten. Test varianten +1 (70).
 - 7.7 Contracten deel 2 (11 nov): AANVRAAG_PRIJS.lang (f 1, mod −8, alleen raam): maanden ×1,5. Contract bewaart minKwal; in aanvraagTick: product onder minKwal → boete 10% van perMaand per maand, na 3 maanden opgezegd (rep −3). c.product vraagt dat product op de markt, anders verbroken met boete (vroeger nam elk product van de soort het over). Onderhandelen (tegenbod op prijs) bestond al als scherp/hoog; leveringscapaciteit en exclusiviteit niet gedaan: dat zijn nieuwe systemen, bevroren. Balans verstandig Realistisch 70%. Tests varianten +1 (69, drie keer groen); de oude klantentest zet de minimumkwaliteit nu vast.
 Roadmap 7 is af.
 - 7.6 Opruimstap en balans (11 nov): eindmeting 7.5. Verstandig (20 spellen): Casual 90-95%, Realistisch 60-70% (twee runs), Genadeloos 30-35% winst. Niets doen (30 spellen, 20 jaar): Casual 70% overleeft (waarde mediaan €654M), Realistisch 0% (mediaan 70 mnd), Genadeloos 0% (mediaan 54 mnd). Doelbots (7.1): alle vier de overwinningen haalbaar. Een echte save (Pax Armata, 2002) 24 maanden doorgedraaid op 7.5: geen fouten, geen NaN/undefined op elk scherm. Let op: balans.js is niet geseed; 20 spellen geven ±10 procentpunt spreiding per run.
