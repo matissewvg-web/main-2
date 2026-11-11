@@ -685,7 +685,7 @@ function tick(s){
 }
 
 /* ---------- de stad: elke game een andere kaart ---------- */
-const VERSION = "6.13";
+const VERSION = "6.14";
 const MAP_W = 1000, MAP_H = 680;
 const RIVAL_COLORS = ["#ff9a1f", "#3d7bff", "#c6ff2e", "#f2f2f2", "#9b5cff", "#ffd400", "#ff4d4d"];
 const ARCH = {
@@ -1114,8 +1114,8 @@ function actDiplo(s, ctx, name, kind, a = {}){
     let msg = `Oorlog verklaard aan ${r.name}.`;
     if (r.verdragen.length){ r.verdragen = []; s.reputation = clamp(s.reputation - 6); msg += " Het handelsverdrag is verscheurd; de stad onthoudt woordbreuk."; }
     if (r.status === "wapenstilstand"){ s.reputation = clamp(s.reputation - 8); msg += " Je breekt een wapenstilstand."; }
-    r.status = "oorlog"; r.statusMaanden = 0; r.moeheid = 0; relShift(r, -40); s.reputation = clamp(s.reputation - 4); s.heat = clamp(s.heat + 3);
-    for (const o of s.rivals) if (o !== r){ relShift(o, -5); remember(o, s, `speler verklaarde ${r.name} de oorlog`); }
+    const OP = oorlogPrijs(s); r.status = "oorlog"; r.statusMaanden = 0; r.moeheid = 0; relShift(r, -40); s.reputation = clamp(s.reputation - OP.rep); s.heat = clamp(s.heat + OP.heat); if (OP.corpo){ r.corpo = true; msg += " Een corpo-oorlog: de staat kijkt weg."; }
+    for (const o of s.rivals) if (o !== r){ if (OP.wantrouw) relShift(o, -OP.wantrouw); remember(o, s, `speler verklaarde ${r.name} de oorlog`); }
     remember(r, s, "speler verklaarde de oorlog");
     mail(ctx, s, r.ceo, "Zo zij het", `U heeft gekozen. ${r.name} ook. Vanaf vandaag zijn er geen regels meer tussen ons.`, "KRITIEK");
     addLog(s, msg); return {ok: true, msg};
@@ -3282,6 +3282,15 @@ const spanningThuis = s => (s.spanning || {})[(s.districts.find(x => x.id === s.
 const spanningHeat = s => { const v = spanningThuis(s); return (v >= 90 ? 1 : v >= 50 ? -0.6 : 0) + (heeftWet(s, "immuniteit") ? 0.8 : 0); };
 /* 5.5: straatoorlog en corpomacht. Bij hoge spanning mag je eigen beveiliging de straat op, vecht je om districten zonder oorlogsverklaring en koop je corpowetten met invloed. Meer macht = meer mogen. */
 const spanningVan = (s, cont) => (s.spanning || {})[cont] || 0;
+/* 6.14: wat een oorlog verklaren kost hangt af van de corpospanning thuis: in een corporate zone is het een corpo-oorlog, zonder rem van de staat */
+const oorlogPrijs = s => { const v = spanningThuis(s); return v >= 90 ? {rep: 0, heat: 0, wantrouw: 0, corpo: true} : v >= 70 ? {rep: 2, heat: 1, wantrouw: 2, corpo: false} : {rep: 4, heat: 3, wantrouw: 5, corpo: false}; };
+const CORPO_LADDER = [
+  {v: 0, naam: "Rustig", kort: "Zaken zoals altijd. De staat houdt de corporaties in toom.", jij: ["Producten, contracten, districten kopen en aanwezigheid opbouwen", "Oorlog verklaren kan, maar de staat let op: reputatie −4, heat +3, andere rivalen worden wantrouwig"], riv: ["Concurreren, lobbyen, headhunten", "Een ultimatum stellen; weiger je, dan is het oorlog"]},
+  {v: 30, naam: "Onrust", kort: "Protesten en sabotage. De staat verliest grip op de straat.", jij: ["Wapens en beveiliging verkopen beter, consumentenspul slechter", "Je aandeel in districten groeit makkelijker: de staat telt minder mee"], riv: ["Hetzelfde voordeel als jij"]},
+  {v: 50, naam: "Sancties", kort: "Staten slaan terug met embargo's en sancties.", jij: ["Embargo op export: alleen met een smokkelroute verkoop je wapens nog over de grens", "De Privébeveiligingswet kopen: dan mag je al patrouilleren", "Op je thuiscontinent zakt heat trager"], riv: ["Hetzelfde embargo"]},
+  {v: 70, naam: "Privélegers", kort: "Corporaties zetten eigen legers op straat.", jij: ["Patrouilles in je districten (macht +2, bendes en rivalen krijgen minder grip)", "Straatgevechten: een district van een rivaal innemen zonder oorlogsverklaring", "Bedrijfsimmuniteit en de Belastingvrije corpozone kopen", "Oorlog verklaren kost minder: reputatie −2, heat +1"], riv: ["Rivalen die je niet mogen, nemen ook districten van jou op straat (hooguit één per maand)"]},
+  {v: 90, naam: "Corporate zone", kort: "De corporaties regeren. Corpo-oorlogen: geen staat die ingrijpt.", jij: ["Corpo-oorlog: oorlog verklaren kost geen reputatie en geen heat, andere rivalen vinden het normaal", "Eigen rechtspraak kopen: een razzia lukt half zo vaak", "Heat zakt sneller, het embargo is weg", "Winnen: een corporate zone thuis met 60% dominantie"], riv: ["Vijandige rivalen (relatie onder −40) kunnen jou zelf de oorlog verklaren, zonder ultimatum"]}];
+const corpoTrede = v => CORPO_LADDER.slice().reverse().find(x => v >= x.v) || CORPO_LADDER[0];
 /* 6.8: alle gevolgen van de spanning op één continent, in gewone taal (voor het tabblad, de header en het nieuws) */
 const SPANNING_AARD_LABEL = {wapen: "Wapens", beveiliging: "Beveiliging", smokkel: "Smokkel", medisch: "Medisch", consument: "Consument", financieel: "Financieel", logistiek: "Logistiek"};
 function spanningEffecten(s, cont){ const v = spanningVan(s, cont), out = [], thuis = cont === exportThuis(s);
@@ -3338,6 +3347,11 @@ function actCorpo(s, ctx, soort, id){
     addLog(s, `Corpowet ${w.label} gekocht (${w.inv} invloed, €${w.cash}M)`); return {ok: true, msg: `${w.label} is van kracht: ${w.uitleg}`}; }
   return {ok: false, msg: "Onbekende actie."}; }
 function corpoTick(s, ctx){
+  if (spanningThuis(s) >= 90 && !s.rivals.some(r => r.status === "oorlog")){ /* 6.14: corpo-oorlog van een vijandige rivaal, hooguit één tegelijk */
+    const r = s.rivals.find(x => x.status === "vrede" && (x.relatie || 0) < -40 && !(x.verdragen || []).length); if (r && kansRol() < 0.04 + (r.aggression || 0) * 0.04){
+      r.status = "oorlog"; r.statusMaanden = 0; r.moeheid = 0; r.corpo = true; remember(r, s, "verklaarde de speler een corpo-oorlog");
+      mail(ctx, s, r.ceo || r.name, `Corpo-oorlog: ${r.name}`, `Geen ultimatum, geen advocaten. In een corporate zone hoeft dat niet meer. ${r.name} verklaart ${s.player.corp_name} de oorlog. De staat kijkt weg. Vrede kan, bij Rivalen, als je ze genoeg pijn doet of betaalt.`, "KRITIEK");
+      news(s, `Corpo-oorlog: ${r.name} tegen ${s.player.corp_name}`, `In de corporate zone verklaart ${r.name} openlijk de oorlog. Niemand belt de politie; die werkt er inmiddels.`, "", "wereld", true); ctx.rep.push(`${r.name} verklaart je een corpo-oorlog`); } }
   if (s.patrouille) s.patrouille = Object.fromEntries(patrouilles(s).map(id => [id, s.patrouille[id]]));
   /* rivalen die je niet mogen vechten bij hoge spanning ook op straat, zonder oorlogsverklaring: hooguit één gevecht per maand */
   for (const r of s.rivals){ if (r.status === "oorlog" || (r.relatie || 0) > -20) continue;

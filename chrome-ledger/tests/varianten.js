@@ -435,6 +435,14 @@ const html = '<!doctype html><html><head><meta charset=utf8></head><body>' + fs.
     const uit = {ok1: ra.ok, soorten: v.extras.map(x => x.soort), kwPlus: v.kwPlus, ok2: r2.ok, betaald: r1(cash0 - s.cash), naam: pr.naam, editie: pr.editie, extras: (pr.extras || []).length, kw: pr.kwaliteit, goedkoper: kostFactor(pr) < k0, keuring: pr.keuring, ui};
     s.producten = s.producten.filter(x => x !== pr); return uit; });
   ok(edi.ok1 && edi.soorten.includes("kosten") && edi.soorten.includes("betrouwbaar") && edi.soorten.includes("populariteit") && edi.kwPlus === 1 && edi.ok2 && edi.betaald > 0 && edi.naam === "Vest Alpha II" && edi.editie === 2 && edi.extras >= 3 && edi.kw === 4 && edi.goedkoper && edi.keuring === "nodig" && edi.ui, "edities: voorstel uit je tekst, extra's met effect, ontwikkelen kost geld, lancering geeft Editie 2 met nieuwe naam, kwaliteit en een nieuwe keuring: " + JSON.stringify(edi));
+  // 6.14 corpomacht-ladder en corpo-oorlogen
+  const lad = await p.evaluate(() => { const c = JSON.parse(JSON.stringify(G.game)), th = exportThuis(c); c.spanning ??= {}; for (const r of c.rivals){ r.status = "vrede"; r.verdragen = []; }
+    c.spanning[th] = 20; const p0 = oorlogPrijs(c); c.spanning[th] = 75; const p1 = oorlogPrijs(c); c.spanning[th] = 95; const p2 = oorlogPrijs(c);
+    const r0 = c.rivals[0], rep0 = c.reputation, h0 = c.heat; actDiplo(c, Ctx(), r0.name, "oorlog"); const corpo = r0.corpo === true && c.reputation === rep0 && c.heat === h0;
+    r0.status = "vrede"; const r1v = c.rivals[1]; r1v.relatie = -80; const ctx = Ctx(), oud = window.kansRol; window.kansRol = () => 0; corpoTick(c, ctx); window.kansRol = oud; const tegen = c.rivals.filter(r => r.status === "oorlog" && r.corpo).length;
+    const o = G.game.spanning; G.game.spanning = {...(o || {}), [exportThuis(G.game)]: 95}; S.view = "wereld"; S.wtab = "spanning"; render(); const t = document.querySelector("main").textContent; S.view = "rivalen"; render(); const t2 = document.querySelector("main").textContent; G.game.spanning = o; render();
+    return {p0, p1, p2, corpo, tegen, ui: /Corpomacht: hoeveel mogen corporaties/.test(t) && /CORPO-OORLOGEN/.test(t) && /Nu van kracht/.test(t), kort: /CORPOMACHT/.test(t2) && /corpo-oorlog/.test(t2)}; });
+  ok(lad.p0.rep === 4 && lad.p1.rep === 2 && lad.p2.rep === 0 && lad.p2.corpo && lad.corpo && lad.tegen === 1 && lad.ui && lad.kort, "corpomacht-ladder: oorlog verklaren wordt goedkoper met de spanning, in een corporate zone een corpo-oorlog zonder reputatie of heat, vijandige rivalen verklaren jou dan zelf de oorlog; kader op Corpospanning en Rivalen: " + JSON.stringify(lad));
   ok(/VERKOOP/.test(verkoop) && /KEURING/.test(verkoop), "tabblad Verkoop en keuring");
   ok(/VARIANT/.test(scherm), "varianten staan op het productblad");
   if (out){ const bl = await p.$('.prodblad'); if (bl) await bl.screenshot({path: out + "/verkoop.png"}); }
