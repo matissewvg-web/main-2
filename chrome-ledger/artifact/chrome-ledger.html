@@ -798,7 +798,7 @@ bedrijf(){
   const eff = Math.round((p.count >= st.nodig ? 1 : 0.45 + 0.55 * p.count / st.nodig) * 100);
   const eigen = st.soorten.filter(x => x.eigen);
   return `<h1>Bedrijf</h1>
-  ${huisstijlCard(st)}${focusCard(st)}${dochtersCard(st)}
+  ${huisstijlCard(st)}${klantenCard()}${focusCard(st)}${dochtersCard(st)}
   <h2>Divisies</h2><div class="grid g3">${st.divisies.map(d => `<div class="card">
       <div class="spread"><h3>${esc(d.naam)}</h3><span class="tag cyan">L${d.level}</span></div>
       <div class="muted" style="font-size:14px">${esc(d.type)}${d.eigen?' <span class="tag">eigen soort</span>':""} · marktaandeel ${d.aandeel}%</div>
@@ -1015,6 +1015,7 @@ function setupBonus(homeD){
     <p class="dim" style="font-size:13px;margin:6px 0 0">Elk soort land geeft een ander voordeel: havens, financiële centra, datavalleien, sloppen. Klik verschillende landen aan om ze te vergelijken.</p>` : "";
 }
 const VERSIES = [
+  ["5.9", "Klanten komen naar jou", ["Staten, legers, bedrijven uit de wereld en syndicaten sturen aanvragen: een eenmalige levering of een raamcontract van 6 tot 24 maanden, voor een soort product dat jij verkoopt. Je ziet ze bij Bedrijf → Klanten en in Wat nu?.", "Inschrijven met een prijs: Scherp (85%, +15 kans), Normaal of Hoog (120%, −15 kans). Je kans hangt af van de kwaliteit van je beste product, je reputatie (bij syndicaten je relatie met hen), de gevraagde minimumkwaliteit en het aantal rivalen met zo'n product.", "Gewonnen: ±55% van de omzet is winst. Een raamcontract betaalt elke maand, zolang je een product van die soort op de markt houdt; anders volgt een boete en reputatie −5.", "Syndicaten betalen zwart en geven heat; soms ziet een journalist de levering. Een aanvraag vervalt na twee maanden."]],
   ["5.8.1", "Opruimen", ["Rivalen in bestaande spellen tonen nu ook een karakter (Haai, Diplomaat, ...). Alleen het label: hun cijfers blijven zoals ze waren.", "Alle tests acht keer na elkaar gedraaid: geen toevallige fouten. Een maand doorrekenen kost ±15 ms, ook met dominantie per district."]],
   ["5.8", "Assistenten", ["Mensen → Assistenten: geef taken aan je directie. Facturen betalen en Kas bewaken (CFO), Prijzen zetten (Verkoopchef), Personeel werven (HR-manager), Producten voorstellen (Hoofd R&D) en Straat bewaken (Head of Security).", "Ontbreekt iemand, dan neem je die aan voor €5M: een nieuwe naam, talent 2-5 en een loon per maand (€0,5-1M). Talent 4+ doet meer: 5% korting op facturen, middelgrote producten.", "Wat je assistenten deden, staat in het maandrapport. Onder loyaliteit 30 laten ze een taak soms liggen: houd ze tevreden met gesprekken, bonussen of promotie.", "Delegeren of zelf doen kan per taak, op elk moment."]],
   ["5.7", "Elk spel een nieuwe wereld", ["Elk nieuw spel maakt nieuwe rivalen (namen passend bij hun sector), nieuwe CEO's en een nieuwe set bedrijven in de wereld. Ook rivalen die later opduiken krijgen een nieuwe naam.", "Elke rivaal-CEO heeft een karakter: Haai, Diplomaat, Paranoïde, Visionair, Opportunist of Traditioneel. Dat verandert hun agressie, hebzucht, beveiliging of groei (Rivalen).", "Wereldzaad: bij het oprichten kun je een code invullen. Dezelfde code geeft dezelfde wereld, zodat je met een vriend dezelfde start kunt spelen. Je eigen code staat bovenaan Rivalen.", "Bestaande spellen houden hun wereld en rivalen."]],
@@ -1082,7 +1083,7 @@ const VERSIES = [
   ["1.1", "Wereld", ["Nieuwe tab Wereld: wereldnieuws, een ranglijst van alle bedrijven met waarde en markten per sector.", "25 bedrijven verspreid over de wereld: zakendiner, leveringscontract, aandelen met dividend of een overname.", "Gebeurtenissen per land en continent (stormen, staatsgrepen, handelsakkoorden) veranderen tijdelijk wat gebieden opleveren.", "Startvoordeel per soort land, een eigen stad voor je hoofdkantoor, en per gebied op de kaart: wat het oplevert.", "Geruchten en marktberichten staan in het nieuws in plaats van in je inbox."]],
   ["1.0", "Echte wereld", ["Echte wereldkaart, dominantie per continent en zee, eskaders, rivalen met oorlog en handel, blijvende inkomstenbronnen."]],
 ];
-const PLANNING = [["5.9", "Klanten komen naar jou: B2B-orders en aanbestedingen."], ["5.10", "Export en vergunningen."], ["5.11", "Regionale markten."], ["5.12", "Toelevering en voorraad."], ["5.13", "Patenten en namaak."], ["5.14", "Onderzoek en nieuwe productlijnen."], ["5.15", "Realistische financiën en de beurs."], ["5.16", "Productdashboard en statistieken."], ["5.17", "Zelf plannen smeden."], ["5.18", "Krant van de maand."], ["5.19", "De CEO als persoon: leeftijd, opvolging, rivaliserende CEO's."], ["5.20", "Eigen moeilijkheid instellen."], ["5.21", "Rondleiding en spiekbriefjes."]];
+const PLANNING = [["5.10", "Export en vergunningen."], ["5.11", "Regionale markten."], ["5.12", "Toelevering en voorraad."], ["5.13", "Patenten en namaak."], ["5.14", "Onderzoek en nieuwe productlijnen."], ["5.15", "Realistische financiën en de beurs."], ["5.16", "Productdashboard en statistieken."], ["5.17", "Zelf plannen smeden."], ["5.18", "Krant van de maand."], ["5.19", "De CEO als persoon: leeftijd, opvolging, rivaliserende CEO's."], ["5.20", "Eigen moeilijkheid instellen."], ["5.21", "Rondleiding en spiekbriefjes."]];
 function versieCard(){
   const vrs = ([v, t, l]) => `<div style="margin:8px 0"><b class="mono" style="color:var(--cyan)">${v}</b> <b>${esc(t)}</b><ul class="ylist">${l.map(x => `<li>${esc(x)}</li>`).join("")}</ul></div>`;
   return `<div class="card" style="margin-top:16px"><h3>Versies</h3>${VERSIES.slice(0, 2).map(vrs).join("")}<details><summary class="muted" style="cursor:pointer;margin:6px 0">Oudere versies (${VERSIES.length - 2})</summary>${VERSIES.slice(2).map(vrs).join("")}</details>
@@ -1505,6 +1506,17 @@ function spanningCard(){ const s = G.game, S0 = s.spanning || {}, thuis = (s.dis
     <ul class="ylist dim" style="font-size:12.5px;margin-top:10px">${SPANNING_FASEN.slice().reverse().map(([d, n, t]) => `<li><b>${d}+ ${esc(n)}</b>: ${esc(t)}</li>`).join("")}</ul>
   </div>${corpomachtCard()}`; }
 /* 5.5: straatoorlog en corpomacht */
+/* 5.9: klanten komen naar jou */
+function klantenCard(){ const s = G.game, A = s.aanvragen || [], C = s.contracten || []; if (!A.length && !C.length) return "";
+  const aRij = a => { const p = besteVanAard(s, a.aard), riv = aanvraagRivalen(s, a.aard), K = KLANT_SOORT[a.soort];
+    return `<div class="srow" style="padding:8px 0;border-bottom:1px solid rgba(255,255,255,.06)"><div class="spread"><b>${esc(a.klant)}</b><span class="tag ${a.soort === "syndicaat" ? "KRITIEK" : "cyan"}">${esc(K.label)}</span></div>
+      <div class="muted" style="font-size:13.5px">${esc(a.tekst)} ${a.raam ? `€${a.perMaand}M omzet per maand` : `€${a.bedrag}M omzet`} bij normale prijs, ±${Math.round(AANVRAAG_MARGE * 100)}% daarvan is winst.${K.zwart ? " Betaalt zwart, heat +" + K.heat + "." : ""}</div>
+      <div class="dim" style="font-size:12.5px;margin:2px 0 6px">${p ? `Je beste: ${esc(p.naam)} (kwaliteit ${p.kwaliteit})` : "Je hebt geen product van deze soort op de markt"} · ${riv.length ? `concurrenten: ${riv.map(r => esc(r.name)).join(", ")}` : "geen concurrenten"} · nog ${a.verloopt} mnd</div>
+      <div class="prijzen" style="margin:0">${p ? Object.entries(AANVRAAG_PRIJS).map(([k, P]) => `<button class="btn sm" data-a="aanvraag" data-id="${a.id}" data-k="${k}">${esc(P.label)} ${Math.round(P.f * 100)}% · ${aanvraagKans(s, a, k)}%</button>`).join("") : ""}<button class="btn sm danger" data-a="aanvraag" data-id="${a.id}" data-k="afwijzen">Afwijzen</button></div></div>`; };
+  return `<div class="card" style="margin-bottom:14px"><div class="spread"><h3>Klanten</h3><span class="dim" style="font-size:13px">${A.length} aanvra${A.length === 1 ? "ag" : "gen"} · ${C.length} lopend contract${C.length === 1 ? "" : "en"}</span></div>
+    <p class="muted" style="font-size:13px;margin:0 0 4px">Staten, legers, bedrijven en syndicaten komen zelf naar je toe. Schrijf in met een prijs: scherp geeft meer kans, hoog meer geld. Kwaliteit, reputatie (of je relatie met het syndicaat) en het aantal concurrenten tellen mee.</p>
+    ${A.map(aRij).join("")}
+    ${C.length ? `<div class="kpi" style="margin-top:10px">LOPENDE CONTRACTEN</div>${C.map(c => `<div class="srow" style="display:flex;justify-content:space-between;gap:10px;padding:5px 0;border-bottom:1px solid rgba(255,255,255,.06)"><span>${esc(c.klant)} <span class="dim">· ${esc(PRODUCT_AARD[c.aard].label)}</span></span><span class="mono">€${r1(c.perMaand * AANVRAAG_MARGE)}M/mnd${c.zwart ? " zwart" : ""} · nog ${c.over} mnd</span></div>`).join("")}` : ""}</div>`; }
 /* 5.8: assistenten */
 function assistentCard(){ const s = G.game, T = s.taken || {}, kost = aannemenKost(s);
   const rij = ([k, t]) => { const n = taakDoener(s, k), aan = !!T[k] && !!n;
@@ -1988,6 +2000,7 @@ document.addEventListener("click", async e => {
     case "dochter": { if (t.dataset.x === "verkoop" && !await ask("Dochter verkopen?", "Je krijgt 90% van de waarde in één keer, en het vaste maandbedrag stopt.", "Verkopen", true)) return; return act("/api/dochter", {id: t.dataset.id, actie: t.dataset.x}); }
     case "prodsheet": S.prodSheet = S.prodSheet === t.dataset.id ? null : t.dataset.id; render(); return;
     case "aanwezig": return act("/api/aanwezig", {id: t.dataset.id});
+    case "aanvraag": return act("/api/aanvraag", {id: t.dataset.id, keuze: t.dataset.k});
     case "taak": return act("/api/taak", {k: t.dataset.k, aan: t.dataset.aan === "1", rol: t.dataset.rol});
     case "corpo": return act("/api/corpo", {soort: t.dataset.soort, id: t.dataset.id});
     case "autodev": return act("/api/autodev", {divisie: t.dataset.div, aan: t.dataset.aan == null ? undefined : t.dataset.aan === "1", schaal: t.dataset.schaal}, {silent: true});

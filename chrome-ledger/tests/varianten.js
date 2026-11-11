@@ -153,7 +153,7 @@ const html = '<!doctype html><html><head><meta charset=utf8></head><body>' + fs.
   const dm = await p.evaluate(() => { const c = JSON.parse(JSON.stringify(G.game)), ctx = Ctx(); c.cash = 900; c.aanwezig = {}; for (const d of c.districts){ delete d.dom; delete d.domMnd; }
     domTick(c, ctx); const thuis = c.districts.find(d => d.id === c.player.home_district), thuisPct = Math.round(thuis.dom.player), cont0 = (regionDominance(c).find(r => r.id === thuis.continent).shares.find(x => x.o === "player") || {}).pct || 0;
     const nb = c.districts.find(d => (thuis.neighbors || []).includes(d.id) && d.control === "neutral"); if (!nb) return {geenBuur: true, thuisPct};
-    const k0 = c.cash, a1 = actAanwezig(c, ctx, nb.id); for (let i = 0; i < 3; i++) actAanwezig(c, ctx, nb.id); const betaald = Math.round((k0 - c.cash) * 10) / 10;
+    for (const g of c.gangs || []) if (g.gebied) delete g.gebied[nb.id]; const k0 = c.cash, a1 = actAanwezig(c, ctx, nb.id); for (let i = 0; i < 4; i++) actAanwezig(c, ctx, nb.id); const betaald = Math.round((k0 - c.cash) * 10) / 10;
     const ver = c.districts.find(d => d.control === "neutral" && !reachable(c, "player", d)), nee = ver ? actAanwezig(c, ctx, ver.id).ok : false;
     const pcts = []; let m = 0; for (; m < 8 && nb.control !== "player"; m++){ domTick(c, ctx); pcts.push(Math.round(nb.dom.player)); }
     const cont1 = (regionDominance(c).find(r => r.id === thuis.continent).shares.find(x => x.o === "player") || {}).pct || 0;
@@ -181,6 +181,20 @@ const html = '<!doctype html><html><head><meta charset=utf8></head><body>' + fs.
   const asUI = await p.evaluate(() => { S.view = "mensen"; render(); const t = document.querySelector("main").textContent; return /Assistenten/.test(t) && /Facturen betalen/.test(t) && /Verkoopchef aannemen/.test(t); });
   ok(!as.zonder && as.h1 && as.talent >= 2 && as.loon > 0 && !as.dubbel && as.met && (as.prijsVoor == null || as.prijsNa !== as.prijsVoor) && as.st1 > as.st0 && as.betaald && as.cfoRep.length === 1 && as.liggen && as.loonTot > 0 && asUI,
     "assistenten: aannemen met talent en loon, taken delegeren (prijzen, werven, facturen), lage loyaliteit laat liggen, Mensen toont Assistenten: " + JSON.stringify(as));
+  // 5.9 klanten komen naar jou
+  await p.evaluate(() => { window.__echt9 = crypto.getRandomValues; crypto.getRandomValues = a => { a[0] = 5; return a; }; });
+  const kl = await p.evaluate(() => { const c = JSON.parse(JSON.stringify(G.game)), ctx = Ctx(); c.aanvragen = []; c.contracten = []; c.cash = 300;
+    const oud = window.kansRol; window.kansRol = () => 0; aanvraagTick(c, ctx); window.kansRol = oud; const n1 = c.aanvragen.length, a0 = c.aanvragen[0];
+    if (a0) a0.minKwal = 1; c.reputation = 40; const k = a0 ? [aanvraagKans(c, a0, "laag"), aanvraagKans(c, a0, "normaal"), aanvraagKans(c, a0, "hoog")] : [];
+    const e = maakAanvraag(c); e.raam = false; e.bedrag = 10; delete e.maanden; delete e.perMaand; e.soort = "staat"; c.aanvragen.push(e); const cash0 = c.cash, r1 = actAanvraag(c, ctx, e.id, "normaal"), winst = Math.round((c.cash - cash0) * 10) / 10;
+    const f = maakAanvraag(c); f.raam = true; f.maanden = 6; f.perMaand = 4; delete f.bedrag; f.soort = "staat"; c.aanvragen.push(f); actAanvraag(c, ctx, f.id, "hoog"); const con = c.contracten.find(x => x.id === f.id);
+    const cash1 = c.cash; window.kansRol = () => 0.99; aanvraagTick(c, Ctx()); const maand = Math.round((c.cash - cash1) * 10) / 10;
+    for (const p of c.producten) if ((p.aard || aardVan(p.type, p.naam)) === f.aard) p.status = "teruggeroepen"; const rep0 = c.reputation; const ctx4 = Ctx(); aanvraagTick(c, ctx4); window.kansRol = oud;
+    return {n1, k, r1: r1.ok, winst, con: con ? {perMaand: con.perMaand, over: con.over} : null, maand, verbroken: ctx4.rep.some(x => /verbroken/.test(x)), repDaling: Math.round((rep0 - c.reputation) * 10) / 10, over: c.contracten.length}; });
+  await p.evaluate(() => { crypto.getRandomValues = window.__echt9; });
+  const klUI = await p.evaluate(() => { const s = G.game, a = maakAanvraag(s); (s.aanvragen ??= []).push(a); S.view = "bedrijf"; render(); const t = document.querySelector("main").textContent; s.aanvragen = s.aanvragen.filter(x => x !== a); render(); return /Klanten/.test(t) && /Scherp/.test(t) && /Afwijzen/.test(t); });
+  ok(kl.n1 === 1 && kl.k[0] > kl.k[2] && kl.k[0] >= kl.k[1] && kl.k[1] >= kl.k[2] && kl.r1 && kl.winst === 5.5 && kl.con && kl.con.perMaand === 4.8 && kl.maand === 2.6 && kl.verbroken && kl.repDaling >= 5 && kl.over === 0 && klUI,
+    "klanten komen naar jou: aanvraag verschijnt, scherp geeft meer kans dan hoog, levering betaalt 55% marge, raamcontract betaalt elke maand, zonder product verbroken met boete, kaart op Bedrijf: " + JSON.stringify(kl));
   ok(/VERKOOP/.test(verkoop) && /KEURING/.test(verkoop), "tabblad Verkoop en keuring");
   ok(/VARIANT/.test(scherm), "varianten staan op het productblad");
   if (out){ const bl = await p.$('.prodblad'); if (bl) await bl.screenshot({path: out + "/verkoop.png"}); }
