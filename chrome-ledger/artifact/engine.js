@@ -685,7 +685,7 @@ function tick(s){
 }
 
 /* ---------- de stad: elke game een andere kaart ---------- */
-const VERSION = "6.12";
+const VERSION = "6.13";
 const MAP_W = 1000, MAP_H = 680;
 const RIVAL_COLORS = ["#ff9a1f", "#3d7bff", "#c6ff2e", "#f2f2f2", "#9b5cff", "#ffd400", "#ff4d4d"];
 const ARCH = {
@@ -2636,7 +2636,7 @@ function productTick(s, ctx){
       p.aard ??= aardVan(p.type, p.naam); p.prijs ??= "standaard"; if (p.trait === undefined){ const ft = focusTrait(p); p.trait = ft !== undefined ? ft : kiesTrait(p, r.crit, !r.ok && !r.neutraal); } maakReview(p);
       prodLog(p, s, r.crit ? `Lancering: een hit (${p.review.sterren}★)` : r.ok ? `Gelanceerd (${p.review.sterren}★)` : r.neutraal ? `Rustige lancering (${p.review.sterren}★)` : `Lancering geflopt (${p.review.sterren}★)`); if (p.trait) prodLog(p, s, `Eigenschap: ${PRODUCT_TRAITS[p.trait].label}`); continue;
     }
-    keuringTick(s, ctx, p); defectTick(s, ctx, p); mktTick(p); autoTick(s, ctx, p);
+    keuringTick(s, ctx, p); defectTick(s, ctx, p); mktTick(p); autoTick(s, ctx, p); editieTick(s, ctx, p);
     if (p.verbetering && --p.verbetering <= 0){ delete p.verbetering; const r = rol2d6(Math.ceil(d.level / 2), 8); addRoll(s, `Nieuwe versie ${p.naam}: ${r.txt} → ${r.ok ? "GELUKT" : "MISLUKT"}`);
       if (r.ok){ p.kwaliteit = clamp(p.kwaliteit + 1, 1, 5); p.pop = clamp(p.pop + 10, 0, 95); p.leeftijd = 0; maakReview(p); if (KEURING_AARD.has(p.aard || aardVan(p.type, p.naam)) && kanaalVan(p) !== "zwart") p.keuring = "nodig"; /* 4.7.2: nieuwe editie, nieuwe keuring */ if (p.trait === "gevoelig") p.trait = null; prodLog(p, s, `Versie ${p.kwaliteit}`); mail(ctx, s, "R&D", `${p.naam} versie ${p.kwaliteit}`, `De nieuwe versie is klaar (${r.txt}). Kwaliteit ${p.kwaliteit}, en de klanten merken het.${p.keuring === "nodig" ? " Let op: een nieuwe editie moet opnieuw gekeurd worden; tot dan alleen de grijze markt." : ""}`, "NORMAAL"); }
       else mail(ctx, s, "R&D", `Nieuwe versie ${p.naam} mislukt`, `Het ontwikkelteam kreeg het niet werkend (${r.txt}). Het geld is op, het product blijft zoals het was.`, "HOOG"); }
@@ -2964,7 +2964,7 @@ const delenVan = p => ONDERDELEN[p.aard || aardVan(p.type, p.naam)] || ONDERDELE
 const deelKwal = (p, i) => DEEL_KWAL[((p.delen || [])[i] || {}).kwal] ? p.delen[i].kwal : "standaard";
 const EIGEN_KORTING = 0.85, zelfKost = s => r1(4 * (DIFF[(s && s.player.difficulty)] || 1)); /* 4.7.4: onderdelen zelf maken: eenmalige investering, daarna 15% goedkoper en geen leverancier */
 const eigenDeel = (p, i) => !!((p.delen || [])[i] || {}).eigen;
-const kostFactor = p => ARBEID + delenVan(p).reduce((t, d, i) => t + d[1] * DEEL_KWAL[deelKwal(p, i)].kost * (eigenDeel(p, i) ? EIGEN_KORTING : 1), 0) * (p.matF ?? 1) * ((p.tech || 0) >= 2 ? 0.92 : 1); /* 5.12: grondstofprijzen werken op het onderdelendeel; 5.14: onderzoek niveau 2 −8% */
+const kostFactor = p => extraF(p, "kosten") * (ARBEID + delenVan(p).reduce((t, d, i) => t + d[1] * DEEL_KWAL[deelKwal(p, i)].kost * (eigenDeel(p, i) ? EIGEN_KORTING : 1), 0) * (p.matF ?? 1) * ((p.tech || 0) >= 2 ? 0.92 : 1)); /* 5.12: grondstofprijzen werken op het onderdelendeel; 5.14: onderzoek niveau 2 −8% */
 function leverancier(s, p, i){ if (!s) return null; const D = delenVan(p)[i], x = ((p.delen ??= [])[i] ??= {kwal: "standaard"}), B = s.bedrijven || []; if (x.eigen) return null;
   let b = x.lev && B.find(y => y.id === x.lev); if (!b){ const pool = B.filter(y => D[3].includes(y.sector)), lijst = pool.length ? pool : B; b = lijst.length ? lijst[hashN(p.id, i) % lijst.length] : null; x.lev = b ? b.id : null; }
   return b; }
@@ -2975,8 +2975,55 @@ const DEFECT_BASIS = {wapen: 2, medisch: 1.5, implantaat: 3, data: 1, beveiligin
 const DEFECT_DEEL = {goedkoop: 1.5, standaard: 1, premium: 0.7};
 function defectDelen(p){ return delenVan(p).reduce((t, d, i) => t + d[1] * DEFECT_DEEL[deelKwal(p, i)], 0) / 0.8; }
 function defectPct(p){ const a = p.aard || aardVan(p.type, p.naam), q = clamp(1.6 - 0.2 * (p.kwaliteit || 3), 0.6, 1.4), tr = p.trait === "gevoelig" ? 1.6 : p.trait === "goedkoop" ? 1.5 : 1;
-  return Math.round((DEFECT_BASIS[a] ?? 2) * q * defectDelen(p) * tr * (p.beta ? 0.85 : 1) * 10) / 10; }
+  return Math.round((DEFECT_BASIS[a] ?? 2) * q * defectDelen(p) * tr * (p.beta ? 0.85 : 1) * extraF(p, "betrouwbaar") * 10) / 10; }
 const DEFECT_DREMPEL = 5;
+/* 6.13: edities. Een product krijgt een opvolger (Editie 2, 3, ...): je bespreekt met de GM wat er beter of bij moet, de engine rekent kosten, duur en kans. Bij de lancering blijft het hetzelfde product (contracten, geschiedenis), met een nieuwe naam, extra's en een sprong in kwaliteit. */
+const EXTRA_SOORT = {omzet: {label: "Meer verkoop", uitleg: "+6% omzet", f: 1.06}, populariteit: {label: "Hype", uitleg: "+6 populariteit bij de lancering", pop: 6}, betrouwbaar: {label: "Betrouwbaarder", uitleg: "−15% defecten", f: 0.85}, kosten: {label: "Goedkoper te maken", uitleg: "−6% productiekosten", f: 0.94}, imago: {label: "Beter imago", uitleg: "reputatie +2 bij de lancering", rep: 2}};
+const EXTRA_MAX = 8, ROMEINS = ["", "", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X"];
+function extraF(p, soort){ const n = (p && p.extras || []).filter(x => x.soort === soort).length; if (!n) return 1; const E = EXTRA_SOORT[soort]; return E && E.f ? Math.pow(E.f, n) : 1; }
+const editieNr = p => p.editie || 1;
+const basisNaam = p => p.basisNaam || String(p.naam || "").replace(/\s+(II|III|IV|V|VI|VII|VIII|IX|X)$/, "");
+function editieKosten(s, p, v){ const dif = DIFF[s.player.difficulty] || 1, sch = {klein: 0.7, groot: 1, vlag: 1.6}[p.schaal || "groot"] || 1, ne = v.extras.length, kw = v.kwPlus;
+  const d = s.divisions.find(x => divNaam(x) === p.divisie) || {level: 1};
+  return {kost: r1((6 + 4 * ne + 10 * kw) * dif * sch), maanden: clamp(2 + kw + Math.floor(ne / 2), 2, 6), doel: 6 + kw + (ne >= 3 ? 1 : 0), bonus: Math.ceil(d.level / 2)}; }
+function editieKans(s, p, v){ const k = editieKosten(s, p, v); return kans2d6(k.bonus, k.doel); }
+const EXTRA_WOORD = [[/goedko|kosten|efficie|productie|sneller te maken|lean/i, "kosten"], [/betrouw|robuust|sterk|duurza|defect|veilig|bescherm|licht|comfort/i, "betrouwbaar"], [/hype|marketing|design|camo|stijl|kleur|look|merk|limited|luxe/i, "populariteit"], [/imago|ethisch|schoon|groen|legaal|transparant/i, "imago"]];
+function editieVoorstelLokaal(s, p, tekst){ const delen = String(tekst || "").split(/,|;|\n|\ben\b|\+/i).map(x => x.trim()).filter(x => x.length >= 3).slice(0, 4);
+  const extras = (delen.length ? delen : [tekst || "Nieuwe functies"]).map(x => { const w = EXTRA_WOORD.find(([re]) => re.test(x)); return {naam: cStr(x[0].toUpperCase() + x.slice(1), 50), uitleg: "", soort: w ? w[1] : "omzet"}; });
+  const kwPlus = p.kwaliteit >= 5 ? 0 : /beter|upgrade|generatie|kwaliteit|krachtig|sterker|geavanceerd|pro\b/i.test(tekst) ? 1 : 0;
+  const n = editieNr(p) + 1; return {naam: `${basisNaam(p)} ${ROMEINS[n] || n}`, pitch: `Editie ${n} van ${basisNaam(p)}: ${extras.map(e => e.naam.toLowerCase()).join(", ")}.`, extras, kwPlus, risico: "Een nieuwe editie moet opnieuw gekeurd worden en de vorige editie verdwijnt uit de schappen.", lokaal: true}; }
+function cleanEditie(r, s, p){ r = r && typeof r === "object" ? r : {}; const n = editieNr(p) + 1;
+  const extras = (Array.isArray(r.extras) ? r.extras : []).slice(0, 4).map(x => ({naam: cStr(x && x.naam, 50), uitleg: cStr(x && x.uitleg, 160), soort: EXTRA_SOORT[x && x.soort] ? x.soort : "omzet"})).filter(x => x.naam);
+  return {naam: cStr(r.naam, 40) || `${basisNaam(p)} ${ROMEINS[n] || n}`, pitch: cStr(r.pitch, 500), extras: extras.length ? extras : [{naam: "Nieuwe functies", uitleg: "", soort: "omzet"}], kwPlus: Math.round(clamp(+r.kwaliteit_plus || 0, 0, Math.min(2, 5 - p.kwaliteit))), risico: cStr(r.risico, 200)}; }
+function editiePrompt(s, p, tekst){ const n = editieNr(p) + 1;
+  return `Je bent de Game Master van CHROME LEDGER, een cyberpunk-bedrijfssimulatie (taal: Nederlands, toon: droog, cynisch, corporate-noir). De CEO van ${s.player.corp_name} wil editie ${n} van een bestaand product: "${p.naam}" (${PRODUCT_AARD[p.aard || aardVan(p.type, p.naam)].label}, kwaliteit ${p.kwaliteit}/5, schaal ${p.schaal || "groot"}${p.pitch ? `, nu: ${cStr(p.pitch, 300)}` : ""}${(p.extras || []).length ? `, heeft al: ${p.extras.map(x => x.naam).join(", ")}` : ""}).
+Wat de CEO wil: "${tekst}"
+Werk dit uit tot een opvolger, zo dicht mogelijk bij wat de CEO bedoelt. Geef 1 tot 4 extra's: concrete nieuwe dingen of verbeteringen. Elke extra krijgt één soort effect: "omzet" (meer verkoop), "populariteit" (hype bij de lancering), "betrouwbaar" (minder defecten), "kosten" (goedkoper te maken) of "imago" (reputatie). "kwaliteit_plus" 0, 1 of 2: alleen 2 als het echt een nieuwe generatie is. Kosten en duur rekent de engine zelf.
+Antwoord met alleen JSON: {"naam": "naam van editie ${n} (meestal de oude naam met ${ROMEINS[n] || n}, of een nieuwe als de CEO dat wil)", "pitch": "2-3 zinnen in de stem van het hoofd R&D", "extras": [{"naam": "...", "uitleg": "één zin", "soort": "omzet|populariteit|betrouwbaar|kosten|imago"}], "kwaliteit_plus": 1, "risico": "één zin"}`; }
+async function gmEditie(id, tekst){ const s = G.game, p = s && (s.producten || []).find(x => x.id === id); if (!p) return {ok: false, bericht: "Onbekend product."};
+  tekst = cStr(tekst, 600); if (tekst.length < 3) return {ok: false, bericht: "Zeg eerst wat er in de nieuwe editie moet."};
+  let v; if (live()){ try { v = cleanEditie(await G.sample.json(editiePrompt(s, p, tekst), {modelTier: "default"}), s, p); } catch(e){ return {ok: false, bericht: sampleErrorText(e)}; } } else v = editieVoorstelLokaal(s, p, tekst);
+  v.vraagVan = tekst; v.voor = p.id; (G.edities ??= {})[p.id] = v; return {ok: true, bericht: `${live() ? "De GM" : "R&D"} heeft ${v.naam} uitgewerkt. Lees het voorstel en kies.`}; }
+function actEditie(s, ctx, id, v){ const p = (s.producten || []).find(x => x.id === id); if (!p) return {ok: false, msg: "Onbekend product."}; if (!v) return {ok: false, msg: "Er ligt geen voorstel klaar."};
+  if (p.status !== "markt") return {ok: false, msg: "Alleen een product op de markt krijgt een nieuwe editie."}; if (p.editieBezig) return {ok: false, msg: `${p.naam} heeft al een editie in ontwikkeling.`}; if (p.verbetering) return {ok: false, msg: "Er loopt al een nieuwe versie."};
+  const k = editieKosten(s, p, v); if (s.cash < k.kost) return {ok: false, msg: `Editie ${editieNr(p) + 1} kost €${k.kost}M.`}; s.cash = r1(s.cash - k.kost); s.accounts.operationeel = s.cash;
+  p.editieBezig = {naam: cStr(v.naam, 40), pitch: cStr(v.pitch, 500), extras: (v.extras || []).slice(0, 4).map(x => ({naam: cStr(x.naam, 50), uitleg: cStr(x.uitleg, 160), soort: EXTRA_SOORT[x.soort] ? x.soort : "omzet"})), kwPlus: Math.round(clamp(+v.kwPlus || 0, 0, Math.min(2, 5 - p.kwaliteit))), over: k.maanden, doel: k.doel, bonus: k.bonus, kost: k.kost, sinds: ym(s)};
+  prodLog(p, s, `Editie ${editieNr(p) + 1} in ontwikkeling: ${p.editieBezig.naam}`); addLog(s, `${p.naam}: editie ${editieNr(p) + 1} (${p.editieBezig.naam}) in ontwikkeling, €${k.kost}M, ${k.maanden} maanden`);
+  return {ok: true, msg: `${p.editieBezig.naam} in ontwikkeling: €${k.kost}M, ${k.maanden} maanden, ${kans2d6(k.bonus, k.doel)}% kans dat alles lukt. Tot dan verkoopt ${p.naam} gewoon door.`}; }
+function editieTick(s, ctx, p){ const E = p.editieBezig; if (!E || --E.over > 0) return; delete p.editieBezig;
+  const r = rol2d6(E.bonus || 1, E.doel || 7), oud = p.naam, n = editieNr(p) + 1; addRoll(s, `Editie ${n} van ${oud}: ${r.txt} → ${r.ok ? "GELUKT" : "HALF"}`);
+  const extras = r.ok ? E.extras : E.extras.slice(0, 1), kw = r.ok ? E.kwPlus : 0;
+  p.basisNaam ??= basisNaam(p); p.editie = n; p.naam = E.naam || p.naam; if (E.pitch) p.pitch = E.pitch;
+  p.extras = [...(p.extras || []), ...extras.map(x => ({...x, editie: n}))].slice(-EXTRA_MAX); p.kwaliteit = clamp(p.kwaliteit + kw, 1, 5);
+  const pop = 10 + extras.reduce((a, x) => a + (EXTRA_SOORT[x.soort].pop || 0), 0) + (r.crit ? 8 : 0), rep = extras.reduce((a, x) => a + (EXTRA_SOORT[x.soort].rep || 0), 0);
+  p.pop = clamp(p.pop + pop, 0, 95); if (rep) s.reputation = clamp(s.reputation + rep); p.leeftijd = 0; if (p.trait === "gevoelig") p.trait = null; maakReview(p);
+  if (KEURING_AARD.has(p.aard || aardVan(p.type, p.naam)) && kanaalVan(p) !== "zwart") p.keuring = "nodig";
+  (p.edities ??= []).push({n, naam: p.naam, m: ym(s), extras: extras.map(x => x.naam), kw: p.kwaliteit, ok: r.ok});
+  prodLog(p, s, `Editie ${n}: ${p.naam}${r.ok ? "" : " (half gelukt)"}`);
+  const txt = r.ok ? `${p.naam} ligt in de winkel (${r.txt}). Nieuw: ${extras.map(x => x.naam.toLowerCase()).join(", ")}${kw ? `, kwaliteit nu ${p.kwaliteit}` : ""}. Populariteit +${pop}${rep ? `, reputatie +${rep}` : ""}.`
+    : `${p.naam} is uit, maar niet alles zat erin (${r.txt}): alleen ${extras.map(x => x.naam.toLowerCase()).join(", ")}, geen sprong in kwaliteit. Populariteit +${pop}.`;
+  mail(ctx, s, "R&D", `${p.naam}: editie ${n}`, txt + (p.keuring === "nodig" ? " Een nieuwe editie moet opnieuw gekeurd worden." : ""), r.ok ? "NORMAAL" : "HOOG"); ctx.rep.push(`${p.naam}: editie ${n}${r.ok ? "" : " (half)"}`);
+  if (r.ok) news(s, `${s.player.corp_name} lanceert ${p.naam}`, `De opvolger van ${oud === p.naam ? "het origineel" : oud}. ${extras.length ? "Nieuw: " + extras.map(x => x.naam.toLowerCase()).join(", ") + "." : ""}`, "", "markt", true); }
 /* 4.5.1: keuring. Medisch, implantaten en wapens mogen pas overal verkocht worden na een keuring; daarvoor alleen de grijze markt (60% van de afzet).
    Producten van vóór 4.5.1 (zonder veld) gelden als gekeurd. */
 const KEURING_AARD = new Set(["medisch", "implantaat", "wapen"]), KEUR_ZONDER = 0.6;
@@ -3088,7 +3135,7 @@ function prodDetail(s, p, omzet){
     cap, vraag: Math.round(vraag), uitverkocht: vraag > cap, gemist: vraag > cap ? Math.round((vraag - cap) / vraag * 100) : 0, capKost: capKost(s, p), capVast: capVast(s, p), capKrimp: prodCap(s, p) - 15 >= 45, seg: segment(s, p), hist: (p.hist || []).slice(-12), prijsF: prijsF(p), elast: elast(p), segmenten: segmenten(p, s).rows.map(({vol, ...r}) => r), delen: delenVan(p).map((d, i) => { const k = deelKwal(p, i), eigen = eigenDeel(p, i), lv = leverancier(s, p, i), per = (abo ? sp / prijsF(p) : basisPrijs(p)) * PROD_KOST * d[1] * DEEL_KWAL[k].kost * (eigen ? EIGEN_KORTING : 1);
       return {naam: d[0], aandeel: d[1], spec: (SPECS[p.aard] || SPECS.consument)[d[2]], kwal: k, kost: Math.round(per * 100) / 100, eigen, lev: eigen ? "eigen fabriek" : lv ? lv.naam : "eigen werkplaats"}; }), zelfKost: zelfKost(s), arbeid: Math.round((abo ? sp / prijsF(p) : basisPrijs(p)) * PROD_KOST * ARBEID * 100) / 100, omschakel: omschakelKost(s), auto: {...(p.auto || {})}, marketing: {actief: p.mkt ? {...p.mkt, label: MARKETING[p.mkt.kanaal] ? MARKETING[p.mkt.kanaal].label : "Campagne", seg: (SEGMENTEN[p.aard] || SEGMENTEN.consument)[p.mkt.seg][0]} : null, dezeMaand: p.actie === ym(s), opties: Object.entries(MARKETING).map(([k, M]) => ({key: k, label: M.label, kost: M.kost, zwart: !!M.zwart, tekst: M.tekst, seg: M.doel ? (SEGMENTEN[p.aard] || SEGMENTEN.consument)[mktSegIndex(p, M.doel)][0] : null}))}, kanaal: {key: kanaalVan(p), wissel: kanaalWissel(s), opties: Object.entries(KANAAL).map(([k, K]) => ({key: k, label: K.label, vol: Math.round(K.vol(p) * 100), marge: Math.round(K.marge * 100), vast: K.vast, heat: K.heat, zwart: K.zwart || 0, tekst: K.tekst}))}, keuring: KEURING_AARD.has(p.aard) || p.keuring != null ? {status: keurStatus(p), maanden: keurStatus(p) === "bezig" ? p.keuring.maanden : 0, kost: keurKost(s), omkoop: omkoopKost(s), kans: kans2d6(0, keurDoel(p)), omkoopKans: kans2d6(0, 7), instantie: keurInstantie(p)} : null, defect: defectPct(p), garantie: r1(garantie(p, omzet)), garantieEur: Math.round(garantie(p, omzet) * 1e6), defectRisico: Math.max(0, Math.round((defectPct(p) - DEFECT_DREMPEL) * 10) / 10), beste: p.status === "markt" ? besteprijs(s, p) : null};
 }
-const prodGewicht = (p, s) => keurF(p) * kanaalF(p) * p.kwaliteit * effBereik(p, s) / 100 * prijsF(p) * (s ? vraagFactor(s, p.aard || aardVan(p.type, p.naam)) * regioF(s, p) * patentF(s, p) * techF(s, p) : 1) * (p.trait === "goedkoop" ? 1.15 : 1); /* 5.11: regio's */
+const prodGewicht = (p, s) => keurF(p) * kanaalF(p) * p.kwaliteit * effBereik(p, s) / 100 * prijsF(p) * (s ? vraagFactor(s, p.aard || aardVan(p.type, p.naam)) * regioF(s, p) * patentF(s, p) * techF(s, p) : 1) * (p.trait === "goedkoop" ? 1.15 : 1) * extraF(p, "omzet"); /* 5.11: regio's; 6.13: extra's van een editie */
 const prodSterkte = p => bereik(p) / 100 * (0.5 + p.kwaliteit * 0.15);
 function prodEffecten(p){ const A = PRODUCT_AARD[p.aard || "consument"] || PRODUCT_AARD.consument, f = prodSterkte(p), out = {};
   for (const [k2, v] of Object.entries(p.eigenEff || A.eff)) out[k2] = Math.round(v * f * 10) / 10; const pr = ((PRIJS[p.prijs || "standaard"] || {}).rep || 0) + (prijsF(p) > 1.5 ? -0.25 : 0); if (pr) out.reputation = Math.round(((out.reputation || 0) + pr) * 10) / 10;
@@ -4781,6 +4828,7 @@ const API = {
   async "/api/aanwezig"(d){ const s = G.game, ctx = Ctx(); const r = actAanwezig(s, ctx, d.id); if (r.ok) await persist(ctx); return {ok: r.ok, bericht: r.msg}; },
   async "/api/taak"(d){ const s = G.game, ctx = Ctx(); const r = d.rol ? actAannemen(s, ctx, d.rol) : actTaak(s, ctx, d.k, !!d.aan); if (r.ok) await persist(ctx); return {ok: r.ok, bericht: r.msg}; },
   async "/api/pitch"(d){ const s = G.game, ctx = Ctx(); const r = actPitch(s, ctx, d.id); if (r.ok) await persist(ctx); return {ok: r.ok, bericht: r.msg}; },
+  async "/api/editie"(d){ const s = G.game, ctx = Ctx(); const r = actEditie(s, ctx, d.id, (G.edities || {})[d.id]); if (r.ok){ delete G.edities[d.id]; await persist(ctx); } return {ok: r.ok, bericht: r.msg}; },
   async "/api/aanvraag"(d){ const s = G.game, ctx = Ctx(); const r = actAanvraag(s, ctx, d.id, d.keuze); if (r.ok) await persist(ctx); return {ok: r.ok, bericht: r.msg}; },
   async "/api/export"(d){ const s = G.game, ctx = Ctx(); const r = actExport(s, ctx, d.soort, d.cont); if (r.ok) await persist(ctx); return {ok: r.ok, bericht: r.msg}; },
   async "/api/regio"(d){ const s = G.game, ctx = Ctx(); const r = actRegio(s, d.id, d.cont); if (r.ok) await persist(ctx); return {ok: r.ok, bericht: r.msg}; },

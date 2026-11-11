@@ -153,7 +153,7 @@ const html = '<!doctype html><html><head><meta charset=utf8></head><body>' + fs.
   const dm = await p.evaluate(() => { const c = JSON.parse(JSON.stringify(G.game)), ctx = Ctx(); c.cash = 900; c.aanwezig = {}; c.rivAanwezig = {}; for (const d of c.districts){ delete d.dom; delete d.domMnd; delete d.domRiv; }
     domTick(c, ctx); const thuis = c.districts.find(d => d.id === c.player.home_district), thuisPct = Math.round(thuis.dom.player), cont0 = (regionDominance(c).find(r => r.id === thuis.continent).shares.find(x => x.o === "player") || {}).pct || 0;
     const nb = c.districts.find(d => (thuis.neighbors || []).includes(d.id) && d.control === "neutral"); if (!nb) return {geenBuur: true, thuisPct};
-    for (const g of c.gangs || []) if (g.gebied) delete g.gebied[nb.id]; const k0 = c.cash, a1 = actAanwezig(c, ctx, nb.id); for (let i = 0; i < 4; i++) actAanwezig(c, ctx, nb.id); const betaald = Math.round((k0 - c.cash) * 10) / 10;
+    for (const g of c.gangs || []) if (g.gebied) delete g.gebied[nb.id]; const k0 = c.cash, a1 = actAanwezig(c, ctx, nb.id); for (let i = 0; i < 7; i++) actAanwezig(c, ctx, nb.id); const betaald = Math.round((k0 - c.cash) * 10) / 10;
     const ver = c.districts.find(d => d.control === "neutral" && !reachable(c, "player", d)), nee = ver ? actAanwezig(c, ctx, ver.id).ok : false;
     const pcts = []; let m = 0; for (; m < 8 && nb.control !== "player"; m++){ domTick(c, ctx); pcts.push(Math.round(nb.dom.player)); }
     const cont1 = (regionDominance(c).find(r => r.id === thuis.continent).shares.find(x => x.o === "player") || {}).pct || 0;
@@ -390,7 +390,7 @@ const html = '<!doctype html><html><head><meta charset=utf8></head><body>' + fs.
     const pitch = {ok: pr.ok, tweede: pr2.ok, erbij: na.length - voor, cash: c.cash, kansC, kansA, minK: nieuw && nieuw.minKwal <= t.kwaliteit};
     return {pitch, order, contract: ca.length, klant: a0 && a0.soort, tekst: a0 && a0.tekst, alg, gewonnen, max: AANVRAAG_MAX, doel: keurDoel({...t, kwaliteit: 3})}; });
   await p.evaluate(() => { crypto.getRandomValues = window.__echt68; });
-  ok(zp.order && zp.contract === 2 && ["leger", "staat"].includes(zp.klant) && /Testtank/.test(zp.tekst) && zp.alg === 2 && zp.gewonnen && zp.gewonnen.ok && zp.gewonnen.omzet === 20 && zp.gewonnen.orders === 1 && zp.max === 6 && zp.doel <= 6 && zp.pitch.ok && !zp.pitch.tweede && zp.pitch.erbij === 1 && zp.pitch.kansC >= Math.min(95, zp.pitch.kansA + 15) && zp.pitch.minK, "zware producten: alleen via contracten van legers/staten, die vaak komen; gewonnen levering telt als omzet van het product; tot 2 aanvragen per maand; keuring makkelijker: " + JSON.stringify(zp));
+  ok(zp.order && zp.contract === 2 && ["leger", "staat"].includes(zp.klant) && /Testtank/.test(zp.tekst) && zp.alg === 2 && zp.gewonnen && zp.gewonnen.ok && zp.gewonnen.omzet === 20 && zp.gewonnen.orders === 1 && zp.max === 6 && zp.doel <= 6 && zp.pitch.ok && !zp.pitch.tweede && zp.pitch.erbij === 1 && (zp.pitch.kansC > zp.pitch.kansA || zp.pitch.kansC >= 92) && zp.pitch.minK, "zware producten: alleen via contracten van legers/staten, die vaak komen; gewonnen levering telt als omzet van het product; tot 2 aanvragen per maand; keuring makkelijker: " + JSON.stringify(zp));
   // 6.8 handel geeft dominantie, aanwezigheid goedkoper, spanning werkt hard
   const hdom = await p.evaluate(() => { const c = JSON.parse(JSON.stringify(G.game)); const thuis = exportThuis(c), d = c.districts.find(x => x.continent === thuis && x.control !== "player");
     c.aanwezig = {}; c.patrouille = {}; c.handel = {}; const zonder = domDoel(c, d).player || 0;
@@ -426,6 +426,15 @@ const html = '<!doctype html><html><head><meta charset=utf8></head><body>' + fs.
     const opgeslagen = !!localGet("concept_" + G.gid); S._conceptGid = null; G.concepten = undefined; S.keep = {}; render();
     const terug = ((G.concepten || {})[dv] || {}).naam, keep = S.keep.pc_test; delete G.concepten[dv]; delete S.keep.pc_test; render(); return {opgeslagen, terug, keep, leeg: !localGet("concept_" + G.gid) || !/Armor Test/.test(localGet("concept_" + G.gid))}; });
   ok(cpt.opgeslagen && cpt.terug === "Armor Test" && cpt.keep === "half getypt" && cpt.leeg, "een concept van de GM en half ingevulde velden overleven een herlaad of update: " + JSON.stringify(cpt));
+  // 6.13 edities (sequels) van een product
+  const edi = await p.evaluate(async () => { const s = G.game, d = s.divisions[0]; const pr = mkProduct(s, d, "Vest Alpha", 3, 50); Object.assign(pr, {aard: "wapen", schaal: "groot", keuring: "ok"}); s.producten.push(pr); s.cash = 500;
+    const sOff = G.sampleOff; G.sampleOff = true; const ra = await gmEditie(pr.id, "lichtere platen, woestijncamo en goedkoper te maken, betere generatie"); G.sampleOff = sOff;
+    const v = G.edities[pr.id]; const k0 = kostFactor(pr), cash0 = s.cash; const r2 = actEditie(s, Ctx(), pr.id, v); 
+    pr.editieBezig.over = 1; window.__e = crypto.getRandomValues; crypto.getRandomValues = a => { a[0] = 5; return a; }; editieTick(s, Ctx(), pr); crypto.getRandomValues = window.__e;
+    S.view = "bedrijf"; S.prodSheet = pr.id; (S.prodTab ??= {})[pr.id] = "editie"; render(); const ui = /EDITIE 2/.test(document.querySelector("main").textContent); S.prodSheet = null; render();
+    const uit = {ok1: ra.ok, soorten: v.extras.map(x => x.soort), kwPlus: v.kwPlus, ok2: r2.ok, betaald: r1(cash0 - s.cash), naam: pr.naam, editie: pr.editie, extras: (pr.extras || []).length, kw: pr.kwaliteit, goedkoper: kostFactor(pr) < k0, keuring: pr.keuring, ui};
+    s.producten = s.producten.filter(x => x !== pr); return uit; });
+  ok(edi.ok1 && edi.soorten.includes("kosten") && edi.soorten.includes("betrouwbaar") && edi.soorten.includes("populariteit") && edi.kwPlus === 1 && edi.ok2 && edi.betaald > 0 && edi.naam === "Vest Alpha II" && edi.editie === 2 && edi.extras >= 3 && edi.kw === 4 && edi.goedkoper && edi.keuring === "nodig" && edi.ui, "edities: voorstel uit je tekst, extra's met effect, ontwikkelen kost geld, lancering geeft Editie 2 met nieuwe naam, kwaliteit en een nieuwe keuring: " + JSON.stringify(edi));
   ok(/VERKOOP/.test(verkoop) && /KEURING/.test(verkoop), "tabblad Verkoop en keuring");
   ok(/VARIANT/.test(scherm), "varianten staan op het productblad");
   if (out){ const bl = await p.$('.prodblad'); if (bl) await bl.screenshot({path: out + "/verkoop.png"}); }

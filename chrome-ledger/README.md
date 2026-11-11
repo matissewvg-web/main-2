@@ -5,6 +5,7 @@
 De hoofdversie draait als artifact in de browser, ook op je gsm: `artifact/chrome-ledger.html` (scherm), `artifact/engine.js` (spelregels, opslag, acties) en `artifact/world-data.js` (kaartdata), gepubliceerd op https://claude.ai/artifact/G1Mgzkv5m1xg2BVrcuvUCq. Je bouwt een megacorporatie op de echte wereldkaart in cyberpunkstijl (Natural Earth-grenzen, 43 speelbare gebieden, 16 zeezones) en kiest bij de start op welk continent en in welk gebied je begint. Op zee bouw je eskaders en verdeel je ze over de zeezones: wie het overwicht heeft, verdient eraan en bereikt elke kust; in oorlog volgen zeeslagen en konvooiaanvallen. De kaartdata wordt gebouwd met `artifact/build-world.js`. Verder: rivalen met een eigen economie (oorlog, vrede, handel, districten ruilen), chat en mail met iedereen in de stad, personeel, eigen bedrijfssoorten en een live GM die kosten en kansen bepaalt; de engine gooit de dobbelsteen. Je spel wordt online bewaard en is alleen voor jou.
 
 ### Versies
+- **6.13 Edities:** opvolgers van een product (Editie 2, 3, ...) bespreken met de GM, met extra's die echt iets doen.
 - **6.12 Opruimen:** concepten en halve invoer overleven een update; kleine besluiten pauzeren de tijd niet meer.
 - **6.11.1 Armorpakket terug:** Pax Armata Armor Pakket op de markt en Directe Verkoop weer aan het publiek (herstel na de update).
 - **6.11 Contracten:** eigen scherm met aanvragen, lopende contracten, leveringsdeals, publiek tegenover contract, wie wat levert, oorlogen en brandhaarden, en de geschiedenis.
