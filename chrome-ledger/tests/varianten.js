@@ -353,6 +353,14 @@ const html = '<!doctype html><html><head><meta charset=utf8></head><body>' + fs.
     c.spanning[thuis] = 95; for (const d of c.districts) if (d.continent === thuis){ d.control = "player"; delete d.dom; } const d1 = doelen(c).find(x => x.id === "corpzone"), e1 = eindCheck(c);
     return {d0: d0 && d0.klaar, pct0: d0 && d0.pct, d1: d1 && d1.klaar, e0, e1}; });
   ok(cz.d0 === false && cz.pct0 < 100 && cz.d1 && cz.e1 === "OVERWINNING: CORPORATE ZONE" && cz.e0 !== "OVERWINNING: CORPORATE ZONE", "corporate zone: nieuwe overwinning bij spanning 90+ op je thuiscontinent en 60% dominantie: " + JSON.stringify(cz));
+  // 6.5 kleuren altijd leesbaar
+  const kls = await p.evaluate(() => { const oud = G.game.huisstijl ? JSON.parse(JSON.stringify(G.game.huisstijl)) : null, cs = () => getComputedStyle(document.documentElement), rgbv = n => cs().getPropertyValue(n).trim();
+    const test = (h) => { G.game.huisstijl = h; render(); pasStijlToe(h); const bg = hexRgb((THEMAS[h.thema || "neon"] || {}).bg || "#06020e"), c = hexRgb(rgbv("--cyan")), m = hexRgb(rgbv("--mag")), onC = hexRgb(rgbv("--on-cyan")), onM = hexRgb(rgbv("--on-mag"));
+      return {c: Math.round(contrast(c, bg) * 10) / 10, m: Math.round(contrast(m, bg) * 10) / 10, opC: Math.round(contrast(onC, c) * 10) / 10, opM: Math.round(contrast(onM, m) * 10) / 10, rgb: rgbv("--cyan-rgb"), glow: /rgba/.test(rgbv("--glow-c"))}; };
+    const donker = test({kleur: "#101820", accent: "#200010", thema: "bloed"}), licht = test({kleur: "#fff36b", accent: "#ff2a6d", thema: "chroom"}), normaal = test({kleur: "#05d9e8", accent: "#ff2a6d"});
+    const noot = /lichter gemaakt/.test(kleurNoot({kleur: "#101820", thema: "bloed"})), kaart = ownerColor(G.game, "player");
+    G.game.huisstijl = oud || {}; if (!oud) delete G.game.huisstijl; pasStijlToe(G.game.huisstijl); render(); return {donker, licht, normaal, noot, kaart}; });
+  ok([kls.donker, kls.licht, kls.normaal].every(x => x.c >= 4.5 && x.m >= 4.5 && x.opC >= 4.5 && x.opM >= 3 && x.glow) && kls.donker.rgb !== "5,217,232" && kls.noot && /^#[0-9a-f]{6}$/i.test(kls.kaart), "kleuren: hoofd- en accentkleur kleuren alles en blijven leesbaar (contrast ≥ 4,5 op elk thema, tekst op knoppen zwart of wit): " + JSON.stringify(kls));
   ok(/VERKOOP/.test(verkoop) && /KEURING/.test(verkoop), "tabblad Verkoop en keuring");
   ok(/VARIANT/.test(scherm), "varianten staan op het productblad");
   if (out){ const bl = await p.$('.prodblad'); if (bl) await bl.screenshot({path: out + "/verkoop.png"}); }

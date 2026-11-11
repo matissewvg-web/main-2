@@ -669,7 +669,7 @@ function tick(s){
 }
 
 /* ---------- de stad: elke game een andere kaart ---------- */
-const VERSION = "6.4";
+const VERSION = "6.5";
 const MAP_W = 1000, MAP_H = 680;
 const RIVAL_COLORS = ["#ff9a1f", "#3d7bff", "#c6ff2e", "#f2f2f2", "#9b5cff", "#ffd400", "#ff4d4d"];
 const ARCH = {
@@ -777,7 +777,7 @@ function buildMapForExisting(s){
   s.city ??= "Meridian Bay";
   s.map = genGeometry("oud:" + (s.player.corp_name || "x"), s.districts, s.city);
 }
-function ownerColor(s, o){ if (o === "player") return "#05d9e8"; if (o === "neutral") return s.map && s.map.frame ? "#b8155c" : "#2c1f4f"; const r = s.rivals.find(x => x.name === o); return r && r.kleur ? r.kleur : "#8a8aa0"; }
+function ownerColor(s, o){ if (o === "player") return (typeof stijlKleuren === "function" && s.huisstijl && (stijlKleuren(s.huisstijl).k || {}).hex) || (s.huisstijl && s.huisstijl.kleur) || "#05d9e8"; /* 6.5: jouw (leesbare) kleur op de kaart */ if (o === "neutral") return s.map && s.map.frame ? "#b8155c" : "#2c1f4f"; const r = s.rivals.find(x => x.name === o); return r && r.kleur ? r.kleur : "#8a8aa0"; }
 
 /* --- zee: eskaders, overwicht per zeezone, konvooioorlog en zeeslagen (in de geest van een grand strategy-marine) --- */
 const SHIP_MAX = 16, SHIP_POWER = 4;
@@ -3000,10 +3000,10 @@ function defectTick(s, ctx, p){ if (p.status !== "markt") return; { const dp = d
         {label: "Niets doen", uitleg: "Reputatie −3, populariteit −8.", eff: {reputation: -3, product: {[p.id]: {pop: -8}}}}], standaard: 2}); prodLog(p, s, `Defecten ${dp}%: terugroepactie overwogen`); } } }
 const garantie = (p, omzet) => omzet * defectPct(p) / 100;
 /* 5.1: huisstijl: bedrijfskleuren, thema en logo (generator of PNG) */
-const THEMAS = {neon: {label: "Neon"}, corporate: {label: "Corporate", bg: "#0b0f14", panel: "rgba(18,24,32,.9)", panel2: "#18212c", panel3: "#202c3a", line: "#263445", line2: "#3b5068"},
-  terminal: {label: "Terminal", bg: "#020a04", panel: "rgba(6,20,10,.9)", panel2: "#0b2412", panel3: "#103018", line: "#14401f", line2: "#1f6b33"},
-  bloed: {label: "Bloed", bg: "#0e0204", panel: "rgba(30,6,10,.88)", panel2: "#2a0a10", panel3: "#3a0e16", line: "#4a1420", line2: "#7a2030"},
-  chroom: {label: "Chroom", bg: "#0d0d10", panel: "rgba(26,26,32,.9)", panel2: "#22222a", panel3: "#2c2c36", line: "#3a3a46", line2: "#5a5a6a"}};
+const THEMAS = {neon: {label: "Neon"}, corporate: {label: "Corporate", bg: "#0b0f14", panel: "rgba(18,24,32,.9)", panel2: "#18212c", panel3: "#202c3a", line: "#263445", line2: "#3b5068", muted: "#9fb0c4", dim: "#8494a8"},
+  terminal: {label: "Terminal", bg: "#020a04", panel: "rgba(6,20,10,.9)", panel2: "#0b2412", panel3: "#103018", line: "#14401f", line2: "#1f6b33", muted: "#9cc8a6", dim: "#7fa889"},
+  bloed: {label: "Bloed", bg: "#0e0204", panel: "rgba(30,6,10,.88)", panel2: "#2a0a10", panel3: "#3a0e16", line: "#4a1420", line2: "#7a2030", muted: "#d0a8ae", dim: "#b08890"},
+  chroom: {label: "Chroom", bg: "#0d0d10", panel: "rgba(26,26,32,.9)", panel2: "#22222a", panel3: "#2c2c36", line: "#3a3a46", line2: "#5a5a6a", muted: "#b4b4c2", dim: "#9494a4"}};
 const LOGO_SYMBOLEN = ["◆", "▲", "⬢", "✦", "☢", "⚙", "✪", "Ω", "Ψ", "⌬", "☠", "⚡"], LOGO_VORMEN = ["zeshoek", "cirkel", "ruit", "schild"];
 function actHuisstijl(s, a){ const h = (s.huisstijl ??= {}), kleur = x => typeof x === "string" && /^#[0-9a-fA-F]{6}$/.test(x);
   if (kleur(a.kleur)) h.kleur = a.kleur; if (kleur(a.accent)) h.accent = a.accent; if (THEMAS[a.thema]) h.thema = a.thema;
