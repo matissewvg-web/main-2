@@ -115,6 +115,11 @@ const html = '<!doctype html><html><head><meta charset=utf8></head><body>' + fs.
     const r = await API["/api/autodev"]({divisie: "Autolab", aan: true, schaal: "groot"}); const ctx = Ctx(); autoDevTick(s, ctx); const n1 = s.producten.filter(x => x.divisie === "Autolab").length, sch = (s.producten.find(x => x.divisie === "Autolab") || {}).schaal;
     autoDevTick(s, Ctx()); const n2 = s.producten.filter(x => x.divisie === "Autolab").length; s.divisions = s.divisions.filter(x => x !== d); s.producten = s.producten.filter(x => x.divisie !== "Autolab"); return {ok: r.ok, n1, n2, sch, melding: ctx.rep.join(" ")}; });
   ok(ad.ok && ad.n1 === 1 && ad.n2 === 1 && ad.sch === "groot" && /Automatisch ontwikkelen/.test(ad.melding), "automatisch ontwikkelen: start één product op de gekozen schaal, niet twee tegelijk: " + JSON.stringify(ad));
+  // 5.3 tijdlijn
+  const tl = await p.evaluate(() => { const s = JSON.parse(JSON.stringify(G.game)); s.tijdlijnGehad = []; s.vraagBasis = {}; s.basisTot = []; s.nieuws = []; s.date = {year: 2020, month: 4};
+    const ctx = Ctx(); tijdlijnTick(s, ctx); const wapen = s.vraagBasis.wapen, med = s.vraagBasis.medisch, fin = s.vraagBasis.financieel || 0, nieuws = ctx.rep.filter(x => /Wereld:/.test(x)); s.date = {year: 2023, month: 1}; tijdlijnTick(s, Ctx());
+    return {wapen, med, fin, nieuws, medNa: s.vraagBasis.medisch, wapenNa: s.vraagBasis.wapen, aantal: s.tijdlijnGehad.length}; });
+  ok(tl.wapen === 6 && tl.med === 8 && tl.fin === 0 && tl.nieuws.length === 1 && /Pandemie/.test(tl.nieuws[0]) && tl.medNa === 0 && tl.wapenNa === 20, "tijdlijn: oude gebeurtenissen stil verwerkt, de recente pandemie in het nieuws, tijdelijke trends lopen af, blijvende stapelen: " + JSON.stringify(tl));
   // 7. scherm
   await p.evaluate(() => { S.view = "bedrijf"; render(); }); const ds = await p.$('[data-a=prodsheet]'); if (ds){ await ds.click(); await p.waitForTimeout(200); }
   const scherm = await p.evaluate(() => { const el = document.querySelector(".prodblad"); return el ? el.textContent : ""; });

@@ -601,7 +601,7 @@ function tick(s){
   lingeringTick(s, ctx, diff); invoicesTick(s, ctx, diff); marketTick(s, ctx); factionTick(s, ctx);
   npcTick(s, ctx); nomadDemandTick(s, ctx); chaosTick(s, ctx, diff); rumorTick(s, ctx); arcsTick(s, ctx, diff);
   sectorTick(s); regionTick(s, ctx); bedrijfTick(s, ctx); bedrijfLeven(s, ctx); peopleTick(s, ctx, diff);
-  specialTick(s, ctx); productTick(s, ctx); { const pe = productEffectTick(s); if (pe.heat) gz.hDelen.push(["Producten", r1(pe.heat)]); if (pe.morale) gz.mDelen.push(["Producten", r1(pe.morale)]); } productEventTick(s, ctx); vraagTick(s); rivalProductTick(s); wereldInvloedProducten(s); eraTick(s, ctx); if (s.date.month === 12) jaarTick(s, ctx); marktTick(s); klusTick(s);
+  specialTick(s, ctx); productTick(s, ctx); { const pe = productEffectTick(s); if (pe.heat) gz.hDelen.push(["Producten", r1(pe.heat)]); if (pe.morale) gz.mDelen.push(["Producten", r1(pe.morale)]); } productEventTick(s, ctx); tijdlijnTick(s, ctx); vraagTick(s); rivalProductTick(s); wereldInvloedProducten(s); eraTick(s, ctx); if (s.date.month === 12) jaarTick(s, ctx); marktTick(s); klusTick(s);
   s.accounts.operationeel = s.cash; s.hidden_truth = s.hidden_truth.slice(-30);
 
   let status = "actief";
@@ -658,7 +658,7 @@ function tick(s){
 }
 
 /* ---------- de stad: elke game een andere kaart ---------- */
-const VERSION = "5.2.1";
+const VERSION = "5.3";
 const MAP_W = 1000, MAP_H = 680;
 const RIVAL_COLORS = ["#ff9a1f", "#3d7bff", "#c6ff2e", "#f2f2f2", "#9b5cff", "#ffd400", "#ff4d4d"];
 const ARCH = {
@@ -3129,11 +3129,41 @@ function vraagFactor(s, aard){
   const sup = aanbod(s, aard).totaal, verz = sup / Math.max(0.5, x.idx / 100 * 4);
   return Math.round(clamp(x.idx / 100 * (1.2 - 0.2 * verz), 0.6, 1.6) * 100) / 100;
 }
+/* 5.3: echte-wereldtijdlijn. Elk item: datum, kop, tekst, schok (eenmalige trend per soort) en basis (blijvende verschuiving van de normale vraag, eventueel tot een datum). */
+const TIJDLIJN = [
+  {d: "2005-06", kop: "Videoplatforms exploderen", tekst: "Iedereen filmt alles. Data wordt goud.", schok: {data: 0.05}, basis: {data: 5}},
+  {d: "2007-06", kop: "De telefoon wordt een computer", tekst: "Een toestel met alleen een scherm verandert hoe mensen kopen, praten en betalen.", schok: {consument: 0.08, data: 0.05}, basis: {consument: 6, data: 5}},
+  {d: "2008-09", kop: "Bankencrisis", tekst: "Een grote bank valt om, de rest wankelt. Krediet droogt op.", schok: {financieel: -0.15, consument: -0.06, logistiek: -0.05}, basis: {financieel: -10}, tot: "2011-12"},
+  {d: "2009-01", kop: "Een munt zonder bank", tekst: "Een anonieme programmeur lanceert digitaal geld. Nog lacht iedereen.", schok: {financieel: 0.03}},
+  {d: "2011-03", kop: "Kernramp", tekst: "Een tsunami raakt een kerncentrale. Medische vraag piekt, energie wordt politiek.", schok: {medisch: 0.06, beveiliging: 0.03}},
+  {d: "2013-06", kop: "Massasurveillance gelekt", tekst: "Een klokkenluider toont wat geheime diensten allemaal opslaan. Privacy is ineens een product.", schok: {data: -0.05, beveiliging: 0.06}, basis: {beveiliging: 4}},
+  {d: "2014-06", kop: "Drones voor iedereen", tekst: "Voor een paar honderd euro vlieg je een camera boven de stad.", schok: {consument: 0.05, logistiek: 0.03}, basis: {logistiek: 3}},
+  {d: "2015-03", kop: "Dronegevechten", tekst: "In conflictgebieden vechten goedkope drones tegen dure tanks. Legers bestellen massaal.", schok: {wapen: 0.08}, basis: {wapen: 6}},
+  {d: "2017-12", kop: "Cryptogekte", tekst: "Digitaal geld stijgt duizenden procenten. Iedereen is belegger.", schok: {financieel: 0.1}, basis: {financieel: 4}, tot: "2018-12"},
+  {d: "2018-03", kop: "Datahandel-schandaal", tekst: "Een advieskantoor gebruikte profielen van miljoenen mensen. Regulators worden wakker.", schok: {data: -0.06}},
+  {d: "2020-03", kop: "Pandemie", tekst: "Een virus legt de wereld stil. Ziekenhuizen lopen vol, pakketten stromen.", schok: {medisch: 0.2, logistiek: 0.1, consument: -0.08, beveiliging: 0.03}, basis: {medisch: 8, logistiek: 5}, tot: "2022-06"},
+  {d: "2020-09", kop: "Dronecombat wordt mainstream", tekst: "Een korte oorlog wordt gewonnen met zwermen goedkope drones. Elke defensiebegroting gaat om.", schok: {wapen: 0.12}, basis: {wapen: 6}},
+  {d: "2022-02", kop: "Oorlog in Europa", tekst: "Tanks rollen over een grens. Wapenfabrieken draaien in drie ploegen, toeleveringsketens knappen.", schok: {wapen: 0.15, logistiek: -0.05, financieel: -0.04}, basis: {wapen: 8}},
+  {d: "2022-11", kop: "Chatbots voor iedereen", tekst: "Een taalmodel dat praat als een mens gaat live. Honderd miljoen gebruikers in twee maanden.", schok: {data: 0.12}, basis: {data: 8}},
+  {d: "2023-06", kop: "De AI-golf", tekst: "Elke bedrijf wil AI. Rekenkracht wordt schaars, chips worden geopolitiek.", schok: {data: 0.1, financieel: 0.04}, basis: {data: 6}},
+  {d: "2024-01", kop: "Commerciële ruimtevaart", tekst: "Herbruikbare raketten maken een lancering goedkoper dan een zeecontainer van vroeger.", schok: {orbitaal: 0.1}, basis: {orbitaal: 8}},
+  {d: "2026-06", kop: "Humanoïde robots", tekst: "De eerste robots met handen staan in fabrieken en magazijnen.", schok: {consument: 0.06, logistiek: 0.05, implantaat: 0.04}, basis: {logistiek: 4}},
+  {d: "2028-03", kop: "Neurale interface voor consumenten", tekst: "Een implantaat dat je telefoon vervangt. De wachtlijst is twee jaar.", schok: {implantaat: 0.15}, basis: {implantaat: 10}},
+  {d: "2030-01", kop: "De AI-wet", tekst: "Strenge regels voor algoritmen. Wie niet meedoet, betaalt of verhuist.", schok: {data: -0.08, beveiliging: 0.04}, basis: {data: -4}},
+  {d: "2032-05", kop: "Privélegers erkend", tekst: "Een verdrag erkent bedrijfslegers als gewapende partij. Beveiliging wordt soevereiniteit.", schok: {beveiliging: 0.12, wapen: 0.06}, basis: {beveiliging: 8, wapen: 4}},
+  {d: "2035-01", kop: "Orbitale fabrieken", tekst: "In een baan om de aarde maken fabrieken wat op aarde niet kan.", schok: {orbitaal: 0.12}, basis: {orbitaal: 8}},
+  {d: "2038-01", kop: "Chroom-mode", tekst: "Implantaten zijn mode. Wie geen chroom draagt, valt op.", schok: {implantaat: 0.1, consument: 0.04}, basis: {implantaat: 6}},
+  {d: "2040-01", kop: "Corporate steden", tekst: "De eerste stad wordt bestuurd door een bedrijf. Andere volgen.", schok: {beveiliging: 0.08, smokkel: 0.05}, basis: {beveiliging: 5}}];
+function tijdlijnTick(s, ctx){ const nu = ym(s), gehad = (s.tijdlijnGehad ??= []), B = (s.vraagBasis ??= {});
+  for (const t of TIJDLIJN){ if (t.d > nu || gehad.includes(t.d)) continue; gehad.push(t.d); const recent = mndNr(nu) - mndNr(t.d) <= 2;
+    for (const [a, v] of Object.entries(t.basis || {})){ B[a] = (B[a] || 0) + v; if (t.tot) (s.basisTot ??= []).push({a, v, tot: t.tot}); }
+    if (recent){ for (const [a, v] of Object.entries(t.schok || {})) vraagSchok(s, a, v, t.kop); news(s, t.kop, t.tekst, "", "wereld", true); ctx.rep.push(`Wereld: ${t.kop}`); } }
+  if (s.basisTot) s.basisTot = s.basisTot.filter(x => { if (x.tot > nu) return true; B[x.a] = (B[x.a] || 0) - x.v; return false; }); }
 function vraagTick(s){
   vraagInit(s);
   const oorlogen = s.rivals.filter(r => r.status === "oorlog").length + (s.flags.special_oorlog ? 1 : 0), dreig = (s.dreigingen || []).length;
   for (const [a, x] of Object.entries(s.vraag)){
-    let drift = (100 - x.idx) * 0.03 + U(-0.02, 0.02) * 100 / 100;
+    let drift = ((100 + ((s.vraagBasis || {})[a] || 0)) - x.idx) * 0.03 + U(-0.02, 0.02) * 100 / 100; /* 5.3: normale vraag schuift met de tijdlijn */
     if (a === "wapen") drift += oorlogen * 0.015 + (s.gangs || []).filter(g => g.deal === "oorlog").length * 0.01;
     if (a === "beveiliging") drift += oorlogen * 0.008 + dreig * 0.01;
     if (a === "implantaat" && (s.tijdperk || 0) >= 1) drift += 0.006;
