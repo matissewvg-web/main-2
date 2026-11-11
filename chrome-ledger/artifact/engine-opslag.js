@@ -13,7 +13,7 @@ const LKEY = "cl_spel_v2", MAX_SLOTS_LOKAAL = 6;
 G.tab = Math.random().toString(36).slice(2, 10);
 
 function localLoad(){ try { return JSON.parse(localStorage.getItem(LKEY) || "null"); } catch(e){ return null; } }
-function localSave(){ try { localStorage.setItem(LKEY, JSON.stringify({game: pak(G.game), mails: G.mails.slice(0, 300), chats: G.chats})); G.saveFout = false; return true; }
+function localSave(){ try { localStorage.setItem(LKEY, JSON.stringify({game: pak(G.game), mails: G.mails.slice(0, 300), chats: G.chats, t: Date.now()})); G.saveFout = false; return true; }
   catch(e){ foutLog("opslaan in de browser", e); if (!G.saveFout) toast("Opslaan in de browser is mislukt (opslag vol?). Exporteer je spel via Logboek, anders ben je je voortgang kwijt bij het sluiten.", true); G.saveFout = true; return false; } }
 
 const Store = {
@@ -45,6 +45,7 @@ const Store = {
       const dt = snap.exists ? snap.data() : null;
       if (later && dt && dt.tab && dt.tab !== G.tab && Date.now() - (G.tabWarn || 0) > 60000){ G.tabWarn = Date.now(); toast("Dit spel is net in een ander tabblad of op een ander apparaat bijgewerkt. Je ziet nu die versie: speel in één venster tegelijk.", true); }
       if (!S.busy) G.game = snap.exists ? clone(snap.data().s) : null;
+      if (!later) lokaalNieuwerCheck(dt); /* 10.5 */
       if (G.game && G.game.map && G.game.map.kind === "wereld" && !G.game.map.frame && !G.game.map.gedeeld){ migrate(G.game); Store.saveGame().catch(() => {}); }
       S.loaded = true; render();
     }, e => { clearTimeout(timer); S.loaded = true; toast("Opslag niet bereikbaar (" + e.code + ").", true); render(); }));
@@ -170,6 +171,27 @@ const Store = {
     await this.saveSlots(L); return true;
   },
 };
+/* 10.5: staat er in deze browser een stand die verder is dan het online spel (gespeeld toen de online opslag niet bereikbaar was)? Dan mag de speler die als apart spel online zetten. Er wordt nooit iets overschreven. */
+function lokaalNieuwerCheck(dt){
+  try { const d = localLoad(), L = d && d.game; if (!L || !L.setup_done || L.status === "einde") return;
+    const on = dt && dt.s, mL = maandenGespeeld(L), mO = on ? maandenGespeeld(on) : -1, sleutel = `${(L.player || {}).corp_name}|${mL}`;
+    if (localStorage.getItem("cl_lokaal_genegeerd") === sleutel) return;
+    const zelfde = on && (on.player || {}).corp_name === (L.player || {}).corp_name;
+    const nieuwer = d.t ? d.t > ((dt && dt.bijgewerkt) || 0) + 60000 && (!zelfde || mL !== mO) : zelfde && mL > mO;
+    if (!nieuwer) return;
+    const dat = x => x && x.date ? `${x.date.year}-${String(x.date.month).padStart(2, "0")}` : "?";
+    S.lokaalNieuwer = {naam: (L.player || {}).corp_name || "spel", datum: dat(L), online: on ? `${(on.player || {}).corp_name || "spel"}, ${dat(on)}` : "geen", sleutel};
+  } catch(e){ foutLog("browserstand vergelijken", e); } }
+async function lokaalNaarOnline(){
+  const d = localLoad(); if (!d || !d.game || G.mode !== "db") return {ok: false, msg: "Er is geen browserstand om online te zetten."};
+  const s = d.game; migrate(s); const nieuw = "g" + uid(), L = await Store.slots().catch(() => G.slots || []);
+  await G.db.doc("games/" + nieuw).set({s: pak(s), bijgewerkt: Date.now(), tab: G.tab});
+  const col = G.db.collection("games/" + nieuw + "/mails"); await Promise.all((d.mails || []).slice(0, 80).map(({id, ...body}) => col.doc(id || ("m" + uid())).set(clone(body)))).catch(e => foutLog("mails online zetten", e));
+  await Promise.all(Object.values(d.chats || {}).map(c => { const {_pending, ...body} = c; return G.db.doc(`games/${nieuw}/chats/${c.key}`).set(clone(body)); })).catch(e => foutLog("chats online zetten", e));
+  L.unshift({gid: nieuw, ...Store.slotInfo(nieuw, s), label: "Uit de browser", t: Date.now()}); await Store.saveSlots(L).catch(() => {});
+  try { localStorage.setItem("cl_lokaal_genegeerd", (S.lokaalNieuwer || {}).sleutel || ""); } catch(e){}
+  G.gid = nieuw; G.game = null; G.mails = []; G.chats = {}; await G.db.doc("meta/huidig").set({gid: nieuw}); Store.subscribe();
+  return {ok: true}; }
 function withTimeout(p, ms){ return Promise.race([p, new Promise((_, rej) => setTimeout(() => rej({code: "timeout"}), ms))]); }
 async function persist(ctx){
   const out = [];

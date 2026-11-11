@@ -48,6 +48,16 @@ const MOCK = () => {
   const sl = await p.evaluate(async () => { const g0 = G.gid; const r = await API["/api/nieuw"](); await new Promise(r => setTimeout(r, 400)); await API["/api/setup"]({...S.setup, corp_name: "Tweede BV", doctrine: ["Logistiek"], home: "BNL"}); await new Promise(r => setTimeout(r, 400));
     const L = await Store.slots(); await Store.switchSlot(g0); await new Promise(r => setTimeout(r, 800)); return {ok: r.ok, n: L.length, terug: G.game && G.game.player.corp_name}; });
   ok(sl.ok && sl.n >= 2 && sl.terug === "Wolk BV", "online spellen wisselen: " + JSON.stringify(sl));
+  /* 10.5: een browserstand die verder is dan online wordt aangeboden, en online zetten maakt een apart spel (niets overschreven) */
+  const g1 = await p.evaluate(() => { const L = JSON.parse(JSON.stringify(G.game)); L.maanden = (L.maanden ?? L.history.length) + 7; L.cash = 777; localStorage.setItem("cl_spel_v2", JSON.stringify({game: L, mails: [], chats: {}, t: Date.now() + 3600000})); return G.gid; });
+  await p.reload(); await p.waitForTimeout(1500);
+  const aan = await p.evaluate(() => ({nieuwer: !!S.lokaalNieuwer, knop: !!document.querySelector('[data-a="lokaalonline"]')}));
+  ok(aan.nieuwer && aan.knop, "nieuwere browserstand wordt aangeboden: " + JSON.stringify(aan));
+  await p.click('[data-a="lokaalonline"]'); await p.waitForTimeout(1500);
+  const om = await p.evaluate(g1 => { const st = JSON.parse(localStorage.getItem("__mockdb")); return {anders: G.gid !== g1, cash: G.game && G.game.cash, oudBestaat: !!st["games/" + g1], huidig: st["meta/huidig"].gid === G.gid, kaart: !!document.querySelector("main")}; }, g1);
+  ok(om.anders && om.cash === 777 && om.oudBestaat && om.huidig && om.kaart, "browserstand als apart spel online gezet, oud spel bewaard: " + JSON.stringify(om));
+  await p.reload(); await p.waitForTimeout(1500);
+  ok(await p.evaluate(() => !S.lokaalNieuwer && G.game && G.game.cash === 777), "na herladen geen nieuwe vraag en de browserstand speelt verder");
   ok(await p.evaluate(() => (G.fouten || []).length) === 0, "geen fouten in de foutlog: " + JSON.stringify(await p.evaluate(() => G.fouten)));
   console.log(log.join("\n")); console.log("FOUTEN OP DE PAGINA:", JSON.stringify(errs)); await b.close();
   if (log.some(l => l.startsWith("FOUT")) || errs.length) process.exit(1);
