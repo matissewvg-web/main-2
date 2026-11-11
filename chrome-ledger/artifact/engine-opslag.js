@@ -478,7 +478,7 @@ function vm(){
     districten: s.districts.map(d => ({id: d.id, naam: d.name, controle: d.control, inkomen: d.income, onderhoud: d.upkeep, lore: d.lore || "", hq: hq[d.id] || [], thuis: s.player.home_district === d.id, kost: districtCost(s, d), bezig: pd.has(d.id),
       buren: d.neighbors || [], zee: d.zee || [], bereik: reachable(s, "player", d), continent: d.continent || "", opbrengst: districtYield(s, d)})),
     kaart: mapView(s), vloot: {schepen: s.schepen || 0, vrij: shipsFree(s), max: SHIP_MAX, kost: shipCost(s), inzet: s.inzet || {}}, stad: s.city,
-    rivalen: s.rivals.map(r => ({naam: r.name, ceo: r.ceo, sector: r.sector, hq: r.hq, key: "riv-" + slug(r.name), agressie: r.aggression < 0.35 ? "laag" : r.aggression < 0.6 ? "gemiddeld" : "hoog",
+    rivalen: s.rivals.map(r => ({naam: r.name, ceo: r.ceo, sector: r.sector, hq: r.hq, key: "riv-" + slug(r.name), sectoren: Object.entries(r.divs || {}).map(([k, v]) => ({k, lv: v, reden: (r.divReden || {})[k] || (k === r.sector ? "kernsector" : "")})), /* 8.6 */ agressie: r.aggression < 0.35 ? "laag" : r.aggression < 0.6 ? "gemiddeld" : "hoog",
       karakter: r.karakter ? RIVAAL_KARAKTER[r.karakter] : null,
       kas_schatting: Math.round(r.cash * (0.7 + 0.6 * seeded(r.name + ym(s))()) / 10) * 10, aandeel: Math.round(((s.market[r.sector] || {rivals: {}}).rivals[r.name] || 0) * 100), geheugen: r.memory.slice(-3), producten: (r.producten || []).map(p => ({naam: p.naam, aard: p.aard, label: (PRODUCT_AARD[p.aard] || {}).label, kwaliteit: p.kwaliteit, pop: p.pop})),
       status: r.status, relatie: r.relatie, macht: rivalPower(s, r), verdragen: r.verdragen, moe: r.moeheid > 55 ? "hoog" : r.moeheid > 25 ? "merkbaar" : "laag",

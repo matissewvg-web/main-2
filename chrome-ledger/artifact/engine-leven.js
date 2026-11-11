@@ -285,7 +285,7 @@ function bedrijfTick(s, ctx){
     const free = (s.bedrijven || []).filter(b => !b.eigenaar && b.aandeel < 50), r = CH(s.rivals);
     if (free.length){ const b = CH(free), price = b.waarde * 1.3;
       if (r.cash > price * 1.4){
-        r.cash = r1(r.cash - price); b.eigenaar = r.name; r.divs[b.sector] = Math.min(10, (r.divs[b.sector] || 0) + 1);
+        r.cash = r1(r.cash - price); b.eigenaar = r.name; if (!r.divs[b.sector]) (r.divReden ??= {})[b.sector] = `overname van ${b.naam}`; r.divs[b.sector] = Math.min(10, (r.divs[b.sector] || 0) + 1);
         let extra = "";
         if (b.aandeel){ const p = r1(b.waarde * b.aandeel / 100 * 1.3); s.cash = r1(s.cash + p); extra = ` Jouw belang van ${b.aandeel}% is uitgekocht voor €${p}M.`; b.aandeel = 0; ctx.rep.push(`${r.name} koopt ${b.naam}: jouw belang uitgekocht (+€${p}M)`); }
         if (b.contract){ b.contract = false; s.streams = (s.streams || []).filter(x => x.naam !== "Contract " + b.naam); extra += " Jouw leveringscontract is opgezegd."; ctx.rep.push(`Contract met ${b.naam} vervalt`); }

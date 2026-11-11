@@ -186,7 +186,7 @@ function newGame0(d){
   { const bezet = new Set(); for (const r of s.rivals){ r.name = genRivaalNaam(r.sector, bezet); bezet.add(r.name); r.ceo = genCeoNaam(new Set(s.rivals.map(x => x.ceo))); r.aggression = r1(clamp(r.aggression + U(-0.12, 0.12), 0.1, 0.8) * 100) / 100; } } /* 5.7: elk spel nieuwe rivalen */
   const hoofd = doctrine.find(t => DT[t]); if (hoofd && !s.rivals.some(r => r.sector === hoofd)) s.rivals[3].sector = hoofd;
   const thuisR = s.rivals.find(r => r.sector === hoofd) || s.rivals[3];
-  for (const r of s.rivals){ r.cash = RI(280, 480); r.divs = {[r.sector]: 3}; r.divs[CH(SECTORS.filter(x => x !== r.sector))] = 1; initRival(r); geefKarakter(r); if (!r.kleur) r.kleur = RIVAL_COLORS.find(c => !s.rivals.some(x => x.kleur === c)) || "#cccccc"; }
+  for (const r of s.rivals){ r.cash = RI(280, 480); r.divs = {[r.sector]: 3}; { const v = CH(SECTOR_VERWANT[r.sector] || SECTORS.filter(x => x !== r.sector)); r.divs[v] = 1; r.divReden = {[r.sector]: "kernsector", [v]: "verwante sector"}; r.sectorNet = true; } /* 8.6 */ initRival(r); geefKarakter(r); if (!r.kleur) r.kleur = RIVAL_COLORS.find(c => !s.rivals.some(x => x.kleur === c)) || "#cccccc"; }
   for (const m of Object.values(s.market)) for (const r of s.rivals) m.rivals[r.name] ??= 0;
   const pref = {Financieel: "corporate", Logistiek: "haven", Cyberware: "campus", "Media & Data": "nacht", "Private Security": "industrie", "Weapon Manufacturing": "industrie", Biotech: "campus", Smokkel: "haven"};
   const taken = new Set([home, ...s.districts.filter(x => x.neighbors.includes(home)).map(x => x.id)]);

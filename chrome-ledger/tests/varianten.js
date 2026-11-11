@@ -493,6 +493,15 @@ const html = '<!doctype html><html><head><meta charset=utf8></head><body>' + fs.
     a.rivPrijs = {[r.name]: 15}; const vv = aanvraagVergelijk(c, a, "normaal"), uit = actAanvraag(c, Ctx(), "m1", "normaal");
     return {mono: mono.mono, monoKans: mono.kans, met, jij: vv.jij, hun: rivBodBasis(c, r, a).basis + 15, uit: uit.msg.slice(0, 60)}; });
   ok(v85.mono && v85.monoKans === 100 && v85.met[0] > v85.met[1] && v85.met[1] > v85.met[2] && ((v85.jij >= v85.hun) === /Gewonnen/.test(v85.uit)), "8.5: enige aanbieder wint altijd; met een concurrent vergelijkt de klant de biedingen (scherp > normaal > hoog) en de hoogste wint: " + JSON.stringify(v85));
+  // 8.6 rivalen blijven bij hun vak, uitbreiden met een reden, opvolgers
+  const r86 = await p.evaluate(() => { const {s: n} = newGame({corp_name: "Vak", doctrine: ["Biotech"], home: "BNL", difficulty: "Realistisch", kapitaal: "normaal", lengte: "normaal", ontslag: "normaal", bonus: "geen", ethiek: "normaal"});
+    const vakOk = n.rivals.every(r => Object.keys(r.divs).every(k => verwant(r, k)));
+    const c = JSON.parse(JSON.stringify(G.game)), r = c.rivals[0]; r.sector = "Cyberware"; r.divs = {"Cyberware": 3, "Weapon Manufacturing": 1}; r.divReden = {}; r.sectorNet = false; r.producten = [{id: "x1", naam: "Raar Tank", aard: "wapen", kwaliteit: 3, pop: 50}, {id: "x2", naam: "Goed Oog", aard: "implantaat", kwaliteit: 3, pop: 50}];
+    rivSectorOpruimen(c); const opgeruimd = !r.divs["Weapon Manufacturing"] && !r.producten.some(p => p.aard === "wapen") && Object.keys(r.divs).every(k => verwant(r, k));
+    const pr = mkProduct(c, c.divisions[0], "Alleen Medisch", 4, 70); Object.assign(pr, {aard: "medisch", keuring: "ok"}); c.producten = [pr]; c.prodomzet = {[pr.id]: 20}; for (const q of c.rivals) q.producten = (q.producten || []).filter(x => x.aard !== "medisch");
+    r.cash = 900; r.expM = null; delete r.divs["Biotech"]; const oudR = RNG; RNG = () => 0; rivUitbreiding(c, r); RNG = oudR;
+    return {vakOk, opgeruimd, uitgebreid: !!r.divs["Biotech"], reden: (r.divReden || {})["Biotech"] || ""}; });
+  ok(r86.vakOk && r86.opgeruimd && r86.uitgebreid && /alleen/.test(r86.reden), "8.6: rivalen starten in verwante sectoren, losse vreemde divisies (en hun producten) verdwijnen, en ze breiden uit met een reden (bv. jij hebt een markt alleen): " + JSON.stringify(r86));
   ok(/VERKOOP/.test(verkoop) && /KEURING/.test(verkoop), "tabblad Verkoop en keuring");
   ok(/VARIANT/.test(scherm), "varianten staan op het productblad");
   if (out){ const bl = await p.$('.prodblad'); if (bl) await bl.screenshot({path: out + "/verkoop.png"}); }

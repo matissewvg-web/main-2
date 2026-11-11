@@ -116,6 +116,7 @@ function migrate(s){
   s.inzet ??= {};
   for (const r of s.rivals) if (!r.kleur) r.kleur = RIVAL_COLORS.find(c => !s.rivals.some(x => x.kleur === c)) || "#cccccc";
   if (typeof kleurenUniek === "function") kleurenUniek(s); /* 8.0 */
+  if (typeof rivSectorOpruimen === "function") rivSectorOpruimen(s); /* 8.6 */
   for (const r of s.rivals){
     let d = s.districts.find(x => x.id === r.hq);
     if (d && d.control !== "neutral" && d.control !== r.name){ const alt = s.districts.filter(x => x.control === "neutral"); d = alt.length ? alt[Math.floor(R() * alt.length)] : null; r.hq = d ? d.id : null; }

@@ -1475,11 +1475,19 @@ const PRODUCT_BASIS = {wapen: ["Karabijn", "Smartgun", "Railpistool", "Drone-gew
   data: ["Feed", "Profielbank", "Stream", "Zoekmachine"], beveiliging: ["Wachtdienst", "Bunkerdienst", "Escort", "Cyberwacht"], smokkel: ["Nachtvracht", "Grensdienst", "Stille lijn"], logistiek: ["Express", "Koelvracht", "Dronelijn", "Havendienst"],
   financieel: ["Krediet", "Fonds", "Polis", "Rekening"], orbitaal: ["Satlink", "Orbitlab", "Lanceerdienst"], consument: ["Lijn", "Serie", "Huismerk"]};
 const rivalMerk = r => r.name.split(/[\s-]/)[0];
+/* 8.6: rivalen blijven bij hun vak. Een tweede divisie komt uit een verwante sector; nieuwe sectoren alleen met een reden (overname, hoge vraag in een verwante markt, of jij die een markt alleen hebt). */
+const SECTOR_VERWANT = {"Biotech": ["Cyberware", "Media & Data"], "Cyberware": ["Biotech", "Media & Data"], "Logistiek": ["Smokkel", "Financieel"], "Media & Data": ["Cyberware", "Financieel"], "Private Security": ["Weapon Manufacturing", "Logistiek"], "Financieel": ["Media & Data", "Logistiek"], "Smokkel": ["Logistiek", "Weapon Manufacturing"], "Weapon Manufacturing": ["Private Security", "Logistiek"]};
+const verwant = (r, sec) => sec === r.sector || (SECTOR_VERWANT[r.sector] || []).includes(sec);
+const sectorVoorAard = (r, aard) => Object.keys(r.divs || {}).find(k => (SECTOR_AARD[k] || "consument") === aard) || r.sector;
+function rivSectorOpruimen(s){ for (const r of s.rivals || []){ if (r.sectorNet) continue; r.sectorNet = true; r.divReden ??= {}; r.divReden[r.sector] = "kernsector";
+    for (const k of Object.keys(r.divs || {})){ if (k === r.sector) continue; if (r.divReden[k]) continue; if (verwant(r, k)) { r.divReden[k] = "verwante sector"; continue; } if ((r.divs[k] || 0) <= 1){ delete r.divs[k]; } else r.divReden[k] = "overname"; }
+    if (Object.keys(r.divs).length < 2){ const v = (SECTOR_VERWANT[r.sector] || [])[0]; if (v){ r.divs[v] = 1; r.divReden[v] = "verwante sector"; } }
+    const mag = new Set(Object.keys(r.divs).map(k => SECTOR_AARD[k] || "consument")); if (r.producten) r.producten = r.producten.filter(p => mag.has(p.aard)); } }
 function mkRivalProduct(s, r, aard){
   aard ||= SECTOR_AARD[r.sector] || "consument";
   const used = new Set([...(s.producten || []).map(p => p.naam), ...s.rivals.flatMap(x => (x.producten || []).map(p => p.naam))]); let naam = "";
   for (let i = 0; i < 10; i++){ naam = `${rivalMerk(r)} ${CH(PRODUCT_BASIS[aard] || PRODUCT_BASIS.consument)}${CH(["", " Pro", " X", " 2", " Neo", " Prime", " 9"])}`; if (!used.has(naam)) break; }
-  const lv = r.divs[r.sector] || 2;
+  const lv = r.divs[sectorVoorAard(r, aard)] || 2; /* 8.6: kwaliteit volgt de divisie die het maakt */
   return {id: "rp" + hex8(), naam, aard, kwaliteit: clamp(Math.round(1 + lv / 2 + U(-0.6, 0.8)) + (((r.tech || {})[aard] || 0) >= 2 ? 1 : 0), 1, 5), pop: RI(40, 65), sinds: ym(s), leeftijd: 0};
 }
 function rivalProductInit(s){
@@ -1487,9 +1495,21 @@ function rivalProductInit(s){
     for (const sec of Object.keys(r.divs)) r.producten.push(mkRivalProduct(s, r, SECTOR_AARD[sec] || "consument"));
     if ((r.divs[r.sector] || 0) >= 3) r.producten.push(mkRivalProduct(s, r, SECTOR_AARD[r.sector] || "consument")); }
 }
+function rivUitbreiding(s, r){ const nu = mndNr(ym(s)); if (r.cash < 250 || (r.expM && nu - mndNr(r.expM) < 36) || Object.keys(r.divs).length >= 4) return;
+  for (const sec of SECTOR_VERWANT[r.sector] || []){ if (r.divs[sec]) continue; const aard = SECTOR_AARD[sec] || "consument", vr = (((s.vraag || {})[aard]) || {}).idx || 100;
+    const mijn = (s.producten || []).filter(p => p.status === "markt" && (p.aard || aardVan(p.type, p.naam)) === aard), mijnOmzet = mijn.reduce((a, p) => a + ((s.prodomzet || {})[p.id] || 0), 0), alleen = mijn.length && !aanvraagRivalen(s, aard).length;
+    const reden = vr >= 115 ? `de vraag naar ${PRODUCT_AARD[aard].label.toLowerCase()} is hoog (${Math.round(vr)})` : alleen && mijnOmzet >= 8 ? `${s.player.corp_name} heeft die markt alleen en verdient er €${r1(mijnOmzet)}M per maand aan` : null;
+    if (!reden || R() > 0.12) continue;
+    r.divs[sec] = 1; (r.divReden ??= {})[sec] = reden; r.expM = ym(s); r.cash = r1(r.cash - 60); const p = mkRivalProduct(s, r, aard); r.producten.push(p);
+    news(s, `${r.name} stapt in ${sec}`, `${r.name} (${r.sector}) opent een divisie ${sec}: ${reden}. Eerste product: ${p.naam}, kwaliteit ${p.kwaliteit}.`, landNaam(s, r.hq), "markt", !!alleen); return; } }
 function rivalProductTick(s){
   rivalProductInit(s);
-  for (const r of s.rivals){
+  for (const r of s.rivals){ rivUitbreiding(s, r); /* 8.6 */
+    for (const oud of r.producten.filter(p => (p.leeftijd || 0) > 36 && p.pop < 35)){ if (R() > 0.1 || r.cash < 40) continue; /* 8.6: rivalen brengen opvolgers uit */
+      const basis = oud.naam.replace(/\s+(\d+|II|III|IV|Pro|X|Neo|Prime)$/i, ""), nr = (oud.gen || 1) + 1, nieuw = {...mkRivalProduct(s, r, oud.aard), naam: `${basis} ${nr}`, gen: nr, kwaliteit: clamp(oud.kwaliteit + (R() < 0.5 ? 1 : 0), 1, 5), pop: RI(50, 65)};
+      r.producten = r.producten.filter(p => p !== oud); r.producten.push(nieuw); r.cash = r1(r.cash - 8);
+      const mine = (s.producten || []).filter(x => x.status === "markt" && (x.aard || aardVan(x.type, x.naam)) === oud.aard);
+      news(s, `${r.name} lanceert ${nieuw.naam}`, `De opvolger van ${oud.naam}, kwaliteit ${nieuw.kwaliteit}.${mine.length ? ` Concurrent van jouw ${mine.map(x => x.naam).join(", ")}.` : ""}`, landNaam(s, r.hq), "markt", mine.length > 0); break; }
     for (const p of r.producten){ p.leeftijd = (p.leeftijd || 0) + 1; const v = (((s.vraag || {})[p.aard]) || {idx: 100}).idx;
       const tgt = 28 + p.kwaliteit * 8 + (v - 100) / 6 - Math.max(0, p.leeftijd - 30) * 0.8; p.pop = Math.round(clamp(p.pop + (tgt - p.pop) * 0.08 + U(-2, 2), 3, 95)); }
     r.producten = r.producten.filter(p => p.pop > 10 || p.leeftijd < 12);
@@ -1498,7 +1518,7 @@ function rivalProductTick(s){
       const opts = [...new Set(Object.keys(r.divs).map(sec => SECTOR_AARD[sec] || "consument"))].sort((a, b) => ((((s.vraag || {})[b]) || {}).idx || 100) - ((((s.vraag || {})[a]) || {}).idx || 100));
       const p = mkRivalProduct(s, r, opts[0]); r.producten.push(p); r.cash = r1(r.cash - 10);
       const mine = (s.producten || []).filter(x => x.status === "markt" && (x.aard || aardVan(x.type, x.naam)) === p.aard); for (const x of mine) x.pop = Math.max(3, x.pop - 4);
-      news(s, `${r.name} lanceert ${p.naam}`, `Een nieuw product in ${(PRODUCT_AARD[p.aard] || PRODUCT_AARD.consument).label.toLowerCase()}, kwaliteit ${p.kwaliteit}.${mine.length ? ` Concurrent van jouw ${mine.map(x => x.naam).join(", ")} (populariteit −4).` : ""}`, landNaam(s, r.hq), "markt", mine.length > 0);
+      news(s, `${r.name} lanceert ${p.naam}`, `Een nieuw product in ${(PRODUCT_AARD[p.aard] || PRODUCT_AARD.consument).label.toLowerCase()}, hun ${sectorVoorAard(r, p.aard) === r.sector ? "kernvak" : "divisie " + sectorVoorAard(r, p.aard)}, kwaliteit ${p.kwaliteit}${((((s.vraag || {})[p.aard]) || {}).idx || 100) >= 110 ? `; de vraag is hoog (${Math.round(s.vraag[p.aard].idx)})` : ""}.${mine.length ? ` Concurrent van jouw ${mine.map(x => x.naam).join(", ")} (populariteit −4).` : ""}`, landNaam(s, r.hq), "markt", mine.length > 0);
     }
   }
 }
