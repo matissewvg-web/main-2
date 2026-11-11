@@ -294,9 +294,9 @@ const html = '<!doctype html><html><head><meta charset=utf8></head><body>' + fs.
   const mn1 = await p.evaluate(() => { const o = document.querySelector(".hmenu"); return o ? o.textContent : ""; });
   await p.click('.hmenu [data-a="menuladen"]'); await p.waitForTimeout(150);
   const mn2 = await p.evaluate(() => ({slots: document.querySelectorAll(".hmenu .hslots .opt").length, nu: /nu/.test((document.querySelector(".hmenu .hslots") || {}).textContent || "")}));
-  await p.click('.hmenu .hknoppen > [data-a="menudoor"]'); await p.waitForTimeout(400);
+  await p.click('.hmenu .hknoppen > [data-a="menudoor"]'); await p.waitForFunction(() => !document.querySelector(".hmenu"), null, {timeout: 5000}).catch(() => {});
   const mn3 = await p.evaluate(() => ({weg: !document.querySelector(".hmenu"), open: S.menuOpen, sessie: sessionStorage.getItem("cl_menu")}));
-  await p.evaluate(() => toonMenu()); await p.keyboard.press("Escape"); await p.waitForTimeout(400); const esc = await p.evaluate(() => !document.querySelector(".hmenu"));
+  await p.evaluate(() => toonMenu()); await p.keyboard.press("Escape"); await p.waitForFunction(() => !document.querySelector(".hmenu"), null, {timeout: 5000}).catch(() => {}); const esc = await p.evaluate(() => !document.querySelector(".hmenu"));
   ok(!autoMenu && /Doorgaan/.test(mn1) && /Nieuw spel/.test(mn1) && /Laden/.test(mn1) && mn2.slots >= 1 && mn2.nu && mn3.weg && !mn3.open && mn3.sessie === "1" && esc, "hoofdmenu: Doorgaan, Nieuw spel, Laden met save slots; sluiten met Doorgaan of Escape; niet automatisch in tests: " + JSON.stringify({autoMenu, mn2, mn3, esc}));
   // 5.18 krant van de maand
   const krt = await p.evaluate(() => { const s = G.game, oud = s.nieuws; const nu = ym(s), r = s.rivals[0];
@@ -307,9 +307,9 @@ const html = '<!doctype html><html><head><meta charset=utf8></head><body>' + fs.
   // 5.19 de CEO als persoon
   const ce = await p.evaluate(() => { const c = JSON.parse(JSON.stringify(G.game)), ctx = Ctx(); delete c.ceo; c.cash = 300; const C = ceoInit(c, {ceo_naam: "Mira Kade"}); const naam0 = C.naam, l0 = C.leeftijd;
     C.stress = 80; const v = actCeo(c, ctx, "vakantie").ok, st1 = C.stress, nogeens = actCeo(c, ctx, "vakantie").ok;
-    const m0 = c.morale; C.gezondheid = 0.1; C.stress = 90; C.opvolger = null; c.date = {...c.date, month: 5}; ceoTick(c, Ctx()); const zonder = {naam: C.naam, gen: C.generatie, morale: Math.round(m0 - c.morale)};
+    c.morale = 60; const m0 = c.morale; C.gezondheid = 0.1; C.stress = 90; C.opvolger = null; c.date = {...c.date, month: 5}; ceoTick(c, Ctx()); const zonder = {naam: C.naam, gen: C.generatie, morale: Math.round(m0 - c.morale)};
     C.kinderen = 1; const opv = actCeo(c, ctx, "opvolger", "kind0").ok; C.gezondheid = 0.1; C.stress = 90; ceoTick(c, Ctx()); const dyn = {naam: C.naam, gen: C.generatie, leeftijd: Math.floor(C.leeftijd)};
-    const r = c.rivals[0], rel0 = r.relatie, golf = actCeo(c, ctx, "golf", r.name).ok, band = r.ceoRel, relUp = r.relatie - rel0; r.ceoLeeftijd = 80; const oudCeo = r.ceo; c.date = {...c.date, month: 1}; ceoTick(c, Ctx());
+    const r = c.rivals[0]; r.relatie = 0; r.ceoRel = 0; delete r.golf; c.cash = 300; const rel0 = r.relatie, golf = actCeo(c, ctx, "golf", r.name).ok, band = r.ceoRel, relUp = r.relatie - rel0; r.ceoLeeftijd = 80; const oudCeo = r.ceo; c.date = {...c.date, month: 1}; ceoTick(c, Ctx());
     C.stress = 85; C.opvolger = null; C.leeftijd = 60; const adv = adviezen(c).map(x => x.tekst).join(" | "), advOk = /stress is 85/.test(adv) && /geen opvolger/.test(adv);
     return {naam0, l0, v, st1, nogeens, zonder, opv, dyn, golf, band, relUp, advOk, nieuweCeo: r.ceo !== oudCeo && r.ceoLeeftijd < 60}; });
   const ceUI = await p.evaluate(() => { S.view = "mensen"; render(); const t = document.querySelector("main").textContent; return /Jij, de CEO/.test(t) && /GEZONDHEID/.test(t) && /Andere CEO/.test(t); });
@@ -339,6 +339,14 @@ const html = '<!doctype html><html><head><meta charset=utf8></head><body>' + fs.
     return {f0, a: a.ok, dubbel, t, f1: Math.round(f1 * 100) / 100, f2: f2.map(x => Math.round(x * 100) / 100), b, b2, weg: !d.hoofd}; });
   const hdUI = await p.evaluate(() => { S.view = "bedrijf"; render(); return /Hoofd aannemen|hoofd · talent/.test(document.querySelector("main").textContent); });
   ok(hd.f0.join() === "1,1" && hd.a && !hd.dubbel && hd.f1 === Math.round((1 + 0.02 * hd.t) * 100) / 100 && hd.f2[0] === 1 && hd.f2[1] === Math.round((1 - 0.03 * hd.t) * 100) / 100 && hd.b && !hd.b2 && hd.weg && hdUI, "divisiehoofd: aannemen met talent, focus omzet of kosten, bonus één keer per maand, lage loyaliteit = vertrek: " + JSON.stringify(hd));
+  // 6.2 rivalen bouwen aanwezigheid op
+  const ra = await p.evaluate(() => { const c = JSON.parse(JSON.stringify(G.game)), r = c.rivals[0], hq = c.districts.find(d => d.id === r.hq); r.relatie = -50; r.cash = 0;
+    const buren = (hq.neighbors || []).map(id => c.districts.find(d => d.id === id)).filter(d => d && d.id !== c.player.home_district);
+    const neu = buren[0], mijn = buren[1] || null; if (!neu) return {geen: true}; neu.control = "neutral"; if (mijn) mijn.control = "player"; const thuis = c.districts.find(d => d.id === c.player.home_district);
+    c.rivAanwezig = {[r.name]: {[neu.id]: 150, ...(mijn ? {[mijn.id]: 300} : {}), [thuis.id]: 500}}; for (const d of c.districts){ delete d.dom; delete d.domRiv; } c.aanwezig = {};
+    const oud = window.kansRol; window.kansRol = () => 0.99; const ctx = Ctx(); for (let i = 0; i < 6; i++) domTick(c, ctx); window.kansRol = oud;
+    return {neu: neu.control === r.name, mijn: mijn ? mijn.control === r.name : null, thuis: thuis.control === "player", mail: ctx.mails.some(m => /toe$/.test(m.onderwerp || m.subject || "")) || ctx.rep.some(x => /valt .* toe/.test(x))}; });
+  ok(ra.geen || (ra.neu && (ra.mijn === null || ra.mijn) && ra.thuis && (ra.mijn === null || ra.mail)), "rivalen met dezelfde regels: hun aanwezigheid neemt een neutraal district en een district van jou over, je thuisdistrict nooit: " + JSON.stringify(ra));
   ok(/VERKOOP/.test(verkoop) && /KEURING/.test(verkoop), "tabblad Verkoop en keuring");
   ok(/VARIANT/.test(scherm), "varianten staan op het productblad");
   if (out){ const bl = await p.$('.prodblad'); if (bl) await bl.screenshot({path: out + "/verkoop.png"}); }

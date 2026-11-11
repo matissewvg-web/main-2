@@ -669,7 +669,7 @@ function tick(s){
 }
 
 /* ---------- de stad: elke game een andere kaart ---------- */
-const VERSION = "6.1";
+const VERSION = "6.2";
 const MAP_W = 1000, MAP_H = 680;
 const RIVAL_COLORS = ["#ff9a1f", "#3d7bff", "#c6ff2e", "#f2f2f2", "#9b5cff", "#ffd400", "#ff4d4d"];
 const ARCH = {
@@ -3274,6 +3274,7 @@ function domDoel(s, d, idx){ const o = {}, sp = spanningVan(s, d.continent), sta
   if (d.control !== "neutral") o[d.control] = 100;
   o.staat = d.control === "neutral" ? 5 + 40 * staatF : 15 * staatF;
   const A = s.aanwezig || {}; if (A[d.id]) o.player = (o.player || 0) + A[d.id];
+  for (const [rn, RA] of Object.entries(s.rivAanwezig || {})) if (RA[d.id]) o[rn] = (o[rn] || 0) + RA[d.id]; /* 6.2: rivalen bouwen ook aanwezigheid op */
   if ((s.patrouille || {})[d.id] && d.control === "player") o.player = (o.player || 0) + 15;
   const adj = {}; for (const n of d.neighbors || []){ const b = idx ? idx.get(n) : s.districts.find(x => x.id === n); if (b && b.control !== "neutral") adj[b.control] = (adj[b.control] || 0) + 4; }
   for (const [k, v] of Object.entries(adj)) o[k] = (o[k] || 0) + Math.min(12, v);
@@ -3298,6 +3299,7 @@ function domTick(s, ctx){
   for (const d of s.districts){ const doel = domDoel(s, d, idx), oud = d.dom || doel, nw = {};
     for (const k of new Set([...Object.keys(oud), ...Object.keys(doel)])){ const v = (oud[k] || 0) + ((doel[k] || 0) - (oud[k] || 0)) * 0.4; if (v >= 0.5) nw[k] = Math.round(v * 10) / 10; }
     d.dom = nw; }
+  rivAanwezigTick(s, ctx, idx, hqs);
   for (const d of s.districts){ if (d.control === "player" || hqs.has(d.id)){ delete d.domMnd; continue; }
     const pj = d.dom.player || 0, eig = domEigenaar(s, d);
     if (pj >= DOM_FLIP && pj > eig) d.domMnd = (d.domMnd || 0) + 1; else delete d.domMnd;
@@ -3628,6 +3630,20 @@ function actHoofd(s, ctx, div, soort, arg){ const d = s.divisions.find(x => divN
   return {ok: false, msg: "Onbekende actie."}; }
 function hoofdTick(s, ctx){ for (const d of s.divisions){ const h = d.hoofd; if (!h) continue; const doel = 45 + s.morale / 4 + (h.bonus === ym(s) ? 10 : 0); h.loyaliteit = Math.round(clamp(h.loyaliteit + (doel - h.loyaliteit) * 0.1 + U(-1.5, 1.5)) * 10) / 10;
   if (h.loyaliteit < 25 && kansRol() < 0.15){ const r = s.rivals.length ? CH(s.rivals).name : "een rivaal"; mail(ctx, s, "HR", `${h.naam} vertrekt`, `${h.naam} (hoofd ${divNaam(d)}) stapt over naar ${r}. Loyaliteit was ${Math.round(h.loyaliteit)}.`, "HOOG"); ctx.rep.push(`${h.naam} vertrekt`); delete d.hoofd; } } }
+/* 6.2: rivalen spelen met dezelfde regels. Rijke rivalen bouwen aanwezigheid op in districten naast hun gebied (neutraal, of van jou als ze je niet mogen). Twee maanden ≥55% en groter dan de eigenaar = het district is van hen. Je thuisdistrict en hoofdkantoren vallen nooit zo. */
+function rivAanwezigTick(s, ctx, idx, hqs){ const RA = (s.rivAanwezig ??= {});
+  for (const r of s.rivals){ const M = (RA[r.name] ??= {}); for (const k of Object.keys(M)){ M[k] = r1(M[k] * 0.95); if (M[k] < 1) delete M[k]; }
+    if (r.cash < 120 || kansRol() >= 0.1) continue;
+    const eigen = s.districts.filter(d => d.control === r.name), kand = new Set(); for (const d of eigen) for (const n of d.neighbors || []){ const b = idx.get(n); if (!b || hqs.has(b.id) || b.id === s.player.home_district) continue; if (b.control === "neutral" || (b.control === "player" && (r.relatie || 0) < -20)) kand.add(b); }
+    if (!kand.size) continue; const L = [...kand], speler = L.filter(d => d.control === "player"), d = speler.length && R() < 0.4 ? CH(speler) : CH(L);
+    M[d.id] = Math.min(150, r1((M[d.id] || 0) + 20)); r.cash = r1(r.cash - 10);
+    if (d.control === "player" && M[d.id] >= 40 && !(d.rivWaarsch === r.name)){ d.rivWaarsch = r.name; mail(ctx, s, "Strategie", `${r.name} wil ${d.name}`, `${r.name} koopt panden, sponsort clubs en zet mensen op straat in ${d.name}. Wordt hun aandeel groter dan het onze, dan valt het district hen toe. Aanwezigheid opbouwen of een patrouille helpt.`, "HOOG"); } }
+  for (const d of s.districts){ if (hqs.has(d.id) || d.id === s.player.home_district || !d.dom) continue; const eig = domEigenaar(s, d);
+    let top = null; for (const r of s.rivals) if (r.name !== d.control){ const v = d.dom[r.name] || 0; if (v >= DOM_FLIP && v > eig && (!top || v > top.v)) top = {r, v}; }
+    if (!top){ delete d.domRiv; continue; } if ((d.domRiv || {}).naam === top.r.name) d.domRiv.n += 1; else d.domRiv = {naam: top.r.name, n: 1};
+    if (d.domRiv.n >= 2){ const van = d.control; d.control = top.r.name; delete d.domRiv; delete d.rivWaarsch;
+      if (van === "player"){ if (s.patrouille) delete s.patrouille[d.id]; mail(ctx, s, "Strategie", `${d.name} valt ${top.r.name} toe`, `Hun aandeel in ${d.name} (${Math.round(top.v)}%) is groter dan het onze. Zonder één schot zijn we het district kwijt.`, "KRITIEK"); ctx.rep.push(`${d.name} valt ${top.r.name} toe`); }
+      news(s, `${top.r.name} neemt ${d.name} over`, `Overal hun logo, hun mensen, hun geld. ${d.name} draait nu op ${top.r.name}.`, d.continent, "wereld", van === "player"); } } }
 const spanningGem = s => { const v = Object.values(s.spanning || {}); return v.length ? v.reduce((a, b) => a + b, 0) / v.length : 0; };
 function tijdlijnTick(s, ctx){ const nu = ym(s), gehad = (s.tijdlijnGehad ??= []), B = (s.vraagBasis ??= {});
   for (const t of TIJDLIJN){ if (t.d > nu || gehad.includes(t.d)) continue; gehad.push(t.d); const recent = mndNr(nu) - mndNr(t.d) <= 2;
@@ -3799,6 +3815,7 @@ function adviezen(s){
       else if (C.gezondheid < 35) add(6, `Je gezondheid is ${Math.round(C.gezondheid)}. Een kliniek (€10M) of minder stress helpt; regel ook een opvolger.`, "mensen");
       if (!C.opvolger && (L >= 58 || C.gezondheid < 40)) add(5, `Je bent ${L} en hebt geen opvolger. Valt je weg, dan haalt de raad een buitenstaander (morale −12, reputatie −8). Wijs iemand aan bij Mensen → Jij, de CEO.`, "mensen"); }
     const av = (s.aanvragen || [])[0]; if (av) add(7, `${av.klant} wil ${av.raam ? "een raamcontract" : "een levering"} (${PRODUCT_AARD[av.aard].label.toLowerCase()}). Inschrijven bij Bedrijf → Klanten, nog ${av.verloopt} maand${av.verloopt > 1 ? "en" : ""}.`, "bedrijf");
+    { const dr = s.districts.find(d => d.control === "player" && d.domRiv); if (dr) add(8, `${dr.domRiv.naam} heeft meer aandeel in ${dr.name} dan jij: volgende maand is het district van hen. Bouw aanwezigheid op of zet er een patrouille (Kaart).`, "kaart"); }
     const bijna = s.districts.find(d => (d.domMnd || 0) >= 1); if (bijna) add(6, `${bijna.name} valt je volgende maand toe als je aandeel boven ${DOM_FLIP}% blijft (Kaart).`, "kaart"); }
   if (s.heat > 55) add(9, `Heat ${Math.round(s.heat)}: boven 90 volgt een razzia. Laat een netrunner sporen wissen (Crew), vraag de commissaris om een gunst (Mensen) of gebruik invloed (Kaart).`, "crew");
   const vrijeCrew = (s.crew || []).filter(m => crewStatus(s, m) === "vrij");
