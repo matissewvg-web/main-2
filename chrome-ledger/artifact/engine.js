@@ -516,8 +516,8 @@ function tick(s){
   for (const d of s.divisions){
     const t = typeOf(s, d.type) || {rev: 6, cost: 4, heat: 1, vol: 0.3};
     const eff = (d.efficiency || 1) * (0.75 + 0.35 * s.morale / 100) * sf;
-    const r = t.rev * Math.pow(d.level, 0.95) * eff * (1 + U(-t.vol, t.vol)) * marketRevMult(s, d.type) * sectorBonus(s, d.type) * sectorMult(s, d.type) * productMult(s, d);
-    const c = t.cost * 0.85 * d.level * diff * divCostMult(s, d.type);
+    const r = t.rev * Math.pow(d.level, 0.95) * eff * (1 + U(-t.vol, t.vol)) * marketRevMult(s, d.type) * sectorBonus(s, d.type) * sectorMult(s, d.type) * productMult(s, d) * hoofdF(d, "omzet");
+    const c = t.cost * 0.85 * d.level * diff * divCostMult(s, d.type) * hoofdF(d, "kosten"); /* 6.1: divisiehoofd */
     rev += r; cost += c; heatAdd += t.heat * Math.pow(t.heat <= 1 ? Math.min(d.level, 6) : d.level, 0.75) * 0.5;
     lines.push(`| ${d.name || d.type} (${d.type} L${d.level}) | ${r1(r)} | ${r1(c)} |`); (s.divomzet ??= {})[d.name || d.type] = r1(r);
     const mk = opMarkt(s, d); if (mk.length){ let po = 0, pk = 0, zw = 0, vk = 0; for (const p of mk){ const K = KANAAL[kanaalVan(p)]; let o = prodOmzet(s, p) * eff; if (stukInfo(p).order && !isAbo(p)) o = orderOmzet(s, ctx, p, o); (s.prodomzet ??= {})[p.id] = r1(o); pk += prodKost(p, o);
@@ -542,6 +542,7 @@ function tick(s){
   if (crewKost) lines.push(`| Crew${s.huurleger ? " en huurleger" : ""} (${(s.crew || []).length}) | 0 | ${r1(crewKost)} |`);
   cost += payroll + (s.culture.bonus_cost || 0) + interest + projCost + (s.defensie || 0) * 2 + (s.schepen || 0) * 1.2 + crewKost;
   { const tl = termijnTick(s); if (tl){ cost += tl; lines.push(`| Termijnleningen (rente en aflossing) | 0 | ${tl} |`); } } /* 5.15 */
+  { const hl = r1(s.divisions.reduce((a, d) => a + ((d.hoofd || {}).loon || 0), 0)); if (hl){ cost += hl; lines.push(`| Divisiehoofden (${s.divisions.filter(d => d.hoofd).length}) | 0 | ${hl} |`); } } /* 6.1 */
   { const dl = directieLoon(s); if (dl){ cost += dl; lines.push(`| Directie: loon nieuwe assistenten | 0 | ${dl} |`); } } /* 5.8 */
   { const np = patrouilles(s).length, pk = r1(np * patrouilleKost(s)); if (pk){ cost += pk; lines.push(`| Patrouilles op straat (${np}) | 0 | ${pk} |`); if (!heeftWet(s, "beveiliging")) heatAdd += np * 0.25; } } /* 5.5 */
   if (npcActive(s, "kosten")) cost *= 0.97;
@@ -610,7 +611,7 @@ function tick(s){
   lingeringTick(s, ctx, diff); invoicesTick(s, ctx, diff); marketTick(s, ctx); factionTick(s, ctx);
   npcTick(s, ctx); nomadDemandTick(s, ctx); chaosTick(s, ctx, diff); rumorTick(s, ctx); arcsTick(s, ctx, diff);
   sectorTick(s); regionTick(s, ctx); bedrijfTick(s, ctx); bedrijfLeven(s, ctx); peopleTick(s, ctx, diff);
-  specialTick(s, ctx); productTick(s, ctx); { const pe = productEffectTick(s); if (pe.heat) gz.hDelen.push(["Producten", r1(pe.heat)]); if (pe.morale) gz.mDelen.push(["Producten", r1(pe.morale)]); } productEventTick(s, ctx); tijdlijnTick(s, ctx); spanningTick(s, ctx); corpoTick(s, ctx); domTick(s, ctx); assistentTick(s, ctx); aanvraagTick(s, ctx); regioTick(s); grondstofTick(s, ctx); patentTick(s, ctx); onderzoekTick(s, ctx); beursTick(s, ctx); eigenPlanTick(s, ctx); ceoTick(s, ctx); vraagTick(s); rivalProductTick(s); wereldInvloedProducten(s); eraTick(s, ctx); if (s.date.month === 12) jaarTick(s, ctx); marktTick(s); klusTick(s);
+  specialTick(s, ctx); productTick(s, ctx); { const pe = productEffectTick(s); if (pe.heat) gz.hDelen.push(["Producten", r1(pe.heat)]); if (pe.morale) gz.mDelen.push(["Producten", r1(pe.morale)]); } productEventTick(s, ctx); tijdlijnTick(s, ctx); spanningTick(s, ctx); corpoTick(s, ctx); domTick(s, ctx); assistentTick(s, ctx); aanvraagTick(s, ctx); regioTick(s); grondstofTick(s, ctx); patentTick(s, ctx); onderzoekTick(s, ctx); beursTick(s, ctx); eigenPlanTick(s, ctx); ceoTick(s, ctx); hoofdTick(s, ctx); vraagTick(s); rivalProductTick(s); wereldInvloedProducten(s); eraTick(s, ctx); if (s.date.month === 12) jaarTick(s, ctx); marktTick(s); klusTick(s);
   s.accounts.operationeel = s.cash; s.hidden_truth = s.hidden_truth.slice(-30);
 
   let status = "actief";
@@ -668,7 +669,7 @@ function tick(s){
 }
 
 /* ---------- de stad: elke game een andere kaart ---------- */
-const VERSION = "6.0";
+const VERSION = "6.1";
 const MAP_W = 1000, MAP_H = 680;
 const RIVAL_COLORS = ["#ff9a1f", "#3d7bff", "#c6ff2e", "#f2f2f2", "#9b5cff", "#ffd400", "#ff4d4d"];
 const ARCH = {
@@ -3612,6 +3613,21 @@ function instelScore(I){ let m = 1; for (const k of ["events", "chaos", "spannin
 function actInstel(s, k, n){ if (!INSTEL[k]) return {ok: false, msg: "Onbekende instelling."}; if (!(n in (k === "winst" ? INSTEL_WINST : INSTEL_NIV))) return {ok: false, msg: "Kies laag, normaal of hoog."};
   const p = s.player, I = (p.instel ??= {}); I[k] = instelNiv(k, n); const sc = instelScore(I); p.instelScore = Math.min(p.instelScore ?? sc, sc); addLog(s, `Moeilijkheid: ${INSTEL[k].label} ${n}`);
   return {ok: true, msg: `${INSTEL[k].label}: ${n}. Score-vermenigvuldiger nu ×${sc}${p.instelScore < sc ? ` (voor de score telt de laagste ooit: ×${p.instelScore})` : ""}.`}; }
+/* 6.1: een hoofd per divisie. Talent 1-5; focus omzet (+2% per talent) of kosten (−3% per talent). Loyaliteit drijft naar 45 + morale/4 (+10 bij een bonus deze maand); onder 25 kan het hoofd vertrekken. */
+const hoofdKost = s => r1(4 * (DIFF[s.player.difficulty] || 1));
+function hoofdF(d, soort){ const h = d.hoofd; if (!h || h.focus !== soort) return 1; return soort === "omzet" ? 1 + 0.02 * h.talent : 1 - 0.03 * h.talent; }
+function actHoofd(s, ctx, div, soort, arg){ const d = s.divisions.find(x => divNaam(x) === div); if (!d) return {ok: false, msg: "Onbekende divisie."};
+  if (soort === "aannemen"){ if (d.hoofd) return {ok: false, msg: `${divNaam(d)} heeft al een hoofd.`}; const k = hoofdKost(s); if (s.cash < k) return {ok: false, msg: `Werving kost €${k}M.`};
+    const talent = RI(1, 5); d.hoofd = {naam: genCeoNaam(new Set([...(s.npcs || []).map(n => n.name), ...s.divisions.map(x => (x.hoofd || {}).naam)])), talent, loyaliteit: RI(50, 70), loon: r1(0.2 + 0.12 * talent), focus: "omzet", sinds: ym(s)};
+    s.cash = r1(s.cash - k); s.accounts.operationeel = s.cash; addLog(s, `${d.hoofd.naam} hoofd van ${divNaam(d)} (talent ${talent})`);
+    return {ok: true, msg: `${d.hoofd.naam} leidt ${divNaam(d)}: talent ${talent} van 5, €${d.hoofd.loon}M per maand. Focus op omzet (+${2 * talent}%) of kosten (−${3 * talent}%).`}; }
+  const h = d.hoofd; if (!h) return {ok: false, msg: "Deze divisie heeft geen hoofd."};
+  if (soort === "focus"){ if (!["omzet", "kosten"].includes(arg)) return {ok: false, msg: "Kies omzet of kosten."}; h.focus = arg; return {ok: true, msg: `${h.naam} richt zich op ${arg === "omzet" ? `omzet (+${2 * h.talent}%)` : `kosten (−${3 * h.talent}%)`}.`}; }
+  if (soort === "bonus"){ if (h.bonus === ym(s)) return {ok: false, msg: "Deze maand al een bonus gegeven."}; if (s.cash < 1) return {ok: false, msg: "Een bonus kost €1M."}; s.cash = r1(s.cash - 1); h.bonus = ym(s); h.loyaliteit = clamp(h.loyaliteit + 10); return {ok: true, msg: `${h.naam} krijgt een bonus: loyaliteit +10.`}; }
+  if (soort === "ontslaan"){ const n = h.naam; delete d.hoofd; s.morale = clamp(s.morale - 1); return {ok: true, msg: `${n} is vertrokken. ${divNaam(d)} heeft geen hoofd meer.`}; }
+  return {ok: false, msg: "Onbekende actie."}; }
+function hoofdTick(s, ctx){ for (const d of s.divisions){ const h = d.hoofd; if (!h) continue; const doel = 45 + s.morale / 4 + (h.bonus === ym(s) ? 10 : 0); h.loyaliteit = Math.round(clamp(h.loyaliteit + (doel - h.loyaliteit) * 0.1 + U(-1.5, 1.5)) * 10) / 10;
+  if (h.loyaliteit < 25 && kansRol() < 0.15){ const r = s.rivals.length ? CH(s.rivals).name : "een rivaal"; mail(ctx, s, "HR", `${h.naam} vertrekt`, `${h.naam} (hoofd ${divNaam(d)}) stapt over naar ${r}. Loyaliteit was ${Math.round(h.loyaliteit)}.`, "HOOG"); ctx.rep.push(`${h.naam} vertrekt`); delete d.hoofd; } } }
 const spanningGem = s => { const v = Object.values(s.spanning || {}); return v.length ? v.reduce((a, b) => a + b, 0) / v.length : 0; };
 function tijdlijnTick(s, ctx){ const nu = ym(s), gehad = (s.tijdlijnGehad ??= []), B = (s.vraagBasis ??= {});
   for (const t of TIJDLIJN){ if (t.d > nu || gehad.includes(t.d)) continue; gehad.push(t.d); const recent = mndNr(nu) - mndNr(t.d) <= 2;
@@ -4657,6 +4673,7 @@ const API = {
   async "/api/eigenplan"(d){ const s = G.game, ctx = Ctx(); const r = d.stop ? actEigenPlanStop(s) : actEigenPlan(s, ctx, d.k, d.doel); if (r.ok) await persist(ctx); return {ok: r.ok, bericht: r.msg}; },
   async "/api/ceo"(d){ const s = G.game, ctx = Ctx(); const r = actCeo(s, ctx, d.soort, d.arg); if (r.ok) await persist(ctx); return {ok: r.ok, bericht: r.msg}; },
   async "/api/instel"(d){ const s = G.game, ctx = Ctx(); const r = actInstel(s, d.k, d.n); if (r.ok) await persist(ctx); return {ok: r.ok, bericht: r.msg}; },
+  async "/api/hoofd"(d){ const s = G.game, ctx = Ctx(); const r = actHoofd(s, ctx, d.div, d.soort, d.arg); if (r.ok) await persist(ctx); return {ok: r.ok, bericht: r.msg}; },
   async "/api/corpo"(d){ const s = G.game, ctx = Ctx(); const r = actCorpo(s, ctx, d.soort, d.id); if (r.ok) await persist(ctx); return {ok: r.ok, bericht: r.msg}; },
   async "/api/huisstijl"(d){ const s = G.game, ctx = Ctx(); const r = actHuisstijl(s, d || {}); if (r.ok) await persist(ctx); return {ok: r.ok, bericht: r.msg}; },
   async "/api/product"(d){ const s = G.game, ctx = Ctx(); const r = actProduct(s, ctx, d.soort, d); if (r.ok) await persist(ctx); return {ok: r.ok, bericht: r.msg}; },

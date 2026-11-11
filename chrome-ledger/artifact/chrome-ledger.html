@@ -818,7 +818,7 @@ bedrijf(){
   ${(() => { const h = klantenCard() + exportCard() + toeleveringCard(); return h ? `<h2>Handel</h2>${h}` : ""; })()}
   <h2>Divisies</h2><div class="grid g3">${st.divisies.map(d => `<div class="card">
       <div class="spread"><h3>${esc(d.naam)}</h3><span class="tag cyan">L${d.level}</span></div>
-      <div class="muted" style="font-size:14px">${esc(d.type)}${d.eigen?' <span class="tag">eigen soort</span>':""} · marktaandeel ${d.aandeel}%</div>
+      <div class="muted" style="font-size:14px">${esc(d.type)}${d.eigen?' <span class="tag">eigen soort</span>':""} · marktaandeel ${d.aandeel}%</div>${hoofdBlok(d.naam)}
       <div style="margin-top:10px"><button class="btn sm" data-a="upgrade" data-div="${esc(d.naam)}" ${d.bezig?"disabled":""}>${d.bezig?"Uitbreiding loopt":`Uitbreiden · ${eur(d.upgrade_kost)}`}</button>${!d.bezig && d.plan ? `<div class="dim" style="font-size:13px;margin-top:4px">${d.plan.extra > 0 ? `±+€${d.plan.extra}M per maand na belasting · terugverdiend in ±${d.plan.terug} mnd` : "Levert op dit niveau nauwelijks extra op."}</div>` : ""}</div></div>`).join("")}
     <div class="card"><h3>Nieuwe divisie</h3>${divConceptBlok()}
       <details class="handmatig" ${live() ? "" : "open"}><summary>Handmatig: kies een soort</summary>
@@ -1034,6 +1034,7 @@ function setupBonus(homeD){
     <p class="dim" style="font-size:13px;margin:6px 0 0">Elk soort land geeft een ander voordeel: havens, financiële centra, datavalleien, sloppen. Klik verschillende landen aan om ze te vergelijken.</p>` : "";
 }
 const VERSIES = [
+  ["6.1", "Een hoofd per divisie", ["Bedrijf → Divisies: neem per divisie een hoofd aan (€4M). Elk hoofd heeft talent 1-5 en een loon per maand.", "Kies de focus: omzet (+2% per talent) of kosten (−3% per talent). Een bonus (€1M) houdt de loyaliteit hoog; onder 25 kan een hoofd overstappen naar een rivaal."]],
   ["6.0", "Balans met alle systemen", ["De testspeler (een bot die duizenden spellen speelt) gebruikt nu ook alles uit 5.x: klanten, onderzoek, patenten, export, voorraad, patrouilles, corpowetten en de CEO. Alles samen maakt het spel ±15 procentpunt makkelijker voor wie het goed gebruikt; geen enkel systeem is op zichzelf te sterk.", "Twee kleine correcties: winst op klantenleveringen en raamcontracten 45% van de omzet (was 55%), en onderzoek wordt duurder naarmate je bedrijf groeit (tot 2×).", "Wil je het zwaarder: Logboek → Eigen moeilijkheid."]],
   ["5.21", "Uitleg en begin", ["Bij een nieuw spel krijg je een korte rondleiding in vijf stappen: Wat nu?, Bedrijf, Volgende maand, de wereld, en het menu. Overslaan kan; opnieuw bekijken bij Logboek.", "Elk scherm heeft rechtsboven een spiekbriefje (? spiekbriefje) met de twee of drie dingen die je daar moet weten."]],
   ["5.20", "Eigen moeilijkheid", ["Bij het oprichten (Koers en cultuur) en later bij Logboek → Eigen moeilijkheid zet je vijf schuiven: gebeurtenissen, chaos, corpospanning, heat (hoe snel de politie oplet) en de winstdrempel. Weinig, normaal of veel.", "Zwaarder telt zwaarder: de score-vermenigvuldiger gaat mee (bv. veel chaos en een hogere winstdrempel). Voor de score telt de laagste stand die je ooit had, dus even makkelijker zetten en terug helpt niet.", "Bestaande spellen staan op normaal en veranderen niet."]],
@@ -1123,7 +1124,7 @@ const VERSIES = [
   ["1.1", "Wereld", ["Nieuwe tab Wereld: wereldnieuws, een ranglijst van alle bedrijven met waarde en markten per sector.", "25 bedrijven verspreid over de wereld: zakendiner, leveringscontract, aandelen met dividend of een overname.", "Gebeurtenissen per land en continent (stormen, staatsgrepen, handelsakkoorden) veranderen tijdelijk wat gebieden opleveren.", "Startvoordeel per soort land, een eigen stad voor je hoofdkantoor, en per gebied op de kaart: wat het oplevert.", "Geruchten en marktberichten staan in het nieuws in plaats van in je inbox."]],
   ["1.0", "Echte wereld", ["Echte wereldkaart, dominantie per continent en zee, eskaders, rivalen met oorlog en handel, blijvende inkomstenbronnen."]],
 ];
-const PLANNING = [["6.1", "Een hoofd per divisie."], ["6.2", "Rivalen spelen met dezelfde regels: aanwezigheid, klanten, onderzoek."], ["6.3", "Nieuwe overwinning: een corporate zone op je eigen continent."]];
+const PLANNING = [["6.2", "Rivalen spelen met dezelfde regels: aanwezigheid, klanten, onderzoek."], ["6.3", "Nieuwe overwinning: een corporate zone op je eigen continent."]];
 function versieCard(){
   const vrs = ([v, t, l]) => `<div style="margin:8px 0"><b class="mono" style="color:var(--cyan)">${v}</b> <b>${esc(t)}</b><ul class="ylist">${l.map(x => `<li>${esc(x)}</li>`).join("")}</ul></div>`;
   return `<div class="card" style="margin-top:16px"><h3>Versies</h3>${VERSIES.slice(0, 2).map(vrs).join("")}<details><summary class="muted" style="cursor:pointer;margin:6px 0">Oudere versies (${VERSIES.length - 2})</summary>${VERSIES.slice(2).map(vrs).join("")}</details>
@@ -1688,6 +1689,11 @@ function plannenCard(st){
     <ol class="planstap">${p.stappen.map((x, i) => `<li class="${i < p.stap ? "af" : i === p.stap ? "nu" : ""}">${esc(x)}${i === p.stap ? ` <span class="dim">(rond ${esc(p.wanneer)})</span>` : ""}</li>`).join("")}</ol>
     <div class="dim" style="font-size:13px">Als het slaagt: ${esc(p.eind)}${p.zacht ? " · <b>je bent voorbereid, de klap is half zo groot</b>" : ""}${p.motief ? ` · motief: ${esc(p.motief)}` : ""}</div></div>`).join("")}</div>`;
 }
+/* 6.1: divisiehoofd */
+function hoofdBlok(naam){ const s = G.game, d = s.divisions.find(x => divNaam(x) === naam); if (!d) return ""; const h = d.hoofd, m = ym(s);
+  if (!h) return `<div style="margin-top:8px"><button class="btn sm" data-a="hoofd" data-s="aannemen" data-div="${esc(naam)}" ${s.cash < hoofdKost(s) ? "disabled" : ""}>Hoofd aannemen · €${hoofdKost(s)}M</button> <span class="dim" style="font-size:12.5px">meer omzet of lagere kosten</span></div>`;
+  return `<div style="margin-top:8px;padding:6px 8px;box-shadow:inset 0 0 0 1px var(--line)"><div class="spread"><span><b>${esc(h.naam)}</b> <span class="dim" style="font-size:12.5px">hoofd · talent ${h.talent}/5 · loyaliteit ${Math.round(h.loyaliteit)} · €${h.loon}M/mnd</span></span></div>
+    <div class="prijzen" style="margin:4px 0 0"><button class="chip ${h.focus === "omzet" ? "on" : ""}" data-a="hoofd" data-s="focus" data-arg="omzet" data-div="${esc(naam)}">Omzet +${2 * h.talent}%</button><button class="chip ${h.focus === "kosten" ? "on" : ""}" data-a="hoofd" data-s="focus" data-arg="kosten" data-div="${esc(naam)}">Kosten −${3 * h.talent}%</button><button class="chip" data-a="hoofd" data-s="bonus" data-div="${esc(naam)}" ${h.bonus === m || s.cash < 1 ? "disabled" : ""}>Bonus · €1M</button><button class="chip" data-a="hoofd" data-s="ontslaan" data-div="${esc(naam)}">Ontslaan</button></div>${h.loyaliteit < 30 ? '<div style="color:var(--red);font-size:12.5px;margin-top:4px">Lage loyaliteit: kan overstappen naar een rivaal.</div>' : ""}</div>`; }
 /* 5.21: spiekbriefje per scherm en een rondleiding van vijf stappen */
 const SPIEK = {
   overzicht: ["Wat nu? zet de belangrijkste dingen op volgorde: begin altijd daar.", "Beslissingen die wachten staan eronder; zonder antwoord kiest het spel na twee maanden zelf (meestal niet in je voordeel).", "Klaar met je maand? Druk op VOLGENDE MAAND (of N)."],
@@ -2246,6 +2252,7 @@ document.addEventListener("click", async e => {
     case "autostd": return act("/api/autostandaard", {k: t.dataset.k, aan: t.dataset.aan === "1", alle: t.dataset.alle === "1"});
     case "menu": toonMenu(); return;
     case "instel": S.instOpen = true; return act("/api/instel", {k: t.dataset.k, n: t.dataset.n}, {silent: true});
+    case "hoofd": return act("/api/hoofd", {div: t.dataset.div, soort: t.dataset.s, arg: t.dataset.arg}, {silent: t.dataset.s === "focus"});
     case "tour": toonTour(0); return;
     case "tourvolgende": toonTour(+t.dataset.i); return;
     case "tourstop": toonTour(TOUR.length); return;

@@ -331,6 +331,14 @@ const html = '<!doctype html><html><head><meta charset=utf8></head><body>' + fs.
   for (let i = 0; i < 5; i++){ await p.click('.tour [data-a="tourvolgende"]'); await p.waitForTimeout(80); }
   const t2 = await p.evaluate(() => ({weg: !document.querySelector(".tour"), flag: G.game.flags.tour === true, geenDoel: !document.querySelector(".tourdoel"), nodig: tourNodig()}));
   ok(Object.values(sp21).every(Boolean) && /Wat nu/.test(t1.titel) && t1.doel && t2.weg && t2.flag && t2.geenDoel && !t2.nodig, "spiekbriefje op elk scherm en rondleiding in vijf stappen (daarna niet meer): " + JSON.stringify({sp21, t1, t2}));
+  // 6.1 divisiehoofd
+  const hd = await p.evaluate(() => { const c = JSON.parse(JSON.stringify(G.game)), ctx = Ctx(); c.cash = 200; const d = c.divisions[0], nm = divNaam(d); delete d.hoofd;
+    const f0 = [hoofdF(d, "omzet"), hoofdF(d, "kosten")], a = actHoofd(c, ctx, nm, "aannemen"), dubbel = actHoofd(c, ctx, nm, "aannemen").ok, t = d.hoofd.talent, f1 = hoofdF(d, "omzet");
+    actHoofd(c, ctx, nm, "focus", "kosten"); const f2 = [hoofdF(d, "omzet"), hoofdF(d, "kosten")]; const b = actHoofd(c, ctx, nm, "bonus").ok, b2 = actHoofd(c, ctx, nm, "bonus").ok;
+    d.hoofd.loyaliteit = 10; c.morale = 0; const oud = window.kansRol; window.kansRol = () => 0; hoofdTick(c, Ctx()); window.kansRol = oud;
+    return {f0, a: a.ok, dubbel, t, f1: Math.round(f1 * 100) / 100, f2: f2.map(x => Math.round(x * 100) / 100), b, b2, weg: !d.hoofd}; });
+  const hdUI = await p.evaluate(() => { S.view = "bedrijf"; render(); return /Hoofd aannemen|hoofd · talent/.test(document.querySelector("main").textContent); });
+  ok(hd.f0.join() === "1,1" && hd.a && !hd.dubbel && hd.f1 === Math.round((1 + 0.02 * hd.t) * 100) / 100 && hd.f2[0] === 1 && hd.f2[1] === Math.round((1 - 0.03 * hd.t) * 100) / 100 && hd.b && !hd.b2 && hd.weg && hdUI, "divisiehoofd: aannemen met talent, focus omzet of kosten, bonus één keer per maand, lage loyaliteit = vertrek: " + JSON.stringify(hd));
   ok(/VERKOOP/.test(verkoop) && /KEURING/.test(verkoop), "tabblad Verkoop en keuring");
   ok(/VARIANT/.test(scherm), "varianten staan op het productblad");
   if (out){ const bl = await p.$('.prodblad'); if (bl) await bl.screenshot({path: out + "/verkoop.png"}); }
