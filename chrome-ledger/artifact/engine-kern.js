@@ -70,6 +70,9 @@ function foutLog(waar, e){
 /* 3.6: de wereldkaart komt altijd uit WORLD_DATA; ze hoeft niet in elke save (was 75% van de grootte) */
 const pak = s => s && s.map && s.map.kind === "wereld" && s.map.versie === 2 && s.map.frame ? {...s, map: {kind: "wereld", versie: 2, gedeeld: true}} : s;
 function migrate(s){
+  if (s.districts && s.player && !s.vestiging){ s.vestiging = {}; const hqs = new Set((s.rivals || []).map(r => r.hq)), m = s.date ? `${s.date.year}-${String(s.date.month).padStart(2, "0")}` : "";
+    for (const d of s.districts){ if (d.control === "neutral" || hqs.has(d.id) || d.id === s.player.home_district) continue; ((s.vestiging[d.control] ??= {}))[d.id] = m; } } /* 11.0: gekochte landen hebben een vestiging als basis */
+  if (Array.isArray(s.aanbiedingen)) s.aanbiedingen = s.aanbiedingen.filter(o => o.type !== "district_koop" && o.type !== "district_verkoop");
   if (Array.isArray(s.streams) && typeof stromenSamen === "function") stromenSamen(s);
   if (s.custom_types){ const wm = Object.keys(s.custom_types).find(k => /^weapon\s*manufactur/i.test(k)); /* 6.10: eigen soort Weapon manufacturing wordt de standaardsoort */
     if (wm && wm !== "Weapon Manufacturing"){ const N = "Weapon Manufacturing";
@@ -591,7 +594,7 @@ function tick(s){
     if (oc.new_division){ s.divisions.push(oc.new_division); divisieOpening(s, ctx, p, oc.new_division); }
     if (oc.upgrade_division) for (const d of s.divisions) if ((d.name || d.type) === oc.upgrade_division){ d.level += oc.levels || 1; d.upM = ym(s); }
     if ((oc.upgrade_division || oc.new_division) && s.staff.count < staffNeed(s)){ const t = staffNeed(s) - s.staff.count; mail(ctx, s, "HR", `${t} mensen tekort`, `${p.name} is klaar, maar we hebben nu ${staffNeed(s)} mensen nodig en er werken er ${s.staff.count}. Onderbezet draait alles op halve kracht, we maken verlies en de morale zakt; twee maanden morale onder 10 en de raad zet je af. Neem ${t} mensen aan bij Bedrijf → Personeel.`, "HOOG"); } /* 7.3 */
-    if (oc.district_control) for (const d of s.districts) if (d.id === oc.district_control) d.control = "player";
+    if (oc.vestiging || oc.district_control){ const id = oc.vestiging || oc.district_control; if (s.districts.some(d => d.id === id)) zetVestiging(s, "player", id); } /* 11.0: een vestiging is een basis, het land win je */
     if (oc.effect) applyEffect(s, oc.effect);
   }
 

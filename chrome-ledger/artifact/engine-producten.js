@@ -931,15 +931,19 @@ function corpoTick(s, ctx){
     else { mail(ctx, s, "Head of Security", `Straatgevecht in ${d.name} afgeslagen`, `${r.name} probeerde ${d.name} op straat in te nemen. ${pat ? "Onze patrouille hield stand." : "We hielden stand, deze keer."}`, "NORMAAL"); ctx.rep.push(`Straatgevecht in ${d.name} afgeslagen`); }
     break; } }
 /* 5.6: gebied als dominantie. Elk district is verdeeld in aandelen (eigenaar, jij, rivalen, bendes, de staat), net als de zee. Je aandeel groeit door aanwezigheid, patrouilles en buren; continenten en hegemonie tellen aandelen in plaats van eigenaars. */
-const DOM_FLIP = 55, DOM_INKOMEN_MIN = 20, EIGEN_BASIS = 55, CONTRACT_AANW_MAX = 15;
+const VEST_OMZET = 0.2, DOM_FLIP = 55, DOM_INKOMEN_MIN = 20, EIGEN_BASIS = 55, CONTRACT_AANW_MAX = 15, VEST_BASIS = 22, AANWEZIG_MAX = 40;
+/* 11.0: een vestiging is een basis (panden, mensen, een kantoor), geen eigendom van het land. Wie een land krijgt, wint het met winkels, contracten, vestigingen en patrouilles. */
+const heeftVestiging = (s, wie, id) => !!(((s.vestiging || {})[wie] || {})[id]);
+function zetVestiging(s, wie, id){ ((s.vestiging ??= {})[wie] ??= {})[id] = ym(s); }
 function domDoel(s, d, idx){ const o = {}, sp = spanningVan(s, d.continent), staatF = 1 - sp / 100;
   if (d.control !== "neutral") o[d.control] = EIGEN_BASIS; /* 8.1: bezit is een basis, geen garantie (was 100) */
   o.staat = d.control === "neutral" ? 5 + 40 * staatF : 15 * staatF;
-  const A = s.aanwezig || {}; if (A[d.id]) o.player = (o.player || 0) + A[d.id];
+  const A = s.aanwezig || {}; if (A[d.id]) o.player = (o.player || 0) + Math.min(AANWEZIG_MAX, A[d.id]);
+  for (const [wie, V] of Object.entries(s.vestiging || {})) if (V[d.id] && wie !== d.control) o[wie] = (o[wie] || 0) + VEST_BASIS; /* 11.0: de eigenaar heeft al zijn basis; een vestiging telt voor wie het land betwist (en blijft als je het verliest) */
   const H = handelAanwezig(s, d.continent); if (H) o.player = (o.player || 0) + H; /* 6.8: wie veel verkoopt op een continent, is daar overal aanwezig */
   { const C = contractAanwezig(s, "player", d.continent); if (C) o.player = (o.player || 0) + C; } /* 8.1: contracten met klanten daar */
   for (const r of s.rivals){ const v = rivHandelAanwezig(s, r.name, d.continent) + contractAanwezig(s, r.name, d.continent); if (v) o[r.name] = (o[r.name] || 0) + v; } /* 8.1: rivalen met hun winkels en contracten */
-  for (const [rn, RA] of Object.entries(s.rivAanwezig || {})) if (RA[d.id]) o[rn] = (o[rn] || 0) + RA[d.id]; /* 6.2: rivalen bouwen ook aanwezigheid op */
+  for (const [rn, RA] of Object.entries(s.rivAanwezig || {})) if (RA[d.id]) o[rn] = (o[rn] || 0) + Math.min(AANWEZIG_MAX, RA[d.id]); /* 6.2: rivalen bouwen ook aanwezigheid op */
   if ((s.patrouille || {})[d.id] && d.control === "player") o.player = (o.player || 0) + 15;
   const adj = {}; for (const n of d.neighbors || []){ const b = idx ? idx.get(n) : s.districts.find(x => x.id === n); if (b && b.control !== "neutral") adj[b.control] = (adj[b.control] || 0) + 4; }
   for (const [k, v] of Object.entries(adj)) o[k] = (o[k] || 0) + Math.min(12, v);
@@ -970,15 +974,19 @@ const rivHandelAanwezig = (s, rn, cont) => { const v = ((s.rivHandel || {})[rn] 
 const contractAanwezig = (s, wie, cont) => { const v = ((s.contractCont || {})[wie] || {})[cont] || 0; return v > 0 ? Math.min(CONTRACT_AANW_MAX, Math.round(Math.sqrt(v) * 6 * 10) / 10) : 0; };
 const handelAanwezig = (s, cont) => { const v = (s.handel || {})[cont] || 0; return v > 0 ? Math.min(HANDEL_MAX, Math.round(Math.sqrt(v) * 5 * 10) / 10) : 0; };
 const aanwezigMag = (s, d) => !!d && reachable(s, "player", d);
-function aandeelInkomen(s){ let geld = 0, n = 0; for (const d of s.districts){ if (d.control === "player" || !d.dom) continue; const v = d.dom.player || 0; if (v >= DOM_INKOMEN_MIN){ geld += incOf(d) * v / 100 * 0.35 * gebiedF(s); n++; /* 8.2: was 0,4 */ } } return {geld: r1(geld), n}; }
+function aandeelInkomen(s){ let geld = 0, n = 0; for (const d of s.districts){ if (d.control === "player") continue; if (heeftVestiging(s, "player", d.id)){ geld += incOf(d) * VEST_OMZET * gebiedF(s); if (!(d.dom && (d.dom.player || 0) >= DOM_INKOMEN_MIN)) n++; } /* 11.0: een vestiging verkoopt zelf ook */ if (!d.dom) continue; const v = d.dom.player || 0; if (v >= DOM_INKOMEN_MIN){ geld += incOf(d) * v / 100 * 0.35 * gebiedF(s); n++; /* 8.2: was 0,4 */ } } return {geld: r1(geld), n}; }
 function actAanwezig(s, ctx, id){ const d = s.districts.find(x => x.id === id); if (!d) return {ok: false, msg: "Onbekend district."};
   if (!aanwezigMag(s, d)) return {ok: false, msg: `${d.name} grenst niet aan jouw gebied en ligt niet aan een zee die jij beheerst.`};
   const kost = aanwezigKost(s, d); if (s.cash < kost) return {ok: false, msg: `Niet genoeg cash (€${kost}M nodig).`};
-  const A = (s.aanwezig ??= {}); if ((A[d.id] || 0) >= 150) return {ok: false, msg: `Je aanwezigheid in ${d.name} is al maximaal.`};
-  s.cash = r1(s.cash - kost); s.accounts.operationeel = s.cash; A[d.id] = Math.min(150, r1((A[d.id] || 0) + AANWEZIG_STAP));
-  const r = s.rivals.find(x => x.name === d.control); if (r){ relShift(r, -4); remember(r, s, `speler bouwt aanwezigheid in ${d.name}`); }
-  addLog(s, `Aanwezigheid in ${d.name} +${AANWEZIG_STAP} (€${kost}M)`);
-  return {ok: true, msg: `Kantoren, sponsoring, mensen op straat: je aanwezigheid in ${d.name} groeit (+${AANWEZIG_STAP}, zakt 5% per maand). ${d.control === "player" ? "Je houdt je greep sterker." : `Boven ${DOM_FLIP}% en meer dan de ${d.control === "neutral" ? "staat" : "eigenaar"}, twee maanden lang, wordt het district van jou.`}${r ? ` ${r.name} vindt het niets: relatie −4.` : ""}`}; }
+  const A = (s.aanwezig ??= {}); if ((A[d.id] || 0) >= AANWEZIG_MAX) return {ok: false, msg: `Een campagne in ${d.name} haalt nu niets meer uit: de mensen kennen je naam al. Meer aandeel komt van verkopen, contracten en een vestiging daar.`};
+  const stap = campagneStap(s, d);
+  s.cash = r1(s.cash - kost); s.accounts.operationeel = s.cash; A[d.id] = Math.min(AANWEZIG_MAX, r1((A[d.id] || 0) + stap));
+  const r = s.rivals.find(x => x.name === d.control); let tegen = "";
+  if (r){ relShift(r, -4); remember(r, s, `speler voert campagne in ${d.name}`); if (r.cash > 30 && kansRol() < 0.5 + (r.aggression || 0) * 0.4){ const RA = ((s.rivAanwezig ??= {})[r.name] ??= {}); RA[d.id] = Math.min(AANWEZIG_MAX, r1((RA[d.id] || 0) + Math.round(stap * 0.7))); r.cash = r1(r.cash - kost * 0.7); tegen = ` ${r.name} slaat meteen terug met een eigen campagne (+${Math.round(stap * 0.7)} voor hen).`; } }
+  addLog(s, `Campagne in ${d.name} +${stap} (€${kost}M)`);
+  return {ok: true, msg: `Sponsoring, posters, mensen op straat: je aanwezigheid in ${d.name} groeit met ${stap} (zakt 5% per maand, campagnes tellen tot ${AANWEZIG_MAX}). ${stap < 10 ? "Weinig, want je verkoopt en levert hier nog bijna niets: een campagne versterkt wat er al is. " : ""}${d.control === "player" ? "Je houdt je greep sterker." : `Boven ${DOM_FLIP}% en meer dan de ${d.control === "neutral" ? "staat" : "eigenaar"}, twee maanden lang, wordt het district van jou.`}${r ? ` ${r.name} vindt het niets: relatie −4.` : ""}${tegen}`}; }
+/* 11.0: een campagne versterkt wat er al is (winkels, contracten, een vestiging); zonder wortels haalt ze weinig uit */
+const campagneStap = (s, d) => Math.round(Math.min(18, 5 + (handelAanwezig(s, d.continent) + contractAanwezig(s, "player", d.continent) + (heeftVestiging(s, "player", d.id) ? VEST_BASIS : 0)) * 0.3));
 function domTick(s, ctx){ handelTick(s);
   const idx = new Map(s.districts.map(x => [x.id, x])), hqs = new Set(s.rivals.map(r => r.hq));
   for (const d of s.districts){ const doel = domDoel(s, d, idx), oud = d.dom || doel, nw = {};
@@ -1425,8 +1433,8 @@ function rivAanwezigTick(s, ctx, idx, hqs){ const RA = (s.rivAanwezig ??= {});
     if (r.cash < 120 || kansRol() >= 0.1) continue;
     const eigen = s.districts.filter(d => d.control === r.name), kand = new Set(); for (const d of eigen) for (const n of d.neighbors || []){ const b = idx.get(n); if (!b || hqs.has(b.id) || b.id === s.player.home_district) continue; if (b.control === "neutral" || (b.control === "player" && (r.relatie || 0) < -20) || (b.control !== "player" && b.control !== r.name && s.rivals.some(x => x.name === b.control) && R() < 0.35)) kand.add(b); } /* 8.1: rivalen vechten ook onderling */
     if (!kand.size) continue; const L = [...kand], speler = L.filter(d => d.control === "player"), d = speler.length && R() < 0.4 ? CH(speler) : CH(L);
-    M[d.id] = Math.min(150, r1((M[d.id] || 0) + 20)); r.cash = r1(r.cash - 10);
-    if (d.control === "player" && M[d.id] >= 40 && !(d.rivWaarsch === r.name)){ d.rivWaarsch = r.name; mail(ctx, s, "Strategie", `${r.name} wil ${d.name}`, `${r.name} koopt panden, sponsort clubs en zet mensen op straat in ${d.name}. Wordt hun aandeel groter dan het onze, dan valt het district hen toe. Aanwezigheid opbouwen of een patrouille helpt.`, "HOOG"); } }
+    M[d.id] = Math.min(AANWEZIG_MAX, r1((M[d.id] || 0) + 12)); r.cash = r1(r.cash - 10); /* 11.0: was +20 tot 150 */
+    if (d.control === "player" && M[d.id] >= 24 && !(d.rivWaarsch === r.name)){ d.rivWaarsch = r.name; mail(ctx, s, "Strategie", `${r.name} wil ${d.name}`, `${r.name} sponsort clubs, verkoopt er en zet mensen op straat in ${d.name}. Wordt hun aandeel groter dan het onze, dan valt het district hen toe. Meer verkopen en contracten op dit continent, een campagne of een patrouille helpt.`, "HOOG"); } }
   for (const d of s.districts){ if (hqs.has(d.id) || d.id === s.player.home_district || !d.dom) continue; const eig = domEigenaar(s, d);
     let top = null; for (const r of s.rivals) if (r.name !== d.control){ const v = d.dom[r.name] || 0; if (v >= DOM_FLIP && v > eig && (!top || v > top.v)) top = {r, v}; }
     if (!top){ delete d.domRiv; continue; } if ((d.domRiv || {}).naam === top.r.name) d.domRiv.n += 1; else d.domRiv = {naam: top.r.name, n: 1};
@@ -1617,7 +1625,7 @@ function upgradePlan(s, d){
   const extra = (extraOmzet - t.cost * 0.85 * dif * divCostMult(s, d.type)) * 0.8;
   return {kost, extra: r1(extra), terug: extra > 0.2 ? Math.round(kost / extra) : null};
 }
-function vestigingPlan(s, d){ const kost = districtCost(s, d), extra = r1((incOf(d) - d.upkeep) * 0.8); return {kost, extra, terug: extra > 0.2 ? Math.round(kost / extra) : null}; }
+function vestigingPlan(s, d){ const kost = vestigingKost(s, d), extra = r1(incOf(d) * (VEST_OMZET + 0.1) * gebiedF(s)); /* 11.0: eigen verkoop plus een aandeel; het land zelf moet je winnen */ return {kost, extra, terug: extra > 0.2 ? Math.round(kost / extra) : null}; }
 const adviesSleutel = t => String(t).replace(/[\d.,€±%−+]+/g, "#").slice(0, 60);
 function adviesTick(s){ const nieuw = {}, T = s.adviesTel || {}; for (const a of adviezen(s)) { const k = adviesSleutel(a.tekst); nieuw[k] = (T[k] || 0) + 1; } s.adviesTel = nieuw; }
 function adviezen(s, alles){
@@ -1664,8 +1672,8 @@ function adviezen(s, alles){
   if (vrijeCrew.length && !out.some(x => x.view === "crew")) add(4, `${vrijeCrew.length} crewlid(en) doen deze maand nog niets. Opdrachten kosten niets extra.`, "crew");
   const ups = s.divisions.filter(d => !s.projects.some(p => p.division === divNaam(d))).map(d => ({d, ...upgradePlan(s, d)})).filter(x => x.terug && x.kost < s.cash - 20).sort((a, b) => a.terug - b.terug)[0];
   if (ups) add(ups.terug <= 18 ? 6 : 3, `${divNaam(ups.d)} uitbreiden naar L${ups.d.level + 1}: €${ups.kost}M, ±+€${ups.extra}M per maand na belasting, terugverdiend in ±${ups.terug} maanden.`, "bedrijf");
-  const vest = s.districts.filter(d => d.control === "neutral" && reachable(s, "player", d) && !s.projects.some(p => p.district === d.id)).map(d => ({d, ...vestigingPlan(s, d)})).filter(x => x.terug && x.kost < s.cash - 20).sort((a, b) => a.terug - b.terug)[0];
-  if (vest) add(5, `Vestiging in ${vest.d.name}: €${vest.kost}M, ±+€${vest.extra}M per maand, terugverdiend in ±${vest.terug} maanden. Telt ook mee voor dominantie.`, "kaart");
+  const vest = s.districts.filter(d => d.control !== "player" && !heeftVestiging(s, "player", d.id) && !s.rivals.some(r => r.hq === d.id) && reachable(s, "player", d) && !s.projects.some(p => p.district === d.id)).map(d => ({d, ...vestigingPlan(s, d)})).filter(x => x.terug && x.kost < s.cash - 20).sort((a, b) => a.terug - b.terug)[0];
+  if (vest) add(5, `Vestiging in ${vest.d.name}: €${vest.kost}M, ±+€${vest.extra}M per maand, terugverdiend in ±${vest.terug} maanden. Een basis van +${VEST_BASIS} in de strijd om het land.`, "kaart");
   for (const g of s.gangs || []) if (!g.deal && gangLanden(s, g).length){ add(5, `${g.naam} zit in je gebied zonder afspraak. Vroeg of laat komt er een rekening: bescherming kost €${gangFee(s, g)}M per maand.`, "onderwereld"); break; }
   const best = doelen(s).filter(d => d.id !== "termijn").sort((a, b) => b.pct - a.pct)[0];
   if (best) add(1, `Dichtst bij winst: ${best.naam} (${best.pct}%, ${best.nu}).`, "overzicht");

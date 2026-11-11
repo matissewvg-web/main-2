@@ -200,6 +200,7 @@ function newGame0(d){
   }
   for (const x of s.districts) x.control = x.id === home ? "player" : ((s.rivals.find(r => r.hq === x.id) || {}).name || "neutral");
   for (const r of s.rivals){ const hq = s.districts.find(x => x.id === r.hq), nb = (hq.neighbors || []).map(id => s.districts.find(x => x.id === id)).filter(x => x && x.control === "neutral" && x.id !== home && !(x.neighbors || []).includes(home)); if (nb.length) CH(nb).control = r.name; }
+  s.vestiging = {}; for (const x of s.districts) if (x.control !== "neutral" && x.control !== "player" && !s.rivals.some(r => r.hq === x.id)) zetVestiging(s, x.control, x.id); /* 11.0 */
   const yr = parseInt(d.year, 10); s.date = {year: clamp(isNaN(yr) ? 2004 : yr, 1980, 2100), month: 1};
   [s.cash, s.debt] = ({krap: [80, 0], normaal: [100, 0], ruim: [150, 60]})[d.kapitaal] || [100, 0];
   const lvl = doctrine.length === 1 ? 2 : 1;
@@ -257,7 +258,7 @@ function applyGmEffect(s, e){
   for (const [n, v] of Object.entries(e.rivaal_agressie || {})){ const r = s.rivals.find(x => x.name === n); if (r) r.aggression = r1(clamp(r.aggression + num(v, -0.3, 0.3), 0, 1) * 100) / 100; }
   for (const [n, v] of Object.entries(e.rivaal_cash || {})){ const r = s.rivals.find(x => x.name === n); if (r) r.cash = r1(Math.max(0, r.cash + num(v, -200, 100))); }
   for (const [n, t] of Object.entries(e.rivaal_geheugen || {})){ const r = s.rivals.find(x => x.name === n); if (r) remember(r, s, String(t).slice(0, 120)); }
-  if (e.district && s.districts.some(d => d.id === e.district)) for (const d of s.districts) if (d.id === e.district) d.control = "player";
+  if (e.district && s.districts.some(d => d.id === e.district)) zetVestiging(s, "player", e.district); /* 11.0: ook via de Assistent geen land kopen, wel een basis */
   for (const f of e.verwijder_flags || []) if (GM_FLAGS_REMOVABLE.includes(f)){
     delete s.flags[f];
     const ht = {cfo_manipuleert: "cfo_boeken", pr_lekt: "pr_lek", security_verkocht: "security_lek"}[f];

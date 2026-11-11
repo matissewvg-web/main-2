@@ -1,6 +1,6 @@
 /* Chrome Ledger engine, deel engine-wereld.js: wereld: kaart, zee, dominantie, eigen soorten, personeel, rivalen en acties. 7.4: de engine staat in zes bestanden die in deze volgorde laden (kern, wereld, leven, producten, gm, opslag); alles deelt dezelfde globale scope. */
 /* ---------- de stad: elke game een andere kaart ---------- */
-const VERSION = "10.5";
+const VERSION = "11.0";
 const MAP_W = 1000, MAP_H = 680;
 const RIVAL_COLORS = ["#ff9a1f", "#3d7bff", "#c6ff2e", "#f2f2f2", "#9b5cff", "#ffd400", "#ff4d4d"];
 const ARCH = {
@@ -123,6 +123,8 @@ function ownerColor(s, o){ if (o === "player") return (typeof stijlKleuren === "
 
 /* --- zee: eskaders, overwicht per zeezone, konvooioorlog en zeeslagen (in de geest van een grand strategy-marine) --- */
 const SHIP_MAX = 16, SHIP_POWER = 4;
+/* 11.0: meer schepen in één zee helpen steeds minder: een vloot koopt geen zee, ze beschermt je handel */
+const vlootKracht = f => SHIP_POWER * (f <= 2 ? f : 2 + Math.sqrt(f - 2) * 1.2);
 const shipCost = s => r1(10 * (DIFF[s.player.difficulty] || 1));
 const shipsFree = (o) => (o.schepen || 0) - Object.values(o.inzet || {}).reduce((a, b) => a + b, 0);
 function navalLevels(s, owner){
@@ -136,15 +138,18 @@ function fleetIn(s, owner, z){
 function seaControl(s){
   if (!s.map) return [];
   return s.map.zones.map(z => {
-    const str = {}, kust = {};
-    for (const d of s.districts){ if (!(d.zee || []).includes(z.id) || d.control === "neutral") continue; kust[d.control] = (kust[d.control] || 0) + (d.arch === "haven" ? 3 : 1); }
+    const str = {}, kust = {}, owners = ["player", ...s.rivals.map(r => r.name)], namen = new Set(owners);
+    /* 11.0: de kust telt naar wie er echt zit (aandeel in het land: winkels, contracten, vestigingen), niet naar wie het land op papier heeft */
+    for (const d of s.districts){ if (!(d.zee || []).includes(z.id)) continue; const w = (d.arch === "haven" ? 3 : 1) * 1.5;
+      if (d.dom){ for (const [o, v] of Object.entries(d.dom)) if (namen.has(o)) kust[o] = (kust[o] || 0) + w * v / 100; } else if (d.control !== "neutral") kust[d.control] = (kust[d.control] || 0) + w * 0.6; }
     for (const o of Object.keys(kust)) str[o] = kust[o] * (1 + 0.1 * navalLevels(s, o));
-    const owners = ["player", ...s.rivals.map(r => r.name)];
-    for (const o of owners){ const f = fleetIn(s, o, z.id); if (f) str[o] = (str[o] || 0) + f * SHIP_POWER; }
+    for (const o of owners){ const f = fleetIn(s, o, z.id); if (f) str[o] = (str[o] || 0) + vlootKracht(f); }
     for (const o of Object.keys(str)) str[o] = Math.round(str[o] * 10) / 10;
-    const tot = Object.values(str).reduce((a, b) => a + b, 0); let dom = null;
-    for (const [o, v] of Object.entries(str)) if (tot && v / tot > 0.5) dom = o;
-    return {id: z.id, naam: z.naam, bonus: z.bonus, sterkte: str, totaal: tot, dominant: dom, vloten: Object.fromEntries(owners.map(o => [o, fleetIn(s, o, z.id)]).filter(x => x[1]))};
+    const tot = Object.values(str).reduce((a, b) => a + b, 0); let kand = null;
+    for (const [o, v] of Object.entries(str)) if (tot && v / tot > 0.5) kand = o;
+    /* 11.0: overwicht moet je twee maanden volhouden; wie het al heeft, houdt het zolang hij boven 50% blijft */
+    const H = (s.zeeHeld || {})[z.id], dom = !s.zeeHeld ? kand : kand && H && H.o === kand && H.n >= 2 ? kand : null;
+    return {id: z.id, naam: z.naam, bonus: z.bonus, sterkte: str, totaal: tot, dominant: dom, kandidaat: kand, maanden: kand && H && H.o === kand ? H.n : 0, vloten: Object.fromEntries(owners.map(o => [o, fleetIn(s, o, z.id)]).filter(x => x[1]))};
   });
 }
 function reachable(s, owner, d){
@@ -178,9 +183,12 @@ function navalTick(s, ctx, diff){
     if (coast.length && r.schepen < 10 && r.cash > 70 + r.schepen * 10 && R() < 0.12 + r.aggression * 0.1){ r.schepen += 1; r.cash = r1(r.cash - 25); }
     // herverdelen: eigen kusten, in oorlog ook waar de speler domineert
     const want = [...coast];
-    if (r.status === "oorlog") for (const z of sc()) if (z.dominant === "player" && (coast.includes(z.id) || s.districts.some(d => d.control === "player" && (d.zee || []).includes(z.id)))) want.unshift(z.id);
+    if (r.status === "oorlog"){ for (const z of sc()) if (z.dominant === "player" && (coast.includes(z.id) || s.districts.some(d => d.control === "player" && (d.zee || []).includes(z.id)))) want.unshift(z.id); }
+    else for (const z of sc()) if ((z.kandidaat === "player" || z.dominant === "player") && (z.sterkte[r.name] || 0) > 0.5 && R() < 0.35 + (r.aggression || 0) * 0.4 - (r.relatie || 0) / 200){ want.unshift(z.id); remember(r, s, `betwist de zee ${z.naam} met de speler`); } /* 11.0: ook in vrede vechten rivalen om de zee als ze er belang hebben */
     r.inzet = {}; if (want.length) for (let i = 0; i < r.schepen; i++){ const z = want[i % want.length]; r.inzet[z] = (r.inzet[z] || 0) + 1; }
   }
+  { const oud = s.zeeHeld; s.zeeHeld = {}; for (const z of sc()){ if (!z.kandidaat) continue; const H = (oud || {})[z.id]; s.zeeHeld[z.id] = {o: z.kandidaat, n: H && H.o === z.kandidaat ? Math.min(99, H.n + 1) : (oud ? 1 : 2)};
+      if (oud && z.kandidaat === "player" && s.zeeHeld[z.id].n === 2) ctx.rep.push(`Overwicht op ${z.naam}: twee maanden volgehouden`); } } /* 11.0 */
   // konvooioorlog: een vijand die een zee beheerst, knijpt de handel van jouw kustgebieden daar af
   let raid = 0;
   for (const z of sc()){
@@ -248,7 +256,7 @@ function dominanceIncome(s, owner){
     if (t){ const g = r.waarde * t.geld * gebiedF(s); geld += g; /* 8.2 */ inv += t.inv; regels.push({soort: "continent", naam: r.naam, pct, tier: t.naam, geld: g, inv: t.inv}); }
   }
   for (const z of seaControl(s)){
-    const v = z.sterkte[owner] || 0, pct = z.totaal ? Math.round(v / z.totaal * 100) : 0, t = v >= SEA_MIN ? tierOf(pct, SEA_TIERS) : null;
+    const v = z.sterkte[owner] || 0, pct = z.totaal ? Math.round(v / z.totaal * 100) : 0, t = v >= SEA_MIN && z.dominant === owner ? tierOf(pct, SEA_TIERS) : null; /* 11.0: alleen als je het overwicht vasthoudt */
     if (t){ const g = z.bonus * t.geld; geld += g; inv += t.inv; regels.push({soort: "zee", naam: z.naam, pct, tier: t.naam, geld: g, inv: t.inv}); }
   }
   return {geld: r1(geld), inv, regels};
@@ -475,6 +483,7 @@ function actDiplo(s, ctx, name, kind, a = {}){
     if (r.status === "oorlog") r.moeheid = clamp(r.moeheid + v / 2);
     const msg = `€${b}M aan ${r.name} gegeven. Relatie +${v}.`; addLog(s, msg); return {ok: true, msg};
   }
+  if (kind === "koop" || kind === "verkoop" || kind === "ruil") return {ok: false, msg: "Landen koop, verkoop of ruil je niet: je wint ze met verkopen, contracten, vestigingen en patrouilles, of je neemt ze in een oorlog."}; /* 11.0 */
   if (kind === "koop"){
     const d = s.districts.find(x => x.id === a.district && x.control === r.name);
     if (!d) return {ok: false, msg: "Kies een district van hen."}; if (d.id === r.hq) return {ok: false, msg: "Hun HQ is niet te koop."};
@@ -523,6 +532,7 @@ function offerDecide(s, ctx, id, yes){
   if (o.type === "handel"){ r.verdragen.push({type: "handel", bedrag: o.bedrag, maanden: 12}); relShift(r, 10); msg = `Handelsverdrag met ${r.name}: +€${o.bedrag}M per maand, 12 maanden.`; }
   else if (o.type === "vrede"){ r.status = "wapenstilstand"; r.statusMaanden = 6; r.moeheid = 0; relShift(r, 20); msg = `Wapenstilstand met ${r.name}, 6 maanden.`; }
   else if (o.type === "ultimatum"){ if (s.cash < o.bedrag) return {ok: false, msg: `Je hebt de €${o.bedrag}M niet.`}; s.cash = r1(s.cash - o.bedrag); r.cash = r1(r.cash + o.bedrag); relShift(r, 15); r.aggression = Math.min(1, r.aggression + 0.03); msg = `€${o.bedrag}M betaald aan ${r.name}. Voor nu is het rustig. Ze weten nu wel dat je betaalt.`; }
+  else if (o.type === "district_koop" || o.type === "district_verkoop") return {ok: false, msg: "Landen koop of verkoop je niet meer. Dit aanbod vervalt."}; /* 11.0 */
   else if (o.type === "district_koop"){ const d = s.districts.find(x => x.id === o.district && x.control === "player"); if (!d) return {ok: false, msg: "Dat district is niet meer van jou."}; if (r.cash < o.bedrag) return {ok: false, msg: `${r.name} kan het niet meer betalen.`};
     d.control = r.name; s.cash = r1(s.cash + o.bedrag); r.cash = r1(r.cash - o.bedrag); relShift(r, 4); msg = `${d.name} verkocht aan ${r.name} voor €${o.bedrag}M.`; }
   else if (o.type === "district_verkoop"){ const d = s.districts.find(x => x.id === o.district && x.control === r.name); if (!d) return {ok: false, msg: "Dat district is niet meer van hen."}; if (s.cash < o.bedrag) return {ok: false, msg: `Je hebt de €${o.bedrag}M niet.`};
@@ -595,18 +605,19 @@ function rivalAI(s, ctx, diff){
       if (r.cash < 0 && R() < 0.5) addOffer(r, "vrede", 0, null, "Laten we eerlijk zijn: niemand wint dit. Wapenstilstand?", "Genoeg");
     } else {
       // vrede: groeien, handelen, dreigen
-      const free = freeDistricts(s, s.player.home_district).filter(d => reachable(s, r.name, d));
+      const hqs = new Set(s.rivals.map(x => x.hq)), nVest = Object.keys((s.vestiging || {})[r.name] || {}).length;
+      const free = nVest >= 6 ? [] : s.districts.filter(d => d.control !== r.name && d.id !== s.player.home_district && !hqs.has(d.id) && !heeftVestiging(s, r.name, d.id) && (d.control === "neutral" || R() < 0.3) && reachable(s, r.name, d)); /* 11.0: ook in andermans land, om het te betwisten */
       if (free.length && maandenGespeeld(s) >= 4 && rivalDistricts(s, r).length < Math.min(10, 3 + Math.floor(maandenGespeeld(s) / 12) * 2) && r.cash > 90 && R() < 0.06 + r.hebzucht * 0.06){
         const d = CH(free), p = districtValue(d) * 0.8;
-        if (r.cash > p * 2){ d.control = r.name; r.cash = r1(r.cash - p); news(s, `${r.name} breidt uit naar ${d.name}`, `${r.name} heeft panden, vergunningen en een paar ministers in ${d.name} gekocht. Het gebied is nu van hen.`, d.continent, "markt", (d.neighbors || []).some(n => (s.districts.find(x => x.id === n) || {}).control === "player")); ctx.rep.push(`${r.name} neemt ${d.name}`); }
+        if (r.cash > p * 2 && !heeftVestiging(s, r.name, d.id)){ zetVestiging(s, r.name, d.id); r.cash = r1(r.cash - p * 0.6); news(s, `${r.name} opent een vestiging in ${d.name}`, `${r.name} heeft er panden en een kantoor. Het land is nog niet van hen: dat moeten ze winnen van wie er verkoopt en levert.`, d.continent, "markt", (d.neighbors || []).some(n => (s.districts.find(x => x.id === n) || {}).control === "player")); ctx.rep.push(`${r.name} opent een vestiging in ${d.name}`); } /* 11.0: was meteen eigenaar */
       }
       const lv = r.divs[r.sector] || 0, inv = 30 + lv * 15;
       if (lv < 8 && r.cash > inv * 2.5 && R() < 0.15){ r.divs[r.sector] = lv + 1; r.staff += 6; r.cash = r1(r.cash - inv); }
       if (r.relatie > 25 && !r.verdragen.length && R() < 0.1) addOffer(r, "handel", tradeAmount(s, r), null, `Wat zou u zeggen van twaalf maanden samenwerking? Beide kanten ongeveer €${tradeAmount(s, r)}M per maand beter af.`, "Een zakelijk voorstel");
       const mine = playerDistricts(s).filter(d => d.id !== s.player.home_district);
-      if (mine.length && r.relatie > -20 && R() < 0.05){ const d = CH(mine), p = Math.round(districtValue(d) * U(0.9, 1.35)); if (r.cash > p * 1.2) addOffer(r, "district_koop", p, d.id, `Wij bieden €${p}M voor uw positie in ${d.name}. Een eerlijke prijs, en een die niet lang blijft staan.`, `Bod op ${d.name}`); }
+      if (false && mine.length && r.relatie > -20 && R() < 0.05){ /* 11.0: landen koop je niet meer */ const d = CH(mine), p = Math.round(districtValue(d) * U(0.9, 1.35)); if (r.cash > p * 1.2) addOffer(r, "district_koop", p, d.id, `Wij bieden €${p}M voor uw positie in ${d.name}. Een eerlijke prijs, en een die niet lang blijft staan.`, `Bod op ${d.name}`); }
       const theirs = rivalDistricts(s, r).filter(d => d.id !== r.hq);
-      if (theirs.length && r.cash < 40 && R() < 0.25){ const d = CH(theirs), p = Math.round(districtValue(d) * U(0.7, 1)); addOffer(r, "district_verkoop", p, d.id, `Wij willen af van ${d.name}. €${p}M en het is van u.`, `Te koop: ${d.name}`); }
+      if (false && theirs.length && r.cash < 40 && R() < 0.25){ /* 11.0 */ const d = CH(theirs), p = Math.round(districtValue(d) * U(0.7, 1)); addOffer(r, "district_verkoop", p, d.id, `Wij willen af van ${d.name}. €${p}M en het is van u.`, `Te koop: ${d.name}`); }
       if (r.status === "vrede" && r.relatie < -45 && r.aggression > 0.45 && R() < 0.2){
         const b = Math.round(10 + r.aggression * 30); addOffer(r, "ultimatum", b, null, `Uw bedrijf zit in de weg. €${b}M voor het einde van volgende maand, en we laten u met rust. Zo niet, dan is het oorlog.`, "Ultimatum");
       }
@@ -625,6 +636,7 @@ function rivalAI(s, ctx, diff){
 
 /* ---------- acties van de speler ---------- */
 const loanCap = s => r1(Math.max(0, s.reputation * 4 - s.debt - termijnRest(s) + Math.max(0, s.cash) * 0.5 + (relV(s, "bank") >= 40 ? 50 : 0)));
+const vestigingKost = (s, d) => r1(districtCost(s, d) * 0.6 * (d.control !== "neutral" ? 1.3 : 1)); /* 11.0: een basis, geen land: goedkoper, in andermans land duurder */
 const districtCost = (s, d) => r1((d.upkeep * 8 + d.income * 4) * (s.rivals.some(r => r.hq === d.id) ? 2 : 1) * (DIFF[s.player.difficulty] || 1) * vestigingMult(s) * (1 + 0.12 * Math.max(0, playerDistricts(s).length - 1)));
 const upgradeCost = (s, d) => r1(20 * Math.pow(d.level, 1.3) * (DIFF[s.player.difficulty] || 1));
 const newDivCost = s => r1(30 * (DIFF[s.player.difficulty] || 1));
@@ -725,12 +737,14 @@ function actProject(s, kind, a){
   } else if (kind === "district"){
     const d = s.districts.find(x => x.id === a.id);
     if (!d || d.control === "player") return {ok: false, msg: "Dat district is al van jou."};
-    if (d.control !== "neutral") return {ok: false, msg: `${d.name} is in handen van ${d.control}. Koop het van hen of neem het in, via Rivalen.`};
+    if (heeftVestiging(s, "player", d.id)) return {ok: false, msg: `Je hebt al een vestiging in ${d.name}. Meer aandeel komt nu van verkopen, contracten, campagnes en patrouilles.`};
+    if (s.rivals.some(r => r.hq === d.id)) return {ok: false, msg: `${d.name} is het hoofdkantoor van ${d.control}. Daar laten ze niemand binnen; dat neem je alleen in een oorlog.`};
     if (!reachable(s, "player", d)) return {ok: false, msg: `${d.name} ligt buiten bereik. Breid uit via een buurdistrict, of beheers de zee aan die kust.`};
     if (s.projects.some(p => p.district === d.id)) return {ok: false, msg: "Daar loopt al een vestiging."};
-    cost = s.flags.vergunning ? 0 : districtCost(s, d); if (s.flags.vergunning) delete s.flags.vergunning;
+    cost = s.flags.vergunning ? 0 : vestigingKost(s, d); if (s.flags.vergunning) delete s.flags.vergunning;
     proj = {name: `Vestiging in ${d.name}`, eta_months: 3, cost_per_month: 1, district: d.id,
-      done_msg: `We hebben voet aan de grond in ${d.name}. Panden, contacten, een paar mensen die ons kennen.`, on_complete: {district_control: d.id}};
+      done_msg: `We hebben voet aan de grond in ${d.name}: panden, een kantoor, mensen die ons kennen. Het land is nog niet van ons. Dat winnen we met verkopen, contracten en aanwezigheid.`, on_complete: {vestiging: d.id}};
+    { const r = s.rivals.find(x => x.name === d.control); if (r){ relShift(r, -6); remember(r, s, `speler opent een vestiging in ${d.name}`); } }
     for (const r of s.rivals) if (r.hq === d.id){ remember(r, s, `speler dringt district ${d.id} binnen`); r.aggression = Math.min(1, r1(r.aggression * 100 + 5) / 100); }
   } else return {ok: false, msg: "Onbekend project."};
   if (s.cash < cost) return {ok: false, msg: `Niet genoeg cash: €${cost}M nodig.`};

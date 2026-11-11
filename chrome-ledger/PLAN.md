@@ -102,6 +102,8 @@ Wens: "niet dingen locken, maak het duurder; dieper gaan; contracten cleaner; ni
 | 3 | 10.2 | Contractlevering: capaciteit per maand tegen je productie; tekort = boete en een bozere klant | 2 |
 | 4 | 10.3 | Opruimstap en balans (de testbot leert ook een gesprek voeren) | 1 |
 | 5 | 10.4 ✓ | (wens 20:11) Contracten vaker langdurig in plaats van eenmalig, langer, en in het gesprek om te zetten | 1 |
+| 6 | 10.5 ✓ | Save blijft online: opnieuw proberen, keuzescherm, nieuwere browserstand als apart spel online zetten | 1 |
+| 7 | 11.0 ✓ | (wens playtest 11 nov) Gebied win je, je koopt het niet: vestiging = basis, campagnes versterken alleen, geen landen kopen/verkopen/ruilen, rivalen openen vestigingen in plaats van landen te kopen, zee via kustaandeel + eskaders (minder per extra schip) en twee maanden volhouden; rivalen betwisten de zee ook in vrede | 1 |
 
 ### Ideeën (brainstorm 11 nov, aangevuld na de review)
 - Rivalen voeren onderling corpo-oorlogen; legers van beide kanten kopen bij jou (of bij je concurrent).
