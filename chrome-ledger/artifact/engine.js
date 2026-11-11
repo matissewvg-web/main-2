@@ -208,7 +208,7 @@ function invoice(s, payee, amount, due, note, tag = "vast"){
 function invoicesTick(s, ctx, diff){
   const scale = 0.35 * omvang(s); /* 4.7.3: was 0,6 */
   for (const [p, lo, hi, note] of RECURRING) if (R() < 0.4) invoice(s, p, U(lo, hi) * scale * diff, 2, note);
-  if (R() < 0.15){
+  if (R() < 0.15 * inst(s, "events")){
     const payee = CH(["Beveiligingsbureau Falk", "Consultants Merrick & Zoon", "Overheid: leges en heffingen", "Schadeherstel BV 'Snelle Jan'", "Cleaning crew (geen vragen)"]);
     let amt = U(1, 8) * scale * diff;
     if (payee.startsWith("Overheid") && faction(s, "stad") < -30) amt *= 1.5;
@@ -358,7 +358,7 @@ function npcTick(s, ctx){
 
 function chaosTick(s, ctx, diff){
   const fase = clamp(maandenGespeeld(s) / 120, 0, 1); /* 4.7.3: chaos groeit mee: 8% kans en halve schade in het begin, 25% en volle schade na tien jaar */
-  if (R() > 0.08 + 0.17 * fase) return;
+  if (R() > (0.08 + 0.17 * fase) * inst(s, "chaos")) return;
   const n = faction(s, "nomaden"), contract = s.flags.nomad_contract === true, broken = !!s.flags.nomad_contract_gebroken;
   const table = [["nomaden_konvooi", 3], ["nomaden_ruil", 2], ["nomaden_conflict", n < 10 ? (broken ? 5 : 2) : 0], ["nomaden_eis", contract ? 3 : 0],
     ["cyberpsycho", s.divisions.some(d => d.type === "Cyberware") ? 2 : 0.5], ["spookzending", 1.5], ["heimwee_ai", 1], ["sekte_roest", 0],
@@ -550,7 +550,7 @@ function tick(s){
   if (belasting){ cost += belasting; lines.push(`| Winstbelasting (${Math.round((0.2 - off) * 100)}% tot €60M, ${Math.round((0.35 - off) * 100)}% daarboven${s.accounts.offshore >= 20 ? ", offshore" : ""}${heeftWet(s, "zone") ? ", corpozone" : ""}) | 0 | ${belasting} |`); }
   const net = r1(rev - cost); s.cash = r1(s.cash + net);
 
-  { const h0 = s.heat, ha = heatAdd * 0.7 * (s.player.difficulty === "Casual" ? 0.9 : 1) * (heeftFocus(s, "juristen") ? 0.9 : 1), dec = (s.culture.heat_decay ?? 2) + s.heat * 0.07 + spanningHeat(s); s.heat = clamp(s.heat + ha - dec); gz.hDelen.push(["Divisies (omzet trekt aandacht)", r1(ha)], ["Vanzelf afnemen", r1(s.heat - h0 - ha)]); }
+  { const h0 = s.heat, ha = heatAdd * 0.7 * inst(s, "heat") * (s.player.difficulty === "Casual" ? 0.9 : 1) * (heeftFocus(s, "juristen") ? 0.9 : 1), dec = (s.culture.heat_decay ?? 2) + s.heat * 0.07 + spanningHeat(s); s.heat = clamp(s.heat + ha - dec); gz.hDelen.push(["Divisies (omzet trekt aandacht)", r1(ha)], ["Vanzelf afnemen", r1(s.heat - h0 - ha)]); }
   let drift = (s.culture.morale_drift || 0) + (net > 0 ? 1 : -2); if (s.culture.layoff_policy === "hard") drift -= 2;
   drift += clamp((s.staff.avg_salary - 30) / 6, -2, 2);
   if (sf < 0.8){ drift -= 1; rep.push(`Onderbezetting: ${s.staff.count} mensen voor ${need} plekken`); }
@@ -668,7 +668,7 @@ function tick(s){
 }
 
 /* ---------- de stad: elke game een andere kaart ---------- */
-const VERSION = "5.19.1";
+const VERSION = "5.20";
 const MAP_W = 1000, MAP_H = 680;
 const RIVAL_COLORS = ["#ff9a1f", "#3d7bff", "#c6ff2e", "#f2f2f2", "#9b5cff", "#ffd400", "#ff4d4d"];
 const ARCH = {
@@ -1456,7 +1456,7 @@ const REGIO_EVENTS = [
 ];
 function regionTick(s, ctx){
   for (const d of s.districts) if (d.mod && --d.mod.m <= 0) delete d.mod;
-  if (R() > 0.45) return;
+  if (R() > 0.45 * inst(s, "events")) return;
   const e = wpick(REGIO_EVENTS.map(x => [x, x.w])), conts = [...new Set(s.districts.map(d => d.continent))];
   let targets = [], c = CH(conts), l = "";
   if (e.arch){ const ok = conts.filter(k => s.districts.some(d => d.continent === k && d.arch === e.arch)); if (!ok.length) return; c = CH(ok); targets = s.districts.filter(d => d.continent === c && d.arch === e.arch); }
@@ -2805,7 +2805,7 @@ const SPEL_LENGTE = {kort: {label: "10 jaar", maanden: 120}, normaal: {label: "2
 const WIN_WAARDE = 8000, HEG_PCT = 60, HEG_N = 3, RIVAAL_DOEL = 3;
 const WIN_LENGTE = {kort: 0.9, normaal: 1.55, eindeloos: 2.1}; /* 5.0: was 0,8 / 1,38 / 1,9; het spel was na de kostenverlagingen te makkelijk. 5.6.1: hoger (1,8) testte geen verschil, dus zo gelaten */
 const winWaardeVoor = lengte => Math.round(WIN_WAARDE * (WIN_LENGTE[lengte] || 1) / 100) * 100;
-const winWaarde = s => winWaardeVoor(s.player.lengte);
+const winWaarde = s => Math.round(winWaardeVoor(s.player.lengte) * inst(s, "winst") / 100) * 100;
 const RIVAAL_MULT = {Casual: 0.85, Realistisch: 1, Genadeloos: 1.2};
 const SCORE_MULT = {Casual: 0.8, Realistisch: 1, Genadeloos: 1.4};
 const spelLengte = s => (SPEL_LENGTE[s.player.lengte] || SPEL_LENGTE.normaal).maanden;
@@ -2829,7 +2829,7 @@ function score(s, einde){
   const L = spelLengte(s) || 240, delen = [[verloren ? "Bedrijfswaarde (verloren met het bedrijf)" : "Bedrijfswaarde (40 × √waarde)", verloren ? 0 : Math.round(40 * Math.sqrt(Math.max(0, playerValue(s))))], ["Dominantie", dom], ["Reputatie", Math.round(s.reputation * 6)],
     ["Jaren overleefd", Math.round(n / 12 * 60)], ["Rivalen uitgeschakeld", rw.weg * 300], ["Status", (s.statusNiveau || 0) * 120]];
   if (gewonnen && n < L) delen.push(["Tempo (maanden voor het einde × 6)", (L - n) * 6]);
-  const basis = delen.reduce((a, [, v]) => a + v, 0), mult = SCORE_MULT[s.player.difficulty] || 1;
+  const basis = delen.reduce((a, [, v]) => a + v, 0), mult = Math.round((SCORE_MULT[s.player.difficulty] || 1) * (s.player.instelScore ?? 1) * 100) / 100;
   const eind = !einde ? 1 : gewonnen ? 1.25 : einde === "EINDE TERMIJN" ? 1 : 0.75;
   return {delen, basis, mult, eind, totaal: Math.round(basis * mult * eind)};
 }
@@ -3199,7 +3199,7 @@ const SPANNING_TIJDLIJN = {"2015-03": {"Midden-Oosten": 5}, "2020-09": {"Midden-
 function spanningTick(s, ctx){ const S0 = (s.spanning ??= {}), nu = ym(s); for (const c of CONTINENTS) S0[c.naam] ??= RI(8, 25);
   const contVan = id => (s.districts.find(d => d.id === id) || {}).continent, ev = SPANNING_TIJDLIJN[nu];
   for (const c of CONTINENTS){ const n = c.naam, oud = S0[n];
-    let d = 0.12 + 0.05 * (s.tijdperk || 0) + U(-0.2, 0.2);
+    let d = (0.12 + 0.05 * (s.tijdperk || 0)) * inst(s, "spanning") + U(-0.2, 0.2);
     d += s.rivals.filter(r => r.status === "oorlog" && contVan(r.hq) === n).length * 0.4;
     d += (s.gangs || []).filter(g => g.deal === "oorlog" && Object.keys(g.gebied || {}).some(id => contVan(id) === n)).length * 0.2;
     d += s.districts.filter(x => x.control === "player" && x.continent === n).length * 0.03;
@@ -3602,6 +3602,16 @@ function ceoTick(s, ctx){ const C = ceoInit(s); C.leeftijd = Math.round((C.leeft
   if (C.gezondheid <= 0) ceoOpvolging(s, ctx, "overlijdt na een kort ziekbed"); else if (L >= 78 && kansRol() < 0.1) ceoOpvolging(s, ctx, "gaat met pensioen, of wordt daartoe gedwongen");
   for (const r of s.rivals){ r.ceoLeeftijd ??= RI(40, 66); if (s.date.month === 1) r.ceoLeeftijd += 1; r.ceoRel = Math.round((r.ceoRel || 0) * 0.98);
     if (s.date.month === 1 && (r.ceoLeeftijd >= 72 || kansRol() < 0.03)){ const oud = r.ceo; r.ceo = genCeoNaam(new Set(s.rivals.map(x => x.ceo))); r.ceoLeeftijd = RI(38, 55); r.ceoRel = 0; delete r.karakter; geefKarakter(r); news(s, `Nieuwe CEO bij ${r.name}`, `${oud} vertrekt. ${r.ceo} neemt over: ${RIVAAL_KARAKTER[r.karakter].label.toLowerCase()}, zeggen insiders.`, "", "markt", false); ctx.rep.push(`${r.name}: nieuwe CEO ${r.ceo}`); } } }
+/* 5.20: eigen moeilijkheid. Vijf schuiven die jij zet, bij het oprichten of later: gebeurtenissen, chaos, corpospanning, heat en de winstdrempel. Een zwaarder spel telt zwaarder in de score; de laagste stand die je ooit had, telt. */
+const INSTEL = {events: {label: "Gebeurtenissen", uitleg: "regionale gebeurtenissen en onverwachte rekeningen"}, chaos: {label: "Chaos", uitleg: "nomaden, cyberpsycho's, spookzendingen en ander onheil"}, spanning: {label: "Corpospanning", uitleg: "hoe snel de wereld afglijdt"}, heat: {label: "Heat", uitleg: "hoe snel de politie op je let"}, winst: {label: "Winstdrempel", uitleg: "de bedrijfswaarde die je nodig hebt om te winnen"}};
+const INSTEL_NIV = {laag: 0.6, normaal: 1, hoog: 1.4}, INSTEL_WINST = {laag: 0.75, normaal: 1, hoog: 1.3};
+const inst = (s, k) => ((((s && s.player) || {}).instel) || {})[k] ?? 1;
+const instelNiv = (k, n) => (k === "winst" ? INSTEL_WINST : INSTEL_NIV)[n] ?? 1;
+const instelNaam = (s, k) => { const v = inst(s, k), T = k === "winst" ? INSTEL_WINST : INSTEL_NIV; return Object.keys(T).find(n => Math.abs(T[n] - v) < 1e-6) || "normaal"; };
+function instelScore(I){ let m = 1; for (const k of ["events", "chaos", "spanning", "heat"]) m += ((I[k] ?? 1) - 1) * 0.25; m += ((I.winst ?? 1) - 1) * 0.4; return Math.round(clamp(m, 0.6, 1.5) * 100) / 100; }
+function actInstel(s, k, n){ if (!INSTEL[k]) return {ok: false, msg: "Onbekende instelling."}; if (!(n in (k === "winst" ? INSTEL_WINST : INSTEL_NIV))) return {ok: false, msg: "Kies laag, normaal of hoog."};
+  const p = s.player, I = (p.instel ??= {}); I[k] = instelNiv(k, n); const sc = instelScore(I); p.instelScore = Math.min(p.instelScore ?? sc, sc); addLog(s, `Moeilijkheid: ${INSTEL[k].label} ${n}`);
+  return {ok: true, msg: `${INSTEL[k].label}: ${n}. Score-vermenigvuldiger nu ×${sc}${p.instelScore < sc ? ` (voor de score telt de laagste ooit: ×${p.instelScore})` : ""}.`}; }
 const spanningGem = s => { const v = Object.values(s.spanning || {}); return v.length ? v.reduce((a, b) => a + b, 0) / v.length : 0; };
 function tijdlijnTick(s, ctx){ const nu = ym(s), gehad = (s.tijdlijnGehad ??= []), B = (s.vraagBasis ??= {});
   for (const t of TIJDLIJN){ if (t.d > nu || gehad.includes(t.d)) continue; gehad.push(t.d); const recent = mndNr(nu) - mndNr(t.d) <= 2;
@@ -4042,6 +4052,7 @@ function newGame0(d){
   news(s, `Nieuwe corporatie: ${p.corp_name}`, `${p.corp_name} vestigt zich in ${s.districts.find(x => x.id === home).name}${p.hq_stad ? " (" + p.hq_stad + ")" : ""}. Doctrine: ${p.doctrine}. De concurrentie kijkt mee.`, homeCont, "markt", true);
   if (d.huisstijl && typeof d.huisstijl === "object") actHuisstijl(s, d.huisstijl); /* 5.17.1: huisstijl uit de setup */
   ceoInit(s, d); for (const r of s.rivals) r.ceoLeeftijd ??= RI(40, 66); /* 5.19 */
+  { const I = {}; for (const k of Object.keys(INSTEL)) I[k] = instelNiv(k, d["inst_" + k] || "normaal"); p.instel = I; p.instelScore = instelScore(I); } /* 5.20 */
   s.setup_done = true; s.accounts.operationeel = s.cash;
   const hn = s.districts.find(x => x.id === home).name;
   mail(ctx, s, "Marta Delcourt (CFO)", "Welkom, CEO",
@@ -4645,6 +4656,7 @@ const API = {
   async "/api/beurs"(d){ const s = G.game, ctx = Ctx(); const r = actBeurs(s, ctx, d.soort, d.pct); if (r.ok) await persist(ctx); return {ok: r.ok, bericht: r.msg}; },
   async "/api/eigenplan"(d){ const s = G.game, ctx = Ctx(); const r = d.stop ? actEigenPlanStop(s) : actEigenPlan(s, ctx, d.k, d.doel); if (r.ok) await persist(ctx); return {ok: r.ok, bericht: r.msg}; },
   async "/api/ceo"(d){ const s = G.game, ctx = Ctx(); const r = actCeo(s, ctx, d.soort, d.arg); if (r.ok) await persist(ctx); return {ok: r.ok, bericht: r.msg}; },
+  async "/api/instel"(d){ const s = G.game, ctx = Ctx(); const r = actInstel(s, d.k, d.n); if (r.ok) await persist(ctx); return {ok: r.ok, bericht: r.msg}; },
   async "/api/corpo"(d){ const s = G.game, ctx = Ctx(); const r = actCorpo(s, ctx, d.soort, d.id); if (r.ok) await persist(ctx); return {ok: r.ok, bericht: r.msg}; },
   async "/api/huisstijl"(d){ const s = G.game, ctx = Ctx(); const r = actHuisstijl(s, d || {}); if (r.ok) await persist(ctx); return {ok: r.ok, bericht: r.msg}; },
   async "/api/product"(d){ const s = G.game, ctx = Ctx(); const r = actProduct(s, ctx, d.soort, d); if (r.ok) await persist(ctx); return {ok: r.ok, bericht: r.msg}; },

@@ -315,6 +315,15 @@ const html = '<!doctype html><html><head><meta charset=utf8></head><body>' + fs.
   const ceUI = await p.evaluate(() => { S.view = "mensen"; render(); const t = document.querySelector("main").textContent; return /Jij, de CEO/.test(t) && /GEZONDHEID/.test(t) && /Andere CEO/.test(t); });
   ok(ce.naam0 === "Mira Kade" && ce.l0 >= 34 && ce.v && ce.st1 === 50 && !ce.nogeens && ce.zonder.naam !== "Mira Kade" && ce.zonder.gen === 2 && ce.zonder.morale >= 12 && ce.opv && / jr\.$/.test(ce.dyn.naam) && ce.dyn.gen === 3 && ce.dyn.leeftijd <= 34 && ce.golf && ce.band === 10 && ce.relUp === 4 && ce.nieuweCeo && ce.advOk && ceUI,
     "CEO als persoon: naam uit de setup, vakantie tegen stress, overlijden zonder opvolger = buitenstaander, met kind = dynastie, golfen met rivaal-CEO's, oude rivaal-CEO's worden vervangen: " + JSON.stringify(ce));
+  // 5.20 eigen moeilijkheid
+  const im = await p.evaluate(() => { const n = newGame({...S.setup, corp_name: "Moeilijk BV", doctrine: ["Biotech"], home: "BNL", inst_winst: "hoog", inst_chaos: "laag"}).s;
+    const ww = winWaarde(n), basis = winWaardeVoor(n.player.lengte), sc0 = n.player.instelScore, m0 = score(n).mult;
+    const a = actInstel(n, "heat", "hoog"), sc1 = instelScore(n.player.instel), b = actInstel(n, "heat", "laag"), scMin = n.player.instelScore, fout = actInstel(n, "heat", "extreem").ok;
+    const oud = JSON.parse(JSON.stringify(G.game)); delete oud.player.instel; delete oud.player.instelScore;
+    return {ww, basis, sc0, m0, a: a.ok, sc1, scMin, fout, oudInst: inst(oud, "heat"), oudMult: score(oud).mult === (SCORE_MULT[oud.player.difficulty] || 1)}; });
+  const imUI = await p.evaluate(() => { S.view = "logboek"; S.instOpen = true; render(); const t = document.querySelector("main").textContent; S.instOpen = false; return /Eigen moeilijkheid/.test(t) && /Winstdrempel/.test(t); });
+  ok(im.ww === Math.round(im.basis * 1.3 / 100) * 100 && im.sc0 === 1.02 && im.m0 === 1.02 && im.a && im.sc1 === 1.12 && im.scMin === 0.92 && !im.fout && im.oudInst === 1 && im.oudMult && imUI,
+    "eigen moeilijkheid: winstdrempel en score-vermenigvuldiger volgen de schuiven, de laagste stand telt, oude saves ongewijzigd, kaart bij Logboek: " + JSON.stringify(im));
   ok(/VERKOOP/.test(verkoop) && /KEURING/.test(verkoop), "tabblad Verkoop en keuring");
   ok(/VARIANT/.test(scherm), "varianten staan op het productblad");
   if (out){ const bl = await p.$('.prodblad'); if (bl) await bl.screenshot({path: out + "/verkoop.png"}); }

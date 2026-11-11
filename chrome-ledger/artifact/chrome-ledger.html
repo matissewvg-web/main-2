@@ -922,7 +922,7 @@ logboek(){
   return `<h1>Logboek</h1><div class="grid g2"><div class="card md">${md(st.log) || "Nog niets gebeurd."}</div>
     <div class="card"><h3>Dobbelstenen</h3><p class="muted" style="font-size:13px;margin:0 0 8px">Elke worp van de engine, met de kans die vooraf gold. Zo zie je of er eerlijk gespeeld wordt.</p>
       <pre class="rolls">${esc(st.worpen.slice().reverse().join("\n")) || "Nog geen worpen."}</pre></div></div>
-  ${spellenCard()}
+  ${instelCard()}${spellenCard()}
   ${eregalerijCard()}
   ${opslagCard()}
   ${versieCard()}
@@ -1030,6 +1030,7 @@ function setupBonus(homeD){
     <p class="dim" style="font-size:13px;margin:6px 0 0">Elk soort land geeft een ander voordeel: havens, financiële centra, datavalleien, sloppen. Klik verschillende landen aan om ze te vergelijken.</p>` : "";
 }
 const VERSIES = [
+  ["5.20", "Eigen moeilijkheid", ["Bij het oprichten (Koers en cultuur) en later bij Logboek → Eigen moeilijkheid zet je vijf schuiven: gebeurtenissen, chaos, corpospanning, heat (hoe snel de politie oplet) en de winstdrempel. Weinig, normaal of veel.", "Zwaarder telt zwaarder: de score-vermenigvuldiger gaat mee (bv. veel chaos en een hogere winstdrempel). Voor de score telt de laagste stand die je ooit had, dus even makkelijker zetten en terug helpt niet.", "Bestaande spellen staan op normaal en veranderen niet."]],
   ["5.19.1", "Opruimen", ["Wat nu? waarschuwt bij hoge stress (kans op burn-out), lage gezondheid en als je 58+ bent zonder opvolger.", "Gemeten: balans verstandig 50%; mobiel Mensen-scherm zonder horizontale scroll."]],
   ["5.19", "De CEO als persoon", ["Mensen → Jij, de CEO: je leeftijd, gezondheid en stress, en je privéleven (partner, kinderen). Bij een nieuw spel kun je je eigen naam invullen.", "Stress komt van heat, oorlogen, lage morale en geldnood; hoge stress en ouderdom kosten gezondheid. Vakantie (€2M), tijd voor je gezin of een kliniek (€10M, wat heat) helpen. Bij te veel stress dreigt een burn-out.", "Opvolging: wijs een opvolger aan: een kind (dynastie) of iemand uit je directie. Overlijd je of ga je met pensioen zonder opvolger, dan haalt de raad een buitenstaander (morale −12, reputatie −8). Het spel gaat altijd door met de nieuwe CEO.", "Rivaliserende CEO's worden ouder en worden vervangen, met een nieuw karakter. Golfen (€1M) bouwt een persoonlijke band en verbetert de relatie met hun bedrijf."]],
   ["5.18", "Krant van de maand", ["Wereld → Krant: NEON NEWS 24, de maandeditie. Een voorpagina (jouw grootste nieuws of het grootste wereldnieuws), rubrieken Uit de bestuurskamer, Wereld, Rivalen en Markten, de vraag die het hardst beweegt, dure of goedkope grondstoffen, je beurskoers en de corpospanning per continent. Plus een advertentie.", "Op het overzicht staat de kop van de krant met een knop Lees de krant."]],
@@ -1116,7 +1117,7 @@ const VERSIES = [
   ["1.1", "Wereld", ["Nieuwe tab Wereld: wereldnieuws, een ranglijst van alle bedrijven met waarde en markten per sector.", "25 bedrijven verspreid over de wereld: zakendiner, leveringscontract, aandelen met dividend of een overname.", "Gebeurtenissen per land en continent (stormen, staatsgrepen, handelsakkoorden) veranderen tijdelijk wat gebieden opleveren.", "Startvoordeel per soort land, een eigen stad voor je hoofdkantoor, en per gebied op de kaart: wat het oplevert.", "Geruchten en marktberichten staan in het nieuws in plaats van in je inbox."]],
   ["1.0", "Echte wereld", ["Echte wereldkaart, dominantie per continent en zee, eskaders, rivalen met oorlog en handel, blijvende inkomstenbronnen."]],
 ];
-const PLANNING = [["5.20", "Eigen moeilijkheid instellen."], ["5.21", "Rondleiding en spiekbriefjes."]];
+const PLANNING = [["5.21", "Rondleiding en spiekbriefjes."]];
 function versieCard(){
   const vrs = ([v, t, l]) => `<div style="margin:8px 0"><b class="mono" style="color:var(--cyan)">${v}</b> <b>${esc(t)}</b><ul class="ylist">${l.map(x => `<li>${esc(x)}</li>`).join("")}</ul></div>`;
   return `<div class="card" style="margin-top:16px"><h3>Versies</h3>${VERSIES.slice(0, 2).map(vrs).join("")}<details><summary class="muted" style="cursor:pointer;margin:6px 0">Oudere versies (${VERSIES.length - 2})</summary>${VERSIES.slice(2).map(vrs).join("")}</details>
@@ -1681,6 +1682,12 @@ function plannenCard(st){
     <ol class="planstap">${p.stappen.map((x, i) => `<li class="${i < p.stap ? "af" : i === p.stap ? "nu" : ""}">${esc(x)}${i === p.stap ? ` <span class="dim">(rond ${esc(p.wanneer)})</span>` : ""}</li>`).join("")}</ol>
     <div class="dim" style="font-size:13px">Als het slaagt: ${esc(p.eind)}${p.zacht ? " · <b>je bent voorbereid, de klap is half zo groot</b>" : ""}${p.motief ? ` · motief: ${esc(p.motief)}` : ""}</div></div>`).join("")}</div>`;
 }
+/* 5.20: eigen moeilijkheid */
+function instelCard(){ const s = G.game; if (!s || !s.setup_done) return ""; const sc = instelScore(s.player.instel || {}), min = s.player.instelScore ?? sc;
+  return `<details class="card" style="margin-top:16px" ${S.instOpen ? "open" : ""} ontoggle="S.instOpen = this.open"><summary style="cursor:pointer;display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap"><h3 style="margin:0">Eigen moeilijkheid</h3><span class="dim" style="font-size:13px">${esc(s.player.difficulty)} · score ×${min}${min < sc ? ` (nu ×${sc})` : ""}</span></summary>
+    <p class="muted" style="font-size:13px;margin:8px 0 6px">Zet het spel zo hard als je wilt. Zwaarder telt zwaarder in de score; voor de score telt de laagste stand die je ooit had, dus even lager zetten en terug helpt niet.</p>
+    ${Object.entries(INSTEL).map(([k, x]) => `<div class="lrow" style="display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap;padding:5px 0;border-bottom:1px solid rgba(255,255,255,.06)"><span><b>${esc(x.label)}</b> <span class="dim" style="font-size:12.5px">${esc(x.uitleg)}</span></span><span class="prijzen" style="margin:0">${["laag", "normaal", "hoog"].map(n => `<button class="chip ${instelNaam(s, k) === n ? "on" : ""}" data-a="instel" data-k="${k}" data-n="${n}">${k === "winst" ? {laag: "Lager", normaal: "Normaal", hoog: "Hoger"}[n] : {laag: "Weinig", normaal: "Normaal", hoog: "Veel"}[n]}</button>`).join("")}</span></div>`).join("")}
+    <p class="dim" style="font-size:12.5px;margin:6px 0 0">Winnen: €${winWaarde(s)}M bedrijfswaarde.</p></details>`; }
 /* 5.19: de CEO als persoon */
 function ceoCard(){ const s = G.game; if (!s || !s.setup_done) return ""; const C = ceoInit(s), L = ceoLeeftijd(s), m = ym(s), O = ceoOpvolgers(s), kl = v => v >= 60 ? "var(--green)" : v >= 30 ? "var(--amber)" : "var(--red)";
   const bar = (v, k) => `<div class="fac" style="grid-template-columns:90px 1fr 46px"><span class="kpi">${k}</span><div class="bar"><i style="width:${Math.round(v)}%;background:${k === "STRESS" ? kl(100 - v) : kl(v)}"></i></div><span class="mono">${Math.round(v)}</span></div>`;
@@ -2003,7 +2010,7 @@ function setupView(){
   const st = S.state;
   if (!S.setup){ try { const sv = JSON.parse(localGet("setup") || "null"); if (sv && typeof sv === "object") S.setup = sv; } catch(e){} }
   const T = S.setup = Object.assign({corp_name:"", motto:"", background:"Ex-havenarbeider", doctrine:["Logistiek"], difficulty:"Realistisch", year:2004,
-    kapitaal:"normaal", home:"BNL", hq_stad:"", zaad:"", lengte:"normaal", ontslag:"normaal", bonus:"geen", ethiek:"normaal", slogan:"", divisie_naam:"", namen:{}, eigen_naam:"", eigen_omschrijving:"", eigen_profiel:"gebalanceerd"}, S.setup || {});
+    kapitaal:"normaal", home:"BNL", hq_stad:"", zaad:"", inst_events:"normaal", inst_chaos:"normaal", inst_spanning:"normaal", inst_heat:"normaal", inst_winst:"normaal", lengte:"normaal", ontslag:"normaal", bonus:"geen", ethiek:"normaal", slogan:"", divisie_naam:"", namen:{}, eigen_naam:"", eigen_omschrijving:"", eigen_profiel:"gebalanceerd"}, S.setup || {});
   const types = (st.divisie_types||["Biotech","Cyberware","Logistiek","Media & Data","Private Security","Financieel","Smokkel"]);
   const chips = (key, opts, multi) => `<div class="chips">${opts.map(([v,l]) => `<button class="chip ${(multi?T[key].includes(v):T[key]===v)?"on":""}" data-chip="${key}" data-v="${esc(v)}" data-multi="${multi?1:""}">${esc(l)}</button>`).join("")}</div>`;
   const city = genWorld();
@@ -2062,7 +2069,10 @@ function setupView(){
         <div class="muted" style="font-size:13px;margin-bottom:4px">Ontslag</div>${chips("ontslag", [["normaal","Normaal"],["hard","Hard (morale -2/mnd, bond boos)"]])}
         <div class="muted" style="font-size:13px;margin:10px 0 4px">Bonussen</div>${chips("bonus", [["geen","Geen"],["redelijk","Redelijk · €2M/mnd"],["royaal","Royaal · €5M/mnd"]])}
         <div class="muted" style="font-size:13px;margin:10px 0 4px">Ethiek</div>${chips("ethiek", [["streng","Streng (heat zakt sneller)"],["normaal","Normaal"],["geen_vragen","Geen vragen (heat blijft hangen)"]])}
-        <label class="f" style="margin-top:10px">Slogan(s), één per regel<textarea data-f="slogan" style="min-height:60px">${esc(T.slogan)}</textarea></label></div></div>`;
+        <label class="f" style="margin-top:10px">Slogan(s), één per regel<textarea data-f="slogan" style="min-height:60px">${esc(T.slogan)}</textarea></label></div></div>
+    <div class="card" style="margin-top:14px"><h3>Eigen moeilijkheid <span class="muted" style="font-weight:400;font-size:13px">bovenop de gekozen moeilijkheid; later aan te passen bij Logboek</span></h3>
+      <div class="grid g2" style="gap:6px 18px">${Object.entries(INSTEL).map(([k, x]) => `<div><div class="muted" style="font-size:13px;margin:6px 0 4px">${esc(x.label)} <span class="dim">· ${esc(x.uitleg)}</span></div>${chips("inst_" + k, [["laag", k === "winst" ? "Lager" : "Weinig"], ["normaal", "Normaal"], ["hoog", k === "winst" ? "Hoger" : "Veel"]])}</div>`).join("")}</div>
+      <p class="dim" style="font-size:13px;margin:8px 0 0">Score-vermenigvuldiger door deze keuzes: <b class="mono">×${instelScore(Object.fromEntries(Object.keys(INSTEL).map(k => [k, instelNiv(k, T["inst_" + k] || "normaal")])))}</b>. Winnen bij deze winstdrempel: €${Math.round(winWaardeVoor(T.lengte || "normaal") * instelNiv("winst", T.inst_winst || "normaal") / 100) * 100}M.</p></div>`;
   else {
     const doc = [T.eigen_naam.trim(), ...T.doctrine].filter(Boolean).slice(0, 2), row = (l, v, i) => `<dt>${l}</dt><dd>${v} <button class="linkbtn" data-a="sstep" data-i="${i}">wijzig</button></dd>`;
     body = `<h1>Fase 0 · Registreren</h1>
@@ -2196,6 +2206,7 @@ document.addEventListener("click", async e => {
     case "autodev": return act("/api/autodev", {divisie: t.dataset.div, aan: t.dataset.aan == null ? undefined : t.dataset.aan === "1", schaal: t.dataset.schaal}, {silent: true});
     case "autostd": return act("/api/autostandaard", {k: t.dataset.k, aan: t.dataset.aan === "1", alle: t.dataset.alle === "1"});
     case "menu": toonMenu(); return;
+    case "instel": S.instOpen = true; return act("/api/instel", {k: t.dataset.k, n: t.dataset.n}, {silent: true});
     case "ceo": return act("/api/ceo", {soort: t.dataset.s, arg: t.dataset.arg});
     case "krant": S.view = "wereld"; S.wtab = "krant"; render(); window.scrollTo(0, 0); return;
     case "menudoor": sluitMenu(); return;
