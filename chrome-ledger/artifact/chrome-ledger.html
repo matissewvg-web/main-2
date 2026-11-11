@@ -66,6 +66,7 @@ a{color:var(--cyan)}
 .trede.dicht{opacity:.62}.trede.dicht:hover{opacity:1}
 .tkop{display:flex;align-items:center;gap:10px;flex-wrap:wrap}.tnr{font:700 13px var(--mono);color:var(--tk);min-width:34px}
 .tkol{display:grid;grid-template-columns:1fr 1fr;gap:4px 16px}@media (max-width:700px){.tkol{grid-template-columns:1fr}}
+@media (max-width:700px){.stats .stat{padding:4px 7px 5px}.stats .stat .bar{height:3px;margin-top:3px}.top{gap:8px!important;padding-bottom:8px!important}.savebtn{padding:8px 9px}.date{font-size:12.5px;padding:6px 8px;letter-spacing:.04em}.date::before{display:none}.date .mlang{display:none}.date .mkort{display:inline!important}.top .brand + *{margin-top:0}} /* 11.2: compactere kop op de gsm */
 .corpowar{margin-top:12px;padding:10px 12px;box-shadow:inset 3px 0 0 var(--mag),inset 0 0 0 1px rgba(var(--mag-rgb),.4);background:rgba(var(--mag-rgb),.06)}
 .nieuwregel{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;padding:7px 12px;margin:0 0 12px;font-size:13.5px;box-shadow:inset 3px 0 0 var(--violet),inset 0 0 0 1px var(--line)}
 .corplegenda{display:flex;flex-wrap:wrap;gap:6px 14px}.corpleg{display:inline-flex;align-items:center;gap:5px;font-size:13px}.corpleg i{width:12px;height:12px;display:inline-block;box-shadow:0 0 0 1px rgba(255,255,255,.25)}
@@ -102,6 +103,7 @@ a{color:var(--cyan)}
 @keyframes opfl{0%{background:rgba(var(--cyan-rgb),.10)}30%{background:transparent}}
 @keyframes opsp{0%{opacity:0;transform:scale(.9)}15%{opacity:1;transform:scale(1)}75%{opacity:1}100%{opacity:0;transform:translateY(-10px)}}
 [data-a="opslaan"].bezig{opacity:.5;pointer-events:none}
+.savebtn{padding:8px 10px;font-size:14px;line-height:1}
 .menuknop{all:unset;cursor:pointer;color:var(--cyan);font-size:18px;margin-right:10px;vertical-align:middle;letter-spacing:0}.menuknop:focus-visible{outline:1px solid var(--cyan)}
 .brand{font-family:var(--disp);font-weight:800;letter-spacing:.16em;color:#fff;font-size:15px;white-space:nowrap;line-height:1.1}
 .brand b{color:var(--mag);text-shadow:var(--glow-m);font-weight:800}
@@ -472,6 +474,7 @@ main.tabin{animation:tabin .24s ease both}@keyframes tabin{from{opacity:.35;tran
   .brand{order:0} .simctl{order:1;margin-left:auto} .btn.next{padding:10px 12px} .simplay{width:34px;height:34px} .simsnel{height:34px} .date{order:2} .nx-long{display:none}
   .stats{order:3;width:100%;flex-basis:100%;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;overflow:visible}
   .stat{min-width:0}.stat .k{font-size:11px;letter-spacing:.08em}.stat .v{font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .row{flex-wrap:wrap} main select{max-width:100%;min-width:0} main .row > select{flex:1 1 140px} .opt{flex-wrap:wrap} .opt > div:first-child{flex:1 1 200px;min-width:0}
   nav{flex-direction:row;overflow-x:auto;border-right:0;border-bottom:1px solid var(--line);padding:6px 10px}
   nav button{width:auto;gap:6px;padding:7px 10px;white-space:nowrap}
   nav button.on::before{left:6px;right:6px;top:auto;bottom:0;width:auto;height:2px}
@@ -716,7 +719,7 @@ function render(){
   root.innerHTML = `<div class="app ${S.gmDock && S.view !== "comms" ? "gmopen" : ""}">
     <header class="top">
       <div class="brand"><button class="menuknop" data-a="menu" aria-label="Hoofdmenu" title="Hoofdmenu">☰</button>${st.huisstijl && st.huisstijl.logo ? `<span class="brandlogo" style="display:inline-block;vertical-align:middle;margin-right:8px">${logoHtml(st.huisstijl, st.speler.corp_name, 30)}</span>` : ""}<span class="neon">CHROME</span><b>//</b>LEDGER<small>${esc(st.speler.corp_name)}</small></div>
-      <div class="date">${MONTHS[st.datum.month-1].toUpperCase()} ${st.datum.year}</div>
+      <div class="date"><span class="mlang">${MONTHS[st.datum.month-1].toUpperCase()}</span><span class="mkort" style="display:none">${MONTHS[st.datum.month-1].slice(0, 3).toUpperCase()}</span> ${st.datum.year}</div>
       <div class="stats">
         ${stat("Cash", eur(st.cash), null, st.cash < 30 ? "var(--amber)" : null)}
         ${stat("Heat", k(st.heat), st.heat, null, "heat")}
@@ -1119,6 +1122,7 @@ function setupBonus(homeD){
     <p class="dim" style="font-size:13px;margin:6px 0 0">Elk soort land geeft een ander voordeel: havens, financiële centra, datavalleien, sloppen. Klik verschillende landen aan om ze te vergelijken.</p>` : "";
 }
 const VERSIES = [
+  ["11.2", "Opslaanknop, gsm en je plek blijft staan", ["Een opslaanknop (💾) in de kop, naast +1 maand: bewaart dit moment als opslagpunt. Terugzetten kan via Menu → Laden. Ctrl+S werkt ook nog.", "Je plek blijft staan als er iets gebeurt (een maand verder, een nieuwe mail, de simulatie die loopt): op de gsm scrolt de hele pagina, en die positie werd niet onthouden. Ook het menu bovenaan (horizontaal op de gsm), opengeklapte blokken zoals Details en horizontaal scrollen op de kaart en in tabellen blijven nu staan. Kies je een ander scherm, dan begin je bovenaan dat scherm.", "Gsm: compactere kop (maand verkort, alles op één regel), rijen met een keuzelijst en een knop lopen niet meer buiten het scherm (onder andere Invloed besteden op de kaart en oorlogsacties).", "De lijst met spellen onder Menu → Laden raakte soms leeg: als die lijst net niet gelezen kon worden bij een nieuw spel, bleef alleen het nieuwe spel over. Bestaande spellen blijven nu altijd in de lijst, behalve wat je zelf verwijdert. Je vorige spellen staan er weer in."]],
   ["11.1", "Klanten onthouden, contracten nemen capaciteit, onderhandelen met rivalen", ["Klantrelaties: elke klant onthoudt hoe je leverde. Een netjes afgerond contract maakt ze tevreden (+12), een eenmalige levering ook (+8). Boetes voor kwaliteit (−3), te weinig leveren (−4), een afgewezen aanvraag (−4), een opzegging (−20) of een verbroken contract (−30) niet. Contracten → Klanten toont wie wat van je vindt, met de laatste gebeurtenissen.", "Die band telt mee in hun keuze (van −15 tot +12 punten op je bod). Tevreden klanten komen terug met nieuwe aanvragen (label ‘komt terug’); een klant die je wantrouwt, vraagt je niet meer. Een klant die eens niet betaalde, krijgt het label ‘betaalde eens niet’ en heeft drie keer zoveel kans om het weer te doen.", "Contracten nemen productiecapaciteit: €1M omzet per maand aan contracten kost ±4 capaciteit van het product dat levert. Contracten gaan voor; wat overblijft, verkoop je aan het publiek. Op het productblad zie je het oranje deel. Vragen je contracten meer dan je capaciteit, dan lever je te weinig: de klant betaalt alleen wat hij krijgt, rekent 10% boete over de rest en wordt bozer. Bij elke aanvraag staat hoeveel capaciteit ze kost en hoeveel je over hebt. De autopilot voor capaciteit rekent contracten mee.", "Onderhandelen met rivalen: bij een handelsverdrag, wapenstilstand of ultimatum kun je eerst twee zetten doen. Meer vragen (+30%) of langer vastleggen (18 maanden) bij handel; twaalf maanden of een schadevergoeding bij vrede; afdingen (−40%) of terugdreigen bij een ultimatum. De kans hangt af van het karakter van hun CEO (een diplomaat geeft sneller toe dan een haai), jullie relatie en bij vrede hun oorlogsmoeheid; bij dreigen jouw macht tegen de hunne. Mislukt kost het relatie, soms trekken ze het aanbod in, en mislukt dreigen betekent oorlog.", "Een test die af en toe faalde (een toevallige inbraak bij R&D vertraagde een productvariant) wacht nu tot de lancering."]],
   ["11.0", "Gebied win je, je koopt het niet", ["Een vestiging maakt een land niet meer van jou. Het is een basis: +22 aandeel in de strijd om dat land, en ze verkoopt zelf (20% van het inkomen van het land). Ze kost daardoor minder dan vroeger (60%), en je kunt er ook een openen in het land van een rivaal om het te betwisten (iets duurder, relatie −6). Alleen hun hoofdkantoor blijft dicht.", "Een land valt je toe als je aandeel twee maanden boven 55% ligt en groter is dan dat van de eigenaar of de staat. Dat aandeel komt van je verkoop en contracten op dat continent, je vestiging, campagnes, patrouilles en je landen ernaast.", "Aanwezigheid opbouwen heet nu Campagne voeren. Een campagne versterkt wat er al is: zonder verkoop, contracten of vestiging haalt ze maar +5 à 6, met wortels tot +18. Campagnes tellen tot 40 (was 150). Voer je campagne in het land van een rivaal, dan slaat die vaak meteen terug met een eigen campagne.", "Landen kopen, verkopen of ruilen met rivalen kan niet meer. Rivalen doen het ook niet meer: in plaats van een land te kopen openen ze een vestiging en moeten ze het winnen, ook van jou.", "De zee koop je niet met schepen. Je zeemacht komt uit je aandeel in de kustlanden plus je eskaders, en elk extra eskader in dezelfde zee helpt minder. Overwicht moet je twee maanden volhouden voor je de opbrengst krijgt. Rivalen met belangen aan die kust sturen hun vloot, ook als jullie geen oorlog voeren.", "Ook de Assistent kan geen land meer voor je kopen; een deal over een land levert hooguit een vestiging op.", "Bestaande saves: landen die je al had, houd je, en waar je een vestiging opende, staat die er nu als basis (die telt pas als je het land verliest). Lopende biedingen op landen vervallen."]],
   ["10.5", "Je save blijft online", ["Reageert de online opslag traag bij het openen, dan probeert het spel het eerst nog een keer (tot 25 seconden in totaal) in plaats van meteen een oudere kopie uit je browser te laden.", "Lukt het dan nog niet, dan zie je een keuzescherm: opnieuw proberen, of bewust de browserkopie openen (met de naam en maand erbij). Het spel opent nooit meer stil een oude save.", "Heb je in deze browser verder gespeeld dan wat online staat (omdat de online opslag even weg was), dan zie je dat bij het openen. Je kunt die browserstand dan als apart spel online zetten en verder spelen. Het online spel blijft ook bewaard, onder Menu → Laden."]],
@@ -2181,13 +2185,21 @@ function snapUI(){
   r.querySelectorAll("input[id],textarea[id]").forEach(el => { if (el.id !== "q" && el.type !== "number") S.keep[el.id] = el.value; });
   const ae = document.activeElement; if (ae && ae.id && r.contains(ae)) o.focus = {id: ae.id, s: ae.selectionStart, e: ae.selectionEnd};
   for (const sel of ["#main", ".mails", ".reader", ".clist", "#mapscroll"]){ const el = r.querySelector(sel); if (el) o.scroll[sel] = el.scrollTop; }
+  /* 11.2: op de gsm scrolt de hele pagina; ook horizontaal (menu, kaart, tabellen) en opengeklapte blokken blijven staan */
+  const se = document.scrollingElement || document.documentElement; o.pagina = se.scrollTop; o.links = {}; const nv = r.querySelector("nav"); if (nv) o.links.nav = nv.scrollLeft;
+  r.querySelectorAll("main .mapscroll, main div[style*='overflow-x']").forEach((el, i) => { if (el.scrollLeft) o.links["x" + i] = el.scrollLeft; });
+  o.open = []; const tel = {}; r.querySelectorAll("main details").forEach(d => { const k = (d.querySelector("summary") || {}).textContent || ""; const n = tel[k] = (tel[k] || 0) + 1; if (d.open) o.open.push(k + "#" + n); });
   const cl = r.querySelector("#chatlog"); if (cl) o.atBottom = cl.scrollHeight - cl.scrollTop - cl.clientHeight < 60;
   return o;
 }
 function restoreUI(o){
   const r = document.getElementById("root"); if (!r) return;
   for (const [id, v] of Object.entries(S.keep)){ const el = document.getElementById(id); if (el && r.contains(el) && el.value === el.defaultValue && v !== el.value) el.value = v; }
-  if (o.view === S.view) for (const [sel, top] of Object.entries(o.scroll)){ if (sel === ".reader" && o.mail !== (S.mailBody && S.mailBody.id)) continue; const el = r.querySelector(sel); if (el) el.scrollTop = top; }
+  if (o.view === S.view){ if (o.open && o.open.length){ const tel = {}; r.querySelectorAll("main details").forEach(d => { const k = (d.querySelector("summary") || {}).textContent || ""; const n = tel[k] = (tel[k] || 0) + 1; if (o.open.includes(k + "#" + n)) d.open = true; }); }
+    for (const [sel, top] of Object.entries(o.scroll)){ if (sel === ".reader" && o.mail !== (S.mailBody && S.mailBody.id)) continue; const el = r.querySelector(sel); if (el) el.scrollTop = top; }
+    if (o.links) r.querySelectorAll("main .mapscroll, main div[style*='overflow-x']").forEach((el, i) => { if (o.links["x" + i]) el.scrollLeft = o.links["x" + i]; });
+    if (o.pagina != null){ const se = document.scrollingElement || document.documentElement; if (Math.abs(se.scrollTop - o.pagina) > 2) se.scrollTop = o.pagina; } }
+  { const nv = r.querySelector("nav"); if (nv && o.links && o.links.nav != null) nv.scrollLeft = o.links.nav; if (nv && o.view !== S.view){ const on = nv.querySelector("button.on"); if (on && (on.offsetLeft < nv.scrollLeft || on.offsetLeft + on.offsetWidth > nv.scrollLeft + nv.clientWidth)) nv.scrollLeft = Math.max(0, on.offsetLeft - 20); } } /* 11.2 */
   const cl = r.querySelector("#chatlog"); if (cl && (o.atBottom !== false || o.chat !== S.chat || o.view !== S.view)) cl.scrollTop = cl.scrollHeight;
   if (o.focus){ const el = document.getElementById(o.focus.id); if (el){ el.focus({preventScroll: true}); try { el.setSelectionRange(o.focus.s, o.focus.e); } catch(e){} } }
 }
@@ -2208,7 +2220,7 @@ function rivalCard(r, st){
       <div class="row" style="margin-top:8px"><input type="number" id="gift" min="1" step="5" value="10" style="width:90px" aria-label="bedrag in M€"><button class="btn sm" data-a="riv" data-k="geschenk" data-n="${esc(r.naam)}">Geschenk (relatie +0,8 per €1M)</button></div>
     </div>
     ${war ? `<div class="dsec"><h4>Oorlog</h4>${r.acties.map(a => `<div class="opt"><div><div class="t">${esc(a.label)} · ${eur(a.kost)} · kans ${a.kans}%</div><div class="u">${esc(a.uitleg)}</div></div>
-        <div class="row" style="flex-wrap:nowrap">${a.key === "overval" ? `<select id="ovd" aria-label="district">${r.districten.filter(d => !d.hq && d.bereik).map(d => `<option value="${d.id}">${d.id} ${esc(d.naam)}</option>`).join("")}</select>` : ""}
+        <div class="row" style="flex-wrap:wrap;gap:6px">${a.key === "overval" ? `<select id="ovd" aria-label="district">${r.districten.filter(d => !d.hq && d.bereik).map(d => `<option value="${d.id}">${d.id} ${esc(d.naam)}</option>`).join("")}</select>` : ""}
         <button class="btn sm danger" data-a="war" data-k="${a.key}" data-n="${esc(r.naam)}" ${a.key === "overval" && !r.districten.some(d => !d.hq && d.bereik) ? "disabled" : ""}>Uitvoeren</button></div></div>`).join("")}</div>`
     : `<div class="dsec"><h4>Strijd om land</h4><p class="dim" style="font-size:13px;margin:0">Landen koop, verkoop of ruil je niet. ${esc(r.naam)} heeft ${r.districten.length} land${r.districten.length === 1 ? "" : "en"}${r.districten.some(d => !d.hq && d.bereik) ? ", waarvan je er een paar kunt betwisten" : ""}: open een vestiging daar, verkoop en lever meer op dat continent dan zij, voer campagne of patrouilleer. Twee maanden boven ${DOM_FLIP}% en groter dan zij, en het land valt jou toe. In een oorlog kun je het ook innemen.</p></div>`}
   </div>`;
@@ -2318,7 +2330,7 @@ function domPanel(st, M){
       <div class="domnext">${t ? `+€${z.bonus * t.geld}M${t.inv ? ` en +${t.inv} invloed` : ""} per beurt.` : sterk < SEA_MIN && pct >= 50 ? `Je hebt het grootste aandeel, maar pas vanaf ${SEA_MIN} zeemacht (nu ${sterk}) levert het iets op. Zet een eskader in.` : `Overwicht vanaf 50% (+€${z.bonus}M per beurt).`}${z.dominant && z.dominant !== "player" ? ` In handen van ${esc(z.dominant)}.` : ""}</div></div>`).join("") : '<p class="dim" style="font-size:13.5px">Je hebt nog geen zeemacht. Kustgebieden en eskaders geven je een aandeel. Klik op een zee op de kaart.</p>'}
     <h2 style="margin-top:14px">Invloed besteden</h2>
     ${Object.entries(st.invloedActies).map(([key, a]) => `<div class="opt"><div><div class="t">${esc(a.label)} · ${a.kost}</div><div class="u">${esc(a.uitleg)}${key === "vergunning" && st.vergunning ? " (klaar voor gebruik)" : ""}</div></div>
-      <div class="row" style="flex-wrap:nowrap">${key === "lobby" ? `<select id="infl-fac" aria-label="factie">${st.factieNamen.map(f => `<option>${esc(f)}</option>`).join("")}</select>` : key === "diplomatie" ? `<select id="infl-riv" aria-label="rivaal">${st.rivaalNamen.map(f => `<option>${esc(f)}</option>`).join("")}</select>` : ""}
+      <div class="row" style="flex-wrap:wrap;gap:6px">${key === "lobby" ? `<select id="infl-fac" aria-label="factie">${st.factieNamen.map(f => `<option>${esc(f)}</option>`).join("")}</select>` : key === "diplomatie" ? `<select id="infl-riv" aria-label="rivaal">${st.rivaalNamen.map(f => `<option>${esc(f)}</option>`).join("")}</select>` : ""}
       <button class="btn sm" data-a="infl" data-k="${key}" ${st.invloed >= a.kost ? "" : "disabled"}>Inzetten</button></div></div>`).join("")}
   </div>`;
 }
@@ -2436,7 +2448,8 @@ function helpOverlay(){
     ${simNiet().length ? `<p style="font-size:13px;margin:12px 0 0">De tijd pauzeert nu niet bij: ${esc(simNiet().map(k => ({besluit: "nieuwe besluiten", kritiek: "kritieke mails", gevaar: "hoge heat of een rode kas"})[k] || k).join(", "))}. <button class="btn sm" data-a="simalles">Weer overal pauzeren</button></p>` : ""}
     <p class="dim" style="font-size:13px;margin:12px 0 0">Sneltoetsen werken niet terwijl je typt. In de oprichting: 1-4 kiest een stap, Enter gaat verder, pijltjes wisselen van land.</p></div></div>`;
 }
-function goView(v){ S.view = v; localSet("view", v); S.mailBody = v === "inbox" ? S.mailBody : null; render(); document.getElementById("main")?.scrollTo(0, 0); }
+function goView(v){ S.view = v; localSet("view", v); S.mailBody = v === "inbox" ? S.mailBody : null; render(); document.getElementById("main")?.scrollTo(0, 0); naarBoven(); }
+function naarBoven(){ const se = document.scrollingElement || document.documentElement, nv = document.querySelector("nav"), top = nv ? nv.getBoundingClientRect().top + se.scrollTop : 0; if (se.scrollTop > top) se.scrollTop = top; } /* 11.2: op de gsm naar het begin van het nieuwe scherm, de kop blijft weg */
 document.addEventListener("keydown", e => { if ((e.key === "Enter" || e.key === " ") && e.target && e.target.matches && e.target.matches('[role="button"][data-a]')){ e.preventDefault(); e.target.click(); } });
 document.addEventListener("keydown", e => { if (S.menuOpen){ if (e.key === "Escape") sluitMenu(); return; }
   const tg = e.target, typing = tg && (/^(INPUT|TEXTAREA|SELECT)$/.test(tg.tagName) || tg.isContentEditable);
@@ -2497,7 +2510,7 @@ document.addEventListener("click", async e => {
   if (S.sound && e.target.closest("button,.dist")) blip(e.target.closest(".next") ? 220 : 660, .045);
   const t = e.target.closest("[data-view],[data-a],[data-open],[data-filter],[data-dist],[data-zone],[data-chip],[data-chat]");
   if (!t) return;
-  if (t.dataset.view){ S.view = t.dataset.view; localSet("view", S.view); try { history.replaceState(null, "", "#" + S.view); } catch(_){} if (S.view!=="inbox") S.mailBody = null; render(); document.getElementById("main")?.scrollTo(0,0); return; }
+  if (t.dataset.view){ S.view = t.dataset.view; localSet("view", S.view); try { history.replaceState(null, "", "#" + S.view); } catch(_){} if (S.view!=="inbox") S.mailBody = null; render(); document.getElementById("main")?.scrollTo(0,0); naarBoven(); return; }
   if (t.dataset.filter){ S.filter = t.dataset.filter; S.mailBody = null; S.compose = null; render(); return; }
   if (t.dataset.chat){ S.chat = t.dataset.chat; S.chatOpen = true; render(); document.getElementById("chattxt")?.focus({preventScroll: true}); return; }
   if (t.dataset.dist){ if (!S.state || !S.state.setup_done){ S.setup.home = t.dataset.dist; localSet("setup", JSON.stringify(S.setup)); render(); return; } S.dist = t.dataset.dist; S.zone = null; render(); return; }
@@ -2736,6 +2749,7 @@ function simCtl(over){ const dur = SIM_MS[S.snel] || 2000, gedaan = S.loopt && S
   return `<div class="simctl ${S.loopt ? "loopt" : ""}" role="group" aria-label="Tijd"><button class="simplay" data-a="simplay" title="${S.loopt ? "Pauze" : "Afspelen"} (spatie)" aria-label="${S.loopt ? "Pauze" : "Afspelen"}" ${over ? "disabled" : ""}>${S.loopt ? "❚❚" : "▶"}</button>
     <div class="simsnel" title="Snelheid (, en .)">${[1, 2, 3, 4, 5].map(n => `<button class="${S.snel === n ? "on" : ""}" data-a="simsnel" data-n="${n}" aria-label="Snelheid ${n}: ${SIM_LABEL[n]}" title="${n} · ${SIM_LABEL[n]}"><i style="height:${4 + n * 3}px"></i></button>`).join("")}</div>
     <button class="btn primary next" data-a="tick" title="Eén maand verder (N)" ${over ? "disabled" : ""}>+1<span class="nx-long"> MAAND</span> ▸</button>
+    <button class="btn savebtn" data-a="opslaan" title="Opslaan als opslagpunt (Ctrl+S). Terugzetten via Menu → Laden." aria-label="Opslaan" ${over ? "disabled" : ""}><span aria-hidden="true">💾</span><span class="nx-long"> OPSLAAN</span></button>
     ${S.loopt ? `<span class="simbar"><i style="animation-duration:${dur}ms;animation-delay:-${gedaan}ms"></i></span>` : ""}</div>`; }
 function simPauzeHtml(){ if (S.loopt || !S.simPauze) return ""; return `<div class="simpauze" role="status"><span><b>❚❚ GEPAUZEERD</b> ${esc(S.simPauze.tekst)}</span><span class="row" style="gap:6px">${S.simPauze.view ? `<button class="btn sm" data-view="${S.simPauze.view}">Bekijken</button>` : ""}${S.simPauze.soort ? `<button class="btn sm" data-a="simniet" data-k="${S.simPauze.soort}" title="Terugzetten kan bij ? (sneltoetsen en spelregels)">Hierbij niet meer pauzeren</button>` : ""}<button class="btn sm primary" data-a="simplay">Verder ▶</button><button class="btn sm" data-a="simweg" aria-label="Sluiten">✕</button></span></div>`; }
 /* 6.12: kleine besluiten (sponsoring, interviews, aanbiedingen, productnieuws) pauzeren de tijd niet; ze beslissen zichzelf na twee maanden */

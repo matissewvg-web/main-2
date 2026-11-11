@@ -131,7 +131,7 @@ const Store = {
   async slots(){
     let L = [];
     if (G.mode === "db"){
-      try { const d = await withTimeout(G.db.doc("meta/slots").get(), 8000); L = d.exists ? (d.data().lijst || []) : []; } catch(e){ return G.slots || []; }
+      try { const d = await withTimeout(G.db.doc("meta/slots").get(), 8000); L = d.exists ? (d.data().lijst || []) : []; G.slotsGezien = L.slice(); } catch(e){ return G.slots || []; }
       if (!L.length){ let vorige = null; try { const p = await withTimeout(G.db.doc("meta/huidig").get(), 8000); vorige = p.exists ? p.data().vorige : null; } catch(e){}
         for (const id of [G.gid, vorige].filter(Boolean)){ let info = {naam: "", datum: "", status: ""}; try { const g = await withTimeout(G.db.doc("games/" + id).get(), 8000); if (g.exists) info = this.slotInfo(id, g.data().s); } catch(e){} L.push({gid: id, ...info, t: Date.now()}); }
         await G.db.doc("meta/slots").set({lijst: L}).catch(() => {}); }
@@ -140,7 +140,11 @@ const Store = {
     const cur = L.find(x => x.gid === G.gid); if (cur && G.game) Object.assign(cur, this.slotInfo(G.gid, G.game), {t: Date.now()});
     G.slots = L; return L;
   },
-  async saveSlots(L){ G.slots = L; if (G.mode === "db") await G.db.doc("meta/slots").set({lijst: L}); else { try { localStorage.setItem("cl_slots", JSON.stringify(L)); } catch(e){} } },
+  /* 11.2: de lijst nooit leegschrijven. Kon de lijst net niet gelezen worden, dan stond er eerder alleen het nieuwe spel in en verdwenen je andere spellen uit Menu → Laden. Nu worden bestaande spellen altijd behouden, behalve wat je bewust verwijdert. */
+  async saveSlots(L, weg){ const W = new Set(weg ? [weg] : []);
+    if (G.mode === "db"){ let oud = []; try { const d = await withTimeout(G.db.doc("meta/slots").get(), 8000); oud = d.exists ? (d.data().lijst || []) : []; } catch(e){ oud = G.slotsGezien || []; }
+      const ids = new Set(L.map(x => x.gid)); L = [...L, ...oud.filter(x => !ids.has(x.gid))].filter(x => !W.has(x.gid)); G.slots = L; G.slotsGezien = L; await G.db.doc("meta/slots").set({lijst: L}); }
+    else { G.slots = L.filter(x => !W.has(x.gid)); try { localStorage.setItem("cl_slots", JSON.stringify(G.slots)); } catch(e){} } },
   async switchSlot(gid){
     if (!gid || gid === G.gid) return false;
     const L = await this.slots(); await this.saveSlots(L).catch(() => {});
@@ -168,7 +172,7 @@ const Store = {
       for (const sub of ["mails", "chats", "backups"]){ try { const q = await withTimeout(G.db.collection(base + "/" + sub).get(), 10000); for (const d of q.docs) await G.db.doc(base + "/" + sub + "/" + d.id).delete(); } catch(e){} }
       try { await G.db.doc(base).delete(); } catch(e){} }
     else { try { localStorage.removeItem("cl_slot_" + gid); } catch(e){} }
-    await this.saveSlots(L); return true;
+    await this.saveSlots(L, gid); return true;
   },
 };
 /* 10.5: staat er in deze browser een stand die verder is dan het online spel (gespeeld toen de online opslag niet bereikbaar was)? Dan mag de speler die als apart spel online zetten. Er wordt nooit iets overschreven. */
