@@ -195,6 +195,16 @@ const html = '<!doctype html><html><head><meta charset=utf8></head><body>' + fs.
   const klUI = await p.evaluate(() => { const s = G.game, a = maakAanvraag(s); (s.aanvragen ??= []).push(a); S.view = "bedrijf"; render(); const t = document.querySelector("main").textContent; s.aanvragen = s.aanvragen.filter(x => x !== a); render(); return /Klanten/.test(t) && /Scherp/.test(t) && /Afwijzen/.test(t); });
   ok(kl.n1 === 1 && kl.k[0] > kl.k[2] && kl.k[0] >= kl.k[1] && kl.k[1] >= kl.k[2] && kl.r1 && kl.winst === 5.5 && kl.con && kl.con.perMaand === 4.8 && kl.maand === 2.6 && kl.verbroken && kl.repDaling >= 5 && kl.over === 0 && klUI,
     "klanten komen naar jou: aanvraag verschijnt, scherp geeft meer kans dan hoog, levering betaalt 55% marge, raamcontract betaalt elke maand, zonder product verbroken met boete, kaart op Bedrijf: " + JSON.stringify(kl));
+  // 5.10 export en vergunningen
+  const ex = await p.evaluate(() => { const c = JSON.parse(JSON.stringify(G.game)), ctx = Ctx(); c.cash = 500; c.exportVergunning = {}; c.smokkelroute = {}; const pm = c.producten.find(x => x.status === "markt"); if (!pm) return {geen: true}; pm.aard = "wapen";
+    const thuis = exportThuis(c), ander = CONTINENTS.find(k => k.naam !== thuis).naam; for (const k of CONTINENTS) (c.spanning ??= {})[k.naam] = 20;
+    const e0 = exportExtra(c, pm, 10), thuisNee = actExport(c, ctx, "vergunning", thuis).ok, k1 = vergunningKost(c), v = actExport(c, ctx, "vergunning", ander).ok, k2 = vergunningKost(c), e1 = exportExtra(c, pm, 10);
+    c.spanning[ander] = 60; const e2 = exportExtra(c, pm, 10), sm = actExport(c, ctx, "smokkel", ander).ok, e3 = exportExtra(c, pm, 10); c.spanning[ander] = 95; const e4 = exportExtra(c, pm, 10);
+    pm.aard = "medisch"; const e5 = exportExtra(c, pm, 10);
+    return {e0, thuisNee, k1, k2, v, e1, e2, sm, e3, e4, e5}; });
+  const exUI = await p.evaluate(() => { const s = G.game, pm = s.producten.find(x => x.status === "markt"); if (!pm) return true; const oud = pm.aard; pm.aard = "wapen"; S.view = "bedrijf"; render(); const t = document.querySelector("main").textContent; pm.aard = oud; render(); return /Export/.test(t) && /Vergunning ·/.test(t); });
+  ok(ex.geen || (ex.e0.legaal === 0 && !ex.thuisNee && ex.v && ex.k2 > ex.k1 && Math.abs(ex.e1.legaal - 0.6) < 1e-9 && ex.e2.legaal === 0 && ex.e2.zwart === 0 && ex.sm && Math.abs(ex.e3.zwart - 0.48) < 1e-9 && ex.e3.heat === 0.3 && Math.abs(ex.e4.legaal - 0.6) < 1e-9 && ex.e5.legaal === 0) && exUI,
+    "export: vergunning per continent +6%, duurder per vergunning, embargo bij spanning 50-89 tenzij smokkelroute (zwart, heat), alleen wapens/beveiliging/implantaten, kaart op Bedrijf: " + JSON.stringify(ex));
   ok(/VERKOOP/.test(verkoop) && /KEURING/.test(verkoop), "tabblad Verkoop en keuring");
   ok(/VARIANT/.test(scherm), "varianten staan op het productblad");
   if (out){ const bl = await p.$('.prodblad'); if (bl) await bl.screenshot({path: out + "/verkoop.png"}); }

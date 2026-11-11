@@ -521,6 +521,7 @@ function tick(s){
     rev += r; cost += c; heatAdd += t.heat * Math.pow(t.heat <= 1 ? Math.min(d.level, 6) : d.level, 0.75) * 0.5;
     lines.push(`| ${d.name || d.type} (${d.type} L${d.level}) | ${r1(r)} | ${r1(c)} |`); (s.divomzet ??= {})[d.name || d.type] = r1(r);
     const mk = opMarkt(s, d); if (mk.length){ let po = 0, pk = 0, zw = 0, vk = 0; for (const p of mk){ const K = KANAAL[kanaalVan(p)]; let o = prodOmzet(s, p) * eff; if (stukInfo(p).order && !isAbo(p)) o = orderOmzet(s, ctx, p, o); (s.prodomzet ??= {})[p.id] = r1(o); pk += prodKost(p, o);
+        { const ex = exportExtra(s, p, o); if (ex.legaal || ex.zwart){ po += ex.legaal; zw += ex.zwart; heatAdd += ex.heat; pk += prodKost(p, ex.legaal + ex.zwart); (s.exportOmzet ??= {})[p.id] = r1(ex.legaal + ex.zwart); } } /* 5.10 */
         if (K.zwart){ zw += o * K.zwart; po += o * (1 - K.zwart); if (o > 0 && !ctx.journo && kansRol() < 0.04){ ctx.journo = true; s.reputation = clamp(s.reputation - 3); heatAdd += 3; mail(ctx, s, "Journalist", `${p.naam} op de zwarte markt`, `Een reportage volgt een lading ${p.naam} van een kofferbak in een steeg tot een bende. Uw naam staat erbij. Reputatie −3, heat +3.`, "HOOG"); } } else po += o; /* 5.0: zwarte markt is een echt risico */ vk += K.vast * diff + capVast(s, p); heatAdd += K.heat; }
       rev += po; cost += pk + vk; lines.push(`| Producten ${d.name || d.type} (${mk.length}) | ${r1(po)} | ${r1(pk + vk)} |`);
       if (zw){ s.accounts.zwart = r1((s.accounts.zwart || 0) + zw); lines.push(`| Zwarte markt ${d.name || d.type} (naar zwart geld) | ${r1(zw)} | 0 |`); } }
@@ -665,7 +666,7 @@ function tick(s){
 }
 
 /* ---------- de stad: elke game een andere kaart ---------- */
-const VERSION = "5.9";
+const VERSION = "5.10";
 const MAP_W = 1000, MAP_H = 680;
 const RIVAL_COLORS = ["#ff9a1f", "#3d7bff", "#c6ff2e", "#f2f2f2", "#9b5cff", "#ffd400", "#ff4d4d"];
 const ARCH = {
@@ -3387,6 +3388,25 @@ function actAanvraag(s, ctx, id, keuze){ const a = (s.aanvragen || []).find(x =>
   else msg = `Verloren: ${a.klant} kiest ${riv.length ? CH(riv).name : "een andere leverancier"}.`;
   s.accounts.operationeel = s.cash; addLog(s, msg); mail(ctx, s, "Verkoop", `Inschrijving ${a.klant}: ${roll.ok ? "gewonnen" : "verloren"}`, msg + ` (Worp ${roll.txt}.)`, "NORMAAL");
   return {ok: true, msg: msg + ` Worp ${roll.txt}.`}; }
+/* 5.10: export en vergunningen. Wapens, beveiliging en implantaten verkopen standaard op je eigen continent; een exportvergunning per ander continent (blijvend) geeft +6% omzet per continent. Bij Sancties of Privélegers (spanning 50-89) ligt daar een embargo: de vergunning telt niet, tenzij je een smokkelroute hebt (zwart geld, heat). */
+const EXPORT_AARD = ["wapen", "beveiliging", "implantaat"], EXPORT_BONUS = 0.06;
+const exportThuis = s => (s.districts.find(x => x.id === s.player.home_district) || {}).continent;
+const embargo = (s, cont) => { const v = spanningVan(s, cont); return v >= 50 && v < 90; };
+const vergunningKost = s => r1(15 * (DIFF[s.player.difficulty] || 1) * (1 + 0.25 * Object.keys(s.exportVergunning || {}).length));
+const smokkelKost = s => r1(8 * (DIFF[s.player.difficulty] || 1));
+function exportExtra(s, p, o){ const out = {legaal: 0, zwart: 0, heat: 0}; if (!(o > 0) || !EXPORT_AARD.includes(p.aard || aardVan(p.type, p.naam))) return out;
+  for (const c of Object.keys(s.exportVergunning || {})){ if (c === exportThuis(s)) continue; const b = o * EXPORT_BONUS;
+    if (!embargo(s, c)) out.legaal += b; else if ((s.smokkelroute || {})[c]){ out.zwart += b * 0.8; out.heat += 0.3; } }
+  return out; }
+function actExport(s, ctx, soort, cont){ if (!CONTINENTS.some(c => c.naam === cont) || cont === exportThuis(s)) return {ok: false, msg: "Kies een ander continent dan je thuiscontinent."};
+  if (soort === "vergunning"){ if ((s.exportVergunning || {})[cont]) return {ok: false, msg: `Je hebt al een exportvergunning voor ${cont}.`}; const k = vergunningKost(s); if (s.cash < k) return {ok: false, msg: `Een vergunning kost €${k}M.`};
+    s.cash = r1(s.cash - k); s.accounts.operationeel = s.cash; (s.exportVergunning ??= {})[cont] = ym(s); addLog(s, `Exportvergunning ${cont} (€${k}M)`);
+    return {ok: true, msg: `Exportvergunning voor ${cont}: wapens, beveiliging en implantaten verkopen daar nu ook (+${Math.round(EXPORT_BONUS * 100)}% omzet op die producten).${embargo(s, cont) ? " Let op: er ligt nu een embargo; zonder smokkelroute telt de vergunning pas als het embargo voorbij is." : ""}`}; }
+  if (soort === "smokkel"){ const S0 = (s.smokkelroute ??= {}); if (S0[cont]){ delete S0[cont]; return {ok: true, msg: `Smokkelroute naar ${cont} gestopt.`}; }
+    if (!(s.exportVergunning || {})[cont]) return {ok: false, msg: "Eerst een exportvergunning: zonder klanten daar is er niets te smokkelen."};
+    const k = smokkelKost(s); if (s.cash < k) return {ok: false, msg: `Een smokkelroute opzetten kost €${k}M.`}; s.cash = r1(s.cash - k); s.accounts.operationeel = s.cash; S0[cont] = ym(s); addLog(s, `Smokkelroute ${cont} (€${k}M)`);
+    return {ok: true, msg: `Smokkelroute naar ${cont}: tijdens een embargo gaat de handel door, als zwart geld (80%) en met heat.`}; }
+  return {ok: false, msg: "Onbekende actie."}; }
 const spanningGem = s => { const v = Object.values(s.spanning || {}); return v.length ? v.reduce((a, b) => a + b, 0) / v.length : 0; };
 function tijdlijnTick(s, ctx){ const nu = ym(s), gehad = (s.tijdlijnGehad ??= []), B = (s.vraagBasis ??= {});
   for (const t of TIJDLIJN){ if (t.d > nu || gehad.includes(t.d)) continue; gehad.push(t.d); const recent = mndNr(nu) - mndNr(t.d) <= 2;
@@ -3548,6 +3568,7 @@ function adviezen(s){
     const dreig = []; for (const r of s.rivals){ if (r.status === "oorlog" || (r.relatie || 0) > -20) continue; for (const d of playerDistricts(s)) if (d.id !== s.player.home_district && !(s.patrouille || {})[d.id] && spanningVan(s, d.continent) >= STRAAT.drempel && reachable(s, r.name, d)) dreig.push([r, d]); }
     if (dreig.length){ const [r, d] = dreig[0]; add(8, `${r.name} mag je niet en kan ${d.name} op straat innemen (spanning ${Math.round(spanningVan(s, d.continent))}). Een patrouille maakt dat veel moeilijker: Wereld → Corpospanning.`, "wereld"); }
     const wet = Object.keys(CORPOWETTEN).find(k => wetStatus(s, k).ok); if (wet) add(5, `Corpowet ${CORPOWETTEN[wet].label} kan nu: ${CORPOWETTEN[wet].uitleg} Wereld → Corpospanning.`, "wereld");
+    { const exP = (s.producten || []).filter(p => p.status === "markt" && EXPORT_AARD.includes(p.aard || aardVan(p.type, p.naam))); if (exP.length && !Object.keys(s.exportVergunning || {}).length && s.cash > vergunningKost(s) + 50) add(4, `Je verkoopt ${PRODUCT_AARD[exP[0].aard || aardVan(exP[0].type, exP[0].naam)].label.toLowerCase()} alleen op je eigen continent. Een exportvergunning (Bedrijf → Export, €${vergunningKost(s)}M) geeft +${Math.round(EXPORT_BONUS * 100)}% omzet per continent.`, "bedrijf"); }
     const av = (s.aanvragen || [])[0]; if (av) add(7, `${av.klant} wil ${av.raam ? "een raamcontract" : "een levering"} (${PRODUCT_AARD[av.aard].label.toLowerCase()}). Inschrijven bij Bedrijf → Klanten, nog ${av.verloopt} maand${av.verloopt > 1 ? "en" : ""}.`, "bedrijf");
     const bijna = s.districts.find(d => (d.domMnd || 0) >= 1); if (bijna) add(6, `${bijna.name} valt je volgende maand toe als je aandeel boven ${DOM_FLIP}% blijft (Kaart).`, "kaart"); }
   if (s.heat > 55) add(9, `Heat ${Math.round(s.heat)}: boven 90 volgt een razzia. Laat een netrunner sporen wissen (Crew), vraag de commissaris om een gunst (Mensen) of gebruik invloed (Kaart).`, "crew");
@@ -4408,6 +4429,7 @@ const API = {
   async "/api/aanwezig"(d){ const s = G.game, ctx = Ctx(); const r = actAanwezig(s, ctx, d.id); if (r.ok) await persist(ctx); return {ok: r.ok, bericht: r.msg}; },
   async "/api/taak"(d){ const s = G.game, ctx = Ctx(); const r = d.rol ? actAannemen(s, ctx, d.rol) : actTaak(s, ctx, d.k, !!d.aan); if (r.ok) await persist(ctx); return {ok: r.ok, bericht: r.msg}; },
   async "/api/aanvraag"(d){ const s = G.game, ctx = Ctx(); const r = actAanvraag(s, ctx, d.id, d.keuze); if (r.ok) await persist(ctx); return {ok: r.ok, bericht: r.msg}; },
+  async "/api/export"(d){ const s = G.game, ctx = Ctx(); const r = actExport(s, ctx, d.soort, d.cont); if (r.ok) await persist(ctx); return {ok: r.ok, bericht: r.msg}; },
   async "/api/corpo"(d){ const s = G.game, ctx = Ctx(); const r = actCorpo(s, ctx, d.soort, d.id); if (r.ok) await persist(ctx); return {ok: r.ok, bericht: r.msg}; },
   async "/api/huisstijl"(d){ const s = G.game, ctx = Ctx(); const r = actHuisstijl(s, d || {}); if (r.ok) await persist(ctx); return {ok: r.ok, bericht: r.msg}; },
   async "/api/product"(d){ const s = G.game, ctx = Ctx(); const r = actProduct(s, ctx, d.soort, d); if (r.ok) await persist(ctx); return {ok: r.ok, bericht: r.msg}; },

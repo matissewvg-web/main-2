@@ -28,18 +28,19 @@ const html = '<!doctype html><html><head><meta charset=utf8></head><body>' + fs.
   ok(await p.evaluate(() => document.querySelector(".stappen .stapl li").classList.contains("af")), "stap 1 is afgevinkt na het eerste product");
   await p.click("[data-a=stappenweg]"); await p.waitForTimeout(200); ok(!(await p.$(".stappen")), "Verbergen haalt de kaart weg");
   // abonnees: forceer een gewone lancering en speel 12 maanden
+  await p.evaluate(() => { window.aboProduct = () => { let x = G.game.producten.find(y => window.__aboKopie && y.id === window.__aboKopie.id && y.status === "markt"); if (!x && window.__aboKopie){ x = JSON.parse(JSON.stringify(window.__aboKopie)); G.game.producten = G.game.producten.filter(y => y.id !== x.id); G.game.producten.unshift(x); } return x || G.game.producten[0]; }; }); /* 5.10: het product kan door een gebeurtenis van de markt zijn; dan de laatste stand terugzetten */
   const verloop = await p.evaluate(async () => { const q = G.game.producten[0]; q.doelOverride = 2; const rij = [];
-    for (let i = 0; i < 14; i++){ await API["/api/tick"]({force: true}); const x = G.game.producten.find(y => y.id === q.id); if (!x) return ["weg"]; if (x.status === "markt") rij.push([x.pop, x.abo, x.aboIn, x.aboUit]); if (G.game.status !== "actief") break; }
+    for (let i = 0; i < 14; i++){ await API["/api/tick"]({force: true}); const x = G.game.producten.find(y => y.id === q.id); if (!x) return ["weg"]; if (x.status === "markt"){ rij.push([x.pop, x.abo, x.aboIn, x.aboUit]); window.__aboKopie = JSON.parse(JSON.stringify(x)); } if (G.game.status !== "actief") break; }
     return rij; });
   ok(verloop.length >= 8 && verloop.every(r => r[1] != null) && Math.max(...verloop.map(r => r[1])) > verloop[0][1] + 3, "abonnees groeien na de lancering (piek boven de start; latere dalingen door gebeurtenissen mogen): " + JSON.stringify(verloop.map(r => r[1])));
-  const schok = await p.evaluate(() => { const x = G.game.producten[0], voor = x.abo, voorPop = x.pop; applyChoice(G.game, Ctx(), {product: {[x.id]: {pop: -25}}}); return {voor, na: x.abo, voorPop, naPop: x.pop}; });
+  const schok = await p.evaluate(() => { const x = aboProduct(), voor = x.abo, voorPop = x.pop; applyChoice(G.game, Ctx(), {product: {[x.id]: {pop: -25}}}); return {voor, na: x.abo, voorPop, naPop: x.pop}; });
   ok(schok.na < schok.voor && schok.na > schok.voor * 0.6, "een schandaal kost abonnees, maar niet allemaal: " + JSON.stringify(schok));
   await p.evaluate(() => { S.view = "bedrijf"; render(); });
   const rij = await p.evaluate(() => [...document.querySelectorAll(".prow .dim")].map(x => x.textContent).find(t => /abonnees/.test(t)) || "");
   ok(/[\d.]+ abonnees \(\+[\d.]+ \/ −[\d.]+ per mnd, [\d,]+% zegt op\)/.test(rij), "productlijn toont abonnees: " + rij.slice(0, 120));
   if (out){ await p.evaluate(() => { const el = [...document.querySelectorAll(".prow")].find(x => /abonnees/.test(x.textContent)); window.scrollTo(0, el.getBoundingClientRect().top + scrollY - 200); }); await p.waitForTimeout(150); await p.screenshot({path: out + "/abonnement.png"}); }
   // 3.9: loyaliteit, prijsverhoging, concurrent die abonnees weglokt
-  const loy = await p.evaluate(async () => { const x = G.game.producten[0], c0 = aboChurn(x); await API["/api/product"]({soort: "loyaliteit", id: x.id}); const c1 = aboChurn(x), cash0 = G.game.cash; aboTick(G.game, x, Ctx()); const kost = r1(cash0 - G.game.cash);
+  const loy = await p.evaluate(async () => { const x = aboProduct(), c0 = aboChurn(x); await API["/api/product"]({soort: "loyaliteit", id: x.id}); const c1 = aboChurn(x), cash0 = G.game.cash; aboTick(G.game, x, Ctx()); const kost = r1(cash0 - G.game.cash);
     const a0 = x.abo; await API["/api/product"]({soort: "prijs", id: x.id, prijs: "premium"}); const a1 = x.abo;
     let k = null; for (let i = 0; i < 400 && !k; i++){ aboTick(G.game, x, Ctx()); k = G.game.keuzes.find(y => y.soort === "abo_" + x.id); }
     return {c0, c1, kost, a0, a1, keuze: k && k.opties.map(o => o.label)}; });
@@ -49,8 +50,8 @@ const html = '<!doctype html><html><head><meta charset=utf8></head><body>' + fs.
   const prijs = await p.evaluate(async () => { const s = G.game, d = s.divisions[0], q = {id: "tp", naam: "Testding", divisie: divNaam(d), type: d.type, aard: "consument", kwaliteit: 3, pop: 50, status: "markt", soort: "product", leeftijd: 5};
     const a = prijsProef(s, q, 1), b = prijsProef(s, q, 1.5), c = prijsProef(s, q, 0.7), best = besteprijs(s, q), m1 = prijsProef(s, {...q, aard: "medisch"}, 1), m = prijsProef(s, {...q, aard: "medisch"}, 1.5);
     const u1 = prijsProef(s, {...q, pop: 95}, 1), u2 = prijsProef(s, {...q, pop: 95}, 1.1);
-    const x = G.game.producten[0], r = await API["/api/product"]({soort: "prijs", id: x.id, f: 1.3}), f1 = x.prijsF, l1 = x.prijs, r2 = await API["/api/product"]({soort: "prijs", id: x.id, f: 9});
-    return {a, b, c, best, m1, m, u1, u2, ok: r.ok, f: f1, label: l1, f2: G.game.producten[0].prijsF, ok2: r2.ok}; });
+    const x = aboProduct(), r = await API["/api/product"]({soort: "prijs", id: x.id, f: 1.3}), f1 = x.prijsF, l1 = x.prijs, r2 = await API["/api/product"]({soort: "prijs", id: x.id, f: 9});
+    return {a, b, c, best, m1, m, u1, u2, ok: r.ok, f: f1, label: l1, f2: x.prijsF, ok2: r2.ok}; });
   ok(prijs.b.vraag < prijs.a.vraag && prijs.c.vraag > prijs.a.vraag, "duurder verkoopt minder, goedkoper meer: " + JSON.stringify([prijs.c.vraag, prijs.a.vraag, prijs.b.vraag]));
   ok(prijs.b.stukPrijs > prijs.a.stukPrijs && prijs.c.stukPrijs < prijs.a.stukPrijs, "stukprijs volgt de schuif");
   ok(prijs.best.winst >= prijs.a.winst && prijs.best.winst >= prijs.b.winst && prijs.best.winst >= prijs.c.winst, "beste prijs geeft de meeste winst: " + JSON.stringify(prijs.best));
