@@ -361,6 +361,14 @@ const html = '<!doctype html><html><head><meta charset=utf8></head><body>' + fs.
     const noot = /lichter gemaakt/.test(kleurNoot({kleur: "#101820", thema: "bloed"})), kaart = ownerColor(G.game, "player");
     G.game.huisstijl = oud || {}; if (!oud) delete G.game.huisstijl; pasStijlToe(G.game.huisstijl); render(); return {donker, licht, normaal, noot, kaart}; });
   ok([kls.donker, kls.licht, kls.normaal].every(x => x.c >= 4.5 && x.m >= 4.5 && x.opC >= 4.5 && x.opM >= 3 && x.glow) && kls.donker.rgb !== "5,217,232" && kls.noot && /^#[0-9a-f]{6}$/i.test(kls.kaart), "kleuren: hoofd- en accentkleur kleuren alles en blijven leesbaar (contrast ≥ 4,5 op elk thema, tekst op knoppen zwart of wit): " + JSON.stringify(kls));
+  // 6.6 zwart, gelijk accent en twee divisienamen
+  const zw66 = await p.evaluate(() => { const K = stijlKleuren({kleur: "#000000", accent: "#000000", thema: "chroom"}), k = K.k.rgb, a = K.a.rgb, pan = hexRgb(THEMAS.chroom.panel3);
+    const grijs = stijlKleuren({kleur: "#333333", thema: "neon"}).k.rgb, rood = stijlKleuren({kleur: "#5a0010", thema: "bloed"}).k.rgb, gelijk = stijlKleuren({kleur: "#ff0000", accent: "#ff1010"}), anders = stijlKleuren({kleur: "#ff0000", accent: "#0040ff"});
+    const n = newGame({...S.setup, corp_name: "Twee BV", doctrine: ["Logistiek", "Biotech"], home: "BNL", divisie_naam: "Havenlijn", divisie_naam2: "Genlab"}).s, n2 = newGame({...S.setup, corp_name: "Dubbel BV", doctrine: ["Logistiek", "Biotech"], home: "BNL", divisie_naam: "Kern", divisie_naam2: "Kern"}).s;
+    return {neutraal: k[0] === k[1] && k[1] === k[2], licht: k[0] > 200, accentAnders: Math.hypot(k[0] - a[0], k[1] - a[1], k[2] - a[2]) >= 110, verschoven: !!K.a.verschoven, ck: Math.round(contrast(k, pan) * 10) / 10, ca: Math.round(contrast(a, pan) * 10) / 10,
+      grijsNeutraal: grijs[0] === grijs[1] && grijs[1] === grijs[2], roodBlijftRood: rood[0] > rood[1] + 60 && rood[0] > rood[2] + 40, gelijkVerschoven: !!gelijk.a.verschoven, andersNiet: !anders.a.verschoven, namen: n.divisions.map(d => d.name), dubbel: n2.divisions.map(d => d.name)}; });
+  ok(zw66.neutraal && zw66.licht && zw66.accentAnders && zw66.verschoven && zw66.ck >= 4.5 && zw66.ca >= 4.5 && zw66.grijsNeutraal && zw66.roodBlijftRood && zw66.gelijkVerschoven && zw66.andersNiet && zw66.namen.join() === "Havenlijn,Genlab" && zw66.dubbel.join() === "Kern,Kern 2",
+    "zwart en gelijke kleuren: zwart wordt neutraal zilver (geen roze), te gelijk accent wordt een andere kleur, donkerrood blijft rood, twee divisies krijgen elk hun naam: " + JSON.stringify(zw66));
   ok(/VERKOOP/.test(verkoop) && /KEURING/.test(verkoop), "tabblad Verkoop en keuring");
   ok(/VARIANT/.test(scherm), "varianten staan op het productblad");
   if (out){ const bl = await p.$('.prodblad'); if (bl) await bl.screenshot({path: out + "/verkoop.png"}); }

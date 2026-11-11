@@ -669,7 +669,7 @@ function tick(s){
 }
 
 /* ---------- de stad: elke game een andere kaart ---------- */
-const VERSION = "6.5";
+const VERSION = "6.6";
 const MAP_W = 1000, MAP_H = 680;
 const RIVAL_COLORS = ["#ff9a1f", "#3d7bff", "#c6ff2e", "#f2f2f2", "#9b5cff", "#ffd400", "#ff4d4d"];
 const ARCH = {
@@ -4057,7 +4057,8 @@ function newGame0(d){
   const yr = parseInt(d.year, 10); s.date = {year: clamp(isNaN(yr) ? 2004 : yr, 1980, 2100), month: 1};
   [s.cash, s.debt] = ({krap: [80, 0], normaal: [100, 0], ruim: [150, 60]})[d.kapitaal] || [100, 0];
   const lvl = doctrine.length === 1 ? 2 : 1;
-  s.divisions = doctrine.map((t, i) => ({name: i === 0 && String(d.divisie_naam || "").trim() ? String(d.divisie_naam).trim().slice(0, 40) : t, type: t, level: lvl}));
+  s.divisions = doctrine.map((t, i) => { const eigen = String((i === 0 ? d.divisie_naam : i === 1 ? d.divisie_naam2 : "") || "").trim().slice(0, 40); return {name: eigen || t, type: t, level: lvl}; }); /* 6.6: een naam per divisie */
+  if (s.divisions.length === 2 && s.divisions[0].name === s.divisions[1].name) s.divisions[1].name += " 2";
   const c = s.culture;
   c.slogans = String(d.slogan || "").split("\n").map(x => x.trim()).filter(Boolean).slice(0, 3);
   c.layoff_policy = d.ontslag === "hard" ? "hard" : "normal";

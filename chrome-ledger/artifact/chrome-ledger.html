@@ -626,7 +626,7 @@ function render(){
   const _ui = snapUI();
   S.state = vm(); const st = S.state;
   if (!VIEWS[S.view]) S.view = "overzicht";
-  if (st.geen_spel || !st.setup_done) { root.innerHTML = setupView(); bindSetup(); document.getElementById("ticker").hidden = true; return; }
+  if (st.geen_spel || !st.setup_done) { root.innerHTML = setupView(); bindSetup(); pasStijlToe((S.setup || {}).huisstijl || {}); /* 6.6: de setup toont je stijl meteen */ document.getElementById("ticker").hidden = true; return; }
   const unread = st.mails.filter(m => !m.gelezen && !m.archief).length;
   const commsOpen = st.contacten.filter(c => c.open).length;
   const nav = [["overzicht","Overzicht", st.besluiten.length ? `<span class="badge amber">${st.besluiten.length}</span>`:""],
@@ -1034,6 +1034,7 @@ function setupBonus(homeD){
     <p class="dim" style="font-size:13px;margin:6px 0 0">Elk soort land geeft een ander voordeel: havens, financiële centra, datavalleien, sloppen. Klik verschillende landen aan om ze te vergelijken.</p>` : "";
 }
 const VERSIES = [
+  ["6.6", "Kleuren en divisies duidelijker", ["Zwart (en donkergrijs) als kleur werd roze; nu wordt het een strak zilverwit, zonder tint. Andere donkere kleuren worden lichter met dezelfde tint.", "Lijkt je accent te veel op je hoofdkleur (bv. zwart en zwart), dan zie je niet meer wat belangrijk is. Het spel kiest dan een duidelijk andere accentkleur en zegt dat in Huisstijl. Kies zelf een ander accent om het te bepalen.", "Bij het oprichten zie je je kleuren en thema meteen op het hele scherm, met één korte regel uitleg.", "Twee divisies: je kunt nu elke divisie een eigen naam geven bij het oprichten (eerst kreeg alleen de eerste een naam). Dezelfde naam twee keer wordt automatisch Kern en Kern 2."]],
   ["6.5", "Kleuren die alles kleuren, altijd leesbaar", ["Je hoofd- en accentkleur kleuren nu echt alles: knoppen, chips, randen, gloed, badges, balkjes, grafieken, de menubalk, de kaart (jouw gebied), de krant en je logo. Elk thema kleurt ook de panelen, de kopbalk en de grijze bijschriften.", "Altijd leesbaar: kies je een te donkere kleur, dan maakt het spel hem lichter met dezelfde tint tot tekst genoeg contrast heeft (de toegankelijkheidsnorm 4,5:1, ook op de lichtste panelen). Tekst óp een gekleurde knop wordt vanzelf zwart of wit. In Huisstijl zie je wanneer een kleur is aangepast.", "De grijze bijschrifttekst was op het standaardthema net te zwak (contrast 3,3); die is lichter gemaakt."]],
   ["6.4", "Opruimen", ["Dichtst bij winst noemde soms Corporate zone, alleen omdat de corpospanning vanzelf stijgt. De voortgang telt nu de zwakste van de twee voorwaarden (spanning en jouw aandeel).", "Tests vijf keer parallel na elkaar: geen toevallige fouten meer."]],
   ["6.3", "Corporate zone", ["Een vierde manier om te winnen: wordt je thuiscontinent een corporate zone (corpospanning 90+) terwijl jij er 60% of meer van de dominantie hebt, dan regeert jouw corporatie daar. Je voortgang staat bij de doelen en in Wat nu?.", "Achter de schermen: Wat nu? kan zijn volledige lijst aan tests geven, zodat een test niet meer faalt als er toevallig zes belangrijkere adviezen zijn."]],
@@ -1544,11 +1545,15 @@ const mengWit = (c, t) => c.map(v => v + (255 - v) * t);
 function rgbHsl([r, g, b]){ r /= 255; g /= 255; b /= 255; const mx = Math.max(r, g, b), mn = Math.min(r, g, b), l = (mx + mn) / 2; let h = 0, s = 0; if (mx !== mn){ const d = mx - mn; s = l > 0.5 ? d / (2 - mx - mn) : d / (mx + mn); h = mx === r ? (g - b) / d + (g < b ? 6 : 0) : mx === g ? (b - r) / d + 2 : (r - g) / d + 4; h /= 6; } return [h, s, l]; }
 function hslRgb([h, s, l]){ if (!s) return [l * 255, l * 255, l * 255]; const q = l < 0.5 ? l * (1 + s) : l + s - l * s, p = 2 * l - q, f = t => { t = (t + 1) % 1; return t < 1 / 6 ? p + (q - p) * 6 * t : t < 1 / 2 ? q : t < 2 / 3 ? p + (q - p) * (2 / 3 - t) * 6 : p; }; return [f(h + 1 / 3) * 255, f(h) * 255, f(h - 1 / 3) * 255]; }
 function leesbaar(hex, bgHex, doel = 4.5){ const c0 = hexRgb(hex), bg = hexRgb(bgHex) || [6, 2, 14]; if (!c0) return null; let c = c0, [h, s, l] = rgbHsl(c0), stap = 0;
-  if (s < 0.25 && l < 0.3) s = 0.25; /* bijna zwart: een beetje kleur houden */
+  const grijs = s < 0.12 || (l < 0.08 && s < 0.5); if (grijs){ s = 0; if (l < 0.5){ l = 0.86; c = hslRgb([h, s, l]); } } /* 6.6: donkergrijs/zwart wordt een strak zilverwit; de rest blijft neutraal (geen rode tint) */ /* 6.6: zwart, grijs en wit blijven neutraal (geen rode tint) */
   while (contrast(c, bg) < doel && stap < 60){ stap++; l = Math.min(0.97, l + 0.02); if (l > 0.75) s = Math.max(0, s - 0.02); c = hslRgb([h, s, l]); } /* lichter met dezelfde tint; pas bij heel licht minder verzadigd */
-  return {hex: rgbHex(c), rgb: c.map(Math.round), aangepast: stap > 0}; }
+  return {hex: rgbHex(c), rgb: c.map(Math.round), aangepast: rgbHex(c) !== rgbHex(c0)}; }
 const tekstOp = c => contrast(c, [0, 0, 0]) >= contrast(c, [255, 255, 255]) ? "#03141a" : "#ffffff";
-function stijlKleuren(h){ const T = THEMAS[(h && h.thema) || "neon"] || {}, bg = T.bg || "#06020e", pan = T.panel3 || "#241449"; const k = h && h.kleur ? leesbaar(h.kleur, pan) : null, a = h && h.accent ? leesbaar(h.accent, pan) : null; return {bg, k, a}; } /* leesbaar op het lichtste paneel, dus ook op de achtergrond */
+function stijlKleuren(h){ const T = THEMAS[(h && h.thema) || "neon"] || {}, bg = T.bg || "#06020e", pan = T.panel3 || "#241449"; const k = h && h.kleur ? leesbaar(h.kleur, pan) : null; let a = h && h.accent ? leesbaar(h.accent, pan) : null;
+  /* 6.6: lijkt het accent te veel op de hoofdkleur, dan is niets nog te onderscheiden: kies een duidelijk andere accentkleur */
+  const kE = k ? k.rgb : [5, 217, 232], aE = a ? a.rgb : [255, 42, 109], afst = Math.hypot(kE[0] - aE[0], kE[1] - aE[1], kE[2] - aE[2]);
+  if (afst < 110){ const [hk, sk] = rgbHsl(kE), alt = sk < 0.12 ? "#ff2a6d" : rgbHex(hslRgb([(hk + 0.45) % 1, Math.max(0.75, sk), 0.55])); a = {...leesbaar(alt, pan), aangepast: true, verschoven: true}; }
+  return {bg, k, a}; } /* leesbaar op het lichtste paneel, dus ook op de achtergrond */
 function pasStijlToe(h){ const r = document.documentElement.style, T = THEMAS[(h && h.thema) || "neon"] || {}, {k, a} = stijlKleuren(h);
   for (const x of ["bg", "panel", "panel2", "panel3", "line", "line2", "muted", "dim"]) if (T[x]) r.setProperty("--" + x, T[x]); else r.removeProperty("--" + x);
   if (T.panel2 && T.bg){ r.setProperty("--top1", T.panel2); r.setProperty("--top2", T.bg); r.setProperty("--bg-rgb", hexRgb(T.bg).join(",")); } else { r.removeProperty("--top1"); r.removeProperty("--top2"); r.removeProperty("--bg-rgb"); }
@@ -1558,8 +1563,11 @@ function pasStijlToe(h){ const r = document.documentElement.style, T = THEMAS[(h
   else weg("cyan", "cyan-rgb", "cyan-d", "cyan-l", "on-cyan", "glow-c", "violet-rgb");
   if (a){ const s3 = zet("mag", a, "mag-rgb"); r.setProperty("--on-mag", tekstOp(a.rgb)); r.setProperty("--mag-l", rgbHex(mengWit(a.rgb, 0.25))); r.setProperty("--glow-m", `0 0 6px rgba(${s3},.6),0 0 20px rgba(${s3},.3)`); r.setProperty("--violet", rgbHex(mengWit(a.rgb, 0.25))); r.setProperty("--violet2-rgb", s3); }
   else weg("mag", "mag-rgb", "mag-d", "on-mag", "mag-l", "glow-m", "violet", "violet2-rgb"); }
-function kleurNoot(h){ const {k, a} = stijlKleuren(h), d = []; if (k && k.aangepast) d.push(`hoofdkleur <span style="display:inline-block;width:12px;height:12px;background:${esc(h.kleur)};vertical-align:middle"></span> → <span style="display:inline-block;width:12px;height:12px;background:${k.hex};vertical-align:middle"></span>`); if (a && a.aangepast) d.push(`accent <span style="display:inline-block;width:12px;height:12px;background:${esc(h.accent)};vertical-align:middle"></span> → <span style="display:inline-block;width:12px;height:12px;background:${a.hex};vertical-align:middle"></span>`);
-  return `<p class="dim" style="font-size:12.5px;margin:6px 0 0">Je kleuren kleuren alles: knoppen, randen, gloed, grafieken, de kaart en je logo. ${d.length ? `Om leesbaar te blijven op dit thema is je ${d.join(" en ")} iets lichter gemaakt.` : "Ze zijn leesbaar op dit thema."} Tekst op een gekleurde knop wordt vanzelf zwart of wit.</p>`; }
+function kleurNoot(h){ const {k, a} = stijlKleuren(h || {}), sw = c => `<span style="display:inline-block;width:12px;height:12px;background:${c};vertical-align:middle;box-shadow:0 0 0 1px rgba(255,255,255,.35)"></span>`, L = [];
+  if (k && k.aangepast) L.push("hoofdkleur lichter gemaakt, anders is tekst niet te lezen");
+  if (a && a.verschoven) L.push("accent veranderd, want het leek te veel op je hoofdkleur");
+  else if (a && a.aangepast) L.push("accent lichter gemaakt, anders is tekst niet te lezen");
+  return `<p class="dim" style="font-size:12.5px;margin:6px 0 0">In het spel: ${sw((k || {}).hex || "#05d9e8")} hoofdkleur, ${sw((a || {}).hex || "#ff2a6d")} accent.${L.length ? " " + L.map(x => x[0].toUpperCase() + x.slice(1)).join(". ") + "." : ""}</p>`; }
 const spelerKleur = () => { const k = stijlKleuren((G.game && G.game.huisstijl) || {}).k; return (k && k.hex) || "#05d9e8"; };
 function logoHtml(h, naam, size){ const L = (h && h.logo) || {soort: "gen", symbool: "◆", vorm: "zeshoek"}, SK = stijlKleuren(h || {}), kl = (SK.k && SK.k.hex) || "#05d9e8", ac = (SK.a && SK.a.hex) || "#ff2a6d", sz = size || 48; /* 6.5: logo in de leesbare kleur */
   if (L.soort === "png") return `<img src="${esc(L.data)}" alt="logo" width="${sz}" height="${sz}" style="object-fit:contain;border-radius:4px">`;
@@ -2119,7 +2127,9 @@ function setupView(){
       <label class="f">Motto<input type="text" data-f="motto" value="${esc(T.motto)}" placeholder="Bijv. Wij vragen niet wat er in de container zit."></label>
       <label class="f">Achtergrond oprichter<input type="text" data-f="background" value="${esc(T.background)}" list="bgs"></label>
       <label class="f">Stad van je hoofdkantoor (optioneel)<input type="text" data-f="hq_stad" value="${esc(T.hq_stad||"")}" placeholder="Bijv. Rotterdam"></label>
-      <label class="f">Naam eerste divisie (optioneel)<input type="text" data-f="divisie_naam" value="${esc(T.divisie_naam)}" placeholder="Bijv. Havenlijn"></label>
+      ${(() => { const D = [T.eigen_naam && T.eigen_naam.trim(), ...(T.doctrine || [])].filter(Boolean).slice(0, 2); /* 6.6: met twee divisies twee namen */
+        if (D.length < 2) return `<label class="f">Naam van je divisie (optioneel)<input type="text" data-f="divisie_naam" value="${esc(T.divisie_naam || "")}" placeholder="${esc(D[0] ? "Bijv. " + D[0] + " Noord" : "Bijv. Havenlijn")}"></label>`;
+        return `<label class="f">Naam divisie ${esc(D[0])} (optioneel)<input type="text" data-f="divisie_naam" value="${esc(T.divisie_naam || "")}" placeholder="leeg = ${esc(D[0])}"></label><label class="f">Naam divisie ${esc(D[1])} (optioneel)<input type="text" data-f="divisie_naam2" value="${esc(T.divisie_naam2 || "")}" placeholder="leeg = ${esc(D[1])}"></label>`; })()}
       <label class="f">Jouw naam als CEO (optioneel)<input type="text" data-f="ceo_naam" value="${esc(T.ceo_naam||"")}" placeholder="Bijv. Mira Kade"></label>
       <label class="f">Wereldzaad (optioneel)<input type="text" data-f="zaad" value="${esc(T.zaad||"")}" placeholder="Leeg = nieuwe wereld. Of de code van een vriend."></label></div>
       <datalist id="bgs"><option>Ex-militair</option><option>Hacker</option><option>Erfgenaam</option><option>Ex-vakbondsman</option><option>Ex-havenarbeider</option><option>Gevallen bankier</option></datalist></div>
