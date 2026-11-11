@@ -177,7 +177,7 @@ const html = '<!doctype html><html><head><meta charset=utf8></head><body>' + fs.
   const kl = await p.evaluate(() => { const c = JSON.parse(JSON.stringify(G.game)), ctx = Ctx(); c.aanvragen = []; c.contracten = []; c.cash = 300;
     const oud = window.kansRol; window.kansRol = () => 0; aanvraagTick(c, ctx); window.kansRol = oud; const n1 = c.aanvragen.length, a0 = c.aanvragen[0];
     if (a0) a0.minKwal = 1; c.reputation = 40; const k = a0 ? [aanvraagKans(c, a0, "laag"), aanvraagKans(c, a0, "normaal"), aanvraagKans(c, a0, "hoog")] : [];
-    const e = maakAanvraag(c); e.raam = false; e.bedrag = 10; delete e.maanden; delete e.perMaand; e.soort = "staat"; c.aanvragen.push(e); const cash0 = c.cash, r1 = actAanvraag(c, ctx, e.id, "normaal"), winst = Math.round((c.cash - cash0) * 10) / 10;
+    const e = maakAanvraag(c); for (const r of c.rivals) r.producten = (r.producten || []).filter(x => x.aard !== e.aard); e.raam = false; e.bedrag = 10; e.minKwal = 1; delete e.maanden; delete e.perMaand; e.soort = "staat"; c.aanvragen.push(e); const cash0 = c.cash, r1 = actAanvraag(c, ctx, e.id, "normaal"), winst = Math.round((c.cash - cash0) * 10) / 10;
     const f = maakAanvraag(c); f.raam = true; f.maanden = 6; f.perMaand = 4; delete f.bedrag; f.soort = "staat"; f.minKwal = 1; c.aanvragen.push(f); actAanvraag(c, ctx, f.id, "hoog"); const con = c.contracten.find(x => x.id === f.id);
     const cash1 = c.cash; window.kansRol = () => 0.99; aanvraagTick(c, Ctx()); const maand = Math.round((c.cash - cash1) * 10) / 10;
     for (const p of c.producten) if ((p.aard || aardVan(p.type, p.naam)) === f.aard) p.status = "teruggeroepen"; const rep0 = c.reputation; const ctx4 = Ctx(); aanvraagTick(c, ctx4); window.kansRol = oud;
@@ -375,7 +375,7 @@ const html = '<!doctype html><html><head><meta charset=utf8></head><body>' + fs.
   const zp = await p.evaluate(() => { const c = JSON.parse(JSON.stringify(G.game)); c.aanvragen = []; c.contracten = []; c.cash = 500; c.reputation = 40; const d = c.divisions[0];
     const t = mkProduct(c, d, "Testtank", 4, 60); t.aard = "wapen"; t.schaal = "vlag"; c.producten.push(t); const order = stukInfo(t).order;
     const oud = window.kansRol; window.kansRol = () => 0; const ctx = Ctx(); aanvraagTick(c, ctx); window.kansRol = oud; const ca = c.aanvragen.filter(a => a.product === t.id), alg = c.aanvragen.filter(a => !a.product).length;
-    const a0 = ca[0]; let gewonnen = null; if (a0){ a0.raam = false; a0.bedrag = 20; a0.cont = null; delete a0.maanden; delete a0.perMaand; c.prodomzet = {}; const r = actAanvraag(c, Ctx(), a0.id, "normaal"); gewonnen = {ok: r.ok, omzet: (c.prodomzet || {})[t.id], orders: (t.orders || []).length}; }
+    const a0 = ca[0]; let gewonnen = null; if (a0){ a0.raam = false; a0.bedrag = 20; a0.cont = null; a0.minKwal = 1; for (const r of c.rivals) r.producten = (r.producten || []).filter(x => x.aard !== "wapen"); delete a0.maanden; delete a0.perMaand; c.prodomzet = {}; const r = actAanvraag(c, Ctx(), a0.id, "normaal"); gewonnen = {ok: r.ok, omzet: (c.prodomzet || {})[t.id], orders: (t.orders || []).length}; }
     t.status = "markt"; const voor = c.aanvragen.filter(x => x.product === t.id).length; c.cash = 100; const pr = actPitch(c, Ctx(), t.id), pr2 = actPitch(c, Ctx(), t.id), na = c.aanvragen.filter(x => x.product === t.id), nieuw = na[na.length - 1];
     c.producten = c.producten.filter(x => x === t || (x.aard || aardVan(x.type, x.naam)) !== "wapen"); const kansC = aanvraagKans(c, {...nieuw, minKwal: 1}, "normaal"), kansA = aanvraagKans(c, {...nieuw, product: null, minKwal: 1}, "normaal");
     const pitch = {ok: pr.ok, tweede: pr2.ok, erbij: na.length - voor, cash: c.cash, kansC, kansA, minK: nieuw && nieuw.minKwal <= t.kwaliteit};
@@ -457,7 +457,7 @@ const html = '<!doctype html><html><head><meta charset=utf8></head><body>' + fs.
   // 7.7 contracten deel 2: langer als tegenbod, kwaliteitsplicht, productplicht
   const c7 = await p.evaluate(() => { const c = JSON.parse(JSON.stringify(G.game)); c.aanvragen = []; c.contracten = []; c.cash = 500; const d = c.divisions[0];
     const pr = mkProduct(c, d, "Vest K", 3, 60); Object.assign(pr, {aard: "wapen", schaal: "groot", keuring: "ok"}); c.producten.push(pr);
-    const a = {id: "aT1", m: ym(c), soort: "staat", klant: "Testministerie", aard: "wapen", raam: true, maanden: 12, perMaand: 2, product: pr.id, minKwal: 3, verloopt: 3, cont: null}; c.aanvragen.push(a);
+    const a = {id: "aT1", m: ym(c), soort: "staat", klant: "Testministerie", aard: "wapen", raam: true, maanden: 12, perMaand: 2, product: pr.id, minKwal: 3, verloopt: 3, cont: null}; c.aanvragen.push(a); for (const r of c.rivals) r.producten = (r.producten || []).filter(x => x.aard !== "wapen");
     const oud = window.kansRol; window.kansRol = () => 0; window.__e7 = crypto.getRandomValues; crypto.getRandomValues = x => { x[0] = 5; return x; };
     const r = actAanvraag(c, Ctx(), "aT1", "lang"); crypto.getRandomValues = window.__e7; const con = c.contracten[0] || {};
     const eenm = {id: "aT2", soort: "staat", klant: "X", aard: "wapen", raam: false, bedrag: 5, verloopt: 3}; c.aanvragen.push(eenm); const r2 = actAanvraag(c, Ctx(), "aT2", "lang");
@@ -486,6 +486,13 @@ const html = '<!doctype html><html><head><meta charset=utf8></head><body>' + fs.
     const c = JSON.parse(JSON.stringify(G.game)), th = exportThuis(c); for (const k of CONTINENTS) c.spanning[k.naam] = 20; const laag = {...c.spanning}; c.spanning[th] = 65; const v0 = c.spanning[th]; for (let i = 0; i < 12; i++) spanningTick(c, Ctx());
     return {r: !!(r && r.ok), onder, l: !!(l && l.ok), lob, k0, k1, stijg: Math.round((c.spanning[th] - v0) * 10) / 10}; });
   ok(c84.r && c84.onder && c84.l && c84.k1 >= c84.k0 && c84.lob && c84.stijg >= 3, "8.4: een klik terwijl het spel bezig is wacht en gaat dan door; onderhandelen en lobby werken (+kans); spanning boven 60 escaleert snel: " + JSON.stringify(c84));
+  // 8.5 de klant vergelijkt; enige aanbieder = zeker
+  const v85 = await p.evaluate(() => { const c = JSON.parse(JSON.stringify(G.game)), d = c.divisions[0], pr = mkProduct(c, d, "Uniek", 3, 60); Object.assign(pr, {aard: "orbitaal", keuring: "ok"}); c.producten = [pr]; for (const r of c.rivals) r.producten = (r.producten || []).filter(x => x.aard !== "orbitaal");
+    const a = {id: "m1", soort: "staat", klant: "K", aard: "orbitaal", raam: false, bedrag: 5, minKwal: 1, verloopt: 3, cont: null}; c.aanvragen = [a]; const mono = aanvraagVergelijk(c, a, "hoog");
+    const r = c.rivals[0]; r.producten = [...(r.producten || []), {naam: "Conc", aard: "orbitaal", kwaliteit: 4, pop: 50}]; const met = ["laag", "normaal", "hoog"].map(k => aanvraagKans(c, a, k));
+    a.rivPrijs = {[r.name]: 15}; const vv = aanvraagVergelijk(c, a, "normaal"), uit = actAanvraag(c, Ctx(), "m1", "normaal");
+    return {mono: mono.mono, monoKans: mono.kans, met, jij: vv.jij, hun: rivBodBasis(c, r, a).basis + 15, uit: uit.msg.slice(0, 60)}; });
+  ok(v85.mono && v85.monoKans === 100 && v85.met[0] > v85.met[1] && v85.met[1] > v85.met[2] && ((v85.jij >= v85.hun) === /Gewonnen/.test(v85.uit)), "8.5: enige aanbieder wint altijd; met een concurrent vergelijkt de klant de biedingen (scherp > normaal > hoog) en de hoogste wint: " + JSON.stringify(v85));
   ok(/VERKOOP/.test(verkoop) && /KEURING/.test(verkoop), "tabblad Verkoop en keuring");
   ok(/VARIANT/.test(scherm), "varianten staan op het productblad");
   if (out){ const bl = await p.$('.prodblad'); if (bl) await bl.screenshot({path: out + "/verkoop.png"}); }

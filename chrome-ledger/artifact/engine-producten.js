@@ -1045,10 +1045,20 @@ const besteVanAard = (s, aard) => (s.producten || []).filter(p => p.status === "
 const aanvraagRivalen = (s, aard) => s.rivals.filter(r => (r.producten || []).some(p => p.aard === aard));
 /* 6.8.1: een contract voor een bepaald product telt dat product, niet je beste van de soort */
 const aanvraagProduct = (s, a) => (a.product && (s.producten || []).find(x => x.id === a.product && x.status === "markt")) || besteVanAard(s, a.aard);
-function aanvraagKans(s, a, prijs){ const p = aanvraagProduct(s, a), P = AANVRAAG_PRIJS[prijs] || AANVRAAG_PRIJS.normaal; if (!p) return 0; const K = KLANT_SOORT[a.soort] || {};
-  const g = a.gang ? (s.gangs || []).find(x => x.id === a.gang) : null, riv = aanvraagRivalen(s, a.aard).length;
-  const rk = aanvraagRivalen(s, a.aard).reduce((m, r) => Math.max(m, ...(r.producten || []).filter(x => x.aard === a.aard).map(x => x.kwaliteit || 1)), 0);
-  return snapKans(Math.round(clamp(56 + (p.kwaliteit - 3) * 10 + P.mod + ((a.onder || {}).mod || 0) + (a.lobby ? 12 : 0) + (K.rep ? (s.reputation - 30) / 4 : (g ? g.relatie / 4 : 0)) - riv * 2 - Math.max(0, rk - p.kwaliteit) * 8 - (p.kwaliteit < a.minKwal ? 20 : 0) + (a.product ? 6 : 0), 5, 92))); /* 7.0: moeilijker; de beste rivaal telt */ }
+/* 8.5: de klant vergelijkt aanbiedingen in plaats van een dobbelsteen. Jouw bod en dat van elke concurrent krijgen punten (kwaliteit, prijs, naam, band met de klant); de klant kiest het hoogste. De prijs van een concurrent ken je niet precies: het percentage is de echte kans dat jij hoger uitkomt. Ben jij de enige die het maakt, dan moet de klant bij jou kopen. */
+const RIV_PRIJS = [-10, 15];
+const vasteKlant = (s, a) => (s.contractHist || []).some(h => h.klant === a.klant && h.uitkomst === "gewonnen");
+function bodScore(s, a, prijs){ const p = aanvraagProduct(s, a), P = AANVRAAG_PRIJS[prijs] || AANVRAAG_PRIJS.normaal; if (!p) return null; const K = KLANT_SOORT[a.soort] || {};
+  const g = a.gang ? (s.gangs || []).find(x => x.id === a.gang) : null, b = a.soort === "bedrijf" ? (s.bedrijven || []).find(x => x.naam === a.klant) : null;
+  return Math.round(56 + (p.kwaliteit - 3) * 10 + P.mod + ((a.onder || {}).mod || 0) + (a.lobby ? 12 : 0) + (K.rep ? (s.reputation - 30) / 4 : (g ? g.relatie / 4 : 0)) + (b ? b.relatie / 5 : 0) + (vasteKlant(s, a) ? 8 : 0) - (p.kwaliteit < a.minKwal ? 20 : 0) + (a.product ? 6 : 0)); }
+function rivBodBasis(s, r, a){ const kw = Math.max(1, ...(r.producten || []).filter(x => x.aard === a.aard).map(x => x.kwaliteit || 1)); return {kw, basis: Math.round(50 + (kw - 3) * 10 + Math.min(8, rivalPower(s, r) / 10))}; }
+function aanvraagVergelijk(s, a, prijs){ const jij = bodScore(s, a, prijs), p = aanvraagProduct(s, a); if (jij == null) return {jij: null, kans: 0, mono: false, rivalen: []};
+  const rivalen = aanvraagRivalen(s, a.aard).map(r => { const x = rivBodBasis(s, r, a); return {naam: r.name, kw: x.kw, basis: x.basis, min: x.basis + RIV_PRIJS[0], max: x.basis + RIV_PRIJS[1]}; });
+  if (!rivalen.length) return {jij, mono: true, rivalen, kans: p.kwaliteit >= (a.minKwal || 1) ? 100 : 50};
+  const kans = rivalen.reduce((k, r) => k * clamp((jij - r.min) / (r.max - r.min), 0, 1), 1);
+  return {jij, mono: false, rivalen, kans: Math.round(kans * 100)}; }
+function aanvraagKans(s, a, prijs){ return aanvraagVergelijk(s, a, prijs).kans; }
+const rivPrijsVoor = (s, aard) => Object.fromEntries(aanvraagRivalen(s, aard).map(r => [r.name, RI(RIV_PRIJS[0], RIV_PRIJS[1])]));
 /* 7.0: mag je leveren? Wapens, beveiliging en implantaten naar een ander continent vragen een exportvergunning; bij een embargo alleen via een smokkelroute (zwart, heat) */
 function contractToegang(s, a){ if (!a || !a.cont || !EXPORT_AARD.includes(a.aard) || a.cont === exportThuis(s)) return {ok: true, via: "legaal"};
   const verg = !!(s.exportVergunning || {})[a.cont], emb = embargo(s, a.cont), sm = !!(s.smokkelroute || {})[a.cont];
@@ -1063,7 +1073,7 @@ function maakAanvraag(s, aard0){ const p0 = (s.producten || []).filter(p => p.st
   let klant, gang = null; if (soort === "bedrijf") klant = CH((s.bedrijven || []).filter(b => !b.eigenaar)).naam; else if (soort === "syndicaat"){ const g = CH(s.gangs); klant = g.naam; gang = g.id; } else klant = `${CH(K.namen)} (${land.name})`;
   const p = besteVanAard(s, aard), basis = Math.max(1, p ? prodOmzet(s, p) : 2), raam = R() < 0.4, I = p ? stukInfo(p) : {eenheid: "stuks"};
   const bed = soort === "bedrijf" ? (s.bedrijven || []).find(b => b.naam === klant) : null, cont = soort === "syndicaat" ? null : bed ? (s.districts.find(d => d.id === bed.land) || {}).continent || null : land.continent;
-  const a = {id: "a" + hex8(), m: ym(s), soort, klant, gang, aard, raam, cont, minKwal: clamp((p ? p.kwaliteit : 3) + RI(-1, 1), 1, 5), verloopt: 3}; /* 7.0: klant heeft een continent; kwaliteit soms boven de jouwe */
+  const a = {id: "a" + hex8(), m: ym(s), rivPrijs: rivPrijsVoor(s, aard), soort, klant, gang, aard, raam, cont, minKwal: clamp((p ? p.kwaliteit : 3) + RI(-1, 1), 1, 5), verloopt: 3}; /* 7.0: klant heeft een continent; kwaliteit soms boven de jouwe */
   if (raam){ a.maanden = CH([6, 12, 18, 24]); a.perMaand = r1(basis * U(0.3, 0.6)); } else a.bedrag = r1(basis * U(2, 5));
   a.tekst = `${klant} zoekt ${raam ? `een raamcontract voor ${a.maanden} maanden` : "een eenmalige levering"}: ${PRODUCT_AARD[aard].label.toLowerCase()}, minimaal kwaliteit ${a.minKwal}.`;
   return a; }
@@ -1081,9 +1091,9 @@ function bedrijfAanbodTick(s, ctx){ const open = (s.keuzes || []).filter(k => /^
 function aanvraagTick(s, ctx){ s.aanvragen ??= []; s.contracten ??= []; bedrijfAanbodTick(s, ctx);
   for (const a of s.aanvragen) a.verloopt -= 1; /* 6.8: meer aanvragen, langer geldig */ const weg = s.aanvragen.filter(a => a.verloopt <= 0); for (const a of weg){ const rv = aanvraagRivalen(s, a.aard); contractHist(s, a, "verlopen", rv.length ? CH(rv).name : null); } if (weg.length) ctx.rep.push(`${weg.length} aanvra${weg.length > 1 ? "gen" : "ag"} verlopen`); s.aanvragen = s.aanvragen.filter(a => a.verloopt > 0);
   const nP = (s.producten || []).filter(p => p.status === "markt").length;
-  for (let poging = 0; poging < (s.reputation >= 55 ? 2 : 1); poging++) if (nP && s.aanvragen.length < AANVRAAG_MAX && kansRol() < (poging ? 0.25 : Math.min(0.55, 0.25 + 0.04 * nP))){ /* 7.0: minder, de tweede pas bij een goede naam */ const a = maakAanvraag(s); if (a){ s.aanvragen.push(a); ctx.rep.push(`Aanvraag: ${a.klant}`); mail(ctx, s, "Verkoop", `Aanvraag van ${a.klant}`, a.tekst + " Inschrijven kan bij Bedrijf → Klanten, binnen drie maanden.", "NORMAAL"); } }
+  for (let poging = 0; poging < (s.reputation >= 45 ? 2 : 1); poging++) if (nP && s.aanvragen.length < AANVRAAG_MAX && kansRol() < (poging ? 0.3 : Math.min(0.7, 0.35 + 0.05 * nP))){ /* 8.5: meer aanvragen */ /* 7.0: minder, de tweede pas bij een goede naam */ const a = maakAanvraag(s); if (a){ s.aanvragen.push(a); ctx.rep.push(`Aanvraag: ${a.klant}`); mail(ctx, s, "Verkoop", `Aanvraag van ${a.klant}`, a.tekst + " Inschrijven kan bij Bedrijf → Klanten, binnen drie maanden.", "NORMAAL"); } }
   const zwaar = (s.producten || []).filter(x => x.status === "markt" && stukInfo(x).order && !isAbo(x));
-  for (const p of zwaar) if (s.aanvragen.filter(a => a.product === p.id).length < CONTRACT_PER_PRODUCT && kansRol() < 0.35){ /* 7.0: 35% per maand, tot 2 open per product */ const a = maakContract(s, p); if (a){ s.aanvragen.push(a); ctx.rep.push(`Contractaanvraag: ${a.klant} (${p.naam})`); mail(ctx, s, "Verkoop", `${a.klant} wil ${p.naam}`, a.tekst + " Inschrijven bij Bedrijf → Klanten.", "HOOG"); } }
+  for (const p of zwaar) if (s.aanvragen.filter(a => a.product === p.id).length < CONTRACT_PER_PRODUCT && kansRol() < 0.45){ /* 8.5: was 0,35 */ /* 7.0: 35% per maand, tot 2 open per product */ const a = maakContract(s, p); if (a){ s.aanvragen.push(a); ctx.rep.push(`Contractaanvraag: ${a.klant} (${p.naam})`); mail(ctx, s, "Verkoop", `${a.klant} wil ${p.naam}`, a.tekst + " Inschrijven bij Bedrijf → Klanten.", "HOOG"); } }
   for (const c of s.contracten){ const eigen = c.product ? (s.producten || []).find(x => x.id === c.product && x.status === "markt") : null, p = c.product ? eigen : besteVanAard(s, c.aard); /* 7.7: een contract voor een bepaald product vraagt dat product */
     if (p && c.minKwal && p.kwaliteit < c.minKwal){ c.onder = (c.onder || 0) + 1; const b = r1(c.perMaand * 0.1); s.cash = r1(s.cash - b);
       if (c.onder >= 3){ c.over = 0; s.reputation = clamp(s.reputation - 3); mail(ctx, s, "Juridische Zaken", `${c.klant} zegt op`, `Drie maanden onder de afgesproken kwaliteit (${c.minKwal}): ${c.klant} zegt het contract op. Reputatie −3.`, "KRITIEK"); ctx.rep.push(`${c.klant} zegt op (kwaliteit)`); continue; }
@@ -1113,17 +1123,21 @@ function actAanvraag(s, ctx, id, keuze){ const a = (s.aanvragen || []).find(x =>
   if (keuze === "afwijzen"){ s.aanvragen = s.aanvragen.filter(x => x !== a); { const rv = aanvraagRivalen(s, a.aard); contractHist(s, a, "afgewezen", rv.length ? CH(rv).name : null); } if (a.gang){ const g = (s.gangs || []).find(x => x.id === a.gang); if (g) g.relatie = Math.round(g.relatie - 5); } return {ok: true, msg: `Aanvraag van ${a.klant} afgewezen.${a.gang ? " Ze onthouden het: relatie −5." : ""}`}; }
   const P0 = AANVRAAG_PRIJS[keuze]; if (!P0) return {ok: false, msg: "Kies een prijs."}; const P = {...P0, f: Math.round(P0.f * ((a.onder || {}).f || 1) * 100) / 100}; if (P.lang && !a.raam) return {ok: false, msg: "Langer kan alleen bij een raamcontract."}; const p = aanvraagProduct(s, a); if (!p) return {ok: false, msg: `Je hebt geen ${PRODUCT_AARD[a.aard].label.toLowerCase()} op de markt.`};
   const T = contractToegang(s, a); if (!T.ok) return {ok: false, msg: `Leveren aan ${a.klant} mag niet: ${T.reden}.`};
-  const kans = aanvraagKans(s, a, keuze), roll = rolKans(kans), K0 = KLANT_SOORT[a.soort], K = T.via === "smokkel" ? {...K0, zwart: true, heat: (K0.heat || 0) + 2} : K0, riv = aanvraagRivalen(s, a.aard); s.aanvragen = s.aanvragen.filter(x => x !== a);
+  a.rivPrijs ??= {}; for (const r of aanvraagRivalen(s, a.aard)) if (a.rivPrijs[r.name] == null) a.rivPrijs[r.name] = RI(RIV_PRIJS[0], RIV_PRIJS[1]);
+  const V = aanvraagVergelijk(s, a, keuze), K0 = KLANT_SOORT[a.soort], K = T.via === "smokkel" ? {...K0, zwart: true, heat: (K0.heat || 0) + 2} : K0, riv = aanvraagRivalen(s, a.aard); s.aanvragen = s.aanvragen.filter(x => x !== a);
+  const bods = V.rivalen.map(r => ({...r, score: r.basis + a.rivPrijs[r.naam]})).sort((x, y) => y.score - x.score), beste = bods[0] || null;
+  const prijsW = r => a.rivPrijs[r.naam] >= 8 ? "scherpe prijs" : a.rivPrijs[r.naam] <= -4 ? "dure prijs" : "gewone prijs";
+  const roll = {ok: V.mono ? (V.kans >= 100 || R() < 0.5) : V.jij >= beste.score, txt: V.mono ? "geen concurrenten" : `jouw bod ${V.jij} tegen ${beste.naam} ${beste.score} (kwaliteit ${beste.kw}, ${prijsW(beste)})`};
   addRoll(s, `Inschrijving ${a.klant} (${P.label.toLowerCase()}): ${roll.txt} → ${roll.ok ? "GEWONNEN" : "VERLOREN"}`); let msg;
   if (roll.ok){ if (K.heat) s.heat = clamp(s.heat + K.heat);
     if (a.raam){ const mnd = P.lang ? Math.round(a.maanden * 1.5) : a.maanden, c = {id: a.id, klant: a.klant, soort: a.soort, cont: a.cont || null, aard: a.aard, product: a.product || null, minKwal: a.minKwal || null, perMaand: r1(a.perMaand * P.f), over: mnd, maanden: mnd, zwart: !!K.zwart, sinds: ym(s)}; (s.contracten ??= []).push(c); msg = `Gewonnen: raamcontract met ${a.klant}, ${mnd} maanden €${c.perMaand}M omzet per maand (±€${r1(c.perMaand * AANVRAAG_MARGE)}M netto${c.zwart ? ", zwart" : ""}). Houd ${a.product ? "dit product" : `een ${PRODUCT_AARD[a.aard].label.toLowerCase()}`} op de markt${a.minKwal ? ` met minstens kwaliteit ${a.minKwal}` : ""}, anders volgt een boete.`; }
     else { const netto = r1(a.bedrag * P.f * AANVRAAG_MARGE); if (a.product){ const pp = (s.producten || []).find(x => x.id === a.product); if (pp){ (s.prodomzet ??= {})[pp.id] = r1(((s.prodomzet || {})[pp.id] || 0) + a.bedrag * P.f); (pp.orders ??= []).push({m: ym(s), stuks: Math.max(1, Math.round(a.bedrag * P.f * 1e6 / Math.max(1, stukPrijs(pp)))), bedrag: r1(a.bedrag * P.f), klant: a.klant}); pp.orders = pp.orders.slice(-6); } } if (K.zwart) s.accounts.zwart = r1(s.accounts.zwart + netto); else s.cash = r1(s.cash + netto); msg = `Gewonnen: levering aan ${a.klant} voor €${r1(a.bedrag * P.f)}M (±€${netto}M netto${K.zwart ? ", zwart" : ""}).`; }
     if (K.rep) s.reputation = clamp(s.reputation + 1); if (a.gang){ const g = (s.gangs || []).find(x => x.id === a.gang); if (g) g.relatie = Math.round(g.relatie + 8); }
     if (K.zwart && kansRol() < 0.15){ s.reputation = clamp(s.reputation - 4); msg += " Een journalist zag de levering: reputatie −4."; } }
-  else { const w = riv.length ? CH(riv).name : null; msg = `Verloren: ${a.klant} kiest ${w || "een andere leverancier"}.`; contractHist(s, a, "verloren", w); }
+  else { const w = beste ? beste.naam : null; msg = `Verloren: ${a.klant} kiest ${w || "een andere leverancier"}${beste ? `: hun bod (${beste.score}) was beter dan het jouwe (${V.jij})` : ""}.`; contractHist(s, a, "verloren", w); }
   if (roll.ok) contractHist(s, a, "gewonnen", "jij", (a.raam ? a.perMaand * a.maanden : a.bedrag) * P.f);
-  s.accounts.operationeel = s.cash; addLog(s, msg); mail(ctx, s, "Verkoop", `Inschrijving ${a.klant}: ${roll.ok ? "gewonnen" : "verloren"}`, msg + ` (Worp ${roll.txt}.)`, "NORMAAL");
-  return {ok: true, msg: msg + ` Worp ${roll.txt}.`}; }
+  s.accounts.operationeel = s.cash; addLog(s, msg); mail(ctx, s, "Verkoop", `Inschrijving ${a.klant}: ${roll.ok ? "gewonnen" : "verloren"}`, msg + ` (${roll.txt}.)`, "NORMAAL");
+  return {ok: true, msg: msg + ` (${V.mono ? "Je was de enige aanbieder." : `Vergelijking: ${roll.txt}.`})`}; }
 /* 5.10: export en vergunningen. Wapens, beveiliging en implantaten verkopen standaard op je eigen continent; een exportvergunning per ander continent (blijvend) geeft +6% omzet per continent. Bij Sancties of Privélegers (spanning 50-89) ligt daar een embargo: de vergunning telt niet, tenzij je een smokkelroute hebt (zwart geld, heat). */
 const EXPORT_AARD = ["wapen", "beveiliging", "implantaat"], EXPORT_BONUS = 0.06;
 const exportThuis = s => (s.districts.find(x => x.id === s.player.home_district) || {}).continent;
@@ -1394,7 +1408,7 @@ function maakContract(s, p){ const aard = p.aard || aardVan(p.type, p.naam), soo
   const soort = CH(soorten), K = KLANT_SOORT[soort], land = CH(s.districts.filter(d => d.control !== "player")) || s.districts[0]; let klant, gang = null, bedL = null;
   if (soort === "bedrijf"){ const b = CH((s.bedrijven || []).filter(b => !b.eigenaar)); klant = b.naam; bedL = b.land; } else if (soort === "syndicaat"){ const g = CH(s.gangs); klant = g.naam; gang = g.id; } else klant = `${CH(K.namen)} (${land.name})`;
   const cont = soort === "syndicaat" ? null : bedL ? (s.districts.find(d => d.id === bedL) || {}).continent || null : land.continent;
-  const basis = Math.max(1, prodOmzet(s, {...p, prijsF: 1}) * 1.2), I = stukInfo(p), raam = R() < 0.45, a = {id: "a" + hex8(), m: ym(s), soort, klant, gang, aard, raam, cont, product: p.id, minKwal: clamp(p.kwaliteit + RI(-1, 1), 1, 5), verloopt: 4}; /* 7.0: moeilijker, met continent */
+  const basis = Math.max(1, prodOmzet(s, {...p, prijsF: 1}) * 1.2), I = stukInfo(p), raam = R() < 0.45, a = {id: "a" + hex8(), m: ym(s), rivPrijs: rivPrijsVoor(s, aard), soort, klant, gang, aard, raam, cont, product: p.id, minKwal: clamp(p.kwaliteit + RI(-1, 1), 1, 5), verloopt: 4}; /* 7.0: moeilijker, met continent */
   if (raam){ a.maanden = CH([6, 12, 18]); a.perMaand = r1(basis * U(0.7, 1.1)); } else a.bedrag = r1(basis * U(4, 8));
   const stuks = Math.max(1, Math.round((a.bedrag || a.perMaand) * 1e6 / Math.max(1, stukPrijs(p))));
   a.tekst = `${klant} wil ${raam ? `een raamcontract: ${a.maanden} maanden lang ±${stuks} ${stuks === 1 ? I.enkel : I.eenheid} per maand` : `${stuks} ${stuks === 1 ? I.enkel : I.eenheid}`} van ${p.naam}, minimaal kwaliteit ${a.minKwal}.`; return a; }
