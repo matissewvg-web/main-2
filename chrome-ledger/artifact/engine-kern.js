@@ -508,6 +508,8 @@ function arcsTick(s, ctx, diff){
 }
 
 /* 7.0: marktslijtage. Een divisie die niet vernieuwt (geen product jonger dan 3 jaar, niets in ontwikkeling, geen uitbreiding in 2 jaar) verliest elke maand marktpositie; wie investeert, krijgt het langzaam terug. De snelheid hangt af van het niveau: zo kost niets doen op den duur alles. */
+const GEBIED_NIVEAU = {Casual: 0.9, Realistisch: 0.75, Genadeloos: 0.7}; /* 8.2: gebied levert minder op; de strijd om controle is er vooral om je markt */
+const gebiedF = s => GEBIED_NIVEAU[(s && s.player || {}).difficulty] ?? 0.75;
 const DRUK = {Casual: 0.5, Realistisch: 1, Genadeloos: 1.6}, SLIJT = 0.004, SLIJT_MIN = 0.3;
 const drukF = s => DRUK[s.player.difficulty] ?? 1;
 function divVernieuwt(s, d){ const nm = divNaam(d), nu = mndNr(ym(s));
@@ -535,7 +537,7 @@ function tick(s){
       rev += po; cost += pk + vk; lines.push(`| Producten ${d.name || d.type} (${mk.length}) | ${r1(po)} | ${r1(pk + vk)} |`);
       if (zw){ s.accounts.zwart = r1((s.accounts.zwart || 0) + zw); lines.push(`| Zwarte markt ${d.name || d.type} (naar zwart geld) | ${r1(zw)} | 0 |`); } }
   }
-  for (const d of s.districts) if (d.control === "player"){ rev += incOf(d) * U(0.85, 1.15); cost += d.upkeep; }
+  for (const d of s.districts) if (d.control === "player"){ rev += incOf(d) * gebiedF(s) * U(0.85, 1.15); cost += d.upkeep; } /* 8.2: minder winst uit gebied */
   let streamRev = 0; for (const x of s.streams || []) streamRev += x.bedrag * (0.75 + 0.35 * s.morale / 100) * sf * U(0.85, 1.12);
   if (streamRev){ rev += streamRev; lines.push(`| Eigen inkomstenbronnen (${(s.streams || []).length}) | ${r1(streamRev)} | 0 |`); }
   for (const x of s.streams || []) if (x.maanden != null && --x.maanden <= 0) ctx.rep.push(`${x.naam} loopt af`);

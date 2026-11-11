@@ -1,6 +1,6 @@
 /* Chrome Ledger engine, deel engine-wereld.js: wereld: kaart, zee, dominantie, eigen soorten, personeel, rivalen en acties. 7.4: de engine staat in zes bestanden die in deze volgorde laden (kern, wereld, leven, producten, gm, opslag); alles deelt dezelfde globale scope. */
 /* ---------- de stad: elke game een andere kaart ---------- */
-const VERSION = "8.1";
+const VERSION = "8.2";
 const MAP_W = 1000, MAP_H = 680;
 const RIVAL_COLORS = ["#ff9a1f", "#3d7bff", "#c6ff2e", "#f2f2f2", "#9b5cff", "#ffd400", "#ff4d4d"];
 const ARCH = {
@@ -245,7 +245,7 @@ function dominanceIncome(s, owner){
   let geld = 0, inv = 0; const regels = [];
   for (const r of regionDominance(s)){
     const sh = r.shares.find(x => x.o === owner), pct = sh ? sh.pct : 0, t = tierOf(pct);
-    if (t){ const g = r.waarde * t.geld; geld += g; inv += t.inv; regels.push({soort: "continent", naam: r.naam, pct, tier: t.naam, geld: g, inv: t.inv}); }
+    if (t){ const g = r.waarde * t.geld * gebiedF(s); geld += g; /* 8.2 */ inv += t.inv; regels.push({soort: "continent", naam: r.naam, pct, tier: t.naam, geld: g, inv: t.inv}); }
   }
   for (const z of seaControl(s)){
     const v = z.sterkte[owner] || 0, pct = z.totaal ? Math.round(v / z.totaal * 100) : 0, t = v >= SEA_MIN ? tierOf(pct, SEA_TIERS) : null;

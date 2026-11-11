@@ -963,7 +963,7 @@ const rivHandelAanwezig = (s, rn, cont) => { const v = ((s.rivHandel || {})[rn] 
 const contractAanwezig = (s, wie, cont) => { const v = ((s.contractCont || {})[wie] || {})[cont] || 0; return v > 0 ? Math.min(CONTRACT_AANW_MAX, Math.round(Math.sqrt(v) * 6 * 10) / 10) : 0; };
 const handelAanwezig = (s, cont) => { const v = (s.handel || {})[cont] || 0; return v > 0 ? Math.min(HANDEL_MAX, Math.round(Math.sqrt(v) * 5 * 10) / 10) : 0; };
 const aanwezigMag = (s, d) => !!d && reachable(s, "player", d);
-function aandeelInkomen(s){ let geld = 0, n = 0; for (const d of s.districts){ if (d.control === "player" || !d.dom) continue; const v = d.dom.player || 0; if (v >= DOM_INKOMEN_MIN){ geld += incOf(d) * v / 100 * 0.4; n++; } } return {geld: r1(geld), n}; }
+function aandeelInkomen(s){ let geld = 0, n = 0; for (const d of s.districts){ if (d.control === "player" || !d.dom) continue; const v = d.dom.player || 0; if (v >= DOM_INKOMEN_MIN){ geld += incOf(d) * v / 100 * 0.35 * gebiedF(s); n++; /* 8.2: was 0,4 */ } } return {geld: r1(geld), n}; }
 function actAanwezig(s, ctx, id){ const d = s.districts.find(x => x.id === id); if (!d) return {ok: false, msg: "Onbekend district."};
   if (!aanwezigMag(s, d)) return {ok: false, msg: `${d.name} grenst niet aan jouw gebied en ligt niet aan een zee die jij beheerst.`};
   const kost = aanwezigKost(s, d); if (s.cash < kost) return {ok: false, msg: `Niet genoeg cash (€${kost}M nodig).`};
