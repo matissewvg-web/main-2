@@ -58,6 +58,7 @@ a{color:var(--cyan)}
 .top{grid-column:1/-1;display:flex;align-items:center;gap:16px;padding:10px 18px;position:relative;
   background:linear-gradient(180deg,rgba(27,15,54,.95),rgba(10,5,22,.92));border-bottom:1px solid var(--line2)}
 .top::after{content:"";position:absolute;left:0;right:0;bottom:-1px;height:1px;background:linear-gradient(90deg,var(--mag),transparent 30%,transparent 70%,var(--cyan));opacity:.9}
+.menuknop{all:unset;cursor:pointer;color:var(--cyan);font-size:18px;margin-right:10px;vertical-align:middle;letter-spacing:0}.menuknop:focus-visible{outline:1px solid var(--cyan)}
 .brand{font-family:var(--disp);font-weight:800;letter-spacing:.16em;color:#fff;font-size:15px;white-space:nowrap;line-height:1.1}
 .brand b{color:var(--mag);text-shadow:var(--glow-m);font-weight:800}
 .brand .neon{color:var(--cyan);text-shadow:var(--glow-c);animation:flicker 7s infinite}
@@ -625,7 +626,7 @@ function render(){
   const over = st.status !== "actief";
   root.innerHTML = `<div class="app ${S.gmDock && S.view !== "comms" ? "gmopen" : ""}">
     <header class="top">
-      <div class="brand">${st.huisstijl && st.huisstijl.logo ? `<span class="brandlogo" style="display:inline-block;vertical-align:middle;margin-right:8px">${logoHtml(st.huisstijl, st.speler.corp_name, 30)}</span>` : ""}<span class="neon">CHROME</span><b>//</b>LEDGER<small>${esc(st.speler.corp_name)}</small></div>
+      <div class="brand"><button class="menuknop" data-a="menu" aria-label="Hoofdmenu" title="Hoofdmenu">☰</button>${st.huisstijl && st.huisstijl.logo ? `<span class="brandlogo" style="display:inline-block;vertical-align:middle;margin-right:8px">${logoHtml(st.huisstijl, st.speler.corp_name, 30)}</span>` : ""}<span class="neon">CHROME</span><b>//</b>LEDGER<small>${esc(st.speler.corp_name)}</small></div>
       <div class="date">${MONTHS[st.datum.month-1].toUpperCase()} ${st.datum.year}</div>
       <div class="stats">
         ${stat("Cash", eur(st.cash), null, st.cash < 30 ? "var(--amber)" : null)}
@@ -1023,6 +1024,7 @@ function setupBonus(homeD){
     <p class="dim" style="font-size:13px;margin:6px 0 0">Elk soort land geeft een ander voordeel: havens, financiële centra, datavalleien, sloppen. Klik verschillende landen aan om ze te vergelijken.</p>` : "";
 }
 const VERSIES = [
+  ["5.17.3", "Opruimen", ["Op de telefoon was het hoofdmenu niet terug te vinden (het zijmenu is daar verborgen). Nu staat er een ☰-knop links in de kop, op elk scherm.", "Gemeten: balans verstandig 47%, reputatie gemiddeld −8 in twee jaar als je alle beslissingen laat liggen (vooral lastercampagnes van je concurrent; daartegen kun je nu zelf een plan smeden)."]],
   ["5.17.2", "Hoofdmenu", ["Bij het openen van het spel verschijnt een hoofdmenu met je logo: Doorgaan (je huidige bedrijf en datum), Nieuw spel (je huidige spel blijft bewaard) en Laden.", "Laden toont al je bewaarde spellen (save slots) met de datum; één klik en je speelt verder. Hernoemen, verwijderen en exporteren blijft bij Logboek → Spellen.", "Het menu kun je altijd weer openen via MENU links onderaan het zijmenu. Sluiten: Doorgaan, Escape of naast het menu klikken."]],
   ["5.17.1", "Huisstijl bij het oprichten", ["Bij een nieuw spel (Fase 0 · Het bedrijf) kies je meteen je hoofd- en accentkleur, een thema (Neon, Corporate, Terminal, Bloed, Chroom) en je logo: een vorm en symbool, of een eigen afbeelding.", "Je ziet het logo en het thema meteen in het scherm. Later aanpassen kan nog altijd bij Bedrijf → Huisstijl."]],
   ["5.17", "Zelf plannen smeden", ["Rivalen → Zelf een plan smeden: tegen een rivaal een prijsoorlog, mensen wegkopen, een lastercampagne of sabotage; tegen een bende in je gebied: uitroken.", "Een plan heeft drie stappen van twee maanden. Elke stap kost geld en is een worp: je macht tegen de hunne, plus je crew (fixer, speurder, spindokter). Een paranoïde CEO is moeilijker.", "Mislukt een stap, dan is het plan ontdekt: weg, relatie −10, heat +2. Lukt alles, dan volgt de klap (bv. prijsoorlog: hun marktaandeel −20% en jouw producten in die soort +5 populariteit).", "Eén plan tegelijk; afblazen kan altijd. Het lopende plan staat bij Rivalen met de kans op de volgende worp."]],
@@ -2033,7 +2035,7 @@ function setupView(){
         <button class="btn primary next" style="margin-top:14px;width:100%" data-a="setup">REGISTREER BEDRIJF ▸</button></div></div>`;
   }
   return `<div class="app setupapp">
-    <header class="top"><div class="brand"><span class="neon">CHROME</span><b>//</b>LEDGER<small>OPRICHTING · VERSIE ${VERSION}</small></div>
+    <header class="top"><div class="brand"><button class="menuknop" data-a="menu" aria-label="Hoofdmenu" title="Hoofdmenu">☰</button><span class="neon">CHROME</span><b>//</b>LEDGER<small>OPRICHTING · VERSIE ${VERSION}</small></div>
       <div class="date">FASE 0 · STAP ${step + 1}/4</div>
       <div class="stats">${stat("Land", esc(homeD.kort || homeD.name))}${stat("Voordeel", esc(B ? B.naam : "-"), null, "var(--cyan)")}${stat("Kapitaal", eur(cash0))}${stat("Naam", esc(T.corp_name.trim() || "—"))}</div>
       <button class="btn primary next" data-a="${step < 3 ? "snext" : "setup"}">${step < 3 ? "VERDER" : "REGISTREER"} ▸</button></header>
