@@ -924,17 +924,19 @@ function corpoTick(s, ctx){
     else { mail(ctx, s, "Head of Security", `Straatgevecht in ${d.name} afgeslagen`, `${r.name} probeerde ${d.name} op straat in te nemen. ${pat ? "Onze patrouille hield stand." : "We hielden stand, deze keer."}`, "NORMAAL"); ctx.rep.push(`Straatgevecht in ${d.name} afgeslagen`); }
     break; } }
 /* 5.6: gebied als dominantie. Elk district is verdeeld in aandelen (eigenaar, jij, rivalen, bendes, de staat), net als de zee. Je aandeel groeit door aanwezigheid, patrouilles en buren; continenten en hegemonie tellen aandelen in plaats van eigenaars. */
-const DOM_FLIP = 55, DOM_INKOMEN_MIN = 20;
+const DOM_FLIP = 55, DOM_INKOMEN_MIN = 20, EIGEN_BASIS = 55, CONTRACT_AANW_MAX = 15;
 function domDoel(s, d, idx){ const o = {}, sp = spanningVan(s, d.continent), staatF = 1 - sp / 100;
-  if (d.control !== "neutral") o[d.control] = 100;
+  if (d.control !== "neutral") o[d.control] = EIGEN_BASIS; /* 8.1: bezit is een basis, geen garantie (was 100) */
   o.staat = d.control === "neutral" ? 5 + 40 * staatF : 15 * staatF;
   const A = s.aanwezig || {}; if (A[d.id]) o.player = (o.player || 0) + A[d.id];
   const H = handelAanwezig(s, d.continent); if (H) o.player = (o.player || 0) + H; /* 6.8: wie veel verkoopt op een continent, is daar overal aanwezig */
+  { const C = contractAanwezig(s, "player", d.continent); if (C) o.player = (o.player || 0) + C; } /* 8.1: contracten met klanten daar */
+  for (const r of s.rivals){ const v = rivHandelAanwezig(s, r.name, d.continent) + contractAanwezig(s, r.name, d.continent); if (v) o[r.name] = (o[r.name] || 0) + v; } /* 8.1: rivalen met hun winkels en contracten */
   for (const [rn, RA] of Object.entries(s.rivAanwezig || {})) if (RA[d.id]) o[rn] = (o[rn] || 0) + RA[d.id]; /* 6.2: rivalen bouwen ook aanwezigheid op */
   if ((s.patrouille || {})[d.id] && d.control === "player") o.player = (o.player || 0) + 15;
   const adj = {}; for (const n of d.neighbors || []){ const b = idx ? idx.get(n) : s.districts.find(x => x.id === n); if (b && b.control !== "neutral") adj[b.control] = (adj[b.control] || 0) + 4; }
   for (const [k, v] of Object.entries(adj)) o[k] = (o[k] || 0) + Math.min(12, v);
-  for (const r of s.rivals) if (r.hq === d.id) o[r.name] = (o[r.name] || 0) + 20;
+  for (const r of s.rivals) if (r.hq === d.id) o[r.name] = (o[r.name] || 0) + 45; /* 8.1: een hoofdkantoor is een sterke basis */
   for (const g of s.gangs || []){ const v = (g.gebied || {})[d.id]; if (v >= 5) o["bende:" + g.naam] = v * 0.4; }
   const tot = Object.values(o).reduce((a, b) => a + b, 0) || 1; return Object.fromEntries(Object.entries(o).map(([k, v]) => [k, v / tot * 100])); }
 const domVan = (s, d) => d.dom || domDoel(s, d);
@@ -948,7 +950,17 @@ function productContinenten(s, p){ const aard = p.aard || aardVan(p.type, p.naam
 function handelTick(s){ const H = {}, W = {};
   for (const p of (s.producten || []).filter(x => x.status === "markt")){ const o = ((s.prodomzet || {})[p.id] || 0) + ((s.exportOmzet || {})[p.id] || 0); if (!(o > 0)) continue; const aard = p.aard || aardVan(p.type, p.naam);
     for (const [c, f] of productContinenten(s, p)){ H[c] = (H[c] || 0) + o * f; if (aard === "wapen" || aard === "beveiliging") W[c] = (W[c] || 0) + o * f; } }
-  s.handel = Object.fromEntries(Object.entries(H).map(([k, v]) => [k, r1(v)])); s.handelWapen = Object.fromEntries(Object.entries(W).map(([k, v]) => [k, r1(v)])); }
+  s.handel = Object.fromEntries(Object.entries(H).map(([k, v]) => [k, r1(v)])); s.handelWapen = Object.fromEntries(Object.entries(W).map(([k, v]) => [k, r1(v)]));
+  /* 8.1: winkels van rivalen: de kracht van hun producten (populariteit × kwaliteit), half op hun thuiscontinent, de rest naar waar ze districten hebben */
+  const RH = {}; for (const r of s.rivals){ const kracht = (r.producten || []).reduce((a, x) => a + (x.pop || 0) * (x.kwaliteit || 1), 0) / 40; if (!(kracht > 0)) continue; const thuis = (s.districts.find(d => d.id === r.hq) || {}).continent, per = {}, eigen = s.districts.filter(d => d.control === r.name);
+    if (thuis) per[thuis] = kracht * 0.5; for (const d of eigen) per[d.continent] = (per[d.continent] || 0) + kracht * 0.5 / Math.max(1, eigen.length); RH[r.name] = Object.fromEntries(Object.entries(per).map(([k, v]) => [k, r1(v)])); }
+  s.rivHandel = RH;
+  /* 8.1: contracten per continent: jouw lopende contracten (omzet per maand), en wat rivalen de laatste twee jaar wonnen */
+  const CC = {player: {}}, nu = mndNr(ym(s)); for (const c of s.contracten || []) if (c.cont && c.over > 0) CC.player[c.cont] = (CC.player[c.cont] || 0) + c.perMaand;
+  for (const h of s.contractHist || []) if (h.cont && h.wie && h.wie !== "jij" && (h.uitkomst === "verloren" || h.uitkomst === "verlopen" || h.uitkomst === "afgewezen") && nu - mndNr(h.m) < 24){ (CC[h.wie] ??= {})[h.cont] = (CC[h.wie][h.cont] || 0) + 1.5; }
+  s.contractCont = CC; }
+const rivHandelAanwezig = (s, rn, cont) => { const v = ((s.rivHandel || {})[rn] || {})[cont] || 0; return v > 0 ? Math.min(HANDEL_MAX, Math.round(Math.sqrt(v) * 5 * 10) / 10) : 0; };
+const contractAanwezig = (s, wie, cont) => { const v = ((s.contractCont || {})[wie] || {})[cont] || 0; return v > 0 ? Math.min(CONTRACT_AANW_MAX, Math.round(Math.sqrt(v) * 6 * 10) / 10) : 0; };
 const handelAanwezig = (s, cont) => { const v = (s.handel || {})[cont] || 0; return v > 0 ? Math.min(HANDEL_MAX, Math.round(Math.sqrt(v) * 5 * 10) / 10) : 0; };
 const aanwezigMag = (s, d) => !!d && reachable(s, "player", d);
 function aandeelInkomen(s){ let geld = 0, n = 0; for (const d of s.districts){ if (d.control === "player" || !d.dom) continue; const v = d.dom.player || 0; if (v >= DOM_INKOMEN_MIN){ geld += incOf(d) * v / 100 * 0.4; n++; } } return {geld: r1(geld), n}; }
@@ -1079,7 +1091,7 @@ function aanvraagTick(s, ctx){ s.aanvragen ??= []; s.contracten ??= []; bedrijfA
   s.accounts.operationeel = s.cash; }
 /* 6.11: geschiedenis van alle aanvragen: gewonnen, verloren (aan wie), verlopen, afgewezen */
 function contractHist(s, a, uitkomst, wie, bedrag){ const pp = a.product ? (s.producten || []).find(x => x.id === a.product) : null;
-  (s.contractHist ??= []).unshift({m: ym(s), klant: a.klant, soort: a.soort, aard: a.aard, product: pp ? pp.naam : null, uitkomst, wie: wie || null, bedrag: r1(bedrag ?? (a.raam ? a.perMaand * a.maanden : a.bedrag) ?? 0), raam: !!a.raam}); s.contractHist = s.contractHist.slice(0, 40); }
+  (s.contractHist ??= []).unshift({m: ym(s), cont: a.cont || null, klant: a.klant, soort: a.soort, aard: a.aard, product: pp ? pp.naam : null, uitkomst, wie: wie || null, bedrag: r1(bedrag ?? (a.raam ? a.perMaand * a.maanden : a.bedrag) ?? 0), raam: !!a.raam}); s.contractHist = s.contractHist.slice(0, 40); }
 function actAanvraag(s, ctx, id, keuze){ const a = (s.aanvragen || []).find(x => x.id === id); if (!a) return {ok: false, msg: "Die aanvraag is er niet meer."};
   if (keuze === "afwijzen"){ s.aanvragen = s.aanvragen.filter(x => x !== a); { const rv = aanvraagRivalen(s, a.aard); contractHist(s, a, "afgewezen", rv.length ? CH(rv).name : null); } if (a.gang){ const g = (s.gangs || []).find(x => x.id === a.gang); if (g) g.relatie = Math.round(g.relatie - 5); } return {ok: true, msg: `Aanvraag van ${a.klant} afgewezen.${a.gang ? " Ze onthouden het: relatie −5." : ""}`}; }
   const P = AANVRAAG_PRIJS[keuze]; if (!P) return {ok: false, msg: "Kies een prijs."}; if (P.lang && !a.raam) return {ok: false, msg: "Langer kan alleen bij een raamcontract."}; const p = aanvraagProduct(s, a); if (!p) return {ok: false, msg: `Je hebt geen ${PRODUCT_AARD[a.aard].label.toLowerCase()} op de markt.`};
@@ -1338,7 +1350,7 @@ function hoofdTick(s, ctx){ for (const d of s.divisions){ const h = d.hoofd; if 
 function rivAanwezigTick(s, ctx, idx, hqs){ const RA = (s.rivAanwezig ??= {});
   for (const r of s.rivals){ const M = (RA[r.name] ??= {}); for (const k of Object.keys(M)){ M[k] = r1(M[k] * 0.95); if (M[k] < 1) delete M[k]; }
     if (r.cash < 120 || kansRol() >= 0.1) continue;
-    const eigen = s.districts.filter(d => d.control === r.name), kand = new Set(); for (const d of eigen) for (const n of d.neighbors || []){ const b = idx.get(n); if (!b || hqs.has(b.id) || b.id === s.player.home_district) continue; if (b.control === "neutral" || (b.control === "player" && (r.relatie || 0) < -20)) kand.add(b); }
+    const eigen = s.districts.filter(d => d.control === r.name), kand = new Set(); for (const d of eigen) for (const n of d.neighbors || []){ const b = idx.get(n); if (!b || hqs.has(b.id) || b.id === s.player.home_district) continue; if (b.control === "neutral" || (b.control === "player" && (r.relatie || 0) < -20) || (b.control !== "player" && b.control !== r.name && s.rivals.some(x => x.name === b.control) && R() < 0.35)) kand.add(b); } /* 8.1: rivalen vechten ook onderling */
     if (!kand.size) continue; const L = [...kand], speler = L.filter(d => d.control === "player"), d = speler.length && R() < 0.4 ? CH(speler) : CH(L);
     M[d.id] = Math.min(150, r1((M[d.id] || 0) + 20)); r.cash = r1(r.cash - 10);
     if (d.control === "player" && M[d.id] >= 40 && !(d.rivWaarsch === r.name)){ d.rivWaarsch = r.name; mail(ctx, s, "Strategie", `${r.name} wil ${d.name}`, `${r.name} koopt panden, sponsort clubs en zet mensen op straat in ${d.name}. Wordt hun aandeel groter dan het onze, dan valt het district hen toe. Aanwezigheid opbouwen of een patrouille helpt.`, "HOOG"); } }
@@ -1567,6 +1579,7 @@ function adviesCard(st){
 }
 const SPELREGELS = [
   ["Tijd", "Rechtsboven: ▶ laat de maanden vanzelf lopen, op snelheid 1 (traag) tot 5 (turbo); +1 maand doet er precies één. De tijd pauzeert vanzelf bij een nieuw besluit, een kritieke mail, oorlog, heat boven 85 of een rode kas, en zolang je typt of een venster open hebt. Spatie = afspelen/pauze."],
+  ["Gebied", "Niemand bezit een district voor altijd. Wie het beheerst, hangt af van het aandeel van iedereen daar: de eigenaar heeft een basis, en iedereen verdient aandeel met winkels (verkoop op dat continent), contracten met klanten daar, aanwezigheid, patrouilles en districten ernaast; een hoofdkantoor telt zwaar. Heeft iemand twee maanden 55% of meer en meer dan de eigenaar, dan neemt die het over. Rivalen doen dat ook bij jou en bij elkaar. Je thuisdistrict en hoofdkantoren wisselen zo niet."],
   ["Razzia", "Heat boven 90, twee maanden lang, geeft elke maand kans op een razzia: een boete, al je zwart geld kwijt, je heetste divisie een niveau omlaag, reputatie en morale −10, heat terug naar 50. De derde razzia is het einde. Overzicht → Gezondheid toont wanneer je op 90 zit en waar de heat vandaan komt; een juridisch offensief haalt er 12 af."],
   ["Opslaan", "Het spel bewaart zichzelf na elke actie. Een opslagpunt (Ctrl+S, Menu → Opslaan of links OPSLAAN) is een vaste kopie van dit moment; via Menu → Laden ga je er later naar terug. Het staat als apart spel in de lijst."],
   ["Een beurt", "Elke beurt is een maand. Je doet wat je wilt (producten, mensen, crew, deals) en klikt dan +1 maand of laat de tijd lopen. Dan rekent de engine omzet, kosten, gebeurtenissen en rivalen uit en stuurt de CFO een rapport."],

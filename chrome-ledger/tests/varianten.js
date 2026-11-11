@@ -150,7 +150,7 @@ const html = '<!doctype html><html><head><meta charset=utf8></head><body>' + fs.
     const cont1 = (regionDominance(c).find(r => r.id === thuis.continent).shares.find(x => x.o === "player") || {}).pct || 0;
     return {thuisPct, cont0, cont1, a1: a1.ok, betaald, kost: aanwezigKost(c, nb), nee, van: nb.control, maanden: m, pcts, melding: ctx.rep.filter(x => /dominantie/.test(x)), ink: aandeelInkomen(c)}; });
   const dmUI = await p.evaluate(() => { const thuis = G.game.player.home_district; S.view = "kaart"; S.dist = thuis; S.zone = null; render(); const t = document.querySelector("main").textContent; S.dist = null; render(); return /DOMINANTIE IN DIT DISTRICT/.test(t); });
-  ok(dm.geenBuur ? dm.thuisPct >= 60 : (dm.thuisPct >= 60 && dm.a1 && dm.betaald > 0 && !dm.nee && dm.van === "player" && dm.maanden <= 7 && dm.melding.length === 1 && dm.cont1 > dm.cont0) && dmUI,
+  ok(dm.geenBuur ? dm.thuisPct >= 40 : (dm.thuisPct >= 40 && dm.a1 && dm.betaald > 0 && !dm.nee && dm.van === "player" && dm.maanden <= 7 && dm.melding.length === 1 && dm.cont1 > dm.cont0) && dmUI,
     "gebied als dominantie: aandelen per district, aanwezigheid kopen, neutraal district valt je toe na twee maanden boven 55%, continent telt aandelen, kaart toont dominantie: " + JSON.stringify(dm));
   // 5.7 elk spel een nieuwe wereld
   const wz = await p.evaluate(() => { const set = {...S.setup, corp_name: "Zaad BV", doctrine: ["Biotech"], home: "BNL"}, sig = s => JSON.stringify([s.rivals.map(r => [r.name, r.ceo, r.karakter, r.hq]), s.bedrijven.map(b => [b.naam, b.land])]);
@@ -470,6 +470,13 @@ const html = '<!doctype html><html><head><meta charset=utf8></head><body>' + fs.
     const H = [ownerColor(c, "player"), ...c.rivals.map(r => r.kleur)].map(k => hexHsl(k).h), min = Math.min(...H.flatMap((a, i) => H.slice(i + 1).map(b => hueAfstand(a, b))));
     S.view = "kaart"; render(); const leg = document.querySelectorAll(".corpleg").length; S.view = "overzicht"; render(); return {min, leg, n: G.game.rivals.length, neutraal: ownerColor(c, "neutral")}; });
   ok(k8.min >= 24 && k8.leg === k8.n + 2 && k8.neutraal === "#3a3550", "8.0: elke corporatie een eigen kleur ver van de andere (ook van de speler), neutraal grijs, legenda met iedereen op de kaart: " + JSON.stringify(k8));
+  // 8.1 controle door concurrentie
+  const vc = await p.evaluate(() => { const c = JSON.parse(JSON.stringify(G.game)), r = c.rivals[0], cont = (c.districts.find(x => x.id === r.hq) || {}).continent, d = c.districts.find(x => x.continent === cont && x.control !== r.name && x.id !== c.player.home_district && !c.rivals.some(q => q.hq === x.id)) || c.districts.find(x => x.control !== r.name);
+    c.aanwezig = {}; c.rivAanwezig = {}; c.patrouille = {}; c.contracten = []; c.contractHist = []; c.producten = []; r.producten = []; handelTick(c); const voor = domDoel(c, d);
+    r.producten = [{naam: "X", aard: "wapen", pop: 80, kwaliteit: 5}]; handelTick(c); const metWinkel = domDoel(c, d);
+    r.producten = []; c.contracten = [{cont: d.continent, over: 6, perMaand: 9, klant: "k", aard: "wapen"}]; handelTick(c); const metContract = domDoel(c, d);
+    return {basis: EIGEN_BASIS, rivVoor: Math.round(voor[r.name] || 0), rivWinkel: Math.round(metWinkel[r.name] || 0), jijVoor: Math.round(voor.player || 0), jijContract: Math.round(metContract.player || 0)}; });
+  ok(vc.basis === 55 && vc.rivWinkel > vc.rivVoor && vc.jijContract > vc.jijVoor, "8.1: bezit is een basis (55); winkels van een rivaal en jouw contracten met klanten op een continent vergroten het aandeel daar: " + JSON.stringify(vc));
   ok(/VERKOOP/.test(verkoop) && /KEURING/.test(verkoop), "tabblad Verkoop en keuring");
   ok(/VARIANT/.test(scherm), "varianten staan op het productblad");
   if (out){ const bl = await p.$('.prodblad'); if (bl) await bl.screenshot({path: out + "/verkoop.png"}); }
