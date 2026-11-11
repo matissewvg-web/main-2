@@ -511,6 +511,12 @@ const html = '<!doctype html><html><head><meta charset=utf8></head><body>' + fs.
     const tel = {}; for (let i = 0; i < 4000; i++){ const k = kiesSector(c); tel[k] = (tel[k] || 0) + 1; }
     return {tank: tank.ok, duurder: buiten.kost > inVak.kost * 2, kwLager: buiten.kw < inVak.kw || inVak.kw === 1, flag: buiten.buitenVak, vlagDuur: vlag1.kost > vlag3.kost && vlag1.doel > vlag3.doel, kUit: kUit > kIn * 1.5, ozWapen, log: tel["Logistiek"], cyber: tel["Cyberware"], wm: tel["Weapon Manufacturing"]}; });
   ok(v87.tank && v87.duurder && v87.kwLager && v87.flag && v87.vlagDuur && v87.kUit && v87.ozWapen && v87.log > v87.cyber * 2 && v87.log > v87.wm * 2, "8.7/9.0: buiten het vak en onder het niveau kan, maar duurder en moeilijker; onderzoek buiten je vak dubbel zo duur; logistiek komt veel vaker voor dan cyberware en wapenmakers: " + JSON.stringify(v87));
+  // 9.2 contractgesprekken
+  const g92 = await p.evaluate(() => { const c = JSON.parse(JSON.stringify(G.game)), d = c.divisions[0], pr = mkProduct(c, d, "Gesprek X", 4, 60); Object.assign(pr, {aard: "logistiek", keuring: "ok"}); c.producten = [pr];
+    const a = {id: "g1", soort: "staat", klant: "Testklant", aard: "logistiek", raam: true, maanden: 12, perMaand: 2, minKwal: 1, verloopt: 3, cont: null, persona: "wantrouwig"}; c.aanvragen = [a];
+    const s0 = bodScore(c, a, "normaal"); const r1x = actGesprek(c, Ctx(), "g1", "vraag"), r2 = actGesprek(c, Ctx(), "g1", "garantie"), r3 = actGesprek(c, Ctx(), "g1", "druk"), r4 = actGesprek(c, Ctx(), "g1", "korting");
+    const s1 = bodScore(c, a, "normaal"); return {ok: r1x.ok && r2.ok && r3.ok, vierde: r4.ok, bekend: !!a.gesprek.bekend, beurten: a.gesprek.beurten.length, effecten: a.gesprek.beurten.map(b => b.effect), s0, s1, garantie: !!a.gesprek.garantie}; });
+  ok(g92.ok && !g92.vierde && g92.bekend && g92.beurten === 3 && g92.effecten[1] === 12 && g92.effecten[2] === -10 && g92.s1 === g92.s0 + 2 && g92.garantie, "9.2: een gesprek van drie beurten; vragen onthult de klant, garantie past bij een wantrouwige klant (+12), druk zetten niet (−10); het bod verandert mee: " + JSON.stringify(g92));
   ok(/VERKOOP/.test(verkoop) && /KEURING/.test(verkoop), "tabblad Verkoop en keuring");
   ok(/VARIANT/.test(scherm), "varianten staan op het productblad");
   if (out){ const bl = await p.$('.prodblad'); if (bl) await bl.screenshot({path: out + "/verkoop.png"}); }
