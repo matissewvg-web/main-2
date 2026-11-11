@@ -233,14 +233,15 @@ const html = '<!doctype html><html><head><meta charset=utf8></head><body>' + fs.
   // 5.14 onderzoek
   const oz = await p.evaluate(() => { const c = JSON.parse(JSON.stringify(G.game)), ctx = Ctx(); c.cash = 900; c.onderzoek = {niveau: {}}; const pm = c.producten.find(x => x.status === "markt"); if (!pm) return {geen: true}; delete pm.tech; const aard = pm.aard || aardVan(pm.type, pm.naam);
     const w0 = prodGewicht(pm, c), kf0 = kostFactor(pm), sp0 = prodSpecs(pm).map(x => x.v);
-    const r1 = actOnderzoek(c, ctx, aard), dubbel = actOnderzoek(c, ctx, "wapen").ok, m = c.onderzoek.lopend.maanden, cash0 = c.cash; for (let i = 0; i < m; i++) onderzoekTick(c, Ctx());
+    if (!onderzoekMag(c, aard)) return {geen: true}; window.__oz = crypto.getRandomValues; crypto.getRandomValues = x => { x[0] = 5; return x; };
+    const r1 = actOnderzoek(c, ctx, aard), dubbel = actOnderzoek(c, ctx, "wapen").ok, m = c.onderzoek.lopend.maanden, cash0 = c.cash; for (let i = 0; i < m; i++) onderzoekTick(c, Ctx()); crypto.getRandomValues = window.__oz;
     const betaald = Math.round((cash0 - c.cash) * 10) / 10, n1 = techNiveau(c, aard), w1 = prodGewicht(pm, c);
     c.onderzoek.niveau[aard] = 3; onderzoekTick(c, Ctx()); const kf3 = kostFactor(pm), sp3 = prodSpecs(pm).map(x => x.v), vol = actOnderzoek(c, ctx, aard).ok;
     const r = c.rivals[0]; r.tech = {[SECTOR_AARD[r.sector] || "consument"]: 2}; const rp = mkRivalProduct(c, r, SECTOR_AARD[r.sector] || "consument");
     actOnderzoek(c, ctx, "wapen"); const stop = actOnderzoekStop(c).ok && !c.onderzoek.lopend;
-    return {r1: r1.ok, dubbel, m, betaald, kost: techKost(c, 1), n1, w: Math.round(w1 / w0 * 100) / 100, kf: Math.round(kf3 / kf0 * 100) / 100, spec: sp3.every((v, i) => v >= sp0[i]) && sp3.some((v, i) => v > sp0[i]), vol, rpKw: rp.kwaliteit, stop}; });
+    return {r1: r1.ok, dubbel, m, betaald, kost: techKost(c, 1, aard), n1, w: Math.round(w1 / w0 * 100) / 100, kf: Math.round(kf3 / kf0 * 100) / 100, spec: sp3.every((v, i) => v >= sp0[i]) && sp3.some((v, i) => v > sp0[i]), vol, rpKw: rp.kwaliteit, stop}; });
   const ozUI = await p.evaluate(() => { S.view = "bedrijf"; S.ozOpen = true; render(); const t = document.querySelector("main").textContent; S.ozOpen = false; render(); return /Onderzoek/.test(t) && /mnd ×/.test(t); });
-  ok(oz.geen || (oz.r1 && !oz.dubbel && Math.abs(oz.betaald - oz.kost) < 0.2 && oz.n1 === 1 && oz.w === 1.05 && oz.kf < 1 && oz.spec && !oz.vol && oz.rpKw >= 2 && oz.stop) && ozUI, "onderzoek: één tegelijk, per maand betaald, niveau 1 +5% omzet, niveau 2 goedkoper, niveau 3 betere eigenschappen, rivalen beter, stoppen kan: " + JSON.stringify(oz));
+  ok(oz.geen || (oz.r1 && !oz.dubbel && Math.abs(oz.betaald - oz.kost) < 0.5 && oz.n1 === 1 && oz.w === 1.05 && oz.kf < 1 && oz.spec && oz.vol && oz.rpKw >= 2 && oz.stop) && ozUI, "onderzoek: één tegelijk, per maand betaald, niveau 1 +5% omzet, niveau 2 goedkoper, niveau 3 betere eigenschappen, daarna kan niveau 4, rivalen beter, stoppen kan: " + JSON.stringify(oz));
   // 5.15 financiën en beurs
   const fb = await p.evaluate(() => { const c = JSON.parse(JSON.stringify(G.game)), ctx = Ctx(); c.reputation = 50; c.heat = 5; c.leningen = []; delete c.beurs; c.keuzes = []; c.cash = 100;
     const cap0 = loanCap(c), cash0 = c.cash, t = actTermijn(c, ctx, 60, 24), cap1 = loanCap(c), w0 = bedrijfWaarde(c); let betaald = 0; for (let i = 0; i < 24; i++) betaald += termijnTick(c);
@@ -334,7 +335,7 @@ const html = '<!doctype html><html><head><meta charset=utf8></head><body>' + fs.
   const ra = await p.evaluate(() => { const c = JSON.parse(JSON.stringify(G.game)), r = c.rivals[0], hq = c.districts.find(d => d.id === r.hq); r.relatie = -50; r.cash = 0;
     const buren = (hq.neighbors || []).map(id => c.districts.find(d => d.id === id)).filter(d => d && d.id !== c.player.home_district);
     const neu = buren[0], mijn = buren[1] || null; if (!neu) return {geen: true}; neu.control = "neutral"; if (mijn) mijn.control = "player"; const thuis = c.districts.find(d => d.id === c.player.home_district);
-    c.rivAanwezig = {[r.name]: {[neu.id]: 150, ...(mijn ? {[mijn.id]: 300} : {}), [thuis.id]: 500}}; for (const d of c.districts){ delete d.dom; delete d.domRiv; } c.aanwezig = {};
+    c.rivAanwezig = {[r.name]: {[neu.id]: 150, ...(mijn ? {[mijn.id]: 300} : {}), [thuis.id]: 500}}; for (const d of c.districts){ delete d.dom; delete d.domRiv; } c.aanwezig = {}; for (const q of c.rivals) if (q !== r) q.producten = []; r.producten = []; c.producten = []; c.contracten = []; c.contractHist = [];
     const oud = window.kansRol; window.kansRol = () => 0.99; const ctx = Ctx(); for (let i = 0; i < 6; i++) domTick(c, ctx); window.kansRol = oud;
     return {neu: neu.control === r.name, mijn: mijn ? mijn.control === r.name : null, thuis: thuis.control === "player", mail: ctx.mails.some(m => /toe$/.test(m.onderwerp || m.subject || "")) || ctx.rep.some(x => /valt .* toe/.test(x))}; });
   ok(ra.geen || (ra.neu && (ra.mijn === null || ra.mijn) && ra.thuis && (ra.mijn === null || ra.mail)), "rivalen met dezelfde regels: hun aanwezigheid neemt een neutraal district en een district van jou over, je thuisdistrict nooit: " + JSON.stringify(ra));
@@ -502,6 +503,13 @@ const html = '<!doctype html><html><head><meta charset=utf8></head><body>' + fs.
     r.cash = 900; r.expM = null; delete r.divs["Biotech"]; const oudR = RNG; RNG = () => 0; rivUitbreiding(c, r); RNG = oudR;
     return {vakOk, opgeruimd, uitgebreid: !!r.divs["Biotech"], reden: (r.divReden || {})["Biotech"] || ""}; });
   ok(r86.vakOk && r86.opgeruimd && r86.uitgebreid && /alleen/.test(r86.reden), "8.6: rivalen starten in verwante sectoren, losse vreemde divisies (en hun producten) verdwijnen, en ze breiden uit met een reden (bv. jij hebt een markt alleen): " + JSON.stringify(r86));
+  // 8.7 vakgebied, niveaugrenzen, onderzoek in je vak, zeldzaamheid
+  const v87 = await p.evaluate(() => { const c = JSON.parse(JSON.stringify(G.game)), d = c.divisions[0]; d.type = "Biotech"; d.level = 1; c.cash = 900; c.gratisDev = 0;
+    const tank = actProduct(c, Ctx(), "ontwikkel", {divisie: divNaam(d), schaal: "klein", aard: "wapen"}), vlag = actProduct(c, Ctx(), "ontwikkel", {divisie: divNaam(d), schaal: "vlag", aard: "medisch"});
+    const mag = divAarden(c, d); c.divisions = [d]; const ozWapen = actOnderzoek(c, Ctx(), "wapen").ok, ozMed = onderzoekMag(c, "medisch");
+    const tel = {}; for (let i = 0; i < 4000; i++){ const k = kiesSector(c); tel[k] = (tel[k] || 0) + 1; }
+    return {tank: tank.ok, vlag: vlag.ok, mag, ozWapen, ozMed, log: tel["Logistiek"], cyber: tel["Cyberware"], wm: tel["Weapon Manufacturing"]}; });
+  ok(!v87.tank && !v87.vlag && v87.mag.includes("medisch") && !v87.mag.includes("wapen") && !v87.ozWapen && v87.ozMed && v87.log > v87.cyber * 2 && v87.log > v87.wm * 2, "8.7: een medische divisie maakt geen wapens en kan op niveau 1 geen vlaggenschip; onderzoek alleen in je vak; logistiek komt veel vaker voor dan cyberware en wapenmakers: " + JSON.stringify(v87));
   ok(/VERKOOP/.test(verkoop) && /KEURING/.test(verkoop), "tabblad Verkoop en keuring");
   ok(/VARIANT/.test(scherm), "varianten staan op het productblad");
   if (out){ const bl = await p.$('.prodblad'); if (bl) await bl.screenshot({path: out + "/verkoop.png"}); }

@@ -11,7 +11,7 @@ Ontwerp dit als een echt ding in deze wereld, zo dicht mogelijk bij wat de CEO b
 
 Regels en grenzen:
 - "kost" 3-60 (M€, opzetten), "maanden" 1-6, "kwaliteit" 1-5, "moeilijkheid" 5-10: bij de lancering gooit de engine 2d6 + ${b} en moet dit getal halen (6 makkelijk, 8 gemiddeld, 10 zeer moeilijk). Moeilijkheid hoort bij hoe gewaagd het idee is, niet bij het budget: met genoeg geld is iets groots niet automatisch riskant. Hoge kwaliteit voor weinig geld kan niet.
-- "markt": de soort markt waar het in concurreert, één van: wapen, medisch, implantaat, data, beveiliging, smokkel, logistiek, financieel, orbitaal, consument.
+- "markt": de soort markt waar het in concurreert, één van: ${divAarden(s, d).join(", ")} (dat is het vak van deze divisie; iets daarbuiten kan ze niet maken).
 - "effecten": wat het per maand doet bij volle populariteit, alleen deze velden: macht 0..3, heat -0.5..1, reputation -0.5..0.6, invloed 0..0.5, zwart 0..1.2 (M€ zwart geld), morale -0.3..0.3, straat/politie/stad/vakbond/nomaden -0.6..0.6. Laat weg wat niet verandert.
 - Gebeurtenis-opties: "kost" (M€ vooraf, 0-40) en "effect" met: cash (-30..20), heat, reputation, morale (-10..10), invloed (0..10), zwart (-20..20), factions {naam: -10..10}, populariteit (-25..25), of een kansworp {"kans": 5-95, "succes": {...}, "falen": {...}}.
 
@@ -40,7 +40,7 @@ function cleanConcept(r, s, d){
   const gb = (Array.isArray(r.gebeurtenissen) ? r.gebeurtenissen : []).slice(0, 3).map(g => ({van: cStr(g.van || "R&D", 60), titel: cStr(g.titel, 80), tekst: cStr(g.tekst, 500),
     opties: (Array.isArray(g.opties) ? g.opties : []).slice(0, 3).map(o => ({label: cStr(o.label, 60), uitleg: cStr(o.uitleg, 180), kost: r1(clamp(+o.kost || 0, 0, 40)), eff: cleanKeuzeEff(o.effect)})).filter(o => o.label)})).filter(g => g.titel && g.opties.length >= 2);
   return {naam: cStr(r.naam, 40) || nieuwProductNaam(s, d.type), soort: CONCEPT_SOORT[r.soort] ? r.soort : "product", pitch: cStr(r.pitch, 500), doelgroep: cStr(r.doelgroep, 80),
-    markt: PRODUCT_AARD[r.markt] ? r.markt : aardVan(d.type, r.naam || ""), kost, maanden: Math.round(clamp(+r.maanden || 3, 1, 6)), doel: Math.round(clamp(Math.max(+r.moeilijkheid || 7, 3 + kw), 5, 10)), kwaliteit: kw, eff,
+    markt: (() => { const mag = divAarden(s, d), m = PRODUCT_AARD[r.markt] ? r.markt : aardVan(d.type, r.naam || ""); return mag.includes(m) ? m : mag[0]; })(), /* 8.7: binnen het vak van de divisie */ kost, maanden: Math.round(clamp(+r.maanden || 3, 1, 6)), doel: Math.round(clamp(Math.max(+r.moeilijkheid || 7, 3 + kw), 5, 10)), kwaliteit: kw, eff,
     vraag: cStr(r.vraag, 140), risico: cStr(r.risico, 200), gebeurtenissen: gb, divisie: divNaam(d)};
 }
 function conceptKansen(s, c){ const d = s.divisions.find(x => divNaam(x) === c.divisie) || {level: 1}; return devKansen(Math.ceil(d.level / 2) + ((s.crew || []).some(m => m.rol === "spindokter") ? 1 : 0), c.doel, "standaard"); }
@@ -183,6 +183,7 @@ function newGame0(d){
   const home = s.districts.some(x => x.id === d.home) ? d.home : "BNL"; p.home_district = home;
   const homeCont = s.districts.find(x => x.id === home).continent;
   for (const r of [{name: "Tessera Holdings", ceo: "Helena Voss", cash: 320, aggression: 0.5, memory: [], sector: "Media & Data"}, {name: "Kovač-Ndiaye Group", ceo: "Idris Bello", cash: 380, aggression: 0.45, memory: [], sector: "Biotech"}]) if (!s.rivals.some(x => x.name === r.name)) s.rivals.push(r);
+  { const gekozen = []; for (const r of s.rivals){ r.sector = kiesSector(s, gekozen.filter(x => ["Cyberware", "Weapon Manufacturing", "Smokkel"].includes(x))); gekozen.push(r.sector); } } /* 8.7: sectoren naar zeldzaamheid (hooguit één van elke zeldzame) */
   { const bezet = new Set(); for (const r of s.rivals){ r.name = genRivaalNaam(r.sector, bezet); bezet.add(r.name); r.ceo = genCeoNaam(new Set(s.rivals.map(x => x.ceo))); r.aggression = r1(clamp(r.aggression + U(-0.12, 0.12), 0.1, 0.8) * 100) / 100; } } /* 5.7: elk spel nieuwe rivalen */
   const hoofd = doctrine.find(t => DT[t]); if (hoofd && !s.rivals.some(r => r.sector === hoofd)) s.rivals[3].sector = hoofd;
   const thuisR = s.rivals.find(r => r.sector === hoofd) || s.rivals[3];

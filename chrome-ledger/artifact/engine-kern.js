@@ -291,7 +291,7 @@ function marketTick(s, ctx){
     }
   }
   if (R() < 0.04){
-    const sec = CH(SECTORS), naam = genRivaalNaam(sec, new Set([...s.rivals.map(r => r.name), ...(s.flags.start_rivalen || [])]));
+    const sec = typeof kiesSector === "function" ? kiesSector(s) : CH(SECTORS), naam = genRivaalNaam(sec, new Set([...s.rivals.map(r => r.name), ...(s.flags.start_rivalen || [])]));
     if (!s.rivals.some(r => r.name === naam)){
       const free = s.districts.filter(d => d.control === "neutral"), hqs = new Set(s.rivals.map(r => r.hq)), afsplits = s.districts.filter(d => d.control !== "player" && d.control !== "neutral" && !hqs.has(d.id)), home = free.length ? CH(free) : afsplits.length ? CH(afsplits) : null; /* 8.0: elke nieuwkomer krijgt een plek op de kaart (desnoods een afsplitsing van een rivaal) */
       const nr = initRival({name: naam, ceo: CH(RIVAL_CEO_NAMEN.filter(x => !s.rivals.some(r => r.ceo === x))), cash: RI(80, 300),

@@ -9,7 +9,7 @@ const html = '<!doctype html><html><head><meta charset=utf8></head><body>' + fs.
   await p.goto("http://s.test/"); await p.waitForTimeout(800); await p.mouse.click(5, 5); await p.waitForTimeout(300);
   const res = await p.evaluate(async (seed) => { await API["/api/setup"]({...S.setup, corp_name: "Sweep BV", doctrine: ["Cyberware", "Logistiek"], home: "BNL", zaad: seed}); const s = G.game; s.cash = 800; s.invloed = 80;
     const ctx = Ctx(); for (const k of CONTINENTS) (s.spanning ??= {})[k.naam] = 75;
-    for (let i = 0; i < 60 && G.game.status === "actief"; i++){
+    for (let i = 0; i < 60 && G.game.status === "actief"; i++){ G.game.morale = Math.max(G.game.morale, 40); G.game.heat = Math.min(G.game.heat, 60); /* 8.7: schermtest, geen balanstest: geen coup of razzia op toeval */
       const g = G.game, cx = Ctx();
       for (const d of g.divisions){ const ps = g.producten.filter(x => x.divisie === divNaam(d)); if (ps.length < maxProducten(d) && !ps.some(x => x.status === "ontwikkeling") && g.cash > 60) actProduct(g, cx, "ontwikkel", {divisie: divNaam(d), schaal: "klein"}); }
       if (i === 5){ actTaak(g, cx, "facturen", true); actAannemen(g, cx, "Verkoopchef"); actTaak(g, cx, "prijzen", true); actHoofd(g, cx, divNaam(g.divisions[0]), "aannemen"); actTermijn(g, cx, 30, 24); }

@@ -242,7 +242,7 @@ function bedrijfLeven(s, ctx){
     news(s, `${b.naam} failliet`, `${b.naam} (${b.sector}) houdt op te bestaan.${b.aandeel ? ` Jouw ${b.aandeel}% is niets meer waard.` : ""}${b.contract ? " Je leveringscontract vervalt." : ""}`, landNaam(s, b.land), "markt", !!(b.aandeel || b.contract));
     if (b.aandeel || b.contract) ctx.rep.push(`${b.naam} failliet`); }
   // oprichtingen: de wereld blijft tussen ±20 en 36 bedrijven
-  if (B.length < 20 || (B.length < 36 && R() < 0.06)){ const sec = CH(allTypes(s).filter(t => NAAM_B[t]).concat(["Financieel"])), land = CH(s.districts.filter(d => d.id !== s.player.home_district)), naam = bedrijfNaam(s, sec);
+  if (B.length < 20 || (B.length < 36 && R() < 0.06)){ const sec = R() < 0.85 ? kiesSector(s) : CH(allTypes(s).filter(t => NAAM_B[t]).concat(["Financieel"])) /* 8.7 */, land = CH(s.districts.filter(d => d.id !== s.player.home_district)), naam = bedrijfNaam(s, sec);
     const b = {id: "b" + hex8(), naam, sector: sec, land: land.id, ceo: CH(CEO_NAMEN), waarde: r1(RI(45, 110) * (1 + (s.tijdperk || 0) * 0.3)), vorige: 0, relatie: RI(0, 20), aandeel: 0, eigenaar: null, contract: false, actie: null, startup: true, groei: r1(U(0.005, 0.03) * 1000) / 1000, sinds: ym(s)};
     b.vorige = b.waarde; bLog(b, s, "Opgericht"); s.bedrijven.push(b); (s.wereldJaar ??= {})[s.date.year] = {...((s.wereldJaar || {})[s.date.year] || {}), nieuw: (((s.wereldJaar || {})[s.date.year] || {}).nieuw || 0) + 1};
     news(s, `Nieuwkomer: ${naam}`, `Een jong bedrijf in ${sec}, uit ${land.name}. Klein, snel en te koop voor wie er vroeg bij is.`, land.continent, "markt"); }
@@ -761,7 +761,7 @@ function nieuweStartups(s, n){
   const used = new Set((s.bedrijven || []).map(b => b.naam));
   for (let i = 0; i < n; i++){
     const naam = STARTUPS.find(x => !used.has(x)); if (!naam) break; used.add(naam);
-    const sec = CH(allTypes(s)), land = CH(s.districts.filter(d => d.id !== s.player.home_district));
+    const sec = R() < 0.85 ? kiesSector(s) : CH(allTypes(s)), land = CH(s.districts.filter(d => d.id !== s.player.home_district)); /* 8.7: zeldzaamheid */
     (s.bedrijven ??= []).push({id: "b" + hex8(), naam, sector: sec, land: land.id, ceo: CH(CEO_NAMEN), waarde: RI(40, 120) * (1 + (s.tijdperk || 0) * 0.3), vorige: 0, relatie: RI(0, 20), aandeel: 0, eigenaar: null, contract: false, actie: null, startup: true});
     news(s, `Nieuwkomer: ${naam}`, `Een jong bedrijf in ${sec}, uit ${land.name}. Klein, snel en te koop voor wie er vroeg bij is.`, land.continent, "markt");
   }

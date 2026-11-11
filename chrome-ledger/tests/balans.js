@@ -62,7 +62,7 @@ function verstandig(s, ctx, agressief){
   for (const d of s.divisions){ const ps = (s.producten || []).filter(p => p.divisie === divNaam(d));
     for (const p of ps) if (p.status === "markt" && p.pop < 35 && s.cash > 40) actProduct(s, ctx, "campagne", {id: p.id});
     for (const p of ps) if (p.status === "markt" && bereik(p) > prodCap(s, p) && s.cash > capKost(s, p) + 50) actProduct(s, ctx, "capaciteit", {id: p.id});
-    if (ps.length < maxProducten(d) && !ps.some(p => p.status === "ontwikkeling") && s.cash > 60) actProduct(s, ctx, "ontwikkel", {divisie: divNaam(d), schaal: s.cash > 140 ? "groot" : "klein"});
+    if (ps.length < maxProducten(d) && !ps.some(p => p.status === "ontwikkeling") && s.cash > 60) actProduct(s, ctx, "ontwikkel", {divisie: divNaam(d), schaal: s.cash > 140 && d.level >= 2 ? "groot" : "klein"});
     const oud = ps.find(p => p.status === "markt" && p.leeftijd > 30 && !p.verbetering && p.kwaliteit < 5); if (oud && s.cash > 80) actProduct(s, ctx, "verbeter", {id: oud.id}); }
   // 6.0: de systemen uit 5.x gebruiken zoals een verstandige speler
   if (typeof aanvraagKans === "function"){
