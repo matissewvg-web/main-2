@@ -270,6 +270,19 @@ const html = '<!doctype html><html><head><meta charset=utf8></head><body>' + fs.
   const dbUI = await p.evaluate(() => { const s = G.game, oudH = s.divHist, oudHi = s.history; const d = divNaam(s.divisions[0]); s.divHist = {[d]: [{m: "a", o: 1}, {m: "b", o: 2}, {m: "c", o: 3}]}; s.history = [...(s.history || []), {m: "2005-01", omzet: 5, kosten: 4, netto: 1, cash: 10, waarde: 100}];
     S.view = "financien"; render(); const t = document.querySelector("main").textContent, svg = !!document.querySelector("main svg polyline"); s.divHist = oudH; s.history = oudHi; render(); return /Omzet per divisie/.test(t) && /Jaaroverzicht/.test(t) && svg; });
   ok(db.geen || (db.reeks.join() === "3,4.5" && db.J.length === 2 && db.J[0].jaar === "2010" && db.J[1].omzet === 22 && db.J[1].waarde === 320 && db.J[0].waarde == null && db.top) && dbUI, "dashboard: omzet per divisie per maand, jaaroverzicht per jaar (met waarde aan het eind), grafieken op Financiën: " + JSON.stringify(db));
+  // 5.17 eigen plannen
+  await p.evaluate(() => { window.__echt17 = crypto.getRandomValues; crypto.getRandomValues = a => { a[0] = 5; return a; }; });
+  const ep = await p.evaluate(() => { const c = JSON.parse(JSON.stringify(G.game)), ctx = Ctx(); c.cash = 500; c.eigenPlannen = []; const r = c.rivals[0], m = c.market[r.sector]; if (m) m.rivals[r.name] = 0.3; const rel0 = r.relatie;
+    const kans = eigenPlanKans(c, "prijsoorlog", r.name), cash0 = c.cash, a = actEigenPlan(c, ctx, "prijsoorlog", r.name), betaald = Math.round((cash0 - c.cash) * 10) / 10, dubbel = actEigenPlan(c, ctx, "laster", r.name).ok;
+    for (let i = 0; i < 3; i++){ (c.eigenPlannen[0] || {}).volgende = ym(c); eigenPlanTick(c, Ctx()); } const klaar = !c.eigenPlannen.length, aandeel = m ? Math.round(m.rivals[r.name] * 100) / 100 : null;
+    return {kans, a: a.ok, betaald, kost: eigenPlanKost(c, "prijsoorlog"), dubbel, klaar, aandeel, relDaling: rel0 - r.relatie, geenBende: actEigenPlan(c, ctx, "uitroken", "bestaat-niet").ok}; });
+  await p.evaluate(() => { crypto.getRandomValues = a => { a[0] = 0; return a; }; });
+  const ep2 = await p.evaluate(() => { const c = JSON.parse(JSON.stringify(G.game)), ctx = Ctx(); c.cash = 500; c.eigenPlannen = []; c.heat = 10; const r = c.rivals[1] || c.rivals[0], rel0 = r.relatie; actEigenPlan(c, ctx, "sabotage", r.name); c.eigenPlannen[0].volgende = ym(c); const ctx2 = Ctx(); eigenPlanTick(c, ctx2);
+    return {weg: !c.eigenPlannen.length, heat: c.heat, rel: rel0 - r.relatie, rep: ctx2.rep.some(x => /ontdekt/.test(x))}; });
+  await p.evaluate(() => { crypto.getRandomValues = window.__echt17; });
+  const epUI = await p.evaluate(() => { S.view = "rivalen"; S.epOpen = true; render(); const t = document.querySelector("main").textContent; S.epOpen = false; render(); return /Zelf een plan smeden/.test(t) && /Prijsoorlog/.test(t); });
+  ok(ep.kans >= 25 && ep.a && ep.betaald === ep.kost && !ep.dubbel && ep.klaar && (ep.aandeel == null || ep.aandeel === 0.24) && ep.relDaling >= 15 && !ep.geenBende && ep2.weg && ep2.heat >= 12 && ep2.rel >= 10 && ep2.rep && epUI,
+    "eigen plannen: drie stappen met worpen, eerste stap vooraf betaald, één tegelijk, gelukte prijsoorlog kost hen 20% aandeel, mislukte stap = ontdekt (heat, relatie), kaart bij Rivalen: " + JSON.stringify([ep, ep2]));
   ok(/VERKOOP/.test(verkoop) && /KEURING/.test(verkoop), "tabblad Verkoop en keuring");
   ok(/VARIANT/.test(scherm), "varianten staan op het productblad");
   if (out){ const bl = await p.$('.prodblad'); if (bl) await bl.screenshot({path: out + "/verkoop.png"}); }

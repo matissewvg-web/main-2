@@ -610,7 +610,7 @@ function tick(s){
   lingeringTick(s, ctx, diff); invoicesTick(s, ctx, diff); marketTick(s, ctx); factionTick(s, ctx);
   npcTick(s, ctx); nomadDemandTick(s, ctx); chaosTick(s, ctx, diff); rumorTick(s, ctx); arcsTick(s, ctx, diff);
   sectorTick(s); regionTick(s, ctx); bedrijfTick(s, ctx); bedrijfLeven(s, ctx); peopleTick(s, ctx, diff);
-  specialTick(s, ctx); productTick(s, ctx); { const pe = productEffectTick(s); if (pe.heat) gz.hDelen.push(["Producten", r1(pe.heat)]); if (pe.morale) gz.mDelen.push(["Producten", r1(pe.morale)]); } productEventTick(s, ctx); tijdlijnTick(s, ctx); spanningTick(s, ctx); corpoTick(s, ctx); domTick(s, ctx); assistentTick(s, ctx); aanvraagTick(s, ctx); regioTick(s); grondstofTick(s, ctx); patentTick(s, ctx); onderzoekTick(s, ctx); beursTick(s, ctx); vraagTick(s); rivalProductTick(s); wereldInvloedProducten(s); eraTick(s, ctx); if (s.date.month === 12) jaarTick(s, ctx); marktTick(s); klusTick(s);
+  specialTick(s, ctx); productTick(s, ctx); { const pe = productEffectTick(s); if (pe.heat) gz.hDelen.push(["Producten", r1(pe.heat)]); if (pe.morale) gz.mDelen.push(["Producten", r1(pe.morale)]); } productEventTick(s, ctx); tijdlijnTick(s, ctx); spanningTick(s, ctx); corpoTick(s, ctx); domTick(s, ctx); assistentTick(s, ctx); aanvraagTick(s, ctx); regioTick(s); grondstofTick(s, ctx); patentTick(s, ctx); onderzoekTick(s, ctx); beursTick(s, ctx); eigenPlanTick(s, ctx); vraagTick(s); rivalProductTick(s); wereldInvloedProducten(s); eraTick(s, ctx); if (s.date.month === 12) jaarTick(s, ctx); marktTick(s); klusTick(s);
   s.accounts.operationeel = s.cash; s.hidden_truth = s.hidden_truth.slice(-30);
 
   let status = "actief";
@@ -668,7 +668,7 @@ function tick(s){
 }
 
 /* ---------- de stad: elke game een andere kaart ---------- */
-const VERSION = "5.16.1";
+const VERSION = "5.17";
 const MAP_W = 1000, MAP_H = 680;
 const RIVAL_COLORS = ["#ff9a1f", "#3d7bff", "#c6ff2e", "#f2f2f2", "#9b5cff", "#ffd400", "#ff4d4d"];
 const ARCH = {
@@ -3542,6 +3542,40 @@ function divHistTick(s){ const H = (s.divHist ??= {}); for (const d of s.divisio
   H[nm] = [...(H[nm] || []), {m: ym(s), o}].slice(-36); } for (const k of Object.keys(H)) if (!s.divisions.some(d => divNaam(d) === k)) delete H[k]; }
 function jaarOverzicht(s){ const J = {}; for (const h of s.history || []){ const y = String(h.m).slice(0, 4); if (!/^\d{4}$/.test(y)) continue; const x = (J[y] ??= {jaar: y, omzet: 0, kosten: 0, netto: 0, mnd: 0}); x.omzet += h.omzet || 0; x.kosten += h.kosten || 0; x.netto += h.netto || 0; x.mnd++; x.kas = h.cash; if (h.waarde != null) x.waarde = h.waarde; }
   return Object.values(J).map(x => ({...x, omzet: r1(x.omzet), kosten: r1(x.kosten), netto: r1(x.netto)})).sort((a, b) => b.jaar.localeCompare(a.jaar)); }
+/* 5.17: zelf plannen smeden. Tegen een rivaal of een bende, in drie stappen van twee maanden. Elke stap kost geld en is een worp (macht, crew en karakter van de tegenstander tellen); mislukt een stap, dan is het plan ontdekt: afgebroken, relatie omlaag, heat omhoog. */
+const EIGEN_PLAN = {
+  prijsoorlog: {label: "Prijsoorlog", doel: "rivaal", stappen: ["leveranciers vastleggen", "verkopers wegkopen", "de prijzen dumpen"], kost: 5, mod: 0, uitleg: "Hun marktaandeel −20%, hun producten −10 populariteit; jouw producten in dezelfde soort +5."},
+  overloop: {label: "Mensen wegkopen", doel: "rivaal", stappen: ["teams in kaart brengen", "aanbiedingen onder de tafel", "een heel team overnemen"], kost: 4, mod: 5, uitleg: "Zij verliezen 20% personeel, jij krijgt de helft erbij (zonder wervingskosten); morale +3."},
+  laster: {label: "Lastercampagne", doel: "rivaal", stappen: ["vuil verzamelen", "journalisten benaderen", "publiceren"], kost: 3, mod: 5, uitleg: "Hun marktaandeel −10%, moeheid +15; jouw reputatie −2 als het later uitkomt (kleine kans)."},
+  sabotage: {label: "Sabotage", doel: "rivaal", stappen: ["depots verkennen", "een bewaker omkopen", "toeslaan"], kost: 6, mod: -5, uitleg: "Zij verliezen €15-30M en hun beste product −15 populariteit. Heat +3."},
+  uitroken: {label: "Bende uitroken", doel: "bende", stappen: ["informanten werven", "de politie tippen", "de panden leegvegen"], kost: 5, mod: 0, uitleg: "De bende verliest 30 aanwezigheid in al jouw districten; relatie met hen −20."},
+};
+const eigenPlanKost = (s, k) => r1(EIGEN_PLAN[k].kost * (DIFF[s.player.difficulty] || 1) * clamp(omvang(s), 0.6, 2.5));
+function eigenPlanKans(s, k, doel){ const P = EIGEN_PLAN[k], crew = (s.crew || []).filter(m => crewStatus(s, m) !== "opgepakt"), bonus = (crew.some(m => m.rol === "fixer") ? 10 : 0) + (crew.some(m => m.rol === "speurder") ? 5 : 0) + (crew.some(m => m.rol === "spindokter") && k === "laster" ? 10 : 0);
+  if (P.doel === "bende"){ const g = (s.gangs || []).find(x => x.id === doel); return g ? snapKans(clamp(65 + bonus + P.mod + (playerPower(s) - gangKracht(g)) / 2, 25, 90)) : 0; }
+  const r = s.rivals.find(x => x.name === doel); if (!r) return 0; return snapKans(clamp(65 + bonus + P.mod + (playerPower(s) - rivalPower(s, r)) / 2 - (r.karakter === "paranoide" ? 10 : 0), 25, 90)); }
+function actEigenPlan(s, ctx, k, doel){ const P = EIGEN_PLAN[k]; if (!P) return {ok: false, msg: "Onbekend plan."}; if ((s.eigenPlannen || []).length) return {ok: false, msg: "Je hebt al een plan lopen. Eén tegelijk."};
+  const naam = P.doel === "bende" ? ((s.gangs || []).find(x => x.id === doel) || {}).naam : (s.rivals.find(x => x.name === doel) || {}).name; if (!naam) return {ok: false, msg: P.doel === "bende" ? "Kies een bende." : "Kies een rivaal."};
+  const kost = eigenPlanKost(s, k); if (s.cash < kost) return {ok: false, msg: `De eerste stap kost €${kost}M.`};
+  (s.eigenPlannen ??= []).push({id: "ep" + hex8(), k, doel, naam, stap: 0, volgende: plusMonths(s, 2), sinds: ym(s)}); s.cash = r1(s.cash - kost); s.accounts.operationeel = s.cash;
+  addLog(s, `Plan gestart: ${P.label} tegen ${naam} (€${kost}M)`);
+  return {ok: true, msg: `${P.label} tegen ${naam} is begonnen: ${P.stappen[0]}. Elke twee maanden een stap (€${kost}M, ${eigenPlanKans(s, k, doel)}% kans per stap). Als het slaagt: ${P.uitleg}`}; }
+function actEigenPlanStop(s){ const L = s.eigenPlannen || []; if (!L.length) return {ok: false, msg: "Er loopt geen plan."}; const p = L[0]; s.eigenPlannen = []; return {ok: true, msg: `${EIGEN_PLAN[p.k].label} tegen ${p.naam} afgeblazen. Wat al betaald is, is weg.`}; }
+function eigenPlanEind(s, ctx, p){ const P = EIGEN_PLAN[p.k], r = s.rivals.find(x => x.name === p.doel), g = (s.gangs || []).find(x => x.id === p.doel); let txt = "";
+  if (p.k === "prijsoorlog" && r){ const m = s.market[r.sector]; if (m) m.rivals[r.name] = (m.rivals[r.name] || 0) * 0.8; for (const x of r.producten || []) x.pop = Math.max(5, (x.pop || 0) - 10); const aard = new Set((r.producten || []).map(x => x.aard)); for (const x of (s.producten || []).filter(y => y.status === "markt" && aard.has(y.aard || aardVan(y.type, y.naam)))) x.pop = Math.round(clamp(x.pop + 5, 3, 95)); relShift(r, -15); txt = `De prijsoorlog tegen ${r.name} is gewonnen: hun klanten lopen weg, hun producten zakken.`; }
+  else if (p.k === "overloop" && r){ const n = Math.max(2, Math.round(r.staff * 0.2)); r.staff = Math.max(10, r.staff - n); s.staff.count += Math.round(n / 2); s.morale = clamp(s.morale + 3); relShift(r, -10); txt = `Een heel team van ${r.name} werkt nu voor ons (${Math.round(n / 2)} mensen).`; }
+  else if (p.k === "laster" && r){ const m = s.market[r.sector]; if (m) m.rivals[r.name] = (m.rivals[r.name] || 0) * 0.9; r.moeheid = clamp(r.moeheid + 15); relShift(r, -8); if (kansRol() < 0.15){ s.reputation = clamp(s.reputation - 2); txt = " Een journalist ontdekte wie erachter zat: reputatie −2."; } txt = `De campagne tegen ${r.name} slaat aan.` + txt; }
+  else if (p.k === "sabotage" && r){ const l = r1(U(15, 30)); r.cash = r1(r.cash - l); const b = (r.producten || []).sort((a, b2) => (b2.pop || 0) - (a.pop || 0))[0]; if (b) b.pop = Math.max(5, (b.pop || 0) - 15); s.heat = clamp(s.heat + 3); relShift(r, -12); txt = `Brand in een depot van ${r.name}: ±€${l}M schade${b ? `, ${b.naam} ligt even niet in de winkels` : ""}.`; }
+  else if (p.k === "uitroken" && g){ for (const d of playerDistricts(s)) if ((g.gebied || {})[d.id] != null) g.gebied[d.id] = Math.max(0, g.gebied[d.id] - 30); g.relatie = Math.round(g.relatie - 20); txt = `${g.naam} is uit onze wijken gerookt.`; }
+  else txt = "Het doel bestaat niet meer; het plan is zonder effect afgerond.";
+  if (r) remember(r, s, `plan van de speler: ${P.label.toLowerCase()}`); mail(ctx, s, "Je crew", `Gelukt: ${P.label} tegen ${p.naam}`, txt, "NORMAAL"); ctx.rep.push(`Plan gelukt: ${P.label} tegen ${p.naam}`); addLog(s, txt); }
+function eigenPlanTick(s, ctx){ for (const p of [...(s.eigenPlannen || [])]){ if (p.volgende > ym(s)) continue; const P = EIGEN_PLAN[p.k], kans = eigenPlanKans(s, p.k, p.doel);
+  if (!kans){ s.eigenPlannen = s.eigenPlannen.filter(x => x !== p); continue; } const roll = rolKans(kans); addRoll(s, `Plan ${P.label} stap ${p.stap + 1}: ${roll.txt} → ${roll.ok ? "GELUKT" : "ONTDEKT"}`);
+  if (!roll.ok){ s.eigenPlannen = s.eigenPlannen.filter(x => x !== p); s.heat = clamp(s.heat + 2); const r = s.rivals.find(x => x.name === p.doel), g = (s.gangs || []).find(x => x.id === p.doel); if (r){ relShift(r, -10); remember(r, s, `ontdekte een plan van de speler (${P.label.toLowerCase()})`); } if (g) g.relatie = Math.round(g.relatie - 10);
+    mail(ctx, s, "Juridische Zaken", `Ontdekt: ${P.label} tegen ${p.naam}`, `Bij "${P.stappen[p.stap]}" ging het mis. ${p.naam} weet wat we van plan waren. Het plan is van tafel; relatie −10, heat +2. (Worp ${roll.txt}.)`, "HOOG"); ctx.rep.push(`Plan ontdekt: ${P.label}`); continue; }
+  p.stap += 1; if (p.stap >= P.stappen.length){ s.eigenPlannen = s.eigenPlannen.filter(x => x !== p); eigenPlanEind(s, ctx, p); continue; }
+  const kost = eigenPlanKost(s, p.k); if (s.cash < kost){ s.eigenPlannen = s.eigenPlannen.filter(x => x !== p); ctx.rep.push(`Plan ${P.label} gestopt: geen geld voor de volgende stap`); continue; }
+  s.cash = r1(s.cash - kost); p.volgende = plusMonths(s, 2); ctx.rep.push(`Plan ${P.label}: stap ${p.stap} gelukt, nu ${P.stappen[p.stap]} (€${kost}M)`); } }
 const spanningGem = s => { const v = Object.values(s.spanning || {}); return v.length ? v.reduce((a, b) => a + b, 0) / v.length : 0; };
 function tijdlijnTick(s, ctx){ const nu = ym(s), gehad = (s.tijdlijnGehad ??= []), B = (s.vraagBasis ??= {});
   for (const t of TIJDLIJN){ if (t.d > nu || gehad.includes(t.d)) continue; gehad.push(t.d); const recent = mndNr(nu) - mndNr(t.d) <= 2;
@@ -4578,6 +4612,7 @@ const API = {
   async "/api/onderzoek"(d){ const s = G.game, ctx = Ctx(); const r = d.stop ? actOnderzoekStop(s) : actOnderzoek(s, ctx, d.aard); if (r.ok) await persist(ctx); return {ok: r.ok, bericht: r.msg}; },
   async "/api/termijn"(d){ const s = G.game, ctx = Ctx(); const r = actTermijn(s, ctx, d.bedrag, d.n); if (r.ok) await persist(ctx); return {ok: r.ok, bericht: r.msg}; },
   async "/api/beurs"(d){ const s = G.game, ctx = Ctx(); const r = actBeurs(s, ctx, d.soort, d.pct); if (r.ok) await persist(ctx); return {ok: r.ok, bericht: r.msg}; },
+  async "/api/eigenplan"(d){ const s = G.game, ctx = Ctx(); const r = d.stop ? actEigenPlanStop(s) : actEigenPlan(s, ctx, d.k, d.doel); if (r.ok) await persist(ctx); return {ok: r.ok, bericht: r.msg}; },
   async "/api/corpo"(d){ const s = G.game, ctx = Ctx(); const r = actCorpo(s, ctx, d.soort, d.id); if (r.ok) await persist(ctx); return {ok: r.ok, bericht: r.msg}; },
   async "/api/huisstijl"(d){ const s = G.game, ctx = Ctx(); const r = actHuisstijl(s, d || {}); if (r.ok) await persist(ctx); return {ok: r.ok, bericht: r.msg}; },
   async "/api/product"(d){ const s = G.game, ctx = Ctx(); const r = actProduct(s, ctx, d.soort, d); if (r.ok) await persist(ctx); return {ok: r.ok, bericht: r.msg}; },

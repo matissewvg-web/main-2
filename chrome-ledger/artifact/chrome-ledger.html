@@ -895,7 +895,7 @@ rivalen(){
   const st = S.state, P = st.macht;
   return `<h1>Rivalen</h1>
   ${st.zaad ? `<p class="dim" style="font-size:13px;margin:-6px 0 12px">Wereldzaad <b class="mono" style="color:var(--cyan)">${esc(st.zaad)}</b> · met deze code speelt iemand anders dezelfde wereld (dezelfde rivalen, CEO's en bedrijven).</p>` : ""}
-  ${plannenCard(st)}
+  ${plannenCard(st)}${eigenPlanCard()}
   <div class="card"><div class="spread" style="flex-wrap:wrap"><div class="row" style="gap:26px">
       <div><div class="kpi">JOUW MACHT</div><div class="big">${P.speler}</div></div>
       <div><div class="kpi">BEVEILIGING</div><div class="big">${P.defensie}<span class="dim" style="font-size:15px"> / 5</span></div></div>
@@ -1019,6 +1019,7 @@ function setupBonus(homeD){
     <p class="dim" style="font-size:13px;margin:6px 0 0">Elk soort land geeft een ander voordeel: havens, financiële centra, datavalleien, sloppen. Klik verschillende landen aan om ze te vergelijken.</p>` : "";
 }
 const VERSIES = [
+  ["5.17", "Zelf plannen smeden", ["Rivalen → Zelf een plan smeden: tegen een rivaal een prijsoorlog, mensen wegkopen, een lastercampagne of sabotage; tegen een bende in je gebied: uitroken.", "Een plan heeft drie stappen van twee maanden. Elke stap kost geld en is een worp: je macht tegen de hunne, plus je crew (fixer, speurder, spindokter). Een paranoïde CEO is moeilijker.", "Mislukt een stap, dan is het plan ontdekt: weg, relatie −10, heat +2. Lukt alles, dan volgt de klap (bv. prijsoorlog: hun marktaandeel −20% en jouw producten in die soort +5 populariteit).", "Eén plan tegelijk; afblazen kan altijd. Het lopende plan staat bij Rivalen met de kans op de volgende worp."]],
   ["5.16.1", "Opruimen", ["Spelregels (? rechtsonder in het menu) uitgebreid met De wereld en Handel en groei: een kort overzicht van alles wat er sinds 5.0 bij kwam.", "Winnen: sta je op de beurs, dan telt alleen jouw deel van de bedrijfswaarde (stond nog niet in de regels).", "Alle tests drie keer na elkaar: geen toevallige fouten."]],
   ["5.16", "Dashboard", ["Financiën → Dashboard: een grafiek van de omzet per divisie (divisie en haar producten) over de laatste 36 maanden.", "Per product: omzet over tijd en populariteit naast de sterkste concurrent in dezelfde soort (rode stippel), zodat je ziet wie je inhaalt.", "Jaaroverzicht: omzet, kosten, resultaat, kas aan het eind en je bedrijfswaarde per jaar.", "De kasstroom toont nu Resultaat (omzet min kosten) in plaats van het netto-cijfer uit het CFO-rapport, dat niet altijd klopt met omzet en kosten."]],
   ["5.15", "Financiën en de beurs", ["Financiën → Boekhouding: een balans (wat je bezit, wat je schuldig bent, je eigen vermogen) en de kasstroom van de laatste zes maanden.", "Termijnlening: vaste rente, 12/24/48 maanden, een vaste maandlast (rente en aflossing samen). Goedkoper dan de lopende lening, maar je zit eraan vast.", "Naar de beurs (vanaf €500M bedrijfswaarde en reputatie 25): verkoop 10, 20 of 30% van je aandelen voor geld nu. Daarna telt voor de winst alleen jouw deel. Later kun je aandelen bijgeven (max 49% publiek) of terugkopen.", "Elk jaar in juni een aandeelhoudersvergadering: dividend, herinvesteren of een bonus voor je directie."]],
@@ -1098,7 +1099,7 @@ const VERSIES = [
   ["1.1", "Wereld", ["Nieuwe tab Wereld: wereldnieuws, een ranglijst van alle bedrijven met waarde en markten per sector.", "25 bedrijven verspreid over de wereld: zakendiner, leveringscontract, aandelen met dividend of een overname.", "Gebeurtenissen per land en continent (stormen, staatsgrepen, handelsakkoorden) veranderen tijdelijk wat gebieden opleveren.", "Startvoordeel per soort land, een eigen stad voor je hoofdkantoor, en per gebied op de kaart: wat het oplevert.", "Geruchten en marktberichten staan in het nieuws in plaats van in je inbox."]],
   ["1.0", "Echte wereld", ["Echte wereldkaart, dominantie per continent en zee, eskaders, rivalen met oorlog en handel, blijvende inkomstenbronnen."]],
 ];
-const PLANNING = [["5.17", "Zelf plannen smeden."], ["5.18", "Krant van de maand."], ["5.19", "De CEO als persoon: leeftijd, opvolging, rivaliserende CEO's."], ["5.20", "Eigen moeilijkheid instellen."], ["5.21", "Rondleiding en spiekbriefjes."]];
+const PLANNING = [["5.17.1", "Huisstijl al bij het oprichten."], ["5.17.2", "Hoofdmenu met Doorgaan, Nieuw spel en Laden (save slots)."], ["5.18", "Krant van de maand."], ["5.19", "De CEO als persoon: leeftijd, opvolging, rivaliserende CEO's."], ["5.20", "Eigen moeilijkheid instellen."], ["5.21", "Rondleiding en spiekbriefjes."]];
 function versieCard(){
   const vrs = ([v, t, l]) => `<div style="margin:8px 0"><b class="mono" style="color:var(--cyan)">${v}</b> <b>${esc(t)}</b><ul class="ylist">${l.map(x => `<li>${esc(x)}</li>`).join("")}</ul></div>`;
   return `<div class="card" style="margin-top:16px"><h3>Versies</h3>${VERSIES.slice(0, 2).map(vrs).join("")}<details><summary class="muted" style="cursor:pointer;margin:6px 0">Oudere versies (${VERSIES.length - 2})</summary>${VERSIES.slice(2).map(vrs).join("")}</details>
@@ -1661,6 +1662,18 @@ function plannenCard(st){
     <ol class="planstap">${p.stappen.map((x, i) => `<li class="${i < p.stap ? "af" : i === p.stap ? "nu" : ""}">${esc(x)}${i === p.stap ? ` <span class="dim">(rond ${esc(p.wanneer)})</span>` : ""}</li>`).join("")}</ol>
     <div class="dim" style="font-size:13px">Als het slaagt: ${esc(p.eind)}${p.zacht ? " · <b>je bent voorbereid, de klap is half zo groot</b>" : ""}${p.motief ? ` · motief: ${esc(p.motief)}` : ""}</div></div>`).join("")}</div>`;
 }
+/* 5.17: eigen plannen */
+function eigenPlanCard(){ const s = G.game, L = s.eigenPlannen || [], gangs = (s.gangs || []).filter(g => Object.keys(g.gebied || {}).some(id => (s.districts.find(d => d.id === id) || {}).control === "player" && g.gebied[id] >= 5));
+  if (L.length){ const p = L[0], P = EIGEN_PLAN[p.k];
+    return `<div class="card" style="margin-bottom:14px;box-shadow:inset 0 0 0 1px var(--cyan)"><div class="spread"><h3>Jouw plan: ${esc(P.label)} tegen ${esc(p.naam)}</h3><span class="tag cyan">stap ${p.stap + 1} van ${P.stappen.length}</span></div>
+      <ol class="planstap">${P.stappen.map((x, i) => `<li class="${i < p.stap ? "af" : i === p.stap ? "nu" : ""}">${esc(x)}${i === p.stap ? ` <span class="dim">(worp rond ${esc(p.volgende)}, ${eigenPlanKans(s, p.k, p.doel)}% kans)</span>` : ""}</li>`).join("")}</ol>
+      <div class="spread"><span class="dim" style="font-size:13px">Als het slaagt: ${esc(P.uitleg)} Elke volgende stap kost €${eigenPlanKost(s, p.k)}M.</span><button class="btn sm danger" data-a="eigenplanstop">Afblazen</button></div></div>`; }
+  const S0 = S.planDoel || (s.rivals[0] || {}).name || "", rivOpts = s.rivals.map(r => `<option value="${esc(r.name)}" ${S0 === r.name ? "selected" : ""}>${esc(r.name)}</option>`).join(""), gOpts = gangs.map(g => `<option value="${esc(g.id)}" ${S.planBende === g.id ? "selected" : ""}>${esc(g.naam)}</option>`).join("");
+  const knop = (k, doel) => { const P = EIGEN_PLAN[k], kans = eigenPlanKans(s, k, doel), kost = eigenPlanKost(s, k); return `<div class="lrow" style="display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap;padding:6px 0;border-bottom:1px solid rgba(255,255,255,.06)"><span style="flex:1;min-width:220px"><b>${esc(P.label)}</b> <span class="dim" style="font-size:12.5px">3 stappen × €${kost}M · ${kans}% per stap · ±${Math.round(Math.pow(kans / 100, 3) * 100)}% dat alles lukt</span><br><span class="muted" style="font-size:13px">${esc(P.uitleg)}</span></span><button class="btn sm" data-a="eigenplan" data-k="${k}" data-doel="${esc(doel)}" ${!kans || s.cash < kost ? "disabled" : ""}>Starten</button></div>`; };
+  return `<details class="card" style="margin-bottom:14px" ${S.epOpen ? "open" : ""} ontoggle="S.epOpen = this.open"><summary style="cursor:pointer;display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap"><h3 style="margin:0">Zelf een plan smeden</h3><span class="dim" style="font-size:13px">tegen een rivaal of een bende</span></summary>
+    <p class="muted" style="font-size:13px;margin:8px 0 6px">Een plan duurt drie stappen van twee maanden. Elke stap kost geld en is een worp: je macht tegen die van hen, plus je crew (fixer, speurder, spindokter). Mislukt een stap, dan is het plan ontdekt: weg, relatie −10, heat +2. Eén plan tegelijk.</p>
+    ${s.rivals.length ? `<div class="row" style="gap:8px;align-items:center;margin:6px 0"><span class="kpi">RIVAAL</span><select data-plandoel="1">${rivOpts}</select></div>${["prijsoorlog", "overloop", "laster", "sabotage"].map(k => knop(k, S0)).join("")}` : ""}
+    ${gangs.length ? `<div class="row" style="gap:8px;align-items:center;margin:12px 0 6px"><span class="kpi">BENDE IN JE GEBIED</span><select data-planbende="1">${gOpts}</select></div>${knop("uitroken", S.planBende || gangs[0].id)}` : ""}</details>`; }
 function nieuwCard(){
   const gezien = localGet("gezien_versie"), i = VERSIES.findIndex(v => v[0] === gezien), A = i === -1 ? VERSIES.slice(0, 10) : VERSIES.slice(0, i), L = A.slice(0, 4), meer = A.length - L.length;
   if (!L.length) return "";
@@ -2090,6 +2103,8 @@ document.addEventListener("click", async e => {
     case "aanwezig": return act("/api/aanwezig", {id: t.dataset.id});
     case "termijn": return act("/api/termijn", {bedrag: +(document.getElementById("tlbedrag") || {}).value, n: +t.dataset.n});
     case "beurs": return act("/api/beurs", {soort: t.dataset.s, pct: +t.dataset.pct});
+    case "eigenplan": return act("/api/eigenplan", {k: t.dataset.k, doel: t.dataset.doel});
+    case "eigenplanstop": return act("/api/eigenplan", {stop: true});
     case "onderzoek": return act("/api/onderzoek", {aard: t.dataset.aard});
     case "onderzoekstop": return act("/api/onderzoek", {stop: true});
     case "patent": return act("/api/patent", {id: t.dataset.id});
@@ -2232,7 +2247,7 @@ document.addEventListener("click", async e => {
     }
   }
 });
-document.addEventListener("change", e => { const t = e.target; if (t && t.dataset && t.dataset.hs){ S.hsOpen = true; act("/api/huisstijl", {[t.dataset.hs]: t.value}, {silent: true}); return; }
+document.addEventListener("change", e => { const t = e.target; if (t && t.dataset && (t.dataset.plandoel || t.dataset.planbende)){ if (t.dataset.plandoel) S.planDoel = t.value; else S.planBende = t.value; S.epOpen = true; render(); return; } if (t && t.dataset && t.dataset.hs){ S.hsOpen = true; act("/api/huisstijl", {[t.dataset.hs]: t.value}, {silent: true}); return; }
   if (t && t.dataset && t.dataset.hsfile && t.files && t.files[0]){ S.hsOpen = true; const fr = new FileReader(); fr.onload = () => { const img = new Image(); img.onload = () => { const c = document.createElement("canvas"); c.width = c.height = 96; const g = c.getContext("2d"), sc = Math.min(96 / img.width, 96 / img.height), w = img.width * sc, hh = img.height * sc; g.drawImage(img, (96 - w) / 2, (96 - hh) / 2, w, hh); act("/api/huisstijl", {logo: {soort: "png", data: c.toDataURL("image/png")}}); }; img.onerror = () => toast("Dat bestand kon niet als afbeelding gelezen worden.", true); img.src = fr.result; }; fr.readAsDataURL(t.files[0]); return; }
   if (t && t.dataset && t.dataset.dev){ (S.devSel ??= {})[t.dataset.dev] = {...((S.devSel || {})[t.dataset.dev] || {}), [t.dataset.k]: t.value}; render(); } });
 document.addEventListener("keydown", e => {
