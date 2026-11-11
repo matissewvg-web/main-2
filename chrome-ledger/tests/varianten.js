@@ -120,6 +120,12 @@ const html = '<!doctype html><html><head><meta charset=utf8></head><body>' + fs.
     const ctx = Ctx(); tijdlijnTick(s, ctx); const wapen = s.vraagBasis.wapen, med = s.vraagBasis.medisch, fin = s.vraagBasis.financieel || 0, nieuws = ctx.rep.filter(x => /Wereld:/.test(x)); s.date = {year: 2023, month: 1}; tijdlijnTick(s, Ctx());
     return {wapen, med, fin, nieuws, medNa: s.vraagBasis.medisch, wapenNa: s.vraagBasis.wapen, aantal: s.tijdlijnGehad.length}; });
   ok(tl.wapen === 6 && tl.med === 8 && tl.fin === 0 && tl.nieuws.length === 1 && /Pandemie/.test(tl.nieuws[0]) && tl.medNa === 0 && tl.wapenNa === 20, "tijdlijn: oude gebeurtenissen stil verwerkt, de recente pandemie in het nieuws, tijdelijke trends lopen af, blijvende stapelen: " + JSON.stringify(tl));
+  // 5.4 corpospanning
+  const sp = await p.evaluate(() => { const s = JSON.parse(JSON.stringify(G.game)); s.spanning = {}; s.nieuws = []; s.date = {year: 2022, month: 2}; const ctx = Ctx(); spanningTick(s, ctx); const eu0 = s.spanning.Europa;
+    const n = Object.keys(s.spanning).length; s.spanning.Europa = 49.95; const ctx2 = Ctx(); s.date = {year: 2022, month: 3}; spanningTick(s, ctx2); S.view = "wereld"; S.wtab = "spanning"; render(); const kaart = /Corpospanning/.test(document.querySelector("main").textContent);
+    return {n, eu0, fase: spanningFase(s.spanning.Europa)[1], melding: ctx2.rep.join(" "), kaart, gem: Math.round(spanningGem(s))}; });
+  ok(sp.n === 7 && sp.eu0 >= 20 && sp.kaart && (sp.fase === "Sancties" ? /Sancties/.test(sp.melding) : true), "corpospanning: elk continent een waarde, oorlog in Europa telt mee, nieuwe fase in het nieuws, tabblad Corpospanning: " + JSON.stringify(sp));
+  await p.evaluate(() => { S.view = "bedrijf"; render(); });
   // 7. scherm
   await p.evaluate(() => { S.view = "bedrijf"; render(); }); const ds = await p.$('[data-a=prodsheet]'); if (ds){ await ds.click(); await p.waitForTimeout(200); }
   const scherm = await p.evaluate(() => { const el = document.querySelector(".prodblad"); return el ? el.textContent : ""; });

@@ -542,7 +542,7 @@ function tick(s){
   if (belasting){ cost += belasting; lines.push(`| Winstbelasting (${Math.round((0.2 - off) * 100)}% tot €60M, ${Math.round((0.35 - off) * 100)}% daarboven${off ? ", offshore" : ""}) | 0 | ${belasting} |`); }
   const net = r1(rev - cost); s.cash = r1(s.cash + net);
 
-  { const h0 = s.heat, ha = heatAdd * 0.7 * (s.player.difficulty === "Casual" ? 0.9 : 1) * (heeftFocus(s, "juristen") ? 0.9 : 1), dec = (s.culture.heat_decay ?? 2) + s.heat * 0.07; s.heat = clamp(s.heat + ha - dec); gz.hDelen.push(["Divisies (omzet trekt aandacht)", r1(ha)], ["Vanzelf afnemen", r1(s.heat - h0 - ha)]); }
+  { const h0 = s.heat, ha = heatAdd * 0.7 * (s.player.difficulty === "Casual" ? 0.9 : 1) * (heeftFocus(s, "juristen") ? 0.9 : 1), dec = (s.culture.heat_decay ?? 2) + s.heat * 0.07 + ((s.spanning || {})[(s.districts.find(x => x.id === s.player.home_district) || {}).continent] >= 90 ? 1 : 0); s.heat = clamp(s.heat + ha - dec); gz.hDelen.push(["Divisies (omzet trekt aandacht)", r1(ha)], ["Vanzelf afnemen", r1(s.heat - h0 - ha)]); }
   let drift = (s.culture.morale_drift || 0) + (net > 0 ? 1 : -2); if (s.culture.layoff_policy === "hard") drift -= 2;
   drift += clamp((s.staff.avg_salary - 30) / 6, -2, 2);
   if (sf < 0.8){ drift -= 1; rep.push(`Onderbezetting: ${s.staff.count} mensen voor ${need} plekken`); }
@@ -601,7 +601,7 @@ function tick(s){
   lingeringTick(s, ctx, diff); invoicesTick(s, ctx, diff); marketTick(s, ctx); factionTick(s, ctx);
   npcTick(s, ctx); nomadDemandTick(s, ctx); chaosTick(s, ctx, diff); rumorTick(s, ctx); arcsTick(s, ctx, diff);
   sectorTick(s); regionTick(s, ctx); bedrijfTick(s, ctx); bedrijfLeven(s, ctx); peopleTick(s, ctx, diff);
-  specialTick(s, ctx); productTick(s, ctx); { const pe = productEffectTick(s); if (pe.heat) gz.hDelen.push(["Producten", r1(pe.heat)]); if (pe.morale) gz.mDelen.push(["Producten", r1(pe.morale)]); } productEventTick(s, ctx); tijdlijnTick(s, ctx); vraagTick(s); rivalProductTick(s); wereldInvloedProducten(s); eraTick(s, ctx); if (s.date.month === 12) jaarTick(s, ctx); marktTick(s); klusTick(s);
+  specialTick(s, ctx); productTick(s, ctx); { const pe = productEffectTick(s); if (pe.heat) gz.hDelen.push(["Producten", r1(pe.heat)]); if (pe.morale) gz.mDelen.push(["Producten", r1(pe.morale)]); } productEventTick(s, ctx); tijdlijnTick(s, ctx); spanningTick(s, ctx); vraagTick(s); rivalProductTick(s); wereldInvloedProducten(s); eraTick(s, ctx); if (s.date.month === 12) jaarTick(s, ctx); marktTick(s); klusTick(s);
   s.accounts.operationeel = s.cash; s.hidden_truth = s.hidden_truth.slice(-30);
 
   let status = "actief";
@@ -658,7 +658,7 @@ function tick(s){
 }
 
 /* ---------- de stad: elke game een andere kaart ---------- */
-const VERSION = "5.3";
+const VERSION = "5.4";
 const MAP_W = 1000, MAP_H = 680;
 const RIVAL_COLORS = ["#ff9a1f", "#3d7bff", "#c6ff2e", "#f2f2f2", "#9b5cff", "#ffd400", "#ff4d4d"];
 const ARCH = {
@@ -3154,6 +3154,22 @@ const TIJDLIJN = [
   {d: "2035-01", kop: "Orbitale fabrieken", tekst: "In een baan om de aarde maken fabrieken wat op aarde niet kan.", schok: {orbitaal: 0.12}, basis: {orbitaal: 8}},
   {d: "2038-01", kop: "Chroom-mode", tekst: "Implantaten zijn mode. Wie geen chroom draagt, valt op.", schok: {implantaat: 0.1, consument: 0.04}, basis: {implantaat: 6}},
   {d: "2040-01", kop: "Corporate steden", tekst: "De eerste stad wordt bestuurd door een bedrijf. Andere volgen.", schok: {beveiliging: 0.08, smokkel: 0.05}, basis: {beveiliging: 5}}];
+/* 5.4: corpospanning per continent (zoals world tension): stijgt met de tijd, oorlogen, bendeoorlogen, corpomacht en wereldgebeurtenissen */
+const SPANNING_FASEN = [[90, "Corporate zone", "De corporaties regeren. De politie kijkt de andere kant op; heat zakt sneller op je eigen continent."], [70, "Privélegers", "Bedrijven zetten eigen legers op straat. Vraag naar wapens en beveiliging piekt."], [50, "Sancties", "Embargo's en sancties. Staten proberen de corporaties terug te dringen."], [30, "Onrust", "Protesten, stakingen en sabotage. De sfeer wordt grimmig."], [0, "Rustig", "Zaken zoals altijd."]];
+const spanningFase = v => SPANNING_FASEN.find(([d]) => v >= d);
+const SPANNING_TIJDLIJN = {"2015-03": {"Midden-Oosten": 5}, "2020-09": {"Midden-Oosten": 5, "Azië": 3}, "2022-02": {"Europa": 12}, "2032-05": {"*": 8}, "2040-01": {"*": 10}};
+function spanningTick(s, ctx){ const S0 = (s.spanning ??= {}), nu = ym(s); for (const c of CONTINENTS) S0[c.naam] ??= RI(8, 25);
+  const contVan = id => (s.districts.find(d => d.id === id) || {}).continent, ev = SPANNING_TIJDLIJN[nu];
+  for (const c of CONTINENTS){ const n = c.naam, oud = S0[n];
+    let d = 0.12 + 0.05 * (s.tijdperk || 0) + U(-0.2, 0.2);
+    d += s.rivals.filter(r => r.status === "oorlog" && contVan(r.hq) === n).length * 0.4;
+    d += (s.gangs || []).filter(g => g.deal === "oorlog" && Object.keys(g.gebied || {}).some(id => contVan(id) === n)).length * 0.2;
+    d += s.districts.filter(x => x.control === "player" && x.continent === n).length * 0.03;
+    if (ev) d += (ev[n] || 0) + (ev["*"] || 0);
+    if (oud > 15) d -= 0.04;
+    S0[n] = Math.round(clamp(oud + d, 0, 100) * 10) / 10;
+    const f0 = spanningFase(oud), f1 = spanningFase(S0[n]); if (f1[0] > f0[0]){ news(s, `${n}: ${f1[1]}`, `De corpospanning in ${n} loopt op tot ${Math.round(S0[n])}. ${f1[2]}`, n, "wereld", true); ctx.rep.push(`Corpospanning ${n}: ${f1[1]}`); } } }
+const spanningGem = s => { const v = Object.values(s.spanning || {}); return v.length ? v.reduce((a, b) => a + b, 0) / v.length : 0; };
 function tijdlijnTick(s, ctx){ const nu = ym(s), gehad = (s.tijdlijnGehad ??= []), B = (s.vraagBasis ??= {});
   for (const t of TIJDLIJN){ if (t.d > nu || gehad.includes(t.d)) continue; gehad.push(t.d); const recent = mndNr(nu) - mndNr(t.d) <= 2;
     for (const [a, v] of Object.entries(t.basis || {})){ B[a] = (B[a] || 0) + v; if (t.tot) (s.basisTot ??= []).push({a, v, tot: t.tot}); }
@@ -3163,7 +3179,7 @@ function vraagTick(s){
   vraagInit(s);
   const oorlogen = s.rivals.filter(r => r.status === "oorlog").length + (s.flags.special_oorlog ? 1 : 0), dreig = (s.dreigingen || []).length;
   for (const [a, x] of Object.entries(s.vraag)){
-    let drift = ((100 + ((s.vraagBasis || {})[a] || 0)) - x.idx) * 0.03 + U(-0.02, 0.02) * 100 / 100; /* 5.3: normale vraag schuift met de tijdlijn */
+    let drift = ((100 + ((s.vraagBasis || {})[a] || 0) + (a === "wapen" ? spanningGem(s) / 8 : a === "beveiliging" ? spanningGem(s) / 10 : 0)) - x.idx) * 0.03 + U(-0.02, 0.02) * 100 / 100; /* 5.3: normale vraag schuift met de tijdlijn */
     if (a === "wapen") drift += oorlogen * 0.015 + (s.gangs || []).filter(g => g.deal === "oorlog").length * 0.01;
     if (a === "beveiliging") drift += oorlogen * 0.008 + dreig * 0.01;
     if (a === "implantaat" && (s.tijdperk || 0) >= 1) drift += 0.006;
