@@ -59,6 +59,32 @@ Grootste risico's: 5.6 (dominantie) raakt kaart, oorlog en hegemonie tegelijk; 5
 | 3 | 6.2 ✓ | Rivalen met dezelfde regels: zij bouwen aanwezigheid op, schrijven in op aanvragen, kopen exportvergunningen | 2 |
 | 4 | 6.3 ✓ | Nieuwe overwinning: corporate zone (spanning 90+) op je thuiscontinent met 60% dominantie | 1 |
 
+### Ideeën (brainstorm 11 nov, nog niet gepland; eerst de speelronde)
+**Minder is meer (eerst):**
+- Focusmodus: een knop die alleen Wat nu?, beslissingen en Volgende maand toont; de rest één klik verder.
+- Maandsamenvatting als één kaart: 3 regels "wat ging goed / wat ging fout / wat nu", in plaats van een lang rapport.
+- Systemen pas tonen als ze ertoe doen (export pas bij een wapen/implantaat, beurs pas bij €400M, corpomacht pas bij spanning 50+).
+- Snelle maanden: "speel 3 maanden door" met stop bij een beslissing of gevaar.
+
+**Diepte die je voelt:**
+- Crisis-events met een klok: een hack of staking die je binnen 2 maanden moet oplossen, met keuzes per maand.
+- Rivalen met een eigen verhaal: een aartsrivaal die groeit, je bedreigt en een eindgevecht wordt.
+- Spionage: een mol in je directie (nu al geheimen) die je kunt ontmaskeren of terug inzetten tegen een rivaal.
+- Producten met generaties: v1 → v2 → v3 met een launch-event en fans die wachten.
+- Steden in plaats van alleen landen: je hoofdkantoor-stad krijgt wijken die je echt bouwt (labs, fabrieken, torens).
+
+**Cyberpunk-sfeer:**
+- Nachtstad-modus: elke maand een korte scène (2-3 zinnen) uit je stad, gekleurd door heat en spanning.
+- Netrunner-minigame: een eenvoudige puzzel voor een hack in plaats van alleen een worp.
+- Muziek per thema (Neon, Bloed, Chroom) met de bestaande geluidsknop.
+
+**Lange termijn:**
+- Prestaties (achievements) en een eregalerij per wereldzaad, zodat je dezelfde wereld beter kunt spelen.
+- Scenario's: vooraf gemaakte starts ("Failliet erfgoed", "Oorlog in Europa 2022", "Laatste corp in een corporate zone").
+- Erfenis: na je overwinning start je een nieuw spel met één voordeel uit het vorige.
+
+Mijn volgorde, eerlijk: eerst "minder is meer" (het spel is nu vol), dan crisis-events en een aartsrivaal (spanning), daarna sfeer. Nieuwe economische systemen eerst niet: daar zijn er nu genoeg van.
+
 ### Doorlopend (elke ronde in het achterhoofd)
 - Balans: verstandige bot zonder 5.x-systemen 46%, met alles ±60% (6.0). Razzia blijft grootste verliezer. Knop: eigen moeilijkheid (5.20). Na een echte speelronde bijstellen.
 - Reputatie zakt bij wie beslissingen negeert (bewust); sinds 5.6.1 herstelt een lage reputatie langzaam vanzelf.
