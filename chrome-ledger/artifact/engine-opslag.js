@@ -21,14 +21,14 @@ const Store = {
     setTimeout(() => Store.eregalerij().catch(() => {}), 1500);
     let db = null;
     try { db = window.claude && window.claude.use ? await window.claude.use("db") : null; } catch(e){ db = null; }
-    if (!db){ this.useLocal(); return; }
+    if (!db){ this.useLocal(); return; } /* geen online opslag in deze omgeving: browser is de enige opslag */
     G.db = db;
     try {
-      const ptr = await withTimeout(db.doc("meta/huidig").get(), 10000);
+      let ptr; try { ptr = await withTimeout(db.doc("meta/huidig").get(), 10000); } catch(e1){ ptr = await withTimeout(db.doc("meta/huidig").get(), 15000); } /* 10.5: eerst nog een keer proberen */
       G.gid = ptr.exists ? ptr.data().gid : null;
       if (!G.gid){ G.gid = "g" + uid(); await db.doc("meta/huidig").set({gid: G.gid}); }
       G.mode = "db"; this.subscribe();
-    } catch(e){ G.db = null; this.useLocal(); toast("De online opslag reageert niet. Je spel wordt nu alleen in deze browser bewaard.", true); }
+    } catch(e){ G.db = null; /* 10.5: niet stil een oude browserkopie openen; de speler kiest */ const d = localLoad(); S.opslagFout = {lokaal: d && d.game ? {naam: (d.game.player || {}).corp_name || "spel", datum: d.game.date ? `${d.game.date.year}-${String(d.game.date.month).padStart(2, "0")}` : "?"} : null}; S.loaded = true; render(); }
   },
   useLocal(){
     const d = localLoad(); G.mode = "lokaal"; try { G.gid = localStorage.getItem("cl_huidig") || "lokaal"; } catch(e){ G.gid = "lokaal"; }

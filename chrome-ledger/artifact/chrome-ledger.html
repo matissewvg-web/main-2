@@ -700,6 +700,7 @@ function render(){
   if (G.game && G.game.flags && !G.game.flags.overname_herstel_478 && !G._herstel){ G._herstel = true; Store.herstelOvername().then(r => { if (r && r.length){ toast("Teruggezet: " + r.join(", ")); render(); } else if (r){ toast("Je verloren divisie zat niet meer in de back-ups (die gaan drie maanden terug). Zeg in de chat welke divisie het was en hoe groot, dan zet ik haar terug.", true); } }).catch(e => foutLog("herstel overname", e)); }
   const root = document.getElementById("root");
   if (!S.loaded){ root.innerHTML = `<div class="loading"><div class="t">CHROME<span style="color:var(--mag)">//</span>LEDGER</div><div class="s"><span class="dots"></span> VERBINDEN MET CORPNET · ${VERSION}</div>${S.loadNote?`<div class="muted">${esc(S.loadNote)}</div>`:""}</div>`; return; }
+  if (S.opslagFout){ const L = S.opslagFout.lokaal; root.innerHTML = `<div class="loading"><div class="t">CHROME<span style="color:var(--mag)">//</span>LEDGER</div><div class="card" style="max-width:520px;text-align:left"><h3>De online opslag reageert niet</h3><p class="muted" style="font-size:14px">Je spel staat veilig online, maar de verbinding lukt nu niet (bijvoorbeeld net na een update). Probeer het opnieuw. ${L ? `In deze browser staat ook een oudere kopie (${esc(L.naam)}, ${esc(L.datum)}); die openen kan, maar wat je daarin speelt, wordt alleen in deze browser bewaard en is niet je online spel.` : ""}</p><div class="row" style="gap:8px;flex-wrap:wrap"><button class="btn primary" data-a="opnieuwladen">Opnieuw proberen</button>${L ? '<button class="btn" data-a="lokaalopenen">Toch de browserkopie openen</button>' : ""}</div></div></div>`; return; } /* 10.5 */
   conceptLaden(); const _ui = snapUI(), _stats = leesStats();
   S.state = vm(); const st = S.state;
   if (!VIEWS[S.view]) S.view = "overzicht";
@@ -2506,6 +2507,8 @@ document.addEventListener("click", async e => {
     case "sound": S.sound = !S.sound; localSet("sound", S.sound ? "1" : ""); if (S.sound) blip(880,.06); render(); return;
     case "tick": return doTick(false);
     case "offensief": return act("/api/offensief", {});
+    case "opnieuwladen": location.reload(); return;
+    case "lokaalopenen": S.opslagFout = null; Store.useLocal(); toast("Je speelt nu de kopie in deze browser. Die wordt niet online bewaard.", true); return;
     case "simplay": if (S.loopt) simStop(null); else simStart(); return;
     case "simsnel": simSnelheid(t.dataset.n); return;
     case "simweg": S.simPauze = null; render(); return;
