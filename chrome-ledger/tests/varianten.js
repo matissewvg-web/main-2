@@ -167,6 +167,20 @@ const html = '<!doctype html><html><head><meta charset=utf8></head><body>' + fs.
     const namen = a.rivals.map(r => r.name), kar = a.rivals.every(r => RIVAAL_KARAKTER[r.karakter]);
     return {zaad: a.zaad, gelijk: sig(a) === sig(b), anders: sig(a) !== sig(c), auto: d.zaad && d.zaad.length === 6 && d.zaad !== e.zaad, autoAnders: sig(d) !== sig(e), uniek: new Set(namen).size === namen.length, kar, namen, randomNa: Math.random !== RNG ? "fout" : "ok"}; });
   ok(wz.zaad === "NEON77" && wz.gelijk && wz.anders && wz.auto && wz.autoAnders && wz.uniek && wz.kar && wz.randomNa === "ok", "elk spel een nieuwe wereld: zelfde zaad = zelfde rivalen, CEO's, karakters en bedrijven; ander of geen zaad = andere wereld: " + JSON.stringify(wz));
+  // 5.8 assistenten
+  const as = await p.evaluate(() => { const c = JSON.parse(JSON.stringify(G.game)), ctx = Ctx(); c.cash = 500; c.taken = {}; c.npcs = c.npcs.filter(n => !/verkoop|\bhr\b/i.test(n.role));
+    const zonder = actTaak(c, ctx, "prijzen", true).ok, h1 = actAannemen(c, ctx, "Verkoopchef"), dubbel = actAannemen(c, ctx, "Verkoopchef").ok, vc = c.npcs.find(n => n.role === "Verkoopchef"); vc.loyalty = 70;
+    const met = actTaak(c, ctx, "prijzen", true).ok, pm = c.producten.find(x => x.status === "markt"); let prijsVoor = null, prijsNa = null;
+    if (pm){ actPrijs(c, pm.id, 0.6); prijsVoor = prijsF(pm); }
+    actAannemen(c, ctx, "HR-manager"); c.npcs.find(n => n.role === "HR-manager").loyalty = 70; actTaak(c, ctx, "werven", true); c.staff.count = Math.max(5, staffNeed(c) - 10); const st0 = c.staff.count;
+    assistentTick(c, ctx); if (pm) prijsNa = prijsF(pm); const st1 = c.staff.count;
+    const cfo = taakDoener(c, "facturen"); cfo.loyalty = 70; actTaak(c, ctx, "facturen", true); c.auto_pay = false; c.invoices = [{id: "t1", payee: "Testleverancier", amount: 5, due_in: 1, overdue: 0, auto_pay: false, note: "", soort: "vast"}]; const ctx2 = Ctx(); invoicesTick(c, ctx2, 1);
+    const betaald = !c.invoices.some(x => x.id === "t1"), cfoRep = ctx2.rep.filter(x => x.startsWith(cfo.name));
+    vc.loyalty = 10; const oud = window.kansRol; window.kansRol = () => 0; const ctx3 = Ctx(); assistentTick(c, ctx3); window.kansRol = oud;
+    return {zonder, h1: h1.ok, talent: vc.talent, loon: vc.loon, dubbel, met, prijsVoor, prijsNa, st0, st1, betaald, cfoRep, liggen: ctx3.rep.some(x => /liet/.test(x)), loonTot: directieLoon(c)}; });
+  const asUI = await p.evaluate(() => { S.view = "mensen"; render(); const t = document.querySelector("main").textContent; return /Assistenten/.test(t) && /Facturen betalen/.test(t) && /Verkoopchef aannemen/.test(t); });
+  ok(!as.zonder && as.h1 && as.talent >= 2 && as.loon > 0 && !as.dubbel && as.met && (as.prijsVoor == null || as.prijsNa !== as.prijsVoor) && as.st1 > as.st0 && as.betaald && as.cfoRep.length === 1 && as.liggen && as.loonTot > 0 && asUI,
+    "assistenten: aannemen met talent en loon, taken delegeren (prijzen, werven, facturen), lage loyaliteit laat liggen, Mensen toont Assistenten: " + JSON.stringify(as));
   ok(/VERKOOP/.test(verkoop) && /KEURING/.test(verkoop), "tabblad Verkoop en keuring");
   ok(/VARIANT/.test(scherm), "varianten staan op het productblad");
   if (out){ const bl = await p.$('.prodblad'); if (bl) await bl.screenshot({path: out + "/verkoop.png"}); }
