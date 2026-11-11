@@ -101,6 +101,7 @@ Wens: "niet dingen locken, maak het duurder; dieper gaan; contracten cleaner; ni
 | 2 | 10.1 | Klantrelaties: klanten onthouden wat je beloofde en hoe je leverde (vaste klant, wantrouwen na wanbetaling of een gebroken belofte); volgende aanvragen beginnen daarmee | 1 |
 | 3 | 10.2 | Contractlevering: capaciteit per maand tegen je productie; tekort = boete en een bozere klant | 2 |
 | 4 | 10.3 | Opruimstap en balans (de testbot leert ook een gesprek voeren) | 1 |
+| 5 | 10.4 ✓ | (wens 20:11) Contracten vaker langdurig in plaats van eenmalig, langer, en in het gesprek om te zetten | 1 |
 
 ### Ideeën (brainstorm 11 nov, aangevuld na de review)
 - Rivalen voeren onderling corpo-oorlogen; legers van beide kanten kopen bij jou (of bij je concurrent).

@@ -1072,10 +1072,10 @@ function maakAanvraag(s, aard0){ const p0 = (s.producten || []).filter(p => p.st
   const aard = aard0 || (p0[Math.floor(R() * p0.length)].aard || aardVan(p0[0].type, p0[0].naam)), soorten = Object.keys(KLANT_SOORT).filter(k => KLANT_SOORT[k].aard.includes(aard) && (k !== "syndicaat" || (s.gangs || []).length) && (k !== "bedrijf" || (s.bedrijven || []).some(b => !b.eigenaar)));
   if (!soorten.length) return null; const soort = CH(soorten), K = KLANT_SOORT[soort], land = CH(s.districts.filter(d => d.control !== "player")) || s.districts[0];
   let klant, gang = null; if (soort === "bedrijf") klant = CH((s.bedrijven || []).filter(b => !b.eigenaar)).naam; else if (soort === "syndicaat"){ const g = CH(s.gangs); klant = g.naam; gang = g.id; } else klant = `${CH(K.namen)} (${land.name})`;
-  const p = besteVanAard(s, aard), basis = Math.max(1, p ? prodOmzet(s, p) : 2), raam = R() < 0.4, I = p ? stukInfo(p) : {eenheid: "stuks"};
+  const p = besteVanAard(s, aard), basis = Math.max(1, p ? prodOmzet(s, p) : 2), raam = R() < 0.6, I = p ? stukInfo(p) : {eenheid: "stuks"}; /* 10.4: vaker langdurig (was 40%) */
   const bed = soort === "bedrijf" ? (s.bedrijven || []).find(b => b.naam === klant) : null, cont = soort === "syndicaat" ? null : bed ? (s.districts.find(d => d.id === bed.land) || {}).continent || null : land.continent;
   const a = {id: "a" + hex8(), m: ym(s), rivPrijs: rivPrijsVoor(s, aard), soort, klant, gang, aard, raam, cont, minKwal: clamp((p ? p.kwaliteit : 3) + RI(-1, 1), 1, 5), verloopt: 3}; /* 7.0: klant heeft een continent; kwaliteit soms boven de jouwe */
-  if (raam){ a.maanden = CH([6, 12, 18, 24]); a.perMaand = r1(basis * U(0.3, 0.6)); } else a.bedrag = r1(basis * U(2, 5));
+  if (raam){ a.maanden = CH([12, 18, 24, 36]); a.perMaand = r1(basis * U(0.3, 0.6)); } else a.bedrag = r1(basis * U(2, 5)); /* 10.4: langer (was 6-24) */
   a.tekst = `${klant} zoekt ${raam ? `een raamcontract voor ${a.maanden} maanden` : "een eenmalige levering"}: ${PRODUCT_AARD[aard].label.toLowerCase()}, minimaal kwaliteit ${a.minKwal}.`;
   return a; }
 /* 6.10: bedrijven komen zelf met een leveringscontract: geen kosten vooraf en geen worp, of hoger inzetten voor meer geld */
@@ -1140,10 +1140,10 @@ const ZET_WOORD = [[/kort|goedkop|prijs omlaag|procent|%|deal/i, "korting"], [/g
 const zetVanTekst = t => (ZET_WOORD.find(([re]) => re.test(String(t || ""))) || [null, "vraag"])[1];
 function actGesprek(s, ctx, id, zet, eigen){ const a = (s.aanvragen || []).find(x => x.id === id); if (!a) return {ok: false, msg: "Die aanvraag is er niet meer."};
   const Z = GESPREK_ZET[zet]; if (!Z) return {ok: false, msg: "Onbekende zet."}; const G2 = (a.gesprek ??= {beurten: [], bonus: 0, f: 1, gedaan: []});
-  if (G2.beurten.length >= GESPREK_BEURTEN) return {ok: false, msg: `${a.klant} heeft genoeg gehoord. Schrijf in of laat het.`}; if (G2.gedaan.includes(zet)) return {ok: false, msg: "Dat heb je al gezegd."}; if (Z.raam && !a.raam) return {ok: false, msg: "Een langer contract kan alleen bij een raamcontract."};
+  if (G2.beurten.length >= GESPREK_BEURTEN) return {ok: false, msg: `${a.klant} heeft genoeg gehoord. Schrijf in of laat het.`}; if (G2.gedaan.includes(zet)) return {ok: false, msg: "Dat heb je al gezegd."}; if (Z.raam && !a.raam){ a.raam = true; a.maanden = 12; a.perMaand = r1((a.bedrag || 1) / 12 * 1.4); delete a.bedrag; G2.omgezet = true; } /* 10.4: een eenmalige levering omzetten naar een langdurig contract (40% meer in totaal) */
   const P = KLANT_PERSONA[personaVan(a)], p = aanvraagProduct(s, a); let e = P.eff[zet] || 0;
   if (zet === "kwaliteit" && p && p.kwaliteit < (a.minKwal || 1)) e = -6; /* je laat zien dat het niet goed genoeg is */
-  if (zet === "garantie"){ G2.garantie = true; } if (zet === "lang"){ G2.lang = true; } if (Z.f) G2.f = Math.round(G2.f * Z.f * 100) / 100; if (zet === "vraag") G2.bekend = true;
+  if (zet === "garantie"){ G2.garantie = true; } if (zet === "lang" && !G2.omgezet){ G2.lang = true; } if (Z.f) G2.f = Math.round(G2.f * Z.f * 100) / 100; if (zet === "vraag") G2.bekend = true;
   G2.bonus += e; G2.gedaan.push(zet);
   const antwoord = zet === "vraag" ? `${P.stem[0]} Wat wij zoeken: ${P.wil}.` : e >= 8 ? CH([P.stem[1], "Nu praten we.", "Dat is precies wat we zoeken."]) : e >= 3 ? CH(["Goed. Dat nemen we mee.", "Dat helpt.", "Interessant."]) : e > -4 ? CH(["Mm.", "Dat zegt me weinig.", "Dat doet iedereen."]) : CH(["Dat valt niet goed.", "Is dat een dreigement?", "Dan weten we genoeg over u."]);
   G2.beurten.push({zet, wij: eigen && eigen.wij ? cStr(eigen.wij, 300) : Z.tekst, zij: eigen && eigen.zij ? cStr(eigen.zij, 300) : antwoord, effect: e});
@@ -1450,8 +1450,8 @@ function maakContract(s, p){ const aard = p.aard || aardVan(p.type, p.naam), soo
   const soort = CH(soorten), K = KLANT_SOORT[soort], land = CH(s.districts.filter(d => d.control !== "player")) || s.districts[0]; let klant, gang = null, bedL = null;
   if (soort === "bedrijf"){ const b = CH((s.bedrijven || []).filter(b => !b.eigenaar)); klant = b.naam; bedL = b.land; } else if (soort === "syndicaat"){ const g = CH(s.gangs); klant = g.naam; gang = g.id; } else klant = `${CH(K.namen)} (${land.name})`;
   const cont = soort === "syndicaat" ? null : bedL ? (s.districts.find(d => d.id === bedL) || {}).continent || null : land.continent;
-  const basis = Math.max(1, prodOmzet(s, {...p, prijsF: 1}) * 1.2), I = stukInfo(p), raam = R() < 0.45, a = {id: "a" + hex8(), m: ym(s), rivPrijs: rivPrijsVoor(s, aard), soort, klant, gang, aard, raam, cont, product: p.id, minKwal: clamp(p.kwaliteit + RI(-1, 1), 1, 5), verloopt: 4}; /* 7.0: moeilijker, met continent */
-  if (raam){ a.maanden = CH([6, 12, 18]); a.perMaand = r1(basis * U(0.7, 1.1)); } else a.bedrag = r1(basis * U(4, 8));
+  const basis = Math.max(1, prodOmzet(s, {...p, prijsF: 1}) * 1.2), I = stukInfo(p), raam = R() < 0.65, a = {id: "a" + hex8(), m: ym(s), rivPrijs: rivPrijsVoor(s, aard), soort, klant, gang, aard, raam, cont, product: p.id, minKwal: clamp(p.kwaliteit + RI(-1, 1), 1, 5), verloopt: 4}; /* 7.0: moeilijker, met continent */
+  if (raam){ a.maanden = CH([12, 18, 24, 36]); a.perMaand = r1(basis * U(0.7, 1.1)); } /* 10.4 */ else a.bedrag = r1(basis * U(4, 8));
   const stuks = Math.max(1, Math.round((a.bedrag || a.perMaand) * 1e6 / Math.max(1, stukPrijs(p))));
   a.tekst = `${klant} wil ${raam ? `een raamcontract: ${a.maanden} maanden lang ±${stuks} ${stuks === 1 ? I.enkel : I.eenheid} per maand` : `${stuks} ${stuks === 1 ? I.enkel : I.eenheid}`} van ${p.naam}, minimaal kwaliteit ${a.minKwal}.`; return a; }
 const spanningGem = s => { const v = Object.values(s.spanning || {}); return v.length ? v.reduce((a, b) => a + b, 0) / v.length : 0; };
