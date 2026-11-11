@@ -69,6 +69,10 @@ a{color:var(--cyan)}
 .corpowar{margin-top:12px;padding:10px 12px;box-shadow:inset 3px 0 0 var(--mag),inset 0 0 0 1px rgba(var(--mag-rgb),.4);background:rgba(var(--mag-rgb),.06)}
 .nieuwregel{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;padding:7px 12px;margin:0 0 12px;font-size:13.5px;box-shadow:inset 3px 0 0 var(--violet),inset 0 0 0 1px var(--line)}
 .corplegenda{display:flex;flex-wrap:wrap;gap:6px 14px}.corpleg{display:inline-flex;align-items:center;gap:5px;font-size:13px}.corpleg i{width:12px;height:12px;display:inline-block;box-shadow:0 0 0 1px rgba(255,255,255,.25)}
+.boduitslag{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:10px 14px;margin:0 0 12px;box-shadow:inset 3px 0 0 var(--bk),inset 0 0 0 1px var(--bk);animation:bodin .45s cubic-bezier(.3,1.4,.5,1)}
+.boduitslag b{font:800 15px var(--disp);letter-spacing:.2em;color:var(--bk)}.boduitslag span{flex:1;min-width:200px;font-size:14px}
+.boduitslag.gewonnen{--bk:var(--green);background:rgba(43,255,154,.07)}.boduitslag.verloren{--bk:var(--red);background:rgba(255,77,77,.07)}.boduitslag.fout{--bk:var(--amber);background:rgba(255,184,0,.07)}
+@keyframes bodin{from{opacity:0;transform:scale(.96) translateY(-6px)}}
 .simctl{display:flex;align-items:center;gap:6px;position:relative;flex-shrink:0}
 .simplay{all:unset;cursor:pointer;width:38px;height:38px;display:grid;place-items:center;font:700 15px var(--mono);color:var(--cyan);box-shadow:inset 0 0 0 1px rgba(var(--cyan-rgb),.55);background:rgba(var(--cyan-rgb),.06);transition:background .2s,color .2s,box-shadow .2s}
 .simplay:hover{background:rgba(var(--cyan-rgb),.18)}.simplay:focus-visible{outline:1px solid var(--cyan)}.simplay:disabled{opacity:.4;cursor:default}
@@ -643,7 +647,10 @@ function toast(msg, bad){
 }
 async function load(){ if (S.wtab === undefined) S.wtab = localGet("wtab") || "nieuws"; if (S.pfilter === undefined) S.pfilter = localGet("pfilter") || "alle"; render(); }
 async function act(path, body, opts={}){
-  if (S.busy) return; S.busy = true;
+  if (S.busy){ /* 8.4: een klik terwijl het spel nog bezig is (opslaan, een maand), wacht nu in plaats van te verdwijnen */
+    const t0 = Date.now(); while (S.busy && Date.now() - t0 < 8000) await new Promise(r => setTimeout(r, 60));
+    if (S.busy){ toast("Het spel is nog bezig met opslaan. Probeer het zo nog eens.", true); return; } }
+  S.busy = true;
   try {
     const r = await api(path, body);
     if (r.bericht && !opts.silent) toast(r.bericht, !r.ok);
@@ -1100,6 +1107,7 @@ function setupBonus(homeD){
     <p class="dim" style="font-size:13px;margin:6px 0 0">Elk soort land geeft een ander voordeel: havens, financiële centra, datavalleien, sloppen. Klik verschillende landen aan om ze te vergelijken.</p>` : "";
 }
 const VERSIES = [
+  ["8.4", "Contracten interactiever, spanning escaleert", ["Inschrijven werkte soms niet: klikte je terwijl het spel nog opsloeg of een maand verwerkte, dan werd de klik stil genegeerd. Nu wacht de klik tot het spel klaar is en gaat dan door.", "Iets betere kansen bij aanvragen. Na elke inschrijving staat bovenaan Contracten een duidelijke uitslag (gewonnen of verloren, met de worp).", "Per aanvraag: Onderhandelen (eens, met een worp: 12% meer geld, of korting met meer kans, of een beledigde klant met minder kans) en Lobby (6 invloed: +12 kans).", "Corpospanning stijgt sneller en escaleert: boven 40 en 60 gaat het harder, onrust slaat over naar andere continenten, er gebeuren incidenten (aanslagen, stakingen, sabotage) en vanaf 70 voeren rivalen openlijk corpo-oorlogen om elkaars districten."]],
   ["8.2", "Minder winst uit gebied", ["Districten, je aandeel in andere districten en dominantie per continent leveren minder op: op Casual 90%, op Realistisch 75%, op Genadeloos 70% van wat het was. De strijd om gebied gaat nu vooral om je markt, niet om huur.", "Gemeten met de testbot: Casual ±95%, Realistisch ±55%, Genadeloos ±10-15% winst. Niets doen: op Casual overleeft de helft twintig jaar, op Realistisch ga je na ±4,5 jaar onderuit, op Genadeloos na ±2,5 jaar."]],
   ["8.1", "Vechten om gebied", ["Een district bezitten is nu een basis, geen garantie. Wie het beheerst, hangt af van ieders aandeel daar: winkels (wat je op dat continent verkoopt), contracten met klanten daar, aanwezigheid, patrouilles en districten ernaast. Een hoofdkantoor telt zwaar.", "Rivalen doen hetzelfde: hun producten tellen als winkels, gewonnen contracten tellen mee, en ze bouwen aanwezigheid op, ook in elkaars districten. Heeft iemand twee maanden 55% of meer en meer dan de eigenaar, dan neemt die het over. Je thuisdistrict en hoofdkantoren wisselen zo niet.", "Gevolg: de kaart leeft. Neutraal gebied wordt verdeeld en districten wisselen geregeld van eigenaar, ook tussen rivalen. Houd je jouw gebied niet bij, dan verlies je het."]],
   ["8.0", "Elke corporatie haar eigen kleur", ["Elke corporatie heeft een eigen kleur die duidelijk verschilt van de andere, ook van de jouwe. Kies je een kleur die op die van een rivaal lijkt, dan krijgt die rivaal een andere. Nieuwe rivalen krijgen meteen een eigen kleur (eerder vielen ze terug op hetzelfde grijs).", "Neutraal gebied is grijs, niet meer roze.", "Elke rivaal staat op de kaart: een nieuwkomer krijgt een hoofdkantoor, desnoods een afsplitsing van een andere rivaal. Onder de kaart staat een legenda met elke corporatie, haar aantal districten en haar hoofdkantoor."]],
@@ -1794,7 +1802,8 @@ function aanvraagRij(s, a){ const p = aanvraagProduct(s, a), riv = aanvraagRival
       <div style="margin:2px 0">${toegangHtml(s, a)}</div>
       <div class="muted" style="font-size:13.5px">${esc(a.tekst)} ${a.raam ? `€${a.perMaand}M omzet per maand` : `€${a.bedrag}M omzet`} bij normale prijs, ±${Math.round(AANVRAAG_MARGE * 100)}% daarvan is winst.${K.zwart ? " Betaalt zwart, heat +" + K.heat + "." : ""}</div>
       <div class="dim" style="font-size:13px;margin:2px 0 6px">${p ? `${a.product ? "Product" : "Je beste"}: ${esc(p.naam)} (kwaliteit ${p.kwaliteit})${p.kwaliteit < a.minKwal ? ' <b style="color:var(--red)">onder de minimumkwaliteit: −20 kans</b>' : ""}` : "Je hebt geen product van deze soort op de markt"} · ${riv.length ? `concurrenten: ${riv.map(r => esc(r.name)).join(", ")}` : "geen concurrenten"} · <span style="color:${a.verloopt <= 1 ? "var(--amber)" : "inherit"}">nog ${a.verloopt} mnd</span></div>
-      <div class="prijzen" style="margin:0">${bodKnoppen(s, a, p)}<button class="btn sm danger" data-a="aanvraag" data-id="${a.id}" data-k="afwijzen">Afwijzen</button></div></div>`; }
+      ${a.onder ? `<div style="font-size:13px;margin:0 0 6px;color:${a.onder.goed ? "var(--green)" : a.onder.goed === false ? "var(--red)" : "var(--amber)"}">Onderhandeld: ${esc(a.onder.tekst)}</div>` : ""}${a.lobby ? '<div style="font-size:13px;margin:0 0 6px;color:var(--green)">Gelobbyd: +12 kans.</div>' : ""}
+      <div class="prijzen" style="margin:0">${bodKnoppen(s, a, p)}${!a.onder && p ? `<button class="btn sm" data-a="onderhandel" data-id="${a.id}" title="eens per aanvraag; een worp">Onderhandelen · ${onderhandelKans(s, a)}%</button>` : ""}${!a.lobby && p && a.soort !== "syndicaat" ? `<button class="btn sm" data-a="lobby" data-id="${a.id}" ${(s.invloed || 0) >= LOBBY_INV ? "" : "disabled"} title="+12 kans">Lobby · ${LOBBY_INV} invloed</button>` : ""}<button class="btn sm danger" data-a="aanvraag" data-id="${a.id}" data-k="afwijzen">Afwijzen</button></div></div>`; }
 /* 6.11: Bedrijf toont nog een korte samenvatting; alles staat in het scherm Contracten */
 function klantenCard(){ const s = G.game, A = s.aanvragen || [], C = s.contracten || []; if (!A.length && !C.length) return "";
   return `<div class="card" style="margin-bottom:14px"><div class="spread"><h3>Klanten en contracten</h3><button class="btn sm ${A.length ? "primary" : ""}" data-view="contracten">Naar Contracten</button></div><p class="muted" style="font-size:13px;margin:4px 0 0">${A.length} open aanvra${A.length === 1 ? "ag" : "gen"} · ${C.length} ${C.length === 1 ? "lopend contract" : "lopende contracten"} (€${r1(C.reduce((a, c) => a + c.perMaand * AANVRAAG_MARGE, 0))}M netto per maand). Inschrijven, leveringsdeals, wie wat levert en de oorlogen staan bij Contracten.</p></div>`; }
@@ -1830,7 +1839,9 @@ function contractenView(){ const s = G.game, A = (s.aanvragen || []).slice().sor
       return `<div class="lrow" style="padding:6px 0;border-bottom:1px solid rgba(255,255,255,.06)"><div class="spread"><span><b>${esc(x.c)}</b> <span class="dim">· ${Math.round(x.v)} ${esc(f[1])}</span></span><span class="mono" style="font-size:13px">wapens ×${spanningVraagF("wapen", x.v).toFixed(2)} · beveiliging ×${spanningVraagF("beveiliging", x.v).toFixed(2)}</span></div><div class="dim" style="font-size:13px">Leveren hier: ${mijn ? `<b style="color:var(--cyan)">jij (€${mijn}M/mnd)</b>` : "jij niet"}${lev.length ? ", " + lev.join(", ") : ""}${embargo(s, x.c) ? " · embargo op export" : ""}</div></div>`; }).join("") : '<div class="dim" style="font-size:13px;padding:4px 0">Overal is het nog rustig (spanning onder 30).</div>'}</div>`;
   const UIT = {gewonnen: ["ok", "gewonnen"], verloren: ["KRITIEK", "verloren"], verlopen: ["", "verlopen"], afgewezen: ["", "afgewezen"]};
   const hist = `<div class="card"><h3>Geschiedenis</h3>${H.length ? `<div style="overflow-x:auto"><table><thead><tr><th>Maand</th><th>Klant</th><th>Wat</th><th>Uitkomst</th><th>Naar</th><th class="num">Omzet</th></tr></thead><tbody>${H.slice(0, 20).map(h => `<tr><td class="mono">${esc(h.m)}</td><td>${esc(h.klant)}</td><td>${esc(h.product || PRODUCT_AARD[h.aard].label)}${h.raam ? ' <span class="dim">raam</span>' : ""}</td><td><span class="tag ${UIT[h.uitkomst][0]}">${UIT[h.uitkomst][1]}</span></td><td>${h.wie === "jij" ? "<b>jij</b>" : esc(h.wie || "niemand")}</td><td class="num">${eur(h.bedrag)}</td></tr>`).join("")}</tbody></table></div>` : '<p class="dim" style="font-size:13px">Nog niets. Elke inschrijving, verloren of verlopen aanvraag komt hier, met wie hem kreeg.</p>'}</div>`;
-  return `<h1>Contracten</h1>${kop}<div class="grid g2" style="margin-top:14px">${open}${lopend}</div><div class="grid g2" style="margin-top:14px">${pub}${wie}</div><div class="grid g2" style="margin-top:14px">${oor}${hist}</div>`; }
+  const U2 = S.bodUitslag && Date.now() - S.bodUitslag.t < 120000 ? S.bodUitslag : null;
+  const uitslag = U2 ? `<div class="boduitslag ${U2.fout ? "fout" : U2.ok ? "gewonnen" : "verloren"}" role="status"><b>${U2.fout ? "NIET GELUKT" : U2.ok ? "GEWONNEN" : "VERLOREN"}</b><span>${esc(U2.tekst)}</span><button class="btn sm" data-a="bodweg" aria-label="Sluiten">✕</button></div>` : "";
+  return `<h1>Contracten</h1>${uitslag}${kop}<div class="grid g2" style="margin-top:14px">${open}${lopend}</div><div class="grid g2" style="margin-top:14px">${pub}${wie}</div><div class="grid g2" style="margin-top:14px">${oor}${hist}</div>`; }
 /* 5.8: assistenten */
 function assistentCard(){ const s = G.game, T = s.taken || {}, kost = aannemenKost(s);
   const rij = ([k, t]) => { const n = taakDoener(s, k), aan = !!T[k] && !!n;
@@ -2497,7 +2508,10 @@ document.addEventListener("click", async e => {
     case "regio": return act("/api/regio", {id: t.dataset.id, cont: t.dataset.c}, {silent: true});
     case "exportverg": return act("/api/export", {soort: t.dataset.s, cont: t.dataset.c});
     case "pitch": return act("/api/pitch", {id: t.dataset.id});
-    case "aanvraag": return act("/api/aanvraag", {id: t.dataset.id, keuze: t.dataset.k});
+    case "aanvraag": { const r = await act("/api/aanvraag", {id: t.dataset.id, keuze: t.dataset.k}, {silent: t.dataset.k !== "afwijzen"}); if (r && t.dataset.k !== "afwijzen"){ S.bodUitslag = {ok: r.ok && /^Gewonnen/.test(r.bericht || ""), fout: !r.ok, tekst: r.bericht || "", t: Date.now()}; if (S.view !== "contracten") toast(r.bericht, !r.ok); render(); } return; }
+    case "onderhandel": return act("/api/onderhandel", {id: t.dataset.id});
+    case "lobby": return act("/api/lobby", {id: t.dataset.id});
+    case "bodweg": S.bodUitslag = null; render(); return;
     case "taak": return act("/api/taak", {k: t.dataset.k, aan: t.dataset.aan === "1", rol: t.dataset.rol});
     case "corpo": return act("/api/corpo", {soort: t.dataset.soort, id: t.dataset.id});
     case "autodev": return act("/api/autodev", {divisie: t.dataset.div, aan: t.dataset.aan == null ? undefined : t.dataset.aan === "1", schaal: t.dataset.schaal}, {silent: true});

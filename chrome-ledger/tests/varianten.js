@@ -477,6 +477,15 @@ const html = '<!doctype html><html><head><meta charset=utf8></head><body>' + fs.
     r.producten = []; c.contracten = [{cont: d.continent, over: 6, perMaand: 9, klant: "k", aard: "wapen"}]; handelTick(c); const metContract = domDoel(c, d);
     return {basis: EIGEN_BASIS, rivVoor: Math.round(voor[r.name] || 0), rivWinkel: Math.round(metWinkel[r.name] || 0), jijVoor: Math.round(voor.player || 0), jijContract: Math.round(metContract.player || 0)}; });
   ok(vc.basis === 55 && vc.rivWinkel > vc.rivVoor && vc.jijContract > vc.jijVoor, "8.1: bezit is een basis (55); winkels van een rivaal en jouw contracten met klanten op een continent vergroten het aandeel daar: " + JSON.stringify(vc));
+  // 8.4 klik wacht als het spel bezig is; onderhandelen, lobby; spanning escaleert
+  const c84 = await p.evaluate(async () => { const s = G.game; s.aanvragen ??= []; const d = s.divisions[0], pr = mkProduct(s, d, "Kist 84", 4, 60); Object.assign(pr, {aard: "logistiek", schaal: "groot", keuring: "ok"}); s.producten.push(pr);
+    const a = {id: "a84", m: ym(s), soort: "bedrijf", klant: "Testbedrijf", aard: "logistiek", raam: false, bedrag: 4, verloopt: 3, cont: null, minKwal: 1}; s.aanvragen.push(a);
+    S.busy = true; setTimeout(() => { S.busy = false; }, 300); const r = await act("/api/onderhandel", {id: "a84"}, {silent: true}); const onder = !!(G.game.aanvragen.find(x => x.id === "a84") || {}).onder;
+    G.game.invloed = 10; const k0 = aanvraagKans(G.game, G.game.aanvragen.find(x => x.id === "a84"), "normaal"); const l = await act("/api/lobby", {id: "a84"}, {silent: true}); const k1 = aanvraagKans(G.game, G.game.aanvragen.find(x => x.id === "a84"), "normaal"); const lob = !!(G.game.aanvragen.find(x => x.id === "a84") || {}).lobby;
+    G.game.aanvragen = G.game.aanvragen.filter(x => x.id !== "a84"); G.game.producten = G.game.producten.filter(x => x !== pr);
+    const c = JSON.parse(JSON.stringify(G.game)), th = exportThuis(c); for (const k of CONTINENTS) c.spanning[k.naam] = 20; const laag = {...c.spanning}; c.spanning[th] = 65; const v0 = c.spanning[th]; for (let i = 0; i < 12; i++) spanningTick(c, Ctx());
+    return {r: !!(r && r.ok), onder, l: !!(l && l.ok), lob, k0, k1, stijg: Math.round((c.spanning[th] - v0) * 10) / 10}; });
+  ok(c84.r && c84.onder && c84.l && c84.k1 >= c84.k0 && c84.lob && c84.stijg >= 3, "8.4: een klik terwijl het spel bezig is wacht en gaat dan door; onderhandelen en lobby werken (+kans); spanning boven 60 escaleert snel: " + JSON.stringify(c84));
   ok(/VERKOOP/.test(verkoop) && /KEURING/.test(verkoop), "tabblad Verkoop en keuring");
   ok(/VARIANT/.test(scherm), "varianten staan op het productblad");
   if (out){ const bl = await p.$('.prodblad'); if (bl) await bl.screenshot({path: out + "/verkoop.png"}); }

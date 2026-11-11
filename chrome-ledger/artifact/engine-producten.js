@@ -829,14 +829,20 @@ const SPANNING_TIJDLIJN = {"2015-03": {"Midden-Oosten": 5}, "2020-09": {"Midden-
 function spanningTick(s, ctx){ const S0 = (s.spanning ??= {}), nu = ym(s); for (const c of CONTINENTS) S0[c.naam] ??= RI(8, 25);
   const contVan = id => (s.districts.find(d => d.id === id) || {}).continent, ev = SPANNING_TIJDLIJN[nu];
   for (const c of CONTINENTS){ const n = c.naam, oud = S0[n];
-    let d = (0.18 + 0.05 * (s.tijdperk || 0)) * inst(s, "spanning") + U(-0.2, 0.2); /* 6.8: iets sneller */
+    let d = (0.26 + 0.06 * (s.tijdperk || 0)) * inst(s, "spanning") + U(-0.2, 0.2); /* 8.4: sneller (was 0,18 + 0,05) */
+    if (oud >= 40) d += 0.12; if (oud >= 60) d += 0.15; /* 8.4: escalatie: hoe hoger, hoe sneller */
+    d += Math.min(0.1, 0.015 * CONTINENTS.filter(x => x.naam !== n && (S0[x.naam] || 0) >= 60).length); /* 8.4: onrust slaat over */
     d += Math.min(0.35, (((s.handelWapen || {})[n]) || 0) / 60); /* 6.8: wie wapens verkoopt, warmt het continent op */
     d += s.rivals.filter(r => r.status === "oorlog" && contVan(r.hq) === n).length * 0.4;
     d += (s.gangs || []).filter(g => g.deal === "oorlog" && Object.keys(g.gebied || {}).some(id => contVan(id) === n)).length * 0.2;
     d += s.districts.filter(x => x.control === "player" && x.continent === n).length * 0.03;
     if (ev) d += (ev[n] || 0) + (ev["*"] || 0);
     if (oud > 15) d -= 0.04;
+    if (oud >= 25 && R() < 0.04 + oud / 1500){ const plus = RI(2, 5); d += plus; const kop = CH([`Bomaanslag op een datacentrum in ${n}`, `Stakers bezetten een haven in ${n}`, `Privéleger schiet op demonstranten in ${n}`, `Sabotage legt het stroomnet in ${n} plat`, `Corporatie koopt een ministerie in ${n}`, `Grensincident tussen bedrijfslegers in ${n}`]);
+      news(s, kop, `De corpospanning in ${n} schiet ${plus} punten omhoog.`, n, "wereld", n === exportThuis(s)); ctx.rep.push(`Incident in ${n}: spanning +${plus}`); } /* 8.4: incidenten */
     S0[n] = Math.round(clamp(oud + d, 0, 100) * 10) / 10;
+    if (S0[n] >= 70 && R() < 0.06){ const R2 = s.rivals.filter(r => s.districts.some(x => x.control === r.name && x.continent === n)); if (R2.length >= 2){ const a = CH(R2), b = CH(R2.filter(r => r !== a)), hqs = new Set(s.rivals.map(r => r.hq)), doel = CH(s.districts.filter(x => x.control === b.name && x.continent === n && !hqs.has(x.id)));
+      if (doel){ doel.control = a.name; doel.dom = null; news(s, `Corpo-oorlog: ${a.name} tegen ${b.name}`, `In ${n} trekt een privéleger van ${a.name} ${doel.name} binnen. ${b.name} is het district kwijt. Niemand grijpt in.`, n, "wereld", true); ctx.rep.push(`Corpo-oorlog in ${n}: ${a.name} neemt ${doel.name} van ${b.name}`); S0[n] = Math.min(100, r1(S0[n] + 1)); } } } /* 8.4: rivalen vechten openlijk */
     const f0 = spanningFase(oud), f1 = spanningFase(S0[n]); if (f1[0] > f0[0]){ const ef = spanningEffecten(s, n).filter(e => e.soort === "vraag").map(e => e.t).join(", "); news(s, `${n}: ${f1[1]}`, `De corpospanning in ${n} loopt op tot ${Math.round(S0[n])}. ${f1[2]}${ef ? ` Vraag daar nu: ${ef}.` : ""}`, n, "wereld", true); ctx.rep.push(`Corpospanning ${n}: ${f1[1]}${ef ? ` (${ef})` : ""}`);
       if (n === exportThuis(s)) mail(ctx, s, "Strategie", `Thuiscontinent: ${f1[1]}`, `De corpospanning in ${n} staat op ${Math.round(S0[n])}. ${f1[2]} Wat dit voor ons betekent: ${spanningEffecten(s, n).map(e => e.t).join(", ") || "nog weinig"}. Alles staat bij Wereld → Corpospanning.`, f1[0] >= 70 ? "HOOG" : "NORMAAL"); } } }
 /* 5.4.1: Sancties en Privélegers op je thuiscontinent: staten zitten corporaties op de huid (heat zakt trager); Corporate zone: politie kijkt weg */
@@ -1042,7 +1048,7 @@ const aanvraagProduct = (s, a) => (a.product && (s.producten || []).find(x => x.
 function aanvraagKans(s, a, prijs){ const p = aanvraagProduct(s, a), P = AANVRAAG_PRIJS[prijs] || AANVRAAG_PRIJS.normaal; if (!p) return 0; const K = KLANT_SOORT[a.soort] || {};
   const g = a.gang ? (s.gangs || []).find(x => x.id === a.gang) : null, riv = aanvraagRivalen(s, a.aard).length;
   const rk = aanvraagRivalen(s, a.aard).reduce((m, r) => Math.max(m, ...(r.producten || []).filter(x => x.aard === a.aard).map(x => x.kwaliteit || 1)), 0);
-  return snapKans(Math.round(clamp(52 + (p.kwaliteit - 3) * 10 + P.mod + (K.rep ? (s.reputation - 30) / 4 : (g ? g.relatie / 4 : 0)) - riv * 2 - Math.max(0, rk - p.kwaliteit) * 8 - (p.kwaliteit < a.minKwal ? 20 : 0) + (a.product ? 6 : 0), 5, 92))); /* 7.0: moeilijker; de beste rivaal telt */ }
+  return snapKans(Math.round(clamp(56 + (p.kwaliteit - 3) * 10 + P.mod + ((a.onder || {}).mod || 0) + (a.lobby ? 12 : 0) + (K.rep ? (s.reputation - 30) / 4 : (g ? g.relatie / 4 : 0)) - riv * 2 - Math.max(0, rk - p.kwaliteit) * 8 - (p.kwaliteit < a.minKwal ? 20 : 0) + (a.product ? 6 : 0), 5, 92))); /* 7.0: moeilijker; de beste rivaal telt */ }
 /* 7.0: mag je leveren? Wapens, beveiliging en implantaten naar een ander continent vragen een exportvergunning; bij een embargo alleen via een smokkelroute (zwart, heat) */
 function contractToegang(s, a){ if (!a || !a.cont || !EXPORT_AARD.includes(a.aard) || a.cont === exportThuis(s)) return {ok: true, via: "legaal"};
   const verg = !!(s.exportVergunning || {})[a.cont], emb = embargo(s, a.cont), sm = !!(s.smokkelroute || {})[a.cont];
@@ -1090,11 +1096,22 @@ function aanvraagTick(s, ctx){ s.aanvragen ??= []; s.contracten ??= []; bedrijfA
   const n0 = s.contracten.length; s.contracten = s.contracten.filter(c => c.over > 0); if (s.contracten.length || n0){ const tot = r1(s.contracten.reduce((a, c) => a + c.perMaand * AANVRAAG_MARGE, 0)); if (tot) ctx.rep.push(`Raamcontracten: +€${tot}M netto per maand`); }
   s.accounts.operationeel = s.cash; }
 /* 6.11: geschiedenis van alle aanvragen: gewonnen, verloren (aan wie), verlopen, afgewezen */
+/* 8.4: onderhandelen (eens per aanvraag, met een worp) en lobbyen (invloed) */
+function onderhandelKans(s, a){ return snapKans(Math.round(clamp(40 + (s.reputation - 30) / 2 + (a.soort === "bedrijf" ? 10 : 0) + (a.soort === "syndicaat" ? -10 : 0), 15, 80))); }
+function actOnderhandel(s, ctx, id){ const a = (s.aanvragen || []).find(x => x.id === id); if (!a) return {ok: false, msg: "Die aanvraag is er niet meer."}; if (a.onder) return {ok: false, msg: "Daar is al over onderhandeld."};
+  const kans = onderhandelKans(s, a), roll = rolKans(kans); addRoll(s, `Onderhandelen met ${a.klant}: ${roll.txt} → ${roll.ok ? "GELUKT" : "NIET"}`);
+  if (roll.ok) a.onder = {f: 1.12, mod: 0, tekst: `${a.klant} gaat akkoord met 12% meer.`, goed: true};
+  else if (R() < 0.55) a.onder = {f: 0.92, mod: 8, tekst: `${a.klant} wil 8% korting; daarvoor zijn ze makkelijker over te halen (+8 kans).`, goed: null};
+  else a.onder = {f: 1, mod: -12, tekst: `${a.klant} voelt zich onder druk gezet: −12 kans.`, goed: false};
+  return {ok: true, msg: `Onderhandeld (worp ${roll.txt}): ${a.onder.tekst}`}; }
+const LOBBY_INV = 6;
+function actLobby(s, ctx, id){ const a = (s.aanvragen || []).find(x => x.id === id); if (!a) return {ok: false, msg: "Die aanvraag is er niet meer."}; if (a.lobby) return {ok: false, msg: "Daar is al voor gelobbyd."};
+  if ((s.invloed || 0) < LOBBY_INV) return {ok: false, msg: `Lobbyen kost ${LOBBY_INV} invloed.`}; s.invloed = r1(s.invloed - LOBBY_INV); a.lobby = true; return {ok: true, msg: `Een paar diners, een paar telefoontjes: +12 kans bij ${a.klant}.`}; }
 function contractHist(s, a, uitkomst, wie, bedrag){ const pp = a.product ? (s.producten || []).find(x => x.id === a.product) : null;
   (s.contractHist ??= []).unshift({m: ym(s), cont: a.cont || null, klant: a.klant, soort: a.soort, aard: a.aard, product: pp ? pp.naam : null, uitkomst, wie: wie || null, bedrag: r1(bedrag ?? (a.raam ? a.perMaand * a.maanden : a.bedrag) ?? 0), raam: !!a.raam}); s.contractHist = s.contractHist.slice(0, 40); }
 function actAanvraag(s, ctx, id, keuze){ const a = (s.aanvragen || []).find(x => x.id === id); if (!a) return {ok: false, msg: "Die aanvraag is er niet meer."};
   if (keuze === "afwijzen"){ s.aanvragen = s.aanvragen.filter(x => x !== a); { const rv = aanvraagRivalen(s, a.aard); contractHist(s, a, "afgewezen", rv.length ? CH(rv).name : null); } if (a.gang){ const g = (s.gangs || []).find(x => x.id === a.gang); if (g) g.relatie = Math.round(g.relatie - 5); } return {ok: true, msg: `Aanvraag van ${a.klant} afgewezen.${a.gang ? " Ze onthouden het: relatie −5." : ""}`}; }
-  const P = AANVRAAG_PRIJS[keuze]; if (!P) return {ok: false, msg: "Kies een prijs."}; if (P.lang && !a.raam) return {ok: false, msg: "Langer kan alleen bij een raamcontract."}; const p = aanvraagProduct(s, a); if (!p) return {ok: false, msg: `Je hebt geen ${PRODUCT_AARD[a.aard].label.toLowerCase()} op de markt.`};
+  const P0 = AANVRAAG_PRIJS[keuze]; if (!P0) return {ok: false, msg: "Kies een prijs."}; const P = {...P0, f: Math.round(P0.f * ((a.onder || {}).f || 1) * 100) / 100}; if (P.lang && !a.raam) return {ok: false, msg: "Langer kan alleen bij een raamcontract."}; const p = aanvraagProduct(s, a); if (!p) return {ok: false, msg: `Je hebt geen ${PRODUCT_AARD[a.aard].label.toLowerCase()} op de markt.`};
   const T = contractToegang(s, a); if (!T.ok) return {ok: false, msg: `Leveren aan ${a.klant} mag niet: ${T.reden}.`};
   const kans = aanvraagKans(s, a, keuze), roll = rolKans(kans), K0 = KLANT_SOORT[a.soort], K = T.via === "smokkel" ? {...K0, zwart: true, heat: (K0.heat || 0) + 2} : K0, riv = aanvraagRivalen(s, a.aard); s.aanvragen = s.aanvragen.filter(x => x !== a);
   addRoll(s, `Inschrijving ${a.klant} (${P.label.toLowerCase()}): ${roll.txt} → ${roll.ok ? "GEWONNEN" : "VERLOREN"}`); let msg;
