@@ -12,7 +12,7 @@ function pagina(){
 }
 
 const SKIP = (process.env.SKIP || "").split(",").filter(Boolean);
-const STRATEGIE = `const LENGTE = "${LENGTE}"; const SKIP = ${JSON.stringify(SKIP)};
+const STRATEGIE = `const LENGTE = "${LENGTE}"; const SKIP = ${JSON.stringify(SKIP)}; const MAXM = ${+(process.env.MAXM || 300)};
 
 const KIES = {headhunt: 1, opslag: 1, cao: 0, klant: 0, subsidie: 0, sponsor: 1, interview: 0, data: 1, tip: 0, vreemdeling: 1, sekte: 1, klokkenluider: 0, isra_vracht: 1, diner_rivaal: 0};
 function kiesKeuzes(s, ctx, slim){
@@ -103,9 +103,9 @@ async function run(strat, n, diff){
     const {s} = newGame({corp_name: "Bot " + i, doctrine: docs[i % docs.length], home: homes[i % homes.length], difficulty: diff, kapitaal: "normaal", lengte: LENGTE, ontslag: "normaal", bonus: "geen", ethiek: "normaal"});
     G.game = s; const ctx = Ctx();
     let derde = 0, weg = 0, prS = 0, dvS = 0, nP = 0, nM = 0;
-    while (s.status === "actief" && maandenGespeeld(s) < 300){
+    while (s.status === "actief" && maandenGespeeld(s) < MAXM){
       if (maandenGespeeld(s) % 6 === 0){ const cp = contPcts(s); derde = Math.max(derde, (cp[2] || {pct: 0}).pct); weg = Math.max(weg, rivalenWeg(s).weg); }
-      try { if (strat === "passief") passief(s, ctx); else verstandig(s, ctx, strat === "agressief"); } catch(e){ out.push({fout: String(e && e.stack || e).slice(0, 300)}); break; }
+      try { if (strat === "niets"){} else if (strat === "passief") passief(s, ctx); else verstandig(s, ctx, strat === "agressief"); } catch(e){ out.push({fout: String(e && e.stack || e).slice(0, 300)}); break; }
       tick(s); ctx.mails.length = 0;
       { const mk = (s.producten || []).filter(x => x.status === "markt"); prS += mk.reduce((t, x) => t + ((s.prodomzet || {})[x.id] || 0), 0); dvS += s.divisions.reduce((t, d) => t + ((s.divomzet || {})[d.name || d.type] || 0), 0); nP += mk.length; nM++; }
     }

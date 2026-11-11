@@ -13,7 +13,7 @@ const DT = {
   "Media & Data": {rev: 8, cost: 4, heat: 1, vol: 0.30},
   "Private Security": {rev: 8, cost: 5, heat: 2, vol: 0.20},
   "Financieel": {rev: 10, cost: 5, heat: 1, vol: 0.45},
-  "Smokkel": {rev: 14, cost: 4, heat: 4, vol: 0.50},
+  "Smokkel": {rev: 13, cost: 5, heat: 4, vol: 0.50}, /* 7.0: was 14/4, de marge liep weg */
   "Weapon Manufacturing": {rev: 12, cost: 7, heat: 3, vol: 0.35}, /* 6.10: standaard: wapens, pantser, drones, tanks; zware producten alleen via contracten */
 };
 const SECTORS = Object.keys(DT);
@@ -69,15 +69,7 @@ function foutLog(waar, e){
 /* 3.6: de wereldkaart komt altijd uit WORLD_DATA; ze hoeft niet in elke save (was 75% van de grootte) */
 const pak = s => s && s.map && s.map.kind === "wereld" && s.map.versie === 2 && s.map.frame ? {...s, map: {kind: "wereld", versie: 2, gedeeld: true}} : s;
 function migrate(s){
-  if (s.flags && !s.flags.armor_611 && (s.producten || []).some(p => p.id === "peb221407")){ /* 6.11.1: op verzoek, na de update midden in een lancering: armorpakket terug, Directe Verkoop weer aan het publiek */
-    const dv = s.producten.find(p => p.id === "peb221407"); if (dv.schaal === "vlag") dv.schaal = "groot";
-    const d = (s.divisions || []).find(x => x.type === "Weapon Manufacturing" || /weapon manufacturing/i.test(x.name || "")) || (s.divisions || [])[0];
-    if (d && !s.producten.some(p => /armor ?pakket/i.test(p.naam)) && typeof mkProduct === "function"){ const p = mkProduct(s, d, "Pax Armata Armor Pakket", 3, 55);
-      Object.assign(p, {aard: "wapen", schaal: "groot", keuring: "ok", prijs: "standaard", trait: null, stuk: {eenheid: "armorpakketten", enkel: "armorpakket", prijs: 4800},
-        doelgroep: "Legers, politie, particuliere beveiligingsbedrijven en wie liever niet geraakt wordt",
-        pitch: "Alles om heelhuids thuis te komen, in één pakket: kogelwerende vesten (plaat en zacht), helmen met nachtzicht-rail, militaire uniformen, handschoenen en knie- en elleboogbescherming. Eén keer betalen, geen abonnement. Uit onze eigen fabriek."});
-      try { maakReview(p); } catch(e){} s.producten.push(p); }
-    s.flags.armor_611 = true; (s.log ??= []).push(`${s.date ? s.date.year + "-" + String(s.date.month).padStart(2, "0") : ""} · Pax Armata Armor Pakket op de markt (body armor, helmen, uniformen; geen abonnement) en Directe Verkoop weer aan het publiek`); }
+  if (Array.isArray(s.streams) && typeof stromenSamen === "function") stromenSamen(s);
   if (s.custom_types){ const wm = Object.keys(s.custom_types).find(k => /^weapon\s*manufactur/i.test(k)); /* 6.10: eigen soort Weapon manufacturing wordt de standaardsoort */
     if (wm && wm !== "Weapon Manufacturing"){ const N = "Weapon Manufacturing";
       for (const d of s.divisions || []) if (d.type === wm) d.type = N; for (const p of s.producten || []) if (p.type === wm) p.type = N;
@@ -95,18 +87,7 @@ function migrate(s){
     for (const [naam, ps] of Object.entries(wees)){ const n = ps.filter(p => p.status !== "teruggeroepen").length; (s.divisions ??= []).push({name: naam, type: ps[0].type, level: Math.max(2, n - 2), efficiency: 1}); (s.log ??= []).push(`${ym(s)} · ${naam} terug na de geschrapte overname (${n} producten)`); }
     if (s.flags.overgenomen){ delete s.flags.overgenomen; if (/OVERGENOMEN/.test(s.status || "")) s.status = "actief"; }
     s.flags.overname_477 = true; }
-  if (s.flags && s.flags.herstel_wm_479 && !s.flags.herstel_wm_4710){ /* 4.7.10: de speler bouwt de wapenlijn zelf: teruggezette producten weg, niveau 6, €60M en 5 gratis ontwikkelingen */
-    const T = ["Wapens", "Sniper", "Armor", "Drones", "Tanks", "Mechs", "Vliegtuigen"], d = (s.divisions || []).find(x => /weapon manufacturing/i.test(x.name || x.type));
-    s.producten = (s.producten || []).filter(p => !(d && p.divisie === (d.name || d.type) && T.includes(p.naam))); if (d) d.level = Math.max(d.level || 1, 6);
-    s.cash = r1((s.cash || 0) + 60); if (s.accounts) s.accounts.operationeel = s.cash; s.gratisDev = (s.gratisDev || 0) + 5;
-    (s.log ??= []).push(`${ym(s)} · Weapon manufacturing naar niveau 6, +€60M en 5 gratis productontwikkelingen`); s.flags.herstel_wm_4710 = true; }
-  if (s.flags && !s.flags.herstel_wm_479 && (s.hostile_bid || {}).uitslag === "verloren" && s.divisions && !s.divisions.some(d => /weapon manufacturing/i.test(d.name || d.type))){ /* 4.7.9: verloren wapendivisie van de speler terug */
-    s.custom_types ??= {}; let type = Object.keys(s.custom_types).find(k => /weapon/i.test(k)); if (!type && typeof addCustomType === "function"){ const r = addCustomType(s, "Weapon manufacturing", PRESETS.gebalanceerd, "Wapens, voertuigen en drones"); if (r.ok) type = r.naam; }
-    const d = {name: "Weapon manufacturing", type: type || "Private Security", level: 5, efficiency: 1}; s.divisions.push(d);
-    const L = [["Wapens", "klein", null], ["Sniper", "groot", ["sniperrifles", "sniperrifle", 12000]], ["Armor", "groot", ["pantsersets", "pantserset", 3500]], ["Drones", "groot", ["gevechtsdrones", "gevechtsdrone", 45000]],
-      ["Tanks", "vlag", null], ["Mechs", "vlag", ["mechs", "mech", 12000000, true]], ["Vliegtuigen", "vlag", ["gevechtsvliegtuigen", "gevechtsvliegtuig", 35000000, true]]];
-    for (const [naam, sc, st] of L){ const p = mkProduct(s, d, naam, 3, 55); Object.assign(p, {aard: "wapen", schaal: sc, keuring: "ok", prijs: "standaard", trait: null, kanaal: "groothandel"}); if (st) p.stuk = {eenheid: st[0], enkel: st[1], prijs: st[2], order: !!st[3]}; try { maakReview(p); } catch(e){} (s.producten ??= []).push(p); }
-    (s.log ??= []).push(`${ym(s)} · Weapon manufacturing terug met 7 producten (overname geschrapt)`); s.flags.herstel_wm_479 = true; }
+  /* 4.7.9, 4.7.10 en 6.11.1 waren eenmalige reparaties van één save; die zijn toegepast en in 7.0 uit de engine gehaald */
   if (!(s.flags || {}).keur_471 && s.producten){ for (const p of s.producten) if (p.keuring != null && p.keuring !== "ok"){ p.keuring = "ok"; ((s.vergunning ??= {})[p.aard || aardVan(p.type, p.naam)] = true); } (s.flags ??= {}).keur_471 = true; } /* 4.7.1: eenmalig alles gekeurd in bestaande saves */
   s.accounts ??= {operationeel: s.cash, zwart: 0, offshore: 0};
   s.accounts.zwart ??= 0; s.accounts.offshore ??= 0;
@@ -524,6 +505,16 @@ function arcsTick(s, ctx, diff){
   }
 }
 
+/* 7.0: marktslijtage. Een divisie die niet vernieuwt (geen product jonger dan 3 jaar, niets in ontwikkeling, geen uitbreiding in 2 jaar) verliest elke maand marktpositie; wie investeert, krijgt het langzaam terug. De snelheid hangt af van het niveau: zo kost niets doen op den duur alles. */
+const DRUK = {Casual: 0.5, Realistisch: 1, Genadeloos: 1.6}, SLIJT = 0.004, SLIJT_MIN = 0.3;
+const drukF = s => DRUK[s.player.difficulty] ?? 1;
+function divVernieuwt(s, d){ const nm = divNaam(d), nu = mndNr(ym(s));
+  if (d.upM && nu - mndNr(d.upM) < 24) return true;
+  if ((s.projects || []).some(p => p.on_complete && p.on_complete.upgrade_division === nm)) return true;
+  return (s.producten || []).some(p => p.divisie === nm && ((p.status === "markt" && (p.leeftijd || 0) < 36) || p.status === "ontwikkeling" || p.editieBezig || p.verbetering)); }
+function slijtTick(s, ctx){ for (const d of s.divisions){ const oud = d.slijt ?? 1, vers = divVernieuwt(s, d);
+    d.slijt = Math.round(clamp(vers ? oud + 0.02 : oud - SLIJT * drukF(s), SLIJT_MIN, 1) * 1000) / 1000;
+    if (!vers && oud >= 0.9 && d.slijt < 0.9) mail(ctx, s, "Strategie", `${divNaam(d)} raakt achterop`, `Al lang geen nieuw product, geen editie en geen uitbreiding bij ${divNaam(d)}. Concurrenten lopen ons voorbij: de divisie verkoopt nog ${Math.round(d.slijt * 100)}% van wat ze kon, en het zakt elke maand. Een nieuw product, een editie of een uitbreiding keert het.`, "HOOG"); } }
 /* ---------- de maand ---------- */
 function tick(s){
   migrate(s);
@@ -532,9 +523,9 @@ function tick(s){
   for (const d of s.divisions){
     const t = typeOf(s, d.type) || {rev: 6, cost: 4, heat: 1, vol: 0.3};
     const eff = (d.efficiency || 1) * (0.75 + 0.35 * s.morale / 100) * sf;
-    const r = t.rev * Math.pow(d.level, 0.95) * eff * (1 + U(-t.vol, t.vol)) * marketRevMult(s, d.type) * sectorBonus(s, d.type) * sectorMult(s, d.type) * productMult(s, d) * hoofdF(d, "omzet");
+    const r = t.rev * Math.pow(d.level, 0.95) * eff * (1 + U(-t.vol, t.vol)) * marketRevMult(s, d.type) * sectorBonus(s, d.type) * sectorMult(s, d.type) * productMult(s, d) * hoofdF(d, "omzet") * (d.slijt ?? 1); /* 7.0: marktslijtage */
     const c = t.cost * 0.85 * d.level * diff * divCostMult(s, d.type) * hoofdF(d, "kosten"); /* 6.1: divisiehoofd */
-    rev += r; cost += c; heatAdd += t.heat * Math.pow(t.heat <= 1 ? Math.min(d.level, 6) : d.level, 0.75) * 0.5;
+    rev += r; cost += c; heatAdd += t.heat * Math.pow(t.heat <= 1 ? Math.min(d.level, 6) : d.level, t.heat >= 3 ? 0.9 : 0.75) * 0.5; /* 7.0: riskante sectoren worden echt heet bij groei */
     lines.push(`| ${d.name || d.type} (${d.type} L${d.level}) | ${r1(r)} | ${r1(c)} |`); (s.divomzet ??= {})[d.name || d.type] = r1(r);
     const mk = opMarkt(s, d); if (mk.length){ let po = 0, pk = 0, zw = 0, vk = 0; for (const p of mk){ const K = KANAAL[kanaalVan(p)]; let o = prodOmzet(s, p) * eff; if (stukInfo(p).order && !isAbo(p)) o = 0; /* 6.8: zware producten (tanks, satellieten, ...) verkopen niet aan het publiek, alleen via contracten */ (s.prodomzet ??= {})[p.id] = r1(o); pk += prodKost(p, o);
         { const ex = exportExtra(s, p, o); if (ex.legaal || ex.zwart){ po += ex.legaal; zw += ex.zwart; heatAdd += ex.heat; pk += prodKost(p, ex.legaal + ex.zwart); (s.exportOmzet ??= {})[p.id] = r1(ex.legaal + ex.zwart); } } /* 5.10 */
@@ -547,6 +538,8 @@ function tick(s){
   if (streamRev){ rev += streamRev; lines.push(`| Eigen inkomstenbronnen (${(s.streams || []).length}) | ${r1(streamRev)} | 0 |`); }
   for (const x of s.streams || []) if (x.maanden != null && --x.maanden <= 0) ctx.rep.push(`${x.naam} loopt af`);
   s.streams = (s.streams || []).filter(x => x.maanden == null || x.maanden > 0);
+  for (const b of s.bedrijven || []) if (b.contract && !(s.streams || []).some(x => x.naam === "Contract " + b.naam)) b.contract = false; /* 7.0: afgelopen leveringscontract */
+  stromenSamen(s);
   { const ad = aandeelInkomen(s); if (ad.geld){ rev += ad.geld; lines.push(`| Aandeel in andere districten (${ad.n}) | ${ad.geld} | 0 |`); } } /* 5.6 */
   const dom = dominanceIncome(s, "player");
   if (dom.geld){ rev += dom.geld; ctx.rep.push(`Dominantie: +€${dom.geld}M`); }
@@ -589,7 +582,7 @@ function tick(s){
     mail(ctx, s, "COO", `Project klaar: ${p.name}`, p.done_msg || "Opgeleverd. Kijk wat het oplevert."); rep.push(`Project klaar: ${p.name}`);
     const oc = p.on_complete || {};
     if (oc.new_division){ s.divisions.push(oc.new_division); divisieOpening(s, ctx, p, oc.new_division); }
-    if (oc.upgrade_division) for (const d of s.divisions) if ((d.name || d.type) === oc.upgrade_division) d.level += oc.levels || 1;
+    if (oc.upgrade_division) for (const d of s.divisions) if ((d.name || d.type) === oc.upgrade_division){ d.level += oc.levels || 1; d.upM = ym(s); }
     if (oc.district_control) for (const d of s.districts) if (d.id === oc.district_control) d.control = "player";
     if (oc.effect) applyEffect(s, oc.effect);
   }
@@ -627,7 +620,7 @@ function tick(s){
   lingeringTick(s, ctx, diff); invoicesTick(s, ctx, diff); marketTick(s, ctx); factionTick(s, ctx);
   npcTick(s, ctx); nomadDemandTick(s, ctx); chaosTick(s, ctx, diff); rumorTick(s, ctx); arcsTick(s, ctx, diff);
   sectorTick(s); regionTick(s, ctx); bedrijfTick(s, ctx); bedrijfLeven(s, ctx); peopleTick(s, ctx, diff);
-  specialTick(s, ctx); productTick(s, ctx); { const pe = productEffectTick(s); if (pe.heat) gz.hDelen.push(["Producten", r1(pe.heat)]); if (pe.morale) gz.mDelen.push(["Producten", r1(pe.morale)]); } productEventTick(s, ctx); tijdlijnTick(s, ctx); spanningTick(s, ctx); corpoTick(s, ctx); domTick(s, ctx); assistentTick(s, ctx); aanvraagTick(s, ctx); regioTick(s); grondstofTick(s, ctx); patentTick(s, ctx); onderzoekTick(s, ctx); beursTick(s, ctx); eigenPlanTick(s, ctx); ceoTick(s, ctx); hoofdTick(s, ctx); vraagTick(s); rivalProductTick(s); wereldInvloedProducten(s); eraTick(s, ctx); if (s.date.month === 12) jaarTick(s, ctx); marktTick(s); klusTick(s);
+  specialTick(s, ctx); productTick(s, ctx); slijtTick(s, ctx); { const pe = productEffectTick(s); if (pe.heat) gz.hDelen.push(["Producten", r1(pe.heat)]); if (pe.morale) gz.mDelen.push(["Producten", r1(pe.morale)]); } productEventTick(s, ctx); tijdlijnTick(s, ctx); spanningTick(s, ctx); corpoTick(s, ctx); domTick(s, ctx); assistentTick(s, ctx); aanvraagTick(s, ctx); regioTick(s); grondstofTick(s, ctx); patentTick(s, ctx); onderzoekTick(s, ctx); beursTick(s, ctx); eigenPlanTick(s, ctx); ceoTick(s, ctx); hoofdTick(s, ctx); vraagTick(s); rivalProductTick(s); wereldInvloedProducten(s); eraTick(s, ctx); if (s.date.month === 12) jaarTick(s, ctx); marktTick(s); klusTick(s);
   s.accounts.operationeel = s.cash; s.hidden_truth = s.hidden_truth.slice(-30);
 
   let status = "actief";
@@ -685,7 +678,7 @@ function tick(s){
 }
 
 /* ---------- de stad: elke game een andere kaart ---------- */
-const VERSION = "6.14";
+const VERSION = "7.0";
 const MAP_W = 1000, MAP_H = 680;
 const RIVAL_COLORS = ["#ff9a1f", "#3d7bff", "#c6ff2e", "#f2f2f2", "#9b5cff", "#ffd400", "#ff4d4d"];
 const ARCH = {
@@ -1640,6 +1633,8 @@ function bedrijfNaam(s, sector){
   return `${CH(NAAM_A)} ${CH(B)} ${RI(2, 99)}`;
 }
 const bLog = (b, s, t) => { (b.log ??= []).unshift({m: ym(s), t}); b.log = b.log.slice(0, 8); };
+/* 7.0: na een fusie hadden twee contracten dezelfde naam en betaalden ze allebei; samenvoegen tot één (het hoogste bedrag) */
+function stromenSamen(s){ const L = s.streams || [], gezien = new Map(), uit = []; for (const x of L){ const o = gezien.get(x.naam); if (!o){ gezien.set(x.naam, x); uit.push(x); } else if (x.bedrag > o.bedrag) Object.assign(o, x); } if (uit.length !== L.length) s.streams = uit; }
 function hernoemStroom(s, oud, nieuw){ for (const x of s.streams || []) if (x.naam === "Contract " + oud) x.naam = "Contract " + nieuw; }
 function bedrijfLeven(s, ctx){
   const B = (s.bedrijven ??= []), vrij = () => B.filter(b => !b.eigenaar), mg = maandenGespeeld(s);
@@ -3467,34 +3462,46 @@ const aanvraagRivalen = (s, aard) => s.rivals.filter(r => (r.producten || []).so
 const aanvraagProduct = (s, a) => (a.product && (s.producten || []).find(x => x.id === a.product && x.status === "markt")) || besteVanAard(s, a.aard);
 function aanvraagKans(s, a, prijs){ const p = aanvraagProduct(s, a), P = AANVRAAG_PRIJS[prijs] || AANVRAAG_PRIJS.normaal; if (!p) return 0; const K = KLANT_SOORT[a.soort] || {};
   const g = a.gang ? (s.gangs || []).find(x => x.id === a.gang) : null, riv = aanvraagRivalen(s, a.aard).length;
-  return snapKans(Math.round(clamp(62 + (p.kwaliteit - 3) * 10 + P.mod + (K.rep ? (s.reputation - 30) / 4 : (g ? g.relatie / 4 : 0)) - riv * 4 - (p.kwaliteit < a.minKwal ? 20 : 0) + (a.product ? 18 : 0), 5, a.product ? 95 : 92))); /* 6.8: betere kansen; 6.8.1: contracten voor zware producten +18 */ }
+  const rk = aanvraagRivalen(s, a.aard).reduce((m, r) => Math.max(m, ...(r.producten || []).filter(x => x.aard === a.aard).map(x => x.kwaliteit || 1)), 0);
+  return snapKans(Math.round(clamp(52 + (p.kwaliteit - 3) * 10 + P.mod + (K.rep ? (s.reputation - 30) / 4 : (g ? g.relatie / 4 : 0)) - riv * 2 - Math.max(0, rk - p.kwaliteit) * 8 - (p.kwaliteit < a.minKwal ? 20 : 0) + (a.product ? 6 : 0), 5, 92))); /* 7.0: moeilijker; de beste rivaal telt */ }
+/* 7.0: mag je leveren? Wapens, beveiliging en implantaten naar een ander continent vragen een exportvergunning; bij een embargo alleen via een smokkelroute (zwart, heat) */
+function contractToegang(s, a){ if (!a || !a.cont || !EXPORT_AARD.includes(a.aard) || a.cont === exportThuis(s)) return {ok: true, via: "legaal"};
+  const verg = !!(s.exportVergunning || {})[a.cont], emb = embargo(s, a.cont), sm = !!(s.smokkelroute || {})[a.cont];
+  if (verg && !emb) return {ok: true, via: "legaal"};
+  if (sm && verg) return {ok: true, via: "smokkel", reden: `embargo op ${a.cont}: alleen via je smokkelroute (zwart geld, heat +2)`};
+  return {ok: false, reden: emb ? `embargo op ${a.cont}: je hebt een vergunning én een smokkelroute nodig` : `exportvergunning voor ${a.cont} nodig (Bedrijf → Export)`}; }
+/* 7.0: wanbetaling: in onrustige gebieden kan een klant stoppen met betalen */
+function wanbetaalKans(s, c){ if (!c || (!c.cont && c.soort !== "syndicaat")) return 0; if (c.soort === "syndicaat") return 0.02; const v = c.cont ? spanningVan(s, c.cont) : 0; return c.soort === "bedrijf" ? 0.005 : v >= 70 ? 0.03 : v >= 50 ? 0.015 : 0.003; }
 function maakAanvraag(s, aard0){ const p0 = (s.producten || []).filter(p => p.status === "markt"); if (!p0.length) return null;
   const aard = aard0 || (p0[Math.floor(R() * p0.length)].aard || aardVan(p0[0].type, p0[0].naam)), soorten = Object.keys(KLANT_SOORT).filter(k => KLANT_SOORT[k].aard.includes(aard) && (k !== "syndicaat" || (s.gangs || []).length) && (k !== "bedrijf" || (s.bedrijven || []).some(b => !b.eigenaar)));
   if (!soorten.length) return null; const soort = CH(soorten), K = KLANT_SOORT[soort], land = CH(s.districts.filter(d => d.control !== "player")) || s.districts[0];
   let klant, gang = null; if (soort === "bedrijf") klant = CH((s.bedrijven || []).filter(b => !b.eigenaar)).naam; else if (soort === "syndicaat"){ const g = CH(s.gangs); klant = g.naam; gang = g.id; } else klant = `${CH(K.namen)} (${land.name})`;
   const p = besteVanAard(s, aard), basis = Math.max(1, p ? prodOmzet(s, p) : 2), raam = R() < 0.4, I = p ? stukInfo(p) : {eenheid: "stuks"};
-  const a = {id: "a" + hex8(), m: ym(s), soort, klant, gang, aard, raam, minKwal: clamp((p ? p.kwaliteit : 3) + RI(-2, 0), 1, 5), verloopt: 3}; /* 5.10.1/6.8: haalbaar, drie maanden geldig */
+  const bed = soort === "bedrijf" ? (s.bedrijven || []).find(b => b.naam === klant) : null, cont = soort === "syndicaat" ? null : bed ? (s.districts.find(d => d.id === bed.land) || {}).continent || null : land.continent;
+  const a = {id: "a" + hex8(), m: ym(s), soort, klant, gang, aard, raam, cont, minKwal: clamp((p ? p.kwaliteit : 3) + RI(-1, 1), 1, 5), verloopt: 3}; /* 7.0: klant heeft een continent; kwaliteit soms boven de jouwe */
   if (raam){ a.maanden = CH([6, 12, 18, 24]); a.perMaand = r1(basis * U(0.3, 0.6)); } else a.bedrag = r1(basis * U(2, 5));
   a.tekst = `${klant} zoekt ${raam ? `een raamcontract voor ${a.maanden} maanden` : "een eenmalige levering"}: ${PRODUCT_AARD[aard].label.toLowerCase()}, minimaal kwaliteit ${a.minKwal}.`;
   return a; }
 /* 6.10: bedrijven komen zelf met een leveringscontract: geen kosten vooraf en geen worp, of hoger inzetten voor meer geld */
 function bedrijfAanbodTick(s, ctx){ const open = (s.keuzes || []).filter(k => /^bedrijfaanbod_/.test(k.soort || ""));
-  if (open.length >= 2 || kansRol() >= clamp(0.25 + (s.reputation - 30) / 200, 0.15, 0.45)) return;
+  if (!(s.producten || []).some(p => p.status === "markt")) return; /* 7.0: zonder iets te leveren geen leveringscontract */
+  if (open.length >= 2 || kansRol() >= clamp(0.18 + (s.reputation - 30) / 250, 0.1, 0.35)) return;
   const L = (s.bedrijven || []).filter(b => !b.eigenaar && !b.contract && b.relatie > -30 && !open.some(k => k.soort === "bedrijfaanbod_" + b.id)); if (!L.length) return;
-  const b = CH(L), bedrag = bedrijfOpties(s, b).contract.bedrag, hoog = r1(Math.min(8, bedrag * 1.4)), kans = snapKans(Math.round(clamp(45 + b.relatie / 2 + (s.reputation - 30) / 3, 15, 85)));
-  addKeuze(s, ctx, {soort: "bedrijfaanbod_" + b.id, van: b.ceo ? `${b.ceo} (${b.naam})` : b.naam, titel: `${b.naam} wil een leveringscontract`, tekst: `${b.naam} (${b.sector}, ${landNaam(s, b.land)}) wil vast met ons werken: ±€${bedrag}M per maand, zonder kosten vooraf. Tekenen kan meteen. Hoger inzetten kan ook: €${hoog}M per maand, maar dan kunnen ze afhaken.`,
-    opties: [{label: `Tekenen (€${bedrag}M/mnd)`, uitleg: "Zeker. Relatie +5.", eff: {stream: {naam: "Contract " + b.naam, bedrag}, bedrijf: {[b.id]: {relatie: 5, contract: true}}}},
-      {label: `Hoger inzetten (€${hoog}M/mnd, ${kans}%)`, uitleg: "Lukt het niet, dan haken ze af: relatie −8.", eff: {kans, succes: {stream: {naam: "Contract " + b.naam, bedrag: hoog}, bedrijf: {[b.id]: {relatie: 2, contract: true}}}, falen: {bedrijf: {[b.id]: {relatie: -8}}}}},
-      {label: "Afslaan", uitleg: "Relatie −3.", eff: {bedrijf: {[b.id]: {relatie: -3}}}}], standaard: 0});
+  const b = CH(L), bedrag = bedrijfOpties(s, b).contract.bedrag, hoog = r1(Math.min(8, bedrag * 1.4)), kans = snapKans(Math.round(clamp(45 + b.relatie / 2 + (s.reputation - 30) / 3, 15, 85))), duur = RI(18, 36); /* 7.0: met looptijd */
+  addKeuze(s, ctx, {soort: "bedrijfaanbod_" + b.id, van: b.ceo ? `${b.ceo} (${b.naam})` : b.naam, titel: `${b.naam} wil een leveringscontract`, tekst: `${b.naam} (${b.sector}, ${landNaam(s, b.land)}) wil ${duur} maanden met ons werken: ±€${bedrag}M per maand, zonder kosten vooraf. Tekenen kan meteen. Hoger inzetten kan ook: €${hoog}M per maand, maar dan kunnen ze afhaken.`,
+    opties: [{label: `Tekenen (€${bedrag}M/mnd)`, uitleg: "Zeker. Relatie +5.", eff: {stream: {naam: "Contract " + b.naam, bedrag, maanden: duur}, bedrijf: {[b.id]: {relatie: 5, contract: true}}}},
+      {label: `Hoger inzetten (€${hoog}M/mnd, ${kans}%)`, uitleg: "Lukt het niet, dan haken ze af: relatie −8.", eff: {kans, succes: {stream: {naam: "Contract " + b.naam, bedrag: hoog, maanden: duur}, bedrijf: {[b.id]: {relatie: 2, contract: true}}}, falen: {bedrijf: {[b.id]: {relatie: -8}}}}},
+      {label: "Afslaan", uitleg: "Relatie −3.", eff: {bedrijf: {[b.id]: {relatie: -3}}}}], standaard: 2}); /* 7.0: zonder antwoord geen deal */
   ctx.rep.push(`Aanbod: ${b.naam} wil een leveringscontract`); }
 function aanvraagTick(s, ctx){ s.aanvragen ??= []; s.contracten ??= []; bedrijfAanbodTick(s, ctx);
   for (const a of s.aanvragen) a.verloopt -= 1; /* 6.8: meer aanvragen, langer geldig */ const weg = s.aanvragen.filter(a => a.verloopt <= 0); for (const a of weg){ const rv = aanvraagRivalen(s, a.aard); contractHist(s, a, "verlopen", rv.length ? CH(rv).name : null); } if (weg.length) ctx.rep.push(`${weg.length} aanvra${weg.length > 1 ? "gen" : "ag"} verlopen`); s.aanvragen = s.aanvragen.filter(a => a.verloopt > 0);
   const nP = (s.producten || []).filter(p => p.status === "markt").length;
-  for (let poging = 0; poging < 2; poging++) if (nP && s.aanvragen.length < AANVRAAG_MAX && kansRol() < Math.min(0.8, 0.4 + 0.06 * nP)){ const a = maakAanvraag(s); if (a){ s.aanvragen.push(a); ctx.rep.push(`Aanvraag: ${a.klant}`); mail(ctx, s, "Verkoop", `Aanvraag van ${a.klant}`, a.tekst + " Inschrijven kan bij Bedrijf → Klanten, binnen drie maanden.", "NORMAAL"); } }
+  for (let poging = 0; poging < (s.reputation >= 55 ? 2 : 1); poging++) if (nP && s.aanvragen.length < AANVRAAG_MAX && kansRol() < (poging ? 0.25 : Math.min(0.55, 0.25 + 0.04 * nP))){ /* 7.0: minder, de tweede pas bij een goede naam */ const a = maakAanvraag(s); if (a){ s.aanvragen.push(a); ctx.rep.push(`Aanvraag: ${a.klant}`); mail(ctx, s, "Verkoop", `Aanvraag van ${a.klant}`, a.tekst + " Inschrijven kan bij Bedrijf → Klanten, binnen drie maanden.", "NORMAAL"); } }
   const zwaar = (s.producten || []).filter(x => x.status === "markt" && stukInfo(x).order && !isAbo(x));
-  for (const p of zwaar) for (let poging = 0; poging < 2; poging++) if (s.aanvragen.filter(a => a.product === p.id).length < CONTRACT_PER_PRODUCT && kansRol() < (poging ? 0.4 : 0.85)){ /* 6.8.1: 85% per maand, soms twee, tot 3 open per product */ const a = maakContract(s, p); if (a){ s.aanvragen.push(a); ctx.rep.push(`Contractaanvraag: ${a.klant} (${p.naam})`); mail(ctx, s, "Verkoop", `${a.klant} wil ${p.naam}`, a.tekst + " Inschrijven bij Bedrijf → Klanten.", "HOOG"); } }
+  for (const p of zwaar) if (s.aanvragen.filter(a => a.product === p.id).length < CONTRACT_PER_PRODUCT && kansRol() < 0.35){ /* 7.0: 35% per maand, tot 2 open per product */ const a = maakContract(s, p); if (a){ s.aanvragen.push(a); ctx.rep.push(`Contractaanvraag: ${a.klant} (${p.naam})`); mail(ctx, s, "Verkoop", `${a.klant} wil ${p.naam}`, a.tekst + " Inschrijven bij Bedrijf → Klanten.", "HOOG"); } }
   for (const c of s.contracten){ const p = besteVanAard(s, c.aard);
     if (!p){ c.over = 0; s.cash = r1(s.cash - c.perMaand * 2); s.reputation = clamp(s.reputation - 5); mail(ctx, s, "Juridische Zaken", `Contract met ${c.klant} verbroken`, `We hebben geen ${PRODUCT_AARD[c.aard].label.toLowerCase()} meer op de markt en kunnen niet leveren. Boete €${r1(c.perMaand * 2)}M, reputatie −5.`, "KRITIEK"); ctx.rep.push(`Contract ${c.klant} verbroken`); continue; }
+    if (kansRol() < wanbetaalKans(s, c)){ const rest = r1(c.perMaand * c.over); c.over = 0; c.wanbetaald = true; mail(ctx, s, "Financiën", `${c.klant} betaalt niet meer`, `${c.klant} stopt met betalen${c.cont ? ` (${c.cont}, spanning ${Math.round(spanningVan(s, c.cont))})` : ""}. Het contract is dood; de resterende €${rest}M omzet zien we niet meer. Zo gaat dat in onrustige gebieden.`, "HOOG"); ctx.rep.push(`${c.klant} betaalt niet meer`); continue; }
     if (c.product){ const pp = (s.producten || []).find(x => x.id === c.product); if (pp) (s.prodomzet ??= {})[pp.id] = r1(((s.prodomzet || {})[pp.id] || 0) + c.perMaand); }
     const netto = r1(c.perMaand * AANVRAAG_MARGE); if (c.zwart) s.accounts.zwart = r1(s.accounts.zwart + netto); else s.cash = r1(s.cash + netto); c.over -= 1; c.betaald = r1((c.betaald || 0) + netto);
     if (c.over <= 0){ ctx.rep.push(`Contract ${c.klant} afgerond`); if (!c.zwart) s.reputation = clamp(s.reputation + 1); } }
@@ -3506,10 +3513,11 @@ function contractHist(s, a, uitkomst, wie, bedrag){ const pp = a.product ? (s.pr
 function actAanvraag(s, ctx, id, keuze){ const a = (s.aanvragen || []).find(x => x.id === id); if (!a) return {ok: false, msg: "Die aanvraag is er niet meer."};
   if (keuze === "afwijzen"){ s.aanvragen = s.aanvragen.filter(x => x !== a); { const rv = aanvraagRivalen(s, a.aard); contractHist(s, a, "afgewezen", rv.length ? CH(rv).name : null); } if (a.gang){ const g = (s.gangs || []).find(x => x.id === a.gang); if (g) g.relatie = Math.round(g.relatie - 5); } return {ok: true, msg: `Aanvraag van ${a.klant} afgewezen.${a.gang ? " Ze onthouden het: relatie −5." : ""}`}; }
   const P = AANVRAAG_PRIJS[keuze]; if (!P) return {ok: false, msg: "Kies een prijs."}; const p = aanvraagProduct(s, a); if (!p) return {ok: false, msg: `Je hebt geen ${PRODUCT_AARD[a.aard].label.toLowerCase()} op de markt.`};
-  const kans = aanvraagKans(s, a, keuze), roll = rolKans(kans), K = KLANT_SOORT[a.soort], riv = aanvraagRivalen(s, a.aard); s.aanvragen = s.aanvragen.filter(x => x !== a);
+  const T = contractToegang(s, a); if (!T.ok) return {ok: false, msg: `Leveren aan ${a.klant} mag niet: ${T.reden}.`};
+  const kans = aanvraagKans(s, a, keuze), roll = rolKans(kans), K0 = KLANT_SOORT[a.soort], K = T.via === "smokkel" ? {...K0, zwart: true, heat: (K0.heat || 0) + 2} : K0, riv = aanvraagRivalen(s, a.aard); s.aanvragen = s.aanvragen.filter(x => x !== a);
   addRoll(s, `Inschrijving ${a.klant} (${P.label.toLowerCase()}): ${roll.txt} → ${roll.ok ? "GEWONNEN" : "VERLOREN"}`); let msg;
   if (roll.ok){ if (K.heat) s.heat = clamp(s.heat + K.heat);
-    if (a.raam){ const c = {id: a.id, klant: a.klant, aard: a.aard, product: a.product || null, perMaand: r1(a.perMaand * P.f), over: a.maanden, maanden: a.maanden, zwart: !!K.zwart, sinds: ym(s)}; (s.contracten ??= []).push(c); msg = `Gewonnen: raamcontract met ${a.klant}, ${a.maanden} maanden €${c.perMaand}M omzet per maand (±€${r1(c.perMaand * AANVRAAG_MARGE)}M netto${c.zwart ? ", zwart" : ""}). Houd een ${PRODUCT_AARD[a.aard].label.toLowerCase()} op de markt, anders volgt een boete.`; }
+    if (a.raam){ const c = {id: a.id, klant: a.klant, soort: a.soort, cont: a.cont || null, aard: a.aard, product: a.product || null, perMaand: r1(a.perMaand * P.f), over: a.maanden, maanden: a.maanden, zwart: !!K.zwart, sinds: ym(s)}; (s.contracten ??= []).push(c); msg = `Gewonnen: raamcontract met ${a.klant}, ${a.maanden} maanden €${c.perMaand}M omzet per maand (±€${r1(c.perMaand * AANVRAAG_MARGE)}M netto${c.zwart ? ", zwart" : ""}). Houd een ${PRODUCT_AARD[a.aard].label.toLowerCase()} op de markt, anders volgt een boete.`; }
     else { const netto = r1(a.bedrag * P.f * AANVRAAG_MARGE); if (a.product){ const pp = (s.producten || []).find(x => x.id === a.product); if (pp){ (s.prodomzet ??= {})[pp.id] = r1(((s.prodomzet || {})[pp.id] || 0) + a.bedrag * P.f); (pp.orders ??= []).push({m: ym(s), stuks: Math.max(1, Math.round(a.bedrag * P.f * 1e6 / Math.max(1, stukPrijs(pp)))), bedrag: r1(a.bedrag * P.f), klant: a.klant}); pp.orders = pp.orders.slice(-6); } } if (K.zwart) s.accounts.zwart = r1(s.accounts.zwart + netto); else s.cash = r1(s.cash + netto); msg = `Gewonnen: levering aan ${a.klant} voor €${r1(a.bedrag * P.f)}M (±€${netto}M netto${K.zwart ? ", zwart" : ""}).`; }
     if (K.rep) s.reputation = clamp(s.reputation + 1); if (a.gang){ const g = (s.gangs || []).find(x => x.id === a.gang); if (g) g.relatie = Math.round(g.relatie + 8); }
     if (K.zwart && kansRol() < 0.15){ s.reputation = clamp(s.reputation - 4); msg += " Een journalist zag de levering: reputatie −4."; } }
@@ -3771,7 +3779,7 @@ function rivAanwezigTick(s, ctx, idx, hqs){ const RA = (s.rivAanwezig ??= {});
       if (van === "player"){ if (s.patrouille) delete s.patrouille[d.id]; mail(ctx, s, "Strategie", `${d.name} valt ${top.r.name} toe`, `Hun aandeel in ${d.name} (${Math.round(top.v)}%) is groter dan het onze. Zonder één schot zijn we het district kwijt.`, "KRITIEK"); ctx.rep.push(`${d.name} valt ${top.r.name} toe`); }
       news(s, `${top.r.name} neemt ${d.name} over`, `Overal hun logo, hun mensen, hun geld. ${d.name} draait nu op ${top.r.name}.`, d.continent, "wereld", van === "player"); } } }
 /* 6.8: contracten voor zware producten. Tanks, ziekenhuissystemen, satellieten en andere grote stukken verkopen alleen aan legers, staten en bedrijven via een aanvraag; die komen vaak (±50% per maand per product). */
-const AANVRAAG_MAX = 6, CONTRACT_PER_PRODUCT = 3;
+const AANVRAAG_MAX = 6, CONTRACT_PER_PRODUCT = 2;
 /* 6.8.1: zelf een zwaar product aanbieden bij legers en staten: één keer per maand per product, levert meteen een contractaanvraag op */
 const pitchKost = s => r1(1.5 * (DIFF[s.player.difficulty] || 1));
 const pitchMag = (s, p) => !!p && p.status === "markt" && stukInfo(p).order && !isAbo(p) && p.pitch !== ym(s) && (s.aanvragen || []).filter(a => a.product === p.id).length < CONTRACT_PER_PRODUCT;
@@ -3784,9 +3792,10 @@ function actPitch(s, ctx, id){ const p = (s.producten || []).find(x => x.id === 
   return {ok: true, msg: `Demo, diner, een rondleiding door de fabriek: ${a.tekst} Inschrijven kan meteen.`}; }
 const CONTRACT_KLANT = {wapen: ["leger", "staat"], beveiliging: ["staat", "leger", "bedrijf"], orbitaal: ["leger", "staat", "bedrijf"], medisch: ["staat", "bedrijf"], implantaat: ["leger", "bedrijf"], data: ["staat", "bedrijf"], financieel: ["staat"], logistiek: ["bedrijf", "staat"], smokkel: ["syndicaat"], consument: ["bedrijf"]};
 function maakContract(s, p){ const aard = p.aard || aardVan(p.type, p.naam), soorten = (CONTRACT_KLANT[aard] || ["bedrijf"]).filter(k => (k !== "syndicaat" || (s.gangs || []).length) && (k !== "bedrijf" || (s.bedrijven || []).some(b => !b.eigenaar))); if (!soorten.length) return null;
-  const soort = CH(soorten), K = KLANT_SOORT[soort], land = CH(s.districts.filter(d => d.control !== "player")) || s.districts[0]; let klant, gang = null;
-  if (soort === "bedrijf") klant = CH((s.bedrijven || []).filter(b => !b.eigenaar)).naam; else if (soort === "syndicaat"){ const g = CH(s.gangs); klant = g.naam; gang = g.id; } else klant = `${CH(K.namen)} (${land.name})`;
-  const basis = Math.max(1, prodOmzet(s, {...p, prijsF: 1}) * 1.2), I = stukInfo(p), raam = R() < 0.45, a = {id: "a" + hex8(), m: ym(s), soort, klant, gang, aard, raam, product: p.id, minKwal: clamp(p.kwaliteit + RI(-2, -1), 1, 5), verloopt: 4};
+  const soort = CH(soorten), K = KLANT_SOORT[soort], land = CH(s.districts.filter(d => d.control !== "player")) || s.districts[0]; let klant, gang = null, bedL = null;
+  if (soort === "bedrijf"){ const b = CH((s.bedrijven || []).filter(b => !b.eigenaar)); klant = b.naam; bedL = b.land; } else if (soort === "syndicaat"){ const g = CH(s.gangs); klant = g.naam; gang = g.id; } else klant = `${CH(K.namen)} (${land.name})`;
+  const cont = soort === "syndicaat" ? null : bedL ? (s.districts.find(d => d.id === bedL) || {}).continent || null : land.continent;
+  const basis = Math.max(1, prodOmzet(s, {...p, prijsF: 1}) * 1.2), I = stukInfo(p), raam = R() < 0.45, a = {id: "a" + hex8(), m: ym(s), soort, klant, gang, aard, raam, cont, product: p.id, minKwal: clamp(p.kwaliteit + RI(-1, 1), 1, 5), verloopt: 4}; /* 7.0: moeilijker, met continent */
   if (raam){ a.maanden = CH([6, 12, 18]); a.perMaand = r1(basis * U(0.7, 1.1)); } else a.bedrag = r1(basis * U(4, 8));
   const stuks = Math.max(1, Math.round((a.bedrag || a.perMaand) * 1e6 / Math.max(1, stukPrijs(p))));
   a.tekst = `${klant} wil ${raam ? `een raamcontract: ${a.maanden} maanden lang ±${stuks} ${stuks === 1 ? I.enkel : I.eenheid} per maand` : `${stuks} ${stuks === 1 ? I.enkel : I.eenheid}`} van ${p.naam}, minimaal kwaliteit ${a.minKwal}.`; return a; }
@@ -3931,6 +3940,7 @@ function adviezen(s, alles){
   const out = [], add = (prio, tekst, view) => out.push({prio, tekst, view});
   const markt = (s.producten || []).filter(p => p.status === "markt"), dev = (s.producten || []).filter(p => p.status === "ontwikkeling" || p.status === "wachtrij");
   const net = ((s.history || []).slice(-1)[0] || {}).netto;
+  for (const d of s.divisions){ const sl = d.slijt ?? 1; if (sl < 0.9 && !divVernieuwt(s, d)) add(sl < 0.6 ? 9 : 6, `${divNaam(d)} raakt achterop: ze verkoopt nog ${Math.round(sl * 100)}% van wat ze kon en het zakt elke maand. Een nieuw product, een editie of een uitbreiding keert het.`, "bedrijf"); } /* 7.0 */
   if (!markt.length && !dev.length && (s.flags.stappen_weg || maandenGespeeld(s) >= 8)) add(10, "Je verkoopt nog niets. Start je eerste product bij Bedrijf → Productlijn: klein kost €5M en is in 2 maanden klaar, en een divisie met producten verdient meer.", "bedrijf");
   else for (const d of s.divisions) if (!(s.producten || []).some(p => p.divisie === divNaam(d))) add((d.leeg || 0) > 12 ? 9 : 7, (d.leeg || 0) > 12 ? `${divNaam(d)} verkoopt al ${d.leeg} maanden niets: klanten lopen weg, omzet ×${productMult(s, d).toFixed(2)}. Start een product bij Bedrijf → Productlijn.` : `${divNaam(d)} heeft geen producten en draait op ×0,95; na een jaar zonder producten lopen klanten weg. Start er een bij Bedrijf → Productlijn.`, "bedrijf");
   if (s.cash < 0){ const nog = Math.max(1, 3 - (s.flags.negatieve_cash_maanden || 0)), dochter = (s.bedrijven || []).some(b => b.eigenaar === "player" && b.koppeling === "dochter"), aand = (s.bedrijven || []).some(b => !b.eigenaar && b.aandeel > 0);
@@ -4760,7 +4770,7 @@ function vm(){
     spanningThuis: (() => { const c = exportThuis(s), v = Math.round(spanningVan(s, c)); return c ? {cont: c, v, fase: spanningFase(v)[1], kleur: v >= 90 ? "var(--mag)" : v >= 70 ? "var(--red)" : v >= 50 ? "var(--amber)" : v >= 30 ? "var(--cyan)" : "var(--green)"} : null; })(),
     zwart: s.accounts.zwart, offshore: s.accounts.offshore, personeel: s.staff, cultuur: s.culture,
     nodig: staffNeed(s), salaris: Object.keys(SALARY).find(k => SALARY[k] === s.staff.avg_salary) || "eigen",
-    divisies: s.divisions.map(d => ({plan: upgradePlan(s, d), naam: d.name || d.type, type: d.type, level: d.level, eigen: !DT[d.type], aandeel: Math.round(((s.market[d.type] || {}).player || 0) * 100), upgrade_kost: upgradeCost(s, d), bezig: pu.has(d.name || d.type)})),
+    divisies: s.divisions.map(d => ({plan: upgradePlan(s, d), naam: d.name || d.type, type: d.type, level: d.level, eigen: !DT[d.type], aandeel: Math.round(((s.market[d.type] || {}).player || 0) * 100), slijt: Math.round((d.slijt ?? 1) * 100), vernieuwt: divVernieuwt(s, d), upgrade_kost: upgradeCost(s, d), bezig: pu.has(d.name || d.type)})),
     soorten: allTypes(s).map(n => ({naam: n, ...typeOf(s, n), eigen: !DT[n]})),
     projecten: s.projects,
     districten: s.districts.map(d => ({id: d.id, naam: d.name, controle: d.control, inkomen: d.income, onderhoud: d.upkeep, lore: d.lore || "", hq: hq[d.id] || [], thuis: s.player.home_district === d.id, kost: districtCost(s, d), bezig: pd.has(d.id),
