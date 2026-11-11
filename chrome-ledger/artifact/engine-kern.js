@@ -562,6 +562,8 @@ function tick(s){
   const net = r1(rev - cost); s.cash = r1(s.cash + net);
 
   { const h0 = s.heat, ha = heatAdd * 0.7 * inst(s, "heat") * (s.player.difficulty === "Casual" ? 0.9 : 1) * (heeftFocus(s, "juristen") ? 0.9 : 1), dec = (s.culture.heat_decay ?? 2) + s.heat * 0.07 + spanningHeat(s); s.heat = clamp(s.heat + ha - dec); gz.hDelen.push(["Divisies (omzet trekt aandacht)", r1(ha)], ["Vanzelf afnemen", r1(s.heat - h0 - ha)]); }
+  { const pv = playerValue(s), tz = pv > 300 ? r1(Math.log10(pv / 300) * 1.2 * (typeof drukF === "function" ? drukF(s) : 1)) : 0; /* 7.5: een groot bedrijf trekt toezicht */
+    if (tz > 0){ s.heat = clamp(s.heat + tz); gz.hDelen.push(["Toezicht op een groot bedrijf", tz]); } }
   let drift = (s.culture.morale_drift || 0) + (net > 0 ? 1 : -2); if (s.culture.layoff_policy === "hard") drift -= 2;
   drift += clamp((s.staff.avg_salary - 30) / 6, -2, 2);
   if (sf < 0.8){ drift -= 1; rep.push(`Onderbezetting: ${s.staff.count} mensen voor ${need} plekken`); }

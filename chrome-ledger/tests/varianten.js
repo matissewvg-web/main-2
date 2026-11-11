@@ -451,6 +451,9 @@ const html = '<!doctype html><html><head><meta charset=utf8></head><body>' + fs.
     c2.gezondheid = {heat: {van: 60, naar: 66, delen: [["Divisies", 5], ["Producten", 1]]}}; c2.heat = 66; const hp = heatPrognose(c2);
     return {eind1, na, eind3, o1: o1.ok, h, o2: o2.ok, hp}; });
   ok(!rz.eind1 && rz.na.cash < 200 && rz.na.zw === 0 && rz.na.lvl === 2 && rz.na.heat === 50 && rz.na.n === 1 && rz.eind3 && rz.o1 && rz.h === 58 && !rz.o2 && rz.hp.maanden === 4 && rz.hp.bron === "Divisies", "7.2: een razzia is een klap (boete, zwart geld weg, divisie een niveau omlaag, heat 50), de derde is het einde; juridisch offensief −12 eens per vier maanden; prognose wanneer heat 90 is: " + JSON.stringify(rz));
+  // 7.5 druk groeit met je waarde
+  const dk = await p.evaluate(() => { const c = JSON.parse(JSON.stringify(G.game)); const r = c.rivals[0]; r.aggression = 0.3; r.cash = 10; c.cash = 20000; const a0 = r.aggression; rivalAI(c, Ctx(), 1); return {a0, a1: r.aggression, groot: playerValue(c) > rivalValue(c, r) * 1.5}; });
+  ok(dk.groot && dk.a1 > dk.a0, "7.5: wie veel groter is dan een rivaal, maakt die agressiever: " + JSON.stringify(dk));
   ok(/VERKOOP/.test(verkoop) && /KEURING/.test(verkoop), "tabblad Verkoop en keuring");
   ok(/VARIANT/.test(scherm), "varianten staan op het productblad");
   if (out){ const bl = await p.$('.prodblad'); if (bl) await bl.screenshot({path: out + "/verkoop.png"}); }

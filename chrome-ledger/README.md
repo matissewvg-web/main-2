@@ -5,6 +5,7 @@
 De hoofdversie draait als artifact in de browser, ook op je gsm: `artifact/chrome-ledger.html` (scherm), `artifact/engine-*.js` (spelregels, opslag, acties; sinds 7.4 in zes delen: kern, wereld, leven, producten, gm, opslag, die in die volgorde laden) en `artifact/world-data.js` (kaartdata), gepubliceerd op https://claude.ai/artifact/G1Mgzkv5m1xg2BVrcuvUCq. Je bouwt een megacorporatie op de echte wereldkaart in cyberpunkstijl (Natural Earth-grenzen, 43 speelbare gebieden, 16 zeezones) en kiest bij de start op welk continent en in welk gebied je begint. Op zee bouw je eskaders en verdeel je ze over de zeezones: wie het overwicht heeft, verdient eraan en bereikt elke kust; in oorlog volgen zeeslagen en konvooiaanvallen. De kaartdata wordt gebouwd met `artifact/build-world.js`. Verder: rivalen met een eigen economie (oorlog, vrede, handel, districten ruilen), chat en mail met iedereen in de stad, personeel, eigen bedrijfssoorten en een live GM die kosten en kansen bepaalt; de engine gooit de dobbelsteen. Je spel wordt online bewaard en is alleen voor jou.
 
 ### Versies
+- **7.5 Druk groeit met je waarde:** rivalen mikken op de leider, toezicht op grote bedrijven; winst Casual ±95%, Realistisch ±65%, Genadeloos ±35%.
 - **7.4 Onder de motorkap:** de engine in zes bestanden; geen gedragsverandering, alle tests gelijk.
 - **7.3 Opruimen:** geen vignet, personeel vooraf en bij oplevering gemeld, tekst minstens 13 px.
 - **7.2 Heat en razzia:** razzia als zware klap (de derde is het einde), heat-prognose en een juridisch offensief.

@@ -1,6 +1,6 @@
 /* Chrome Ledger engine, deel engine-wereld.js: wereld: kaart, zee, dominantie, eigen soorten, personeel, rivalen en acties. 7.4: de engine staat in zes bestanden die in deze volgorde laden (kern, wereld, leven, producten, gm, opslag); alles deelt dezelfde globale scope. */
 /* ---------- de stad: elke game een andere kaart ---------- */
-const VERSION = "7.4";
+const VERSION = "7.5";
 const MAP_W = 1000, MAP_H = 680;
 const RIVAL_COLORS = ["#ff9a1f", "#3d7bff", "#c6ff2e", "#f2f2f2", "#9b5cff", "#ffd400", "#ff4d4d"];
 const ARCH = {
@@ -522,6 +522,9 @@ function offerDecide(s, ctx, id, yes){
 /* --- wat rivalen elke maand zelf doen --- */
 function rivalAI(s, ctx, diff){
   const m = ym(s);
+  { const pv = playerValue(s), dr = typeof drukF === "function" ? drukF(s) : 1; /* 7.5: rivalen mikken op de leider: wie veel groter is, krijgt ze tegen zich */
+    for (const r of s.rivals){ if (pv <= rivalValue(s, r) * 1.5) continue; r.aggression = Math.min(0.9, Math.round((r.aggression + 0.008 * dr) * 1000) / 1000); relShift(r, -0.3 * dr);
+      if (!(r.memory || []).some(x => /leider/.test(x.wat || x))) remember(r, s, "speler is de leider; die moet omlaag"); } }
   s.aanbiedingen = s.aanbiedingen.filter(o => {
     if (o.verloopt > m) return true;
     const r = s.rivals.find(x => x.name === o.rival);
