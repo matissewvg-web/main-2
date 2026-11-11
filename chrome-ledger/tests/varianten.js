@@ -239,6 +239,17 @@ const html = '<!doctype html><html><head><meta charset=utf8></head><body>' + fs.
     return {r: r.ok, w: Math.round(w1 / w0 * 100) / 100, dubbel, lic, keuze: !!k, opties: k && k.opties.map(o => o.label), naNegeren, metRiv, beschermd, weg, wp}; });
   const ptUI = await p.evaluate(() => { const pm = G.game.producten.find(x => x.status === "markt"); if (!pm) return true; S.view = "bedrijf"; S.prodSheet = pm.id; (S.prodTab ??= {})[pm.id] = "markt"; render(); return /PATENT/.test(document.querySelector("main").textContent); });
   ok(pt.geen || pt.laag || (pt.r && pt.w === 1.08 && !pt.dubbel && pt.lic >= 0.2 && pt.keuze && pt.opties.length === 3 && pt.naNegeren === 1 && (pt.metRiv == null || pt.metRiv === (pt.beschermd ? 1 : 0.95)) && pt.weg && pt.wp === 0.95) && ptUI, "patenten: +8% omzet, licentiegeld, namaak als keuze (negeren = een jaar geen voordeel), rivaalpatent −5% tot vernietigd: " + JSON.stringify(pt));
+  // 5.14 onderzoek
+  const oz = await p.evaluate(() => { const c = JSON.parse(JSON.stringify(G.game)), ctx = Ctx(); c.cash = 900; c.onderzoek = {niveau: {}}; const pm = c.producten.find(x => x.status === "markt"); if (!pm) return {geen: true}; delete pm.tech; const aard = pm.aard || aardVan(pm.type, pm.naam);
+    const w0 = prodGewicht(pm, c), kf0 = kostFactor(pm), sp0 = prodSpecs(pm).map(x => x.v);
+    const r1 = actOnderzoek(c, ctx, aard), dubbel = actOnderzoek(c, ctx, "wapen").ok, m = c.onderzoek.lopend.maanden, cash0 = c.cash; for (let i = 0; i < m; i++) onderzoekTick(c, Ctx());
+    const betaald = Math.round((cash0 - c.cash) * 10) / 10, n1 = techNiveau(c, aard), w1 = prodGewicht(pm, c);
+    c.onderzoek.niveau[aard] = 3; onderzoekTick(c, Ctx()); const kf3 = kostFactor(pm), sp3 = prodSpecs(pm).map(x => x.v), vol = actOnderzoek(c, ctx, aard).ok;
+    const r = c.rivals[0]; r.tech = {[SECTOR_AARD[r.sector] || "consument"]: 2}; const rp = mkRivalProduct(c, r, SECTOR_AARD[r.sector] || "consument");
+    actOnderzoek(c, ctx, "wapen"); const stop = actOnderzoekStop(c).ok && !c.onderzoek.lopend;
+    return {r1: r1.ok, dubbel, m, betaald, kost: techKost(c, 1), n1, w: Math.round(w1 / w0 * 100) / 100, kf: Math.round(kf3 / kf0 * 100) / 100, spec: sp3.every((v, i) => v >= sp0[i]) && sp3.some((v, i) => v > sp0[i]), vol, rpKw: rp.kwaliteit, stop}; });
+  const ozUI = await p.evaluate(() => { S.view = "bedrijf"; S.ozOpen = true; render(); const t = document.querySelector("main").textContent; S.ozOpen = false; render(); return /Onderzoek/.test(t) && /mnd ×/.test(t); });
+  ok(oz.geen || (oz.r1 && !oz.dubbel && Math.abs(oz.betaald - oz.kost) < 0.2 && oz.n1 === 1 && oz.w === 1.05 && oz.kf < 1 && oz.spec && !oz.vol && oz.rpKw >= 2 && oz.stop) && ozUI, "onderzoek: één tegelijk, per maand betaald, niveau 1 +5% omzet, niveau 2 goedkoper, niveau 3 betere eigenschappen, rivalen beter, stoppen kan: " + JSON.stringify(oz));
   ok(/VERKOOP/.test(verkoop) && /KEURING/.test(verkoop), "tabblad Verkoop en keuring");
   ok(/VARIANT/.test(scherm), "varianten staan op het productblad");
   if (out){ const bl = await p.$('.prodblad'); if (bl) await bl.screenshot({path: out + "/verkoop.png"}); }

@@ -609,7 +609,7 @@ function tick(s){
   lingeringTick(s, ctx, diff); invoicesTick(s, ctx, diff); marketTick(s, ctx); factionTick(s, ctx);
   npcTick(s, ctx); nomadDemandTick(s, ctx); chaosTick(s, ctx, diff); rumorTick(s, ctx); arcsTick(s, ctx, diff);
   sectorTick(s); regionTick(s, ctx); bedrijfTick(s, ctx); bedrijfLeven(s, ctx); peopleTick(s, ctx, diff);
-  specialTick(s, ctx); productTick(s, ctx); { const pe = productEffectTick(s); if (pe.heat) gz.hDelen.push(["Producten", r1(pe.heat)]); if (pe.morale) gz.mDelen.push(["Producten", r1(pe.morale)]); } productEventTick(s, ctx); tijdlijnTick(s, ctx); spanningTick(s, ctx); corpoTick(s, ctx); domTick(s, ctx); assistentTick(s, ctx); aanvraagTick(s, ctx); regioTick(s); grondstofTick(s, ctx); patentTick(s, ctx); vraagTick(s); rivalProductTick(s); wereldInvloedProducten(s); eraTick(s, ctx); if (s.date.month === 12) jaarTick(s, ctx); marktTick(s); klusTick(s);
+  specialTick(s, ctx); productTick(s, ctx); { const pe = productEffectTick(s); if (pe.heat) gz.hDelen.push(["Producten", r1(pe.heat)]); if (pe.morale) gz.mDelen.push(["Producten", r1(pe.morale)]); } productEventTick(s, ctx); tijdlijnTick(s, ctx); spanningTick(s, ctx); corpoTick(s, ctx); domTick(s, ctx); assistentTick(s, ctx); aanvraagTick(s, ctx); regioTick(s); grondstofTick(s, ctx); patentTick(s, ctx); onderzoekTick(s, ctx); vraagTick(s); rivalProductTick(s); wereldInvloedProducten(s); eraTick(s, ctx); if (s.date.month === 12) jaarTick(s, ctx); marktTick(s); klusTick(s);
   s.accounts.operationeel = s.cash; s.hidden_truth = s.hidden_truth.slice(-30);
 
   let status = "actief";
@@ -666,7 +666,7 @@ function tick(s){
 }
 
 /* ---------- de stad: elke game een andere kaart ---------- */
-const VERSION = "5.13";
+const VERSION = "5.14";
 const MAP_W = 1000, MAP_H = 680;
 const RIVAL_COLORS = ["#ff9a1f", "#3d7bff", "#c6ff2e", "#f2f2f2", "#9b5cff", "#ffd400", "#ff4d4d"];
 const ARCH = {
@@ -2940,7 +2940,7 @@ const delenVan = p => ONDERDELEN[p.aard || aardVan(p.type, p.naam)] || ONDERDELE
 const deelKwal = (p, i) => DEEL_KWAL[((p.delen || [])[i] || {}).kwal] ? p.delen[i].kwal : "standaard";
 const EIGEN_KORTING = 0.85, zelfKost = s => r1(4 * (DIFF[(s && s.player.difficulty)] || 1)); /* 4.7.4: onderdelen zelf maken: eenmalige investering, daarna 15% goedkoper en geen leverancier */
 const eigenDeel = (p, i) => !!((p.delen || [])[i] || {}).eigen;
-const kostFactor = p => ARBEID + delenVan(p).reduce((t, d, i) => t + d[1] * DEEL_KWAL[deelKwal(p, i)].kost * (eigenDeel(p, i) ? EIGEN_KORTING : 1), 0) * (p.matF ?? 1); /* 5.12: grondstofprijzen werken op het onderdelendeel */
+const kostFactor = p => ARBEID + delenVan(p).reduce((t, d, i) => t + d[1] * DEEL_KWAL[deelKwal(p, i)].kost * (eigenDeel(p, i) ? EIGEN_KORTING : 1), 0) * (p.matF ?? 1) * ((p.tech || 0) >= 2 ? 0.92 : 1); /* 5.12: grondstofprijzen werken op het onderdelendeel; 5.14: onderzoek niveau 2 −8% */
 function leverancier(s, p, i){ if (!s) return null; const D = delenVan(p)[i], x = ((p.delen ??= [])[i] ??= {kwal: "standaard"}), B = s.bedrijven || []; if (x.eigen) return null;
   let b = x.lev && B.find(y => y.id === x.lev); if (!b){ const pool = B.filter(y => D[3].includes(y.sector)), lijst = pool.length ? pool : B; b = lijst.length ? lijst[hashN(p.id, i) % lijst.length] : null; x.lev = b ? b.id : null; }
   return b; }
@@ -3019,7 +3019,7 @@ const nadrukVan = v => v === "" || v == null || isNaN(+v) || +v < 0 || +v > 2 ? 
 function prodSpecs(p){ const names = SPECS[p.aard] || SPECS.consument, F = {kwaliteit: [1, 1, 1], veilig: [0, 2, 0], snel: [0, -1, 0], goedkoop: [-1, -1, 0], innovatief: [2, -1, 0]}[p.focus] || [0, 0, 0];
   const N = [0, 0, 0]; if (p.nadruk != null && p.nadruk >= 0 && p.nadruk <= 2){ N[p.nadruk] = 2; N[(p.nadruk + 1) % 3] = -1; } /* 4.4: nadruk bij het ontwerp: +2 op de gekozen eigenschap, −1 op de volgende */
   if (p.delen) delenVan(p).forEach((d, j) => { N[d[2]] += DEEL_KWAL[deelKwal(p, j)].spec; });
-  return names.map((n, i) => ({naam: n, v: clamp(Math.round(p.kwaliteit * 1.6 + (hashN(p.id, i) % 5) - 2 + F[i] + N[i] + (p.trait === "duurzaam" && i === 1 ? 1 : 0)), 1, 10)})); }
+  return names.map((n, i) => ({naam: n, v: clamp(Math.round(p.kwaliteit * 1.6 + (hashN(p.id, i) % 5) - 2 + F[i] + N[i] + (p.trait === "duurzaam" && i === 1 ? 1 : 0) + ((p.tech || 0) >= 3 ? 1 : 0)), 1, 10)})); }
 /* 4.6.2: echte productlijnen per schaal. Klein = goedkoop en veel, vlaggenschip = duur en via losse orders (tanks, satellieten, ziekenhuissystemen).
    Omzet in M€, stukprijzen in echte euro's. [meervoud, enkelvoud, prijs, order] */
 const STUK_SCHAAL = {
@@ -3064,7 +3064,7 @@ function prodDetail(s, p, omzet){
     cap, vraag: Math.round(vraag), uitverkocht: vraag > cap, gemist: vraag > cap ? Math.round((vraag - cap) / vraag * 100) : 0, capKost: capKost(s, p), capVast: capVast(s, p), capKrimp: prodCap(s, p) - 15 >= 45, seg: segment(s, p), hist: (p.hist || []).slice(-12), prijsF: prijsF(p), elast: elast(p), segmenten: segmenten(p, s).rows.map(({vol, ...r}) => r), delen: delenVan(p).map((d, i) => { const k = deelKwal(p, i), eigen = eigenDeel(p, i), lv = leverancier(s, p, i), per = (abo ? sp / prijsF(p) : basisPrijs(p)) * PROD_KOST * d[1] * DEEL_KWAL[k].kost * (eigen ? EIGEN_KORTING : 1);
       return {naam: d[0], aandeel: d[1], spec: (SPECS[p.aard] || SPECS.consument)[d[2]], kwal: k, kost: Math.round(per * 100) / 100, eigen, lev: eigen ? "eigen fabriek" : lv ? lv.naam : "eigen werkplaats"}; }), zelfKost: zelfKost(s), arbeid: Math.round((abo ? sp / prijsF(p) : basisPrijs(p)) * PROD_KOST * ARBEID * 100) / 100, omschakel: omschakelKost(s), auto: {...(p.auto || {})}, marketing: {actief: p.mkt ? {...p.mkt, label: MARKETING[p.mkt.kanaal] ? MARKETING[p.mkt.kanaal].label : "Campagne", seg: (SEGMENTEN[p.aard] || SEGMENTEN.consument)[p.mkt.seg][0]} : null, dezeMaand: p.actie === ym(s), opties: Object.entries(MARKETING).map(([k, M]) => ({key: k, label: M.label, kost: M.kost, zwart: !!M.zwart, tekst: M.tekst, seg: M.doel ? (SEGMENTEN[p.aard] || SEGMENTEN.consument)[mktSegIndex(p, M.doel)][0] : null}))}, kanaal: {key: kanaalVan(p), wissel: kanaalWissel(s), opties: Object.entries(KANAAL).map(([k, K]) => ({key: k, label: K.label, vol: Math.round(K.vol(p) * 100), marge: Math.round(K.marge * 100), vast: K.vast, heat: K.heat, zwart: K.zwart || 0, tekst: K.tekst}))}, keuring: KEURING_AARD.has(p.aard) || p.keuring != null ? {status: keurStatus(p), maanden: keurStatus(p) === "bezig" ? p.keuring.maanden : 0, kost: keurKost(s), omkoop: omkoopKost(s), kans: kans2d6(0, keurDoel(p)), omkoopKans: kans2d6(0, 7), instantie: keurInstantie(p)} : null, defect: defectPct(p), garantie: r1(garantie(p, omzet)), garantieEur: Math.round(garantie(p, omzet) * 1e6), defectRisico: Math.max(0, Math.round((defectPct(p) - DEFECT_DREMPEL) * 10) / 10), beste: p.status === "markt" ? besteprijs(s, p) : null};
 }
-const prodGewicht = (p, s) => keurF(p) * kanaalF(p) * p.kwaliteit * effBereik(p, s) / 100 * prijsF(p) * (s ? vraagFactor(s, p.aard || aardVan(p.type, p.naam)) * regioF(s, p) * patentF(s, p) : 1) * (p.trait === "goedkoop" ? 1.15 : 1); /* 5.11: regio's */
+const prodGewicht = (p, s) => keurF(p) * kanaalF(p) * p.kwaliteit * effBereik(p, s) / 100 * prijsF(p) * (s ? vraagFactor(s, p.aard || aardVan(p.type, p.naam)) * regioF(s, p) * patentF(s, p) * techF(s, p) : 1) * (p.trait === "goedkoop" ? 1.15 : 1); /* 5.11: regio's */
 const prodSterkte = p => bereik(p) / 100 * (0.5 + p.kwaliteit * 0.15);
 function prodEffecten(p){ const A = PRODUCT_AARD[p.aard || "consument"] || PRODUCT_AARD.consument, f = prodSterkte(p), out = {};
   for (const [k2, v] of Object.entries(p.eigenEff || A.eff)) out[k2] = Math.round(v * f * 10) / 10; const pr = ((PRIJS[p.prijs || "standaard"] || {}).rep || 0) + (prijsF(p) > 1.5 ? -0.25 : 0); if (pr) out.reputation = Math.round(((out.reputation || 0) + pr) * 10) / 10;
@@ -3478,6 +3478,23 @@ function patentTick(s, ctx){ const nu = ym(s), hqRiv = aard => s.rivals.filter(r
     addKeuze(s, ctx, {soort: "rpatent_" + a, van: "Juridische Zaken", titel: `${r.name} patenteert in ${PRODUCT_AARD[a].label.toLowerCase()}`, tekst: `${r.name} heeft een breed patent gekregen. Onze ${PRODUCT_AARD[a].label.toLowerCase()} verkoopt drie jaar 5% minder, tenzij we zelf een patent in die soort hebben of het aanvechten.`,
       opties: [{label: "Aanvechten · €5M", kost: 5, uitleg: `Kans ${kans}%: het patent wordt vernietigd.`, eff: {kans, succes: {flags: {["patentweg_" + a]: true}, rivaal: {[r.name]: {relatie: -6}}, tekst: "Het patent sneuvelt: te breed, te vaag."}, falen: {tekst: "Het patent blijft staan."}}},
         {label: "Accepteren", uitleg: "Drie jaar −5% omzet op die soort (tenzij je zelf patenteert).", eff: {}}], standaard: 1}); } }
+/* 5.14: onderzoek. Per soort product drie niveaus: 1 = +5% omzet, 2 = +5% en 8% goedkopere onderdelen, 3 = +5% en +1 op alle eigenschappen (dus sneller een patent). Eén onderzoek tegelijk, betaald per maand. Rivalen onderzoeken mee: hun nieuwe producten worden beter. */
+const TECH_NAMEN = {wapen: ["Slimme munitie", "Modulaire chassis", "Exo-gevechtspakken"], beveiliging: ["Gezichtsherkenning", "Drone-zwermen", "Voorspellende politie"], implantaat: ["Neurale interfaces", "Biocompatibel chroom", "Synthetische zenuwen"], medisch: ["Gentherapie", "Bioprinten", "Nano-chirurgie"], data: ["Big data", "Voorspellende AI", "Bewustzijnsmodellen"], logistiek: ["Autonome trucks", "Droneleveringen", "Hyperloop-netwerk"], financieel: ["Algoritmische handel", "Blockchain-clearing", "Quantum-risicomodellen"], orbitaal: ["Herbruikbare raketten", "Orbitale fabrieken", "Ruimtelift"], consument: ["Slimme materialen", "AR-brillen", "Persoonlijke robots"], smokkel: ["Versleutelde routes", "Stealth-containers", "Spookschepen"]};
+const TECH_EFFECT = ["+5% omzet", "+5% omzet en 8% goedkopere onderdelen", "+5% omzet en +1 op alle eigenschappen"];
+const techNiveau = (s, aard) => ((s.onderzoek || {}).niveau || {})[aard] || 0;
+const techF = (s, p) => 1 + 0.05 * techNiveau(s, p.aard || aardVan(p.type, p.naam));
+const techKost = (s, n) => r1(15 * n * (DIFF[s.player.difficulty] || 1)), techMaanden = n => 4 + 2 * n;
+function actOnderzoek(s, ctx, aard){ if (!TECH_NAMEN[aard]) return {ok: false, msg: "Onbekende soort."}; const O = (s.onderzoek ??= {niveau: {}}); if (O.lopend) return {ok: false, msg: `Er loopt al onderzoek: ${O.lopend.naam}.`};
+  const n = techNiveau(s, aard) + 1; if (n > 3) return {ok: false, msg: "Deze soort is volledig onderzocht."}; const k = techKost(s, n), m = techMaanden(n), pm = r1(k / m); if (s.cash < pm + 10) return {ok: false, msg: `Niet genoeg cash voor de eerste maand (€${pm}M).`};
+  O.lopend = {aard, n, naam: TECH_NAMEN[aard][n - 1], over: m, maanden: m, perMaand: pm, sinds: ym(s)}; addLog(s, `Onderzoek gestart: ${O.lopend.naam}`);
+  return {ok: true, msg: `Onderzoek "${O.lopend.naam}" gestart: ${m} maanden, €${pm}M per maand. Daarna: ${TECH_EFFECT[n - 1]} op ${PRODUCT_AARD[aard].label.toLowerCase()}.`}; }
+function actOnderzoekStop(s){ const O = s.onderzoek || {}; if (!O.lopend) return {ok: false, msg: "Er loopt geen onderzoek."}; const n = O.lopend.naam; delete O.lopend; return {ok: true, msg: `Onderzoek "${n}" gestopt. Wat al betaald is, is weg.`}; }
+function onderzoekTick(s, ctx){ const O = (s.onderzoek ??= {niveau: {}}); O.niveau ??= {};
+  if (O.lopend){ const L = O.lopend; if (s.cash >= L.perMaand){ s.cash = r1(s.cash - L.perMaand); L.over -= 1; } else ctx.rep.push(`Onderzoek ${L.naam} staat stil: geen geld`);
+    if (L.over <= 0){ O.niveau[L.aard] = L.n; delete O.lopend; ctx.rep.push(`Onderzoek klaar: ${L.naam}`); news(s, `Doorbraak bij ${s.player.corp_name}: ${L.naam.toLowerCase()}`, `Het lab meldt een doorbraak. ${PRODUCT_AARD[L.aard].label} van ${s.player.corp_name}: ${TECH_EFFECT[L.n - 1]}.`, "", "markt", true);
+      mail(ctx, s, "Hoofd R&D", `Onderzoek klaar: ${L.naam}`, `Ons onderzoek is af. Voor al onze ${PRODUCT_AARD[L.aard].label.toLowerCase()}: ${TECH_EFFECT[L.n - 1]}.`, "NORMAAL"); } }
+  for (const p of s.producten || []){ const t = techNiveau(s, p.aard || aardVan(p.type, p.naam)); if (t) p.tech = t; else delete p.tech; }
+  if (s.date.month === 1) for (const r of s.rivals){ const a = SECTOR_AARD[r.sector] || "consument", T = (r.tech ??= {}); if ((T[a] || 0) < 3 && R() < 0.3){ T[a] = (T[a] || 0) + 1; news(s, `${r.name} meldt een doorbraak`, `${r.name} heeft ${TECH_NAMEN[a] ? TECH_NAMEN[a][T[a] - 1].toLowerCase() : "iets nieuws"} onder de knie. Hun volgende producten worden beter.`, "", "markt", false); } } }
 const spanningGem = s => { const v = Object.values(s.spanning || {}); return v.length ? v.reduce((a, b) => a + b, 0) / v.length : 0; };
 function tijdlijnTick(s, ctx){ const nu = ym(s), gehad = (s.tijdlijnGehad ??= []), B = (s.vraagBasis ??= {});
   for (const t of TIJDLIJN){ if (t.d > nu || gehad.includes(t.d)) continue; gehad.push(t.d); const recent = mndNr(nu) - mndNr(t.d) <= 2;
@@ -3546,7 +3563,7 @@ function mkRivalProduct(s, r, aard){
   const used = new Set([...(s.producten || []).map(p => p.naam), ...s.rivals.flatMap(x => (x.producten || []).map(p => p.naam))]); let naam = "";
   for (let i = 0; i < 10; i++){ naam = `${rivalMerk(r)} ${CH(PRODUCT_BASIS[aard] || PRODUCT_BASIS.consument)}${CH(["", " Pro", " X", " 2", " Neo", " Prime", " 9"])}`; if (!used.has(naam)) break; }
   const lv = r.divs[r.sector] || 2;
-  return {id: "rp" + hex8(), naam, aard, kwaliteit: clamp(Math.round(1 + lv / 2 + U(-0.6, 0.8)), 1, 5), pop: RI(40, 65), sinds: ym(s), leeftijd: 0};
+  return {id: "rp" + hex8(), naam, aard, kwaliteit: clamp(Math.round(1 + lv / 2 + U(-0.6, 0.8)) + (((r.tech || {})[aard] || 0) >= 2 ? 1 : 0), 1, 5), pop: RI(40, 65), sinds: ym(s), leeftijd: 0};
 }
 function rivalProductInit(s){
   for (const r of s.rivals){ if (r.producten) continue; r.producten = [];
@@ -3644,6 +3661,7 @@ function adviezen(s){
       if (st) add(5, `${GRONDSTOF[st].label} is duur (×${gsPrijs(s, st)}): je productiekosten stijgen. Bij Bedrijf → Toelevering zie je waarom; voorraad helpt pas als de prijs weer zakt.`, "bedrijf");
       else if (go) add(4, `${GRONDSTOF[go].label} is goedkoop (×${gsPrijs(s, go)}). Nu voorraad aanleggen (Bedrijf → Toelevering) zet die prijs vast.`, "bedrijf"); }
     { const pp = (s.producten || []).find(p => p.status === "markt" && !p.patent && besteSpec(p).v >= PATENT_MIN); if (pp && s.cash > patentKost(s) + 30) add(4, `${pp.naam} heeft een sterke ${besteSpec(pp).naam.toLowerCase()} (${besteSpec(pp).v}). Een patent (productblad → Markt, €${patentKost(s)}M) geeft +${Math.round(PATENT_BONUS * 100)}% omzet en licentiegeld.`, "bedrijf"); }
+    { const O = s.onderzoek || {}; const aa = [...new Set((s.producten || []).filter(p => p.status === "markt").map(p => p.aard || aardVan(p.type, p.naam)))].find(x => techNiveau(s, x) < 3 && TECH_NAMEN[x]); if (!O.lopend && aa && s.cash > techKost(s, techNiveau(s, aa) + 1) / techMaanden(techNiveau(s, aa) + 1) + 60 && maandenGespeeld(s) >= 6) add(3, `Er loopt geen onderzoek. ${TECH_NAMEN[aa][techNiveau(s, aa)]} geeft ${PRODUCT_AARD[aa].label.toLowerCase()} ${TECH_EFFECT[techNiveau(s, aa)]} (Bedrijf → Onderzoek).`, "bedrijf"); }
     const av = (s.aanvragen || [])[0]; if (av) add(7, `${av.klant} wil ${av.raam ? "een raamcontract" : "een levering"} (${PRODUCT_AARD[av.aard].label.toLowerCase()}). Inschrijven bij Bedrijf → Klanten, nog ${av.verloopt} maand${av.verloopt > 1 ? "en" : ""}.`, "bedrijf");
     const bijna = s.districts.find(d => (d.domMnd || 0) >= 1); if (bijna) add(6, `${bijna.name} valt je volgende maand toe als je aandeel boven ${DOM_FLIP}% blijft (Kaart).`, "kaart"); }
   if (s.heat > 55) add(9, `Heat ${Math.round(s.heat)}: boven 90 volgt een razzia. Laat een netrunner sporen wissen (Crew), vraag de commissaris om een gunst (Mensen) of gebruik invloed (Kaart).`, "crew");
@@ -4508,6 +4526,7 @@ const API = {
   async "/api/regio"(d){ const s = G.game, ctx = Ctx(); const r = actRegio(s, d.id, d.cont); if (r.ok) await persist(ctx); return {ok: r.ok, bericht: r.msg}; },
   async "/api/voorraad"(d){ const s = G.game, ctx = Ctx(); const r = actVoorraad(s, ctx, d.m, d.n); if (r.ok) await persist(ctx); return {ok: r.ok, bericht: r.msg}; },
   async "/api/patent"(d){ const s = G.game, ctx = Ctx(); const r = actPatent(s, ctx, d.id); if (r.ok) await persist(ctx); return {ok: r.ok, bericht: r.msg}; },
+  async "/api/onderzoek"(d){ const s = G.game, ctx = Ctx(); const r = d.stop ? actOnderzoekStop(s) : actOnderzoek(s, ctx, d.aard); if (r.ok) await persist(ctx); return {ok: r.ok, bericht: r.msg}; },
   async "/api/corpo"(d){ const s = G.game, ctx = Ctx(); const r = actCorpo(s, ctx, d.soort, d.id); if (r.ok) await persist(ctx); return {ok: r.ok, bericht: r.msg}; },
   async "/api/huisstijl"(d){ const s = G.game, ctx = Ctx(); const r = actHuisstijl(s, d || {}); if (r.ok) await persist(ctx); return {ok: r.ok, bericht: r.msg}; },
   async "/api/product"(d){ const s = G.game, ctx = Ctx(); const r = actProduct(s, ctx, d.soort, d); if (r.ok) await persist(ctx); return {ok: r.ok, bericht: r.msg}; },

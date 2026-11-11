@@ -799,7 +799,7 @@ bedrijf(){
   const eff = Math.round((p.count >= st.nodig ? 1 : 0.45 + 0.55 * p.count / st.nodig) * 100);
   const eigen = st.soorten.filter(x => x.eigen);
   return `<h1>Bedrijf</h1>
-  ${huisstijlCard(st)}${focusCard(st)}${dochtersCard(st)}
+  ${huisstijlCard(st)}${focusCard(st)}${onderzoekCard()}${dochtersCard(st)}
   ${(() => { const h = klantenCard() + exportCard() + toeleveringCard(); return h ? `<h2>Handel</h2>${h}` : ""; })()}
   <h2>Divisies</h2><div class="grid g3">${st.divisies.map(d => `<div class="card">
       <div class="spread"><h3>${esc(d.naam)}</h3><span class="tag cyan">L${d.level}</span></div>
@@ -1017,6 +1017,7 @@ function setupBonus(homeD){
     <p class="dim" style="font-size:13px;margin:6px 0 0">Elk soort land geeft een ander voordeel: havens, financiële centra, datavalleien, sloppen. Klik verschillende landen aan om ze te vergelijken.</p>` : "";
 }
 const VERSIES = [
+  ["5.14", "Onderzoek", ["Bedrijf → Onderzoek: per soort product drie niveaus met echte namen (wapens: Slimme munitie → Modulaire chassis → Exo-gevechtspakken; implantaten: Neurale interfaces → Biocompatibel chroom → Synthetische zenuwen; enz.).", "Niveau 1: +5% omzet. Niveau 2: nog +5% en 8% goedkopere onderdelen. Niveau 3: nog +5% en +1 op alle eigenschappen (sneller een patent). Geldt voor al je producten van die soort, ook toekomstige.", "Eén onderzoek tegelijk, betaald per maand (niveau 1: 6 maanden, €15M; niveau 3: 10 maanden, €45M). Stoppen kan; wat betaald is, is weg.", "Rivalen onderzoeken ook (elk jaar een kans): hun nieuwe producten worden beter."]],
   ["5.13", "Patenten en namaak", ["Productblad → Markt → Patent: heeft een product een eigenschap van 7 of meer, dan patenteer je die (€8M). Dat geeft +8% omzet en licentiegeld: €0,2M per maand per rivaal met een product van dezelfde soort.", "Namaak: soms kopieert een rivaal je gepatenteerde product. Aanklagen (€4M, kans op €10-25M schadevergoeding), een licentie geven (twee jaar €0,6M per maand) of negeren (een jaar geen patentvoordeel). Juristen in huis (Koers) en reputatie helpen bij de rechter.", "Rivalen patenteren ook: dan verkoopt die soort drie jaar 5% minder, tenzij je zelf een patent in die soort hebt of het patent aanvecht (€5M, ±50%)."]],
   ["5.12.1", "Opruimen", ["Bedrijf is geordend: bovenaan Huisstijl en Koers, daaronder een blok Handel (Klanten, Export, Toelevering), dan Divisies en Productlijn.", "Kleine tekstfouten in de nieuwe kaarten verbeterd."]],
   ["5.12", "Toelevering en voorraad", ["Je maakt alles zelf, maar grondstoffen koop je in: staal, chips, zeldzame aarden, brandstof, chemicaliën, biogel en lithium. Elk komt uit één continent.", "De prijs volgt de corpospanning daar, oorlogen van rivalen met hun hoofdkantoor daar en wereldgebeurtenissen (chiptekort 2020, energiecrisis 2022). Een dure grondstof maakt het onderdelendeel van je productiekosten duurder.", "Bedrijf → Toelevering: per grondstof die je gebruikt de prijs, trend en het verbruik. Voorraad (3, 6 of 12 maanden, max 24) betaal je nu tegen de prijs van vandaag; zolang die strekt, kost die grondstof je niets extra.", "Wat nu? zegt het als een grondstof duur is, of juist goedkoop genoeg om in te slaan."]],
@@ -1091,7 +1092,7 @@ const VERSIES = [
   ["1.1", "Wereld", ["Nieuwe tab Wereld: wereldnieuws, een ranglijst van alle bedrijven met waarde en markten per sector.", "25 bedrijven verspreid over de wereld: zakendiner, leveringscontract, aandelen met dividend of een overname.", "Gebeurtenissen per land en continent (stormen, staatsgrepen, handelsakkoorden) veranderen tijdelijk wat gebieden opleveren.", "Startvoordeel per soort land, een eigen stad voor je hoofdkantoor, en per gebied op de kaart: wat het oplevert.", "Geruchten en marktberichten staan in het nieuws in plaats van in je inbox."]],
   ["1.0", "Echte wereld", ["Echte wereldkaart, dominantie per continent en zee, eskaders, rivalen met oorlog en handel, blijvende inkomstenbronnen."]],
 ];
-const PLANNING = [["5.14", "Onderzoek en nieuwe productlijnen."], ["5.15", "Realistische financiën en de beurs."], ["5.16", "Productdashboard en statistieken."], ["5.17", "Zelf plannen smeden."], ["5.18", "Krant van de maand."], ["5.19", "De CEO als persoon: leeftijd, opvolging, rivaliserende CEO's."], ["5.20", "Eigen moeilijkheid instellen."], ["5.21", "Rondleiding en spiekbriefjes."]];
+const PLANNING = [["5.15", "Realistische financiën en de beurs."], ["5.16", "Productdashboard en statistieken."], ["5.17", "Zelf plannen smeden."], ["5.18", "Krant van de maand."], ["5.19", "De CEO als persoon: leeftijd, opvolging, rivaliserende CEO's."], ["5.20", "Eigen moeilijkheid instellen."], ["5.21", "Rondleiding en spiekbriefjes."]];
 function versieCard(){
   const vrs = ([v, t, l]) => `<div style="margin:8px 0"><b class="mono" style="color:var(--cyan)">${v}</b> <b>${esc(t)}</b><ul class="ylist">${l.map(x => `<li>${esc(x)}</li>`).join("")}</ul></div>`;
   return `<div class="card" style="margin-top:16px"><h3>Versies</h3>${VERSIES.slice(0, 2).map(vrs).join("")}<details><summary class="muted" style="cursor:pointer;margin:6px 0">Oudere versies (${VERSIES.length - 2})</summary>${VERSIES.slice(2).map(vrs).join("")}</details>
@@ -1514,6 +1515,16 @@ function spanningCard(){ const s = G.game, S0 = s.spanning || {}, thuis = (s.dis
     <ul class="ylist dim" style="font-size:12.5px;margin-top:10px">${SPANNING_FASEN.slice().reverse().map(([d, n, t]) => `<li><b>${d}+ ${esc(n)}</b>: ${esc(t)}</li>`).join("")}</ul>
   </div>${corpomachtCard()}`; }
 /* 5.5: straatoorlog en corpomacht */
+/* 5.14: onderzoek */
+function onderzoekCard(){ const s = G.game, O = s.onderzoek || {}, L = O.lopend, mijn = new Set((s.producten || []).filter(p => p.status === "markt").map(p => p.aard || aardVan(p.type, p.naam)));
+  const soorten = Object.keys(TECH_NAMEN).sort((a, b) => mijn.has(b) - mijn.has(a));
+  const rij = a => { const n = techNiveau(s, a), nx = n + 1, rv = s.rivals.filter(r => ((r.tech || {})[a] || 0) > 0).map(r => `${r.name} ${(r.tech || {})[a]}`);
+    return `<div class="lrow" style="display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap;padding:6px 0;border-bottom:1px solid rgba(255,255,255,.06)${mijn.has(a) ? "" : ";opacity:.6"}"><span style="min-width:220px"><b>${esc(PRODUCT_AARD[a].label)}</b> <span class="mono" style="color:var(--cyan)">${"●".repeat(n)}${"○".repeat(3 - n)}</span>${rv.length ? ` <span class="dim" style="font-size:12px">· rivalen: ${esc(rv.join(", "))}</span>` : ""}<br><span class="dim" style="font-size:12.5px">${n ? TECH_NAMEN[a].slice(0, n).map(esc).join(" → ") : "nog niets onderzocht"}</span></span>
+      ${nx <= 3 ? `<button class="btn sm" data-a="onderzoek" data-aard="${a}" ${L ? "disabled" : ""}>${esc(TECH_NAMEN[a][n])} · ${techMaanden(nx)} mnd × €${r1(techKost(s, nx) / techMaanden(nx))}M</button>` : '<span class="tag ok">volledig</span>'}</div>`; };
+  return `<details class="card" style="margin-bottom:14px" ${S.ozOpen ? "open" : ""} ontoggle="S.ozOpen = this.open"><summary style="cursor:pointer;display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap"><h3 style="margin:0">Onderzoek</h3><span class="dim" style="font-size:13px">${L ? `bezig: ${esc(L.naam)} · nog ${L.over} mnd` : "niets lopend"}</span></summary>
+    <p class="muted" style="font-size:13px;margin:8px 0 4px">Per soort drie niveaus: ${TECH_EFFECT.map((t, i) => `${i + 1}) ${t}`).join(", ")}. Het geldt voor al je producten van die soort, ook toekomstige. Eén onderzoek tegelijk; je betaalt per maand. Rivalen onderzoeken ook: hun nieuwe producten worden beter. Soorten die je verkoopt staan bovenaan.</p>
+    ${L ? `<div class="spread" style="margin:6px 0"><span>Bezig: <b>${esc(L.naam)}</b> (${esc(PRODUCT_AARD[L.aard].label)} niveau ${L.n}) · nog ${L.over} van ${L.maanden} mnd · €${L.perMaand}M/mnd</span><button class="btn sm danger" data-a="onderzoekstop">Stoppen</button></div>` : ""}
+    ${soorten.map(rij).join("")}</details>`; }
 /* 5.13: patenten */
 function patentBlok(pv){ const s = G.game, p = (s.producten || []).find(x => x.id === pv.id); if (!p || p.status !== "markt") return ""; const aard = p.aard || aardVan(p.type, p.naam), rp = (s.rivaalPatent || {})[aard], b = besteSpec(p), k = patentKost(s);
   const rpTxt = rp && rp.tot > ym(s) ? `<p class="dim" style="font-size:12.5px;margin:4px 0 0;color:var(--amber)">${esc(rp.rival)} heeft een patent in deze soort tot ${esc(rp.tot)}${eigenPatentIn(s, aard) ? ", maar jouw eigen patent beschermt je." : ": −5% omzet."}</p>` : "";
@@ -2040,6 +2051,8 @@ document.addEventListener("click", async e => {
     case "dochter": { if (t.dataset.x === "verkoop" && !await ask("Dochter verkopen?", "Je krijgt 90% van de waarde in één keer, en het vaste maandbedrag stopt.", "Verkopen", true)) return; return act("/api/dochter", {id: t.dataset.id, actie: t.dataset.x}); }
     case "prodsheet": S.prodSheet = S.prodSheet === t.dataset.id ? null : t.dataset.id; render(); return;
     case "aanwezig": return act("/api/aanwezig", {id: t.dataset.id});
+    case "onderzoek": return act("/api/onderzoek", {aard: t.dataset.aard});
+    case "onderzoekstop": return act("/api/onderzoek", {stop: true});
     case "patent": return act("/api/patent", {id: t.dataset.id});
     case "voorraad": return act("/api/voorraad", {m: t.dataset.m, n: +t.dataset.n});
     case "regio": return act("/api/regio", {id: t.dataset.id, cont: t.dataset.c}, {silent: true});
