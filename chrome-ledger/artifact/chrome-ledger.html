@@ -614,7 +614,12 @@ svg.world .cityname{font:800 22px var(--disp);letter-spacing:.3em;fill:rgba(255,
 <div class="fx scan"></div><div class="fx roll"></div>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 <script src="world-data.js"></script>
-<script src="engine.js"></script>
+<script src="engine-kern.js"></script>
+<script src="engine-wereld.js"></script>
+<script src="engine-leven.js"></script>
+<script src="engine-producten.js"></script>
+<script src="engine-gm.js"></script>
+<script src="engine-opslag.js"></script>
 <script>
 /* ===================== scherm ===================== */
 const S = {zone:null, rival:null, chat:"gm", chatOpen:false, compose:null, keep:{}, expect:false, newType:null, loaded:false, loadNote:"", sound: !!localGet("sound"), decrypt:false, booted:false, state:null, view: (location.hash || "").slice(1) || localGet("view") || "overzicht", mail:null, mailBody:null, filter:"alles", q:"", dist:null, busy:false, version:0, setup:null};
