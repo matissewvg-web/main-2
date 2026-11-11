@@ -95,21 +95,34 @@ function verstandig(s, ctx, agressief){
   }
   if (s.defensie < 2 && s.cash > 120) actDefense(s);
 }
+/* 7.1: doelbots, bovenop de verstandige bot */
+function doelBot(s, ctx, doel){
+  verstandig(s, ctx, doel === "markt");
+  const thuis = exportThuis(s);
+  if (doel === "heg"){ const top = contPcts(s).slice(0, 3).map(c => c.naam);
+    for (let i = 0; i < 3; i++){ const d = s.districts.filter(x => top.includes(x.continent) && x.control !== "player" && aanwezigMag(s, x) && !s.rivals.some(r => r.hq === x.id) && ((s.aanwezig || {})[x.id] || 0) < 150).sort((a, b) => ((b.dom || {}).player || 0) - ((a.dom || {}).player || 0))[0];
+      if (!d || s.cash < aanwezigKost(s, d) + 60) break; actAanwezig(s, ctx, d.id); } }
+  if (doel === "markt"){ if (s.defensie < 5 && s.cash > 150) actDefense(s); const war = atWar(s)[0];
+    if (war && s.cash > 40){ const hq = s.districts.find(d => d.id === war.hq); if (hq && reachable(s, "player", hq)) actWar(s, ctx, war.name, "hq"); } }
+  if (doel === "zone"){ for (let i = 0; i < 2; i++){ const d = s.districts.filter(x => x.continent === thuis && x.control !== "player" && aanwezigMag(s, x) && !s.rivals.some(r => r.hq === x.id) && ((s.aanwezig || {})[x.id] || 0) < 150).sort((a, b) => ((b.dom || {}).player || 0) - ((a.dom || {}).player || 0))[0];
+      if (!d || s.cash < aanwezigKost(s, d) + 60) break; actAanwezig(s, ctx, d.id); }
+    for (const d of straatDoelen(s).filter(x => x.continent === thuis).slice(0, 1)) if (s.cash > straatKost(s) + 60 && straatKans(s, d) >= 50) actCorpo(s, ctx, "straat", d.id); }
+}
 function passief(s, ctx){ kiesKeuzes(s, ctx, false); geldZorg(s); for (const o of [...(s.aanbiedingen || [])]) if (o.type === "vrede" || o.type === "handel") offerDecide(s, ctx, o.id, true); }
 async function run(strat, n, diff){
   const homes = ["BNL", "USA", "JPN", "BRA", "NGA", "ARB", "AUS", "DEU", "IND", "MEX"], docs = [["Logistiek"], ["Biotech"], ["Cyberware"], ["Financieel"], ["Media & Data"], ["Private Security", "Smokkel"]];
   const out = [];
   for (let i = 0; i < n; i++){
-    const {s} = newGame({corp_name: "Bot " + i, doctrine: docs[i % docs.length], home: homes[i % homes.length], difficulty: diff, kapitaal: "normaal", lengte: LENGTE, ontslag: "normaal", bonus: "geen", ethiek: "normaal"});
+    const {s} = newGame({corp_name: "Bot " + i, doctrine: strat === "zone" ? ["Weapon Manufacturing"] : docs[i % docs.length], home: homes[i % homes.length], difficulty: diff, kapitaal: "normaal", lengte: LENGTE, ontslag: "normaal", bonus: "geen", ethiek: "normaal"});
     G.game = s; const ctx = Ctx();
-    let derde = 0, weg = 0, prS = 0, dvS = 0, nP = 0, nM = 0;
+    let derde = 0, tweede = 0, eerste = 0, oorlogen = 0, weg = 0, prS = 0, dvS = 0, nP = 0, nM = 0;
     while (s.status === "actief" && maandenGespeeld(s) < MAXM){
-      if (maandenGespeeld(s) % 6 === 0){ const cp = contPcts(s); derde = Math.max(derde, (cp[2] || {pct: 0}).pct); weg = Math.max(weg, rivalenWeg(s).weg); }
-      try { if (strat === "niets"){} else if (strat === "passief") passief(s, ctx); else verstandig(s, ctx, strat === "agressief"); } catch(e){ out.push({fout: String(e && e.stack || e).slice(0, 300)}); break; }
+      if (maandenGespeeld(s) % 6 === 0){ const cp = contPcts(s); derde = Math.max(derde, (cp[2] || {pct: 0}).pct); tweede = Math.max(tweede, (cp[1] || {pct: 0}).pct); eerste = Math.max(eerste, (cp[0] || {pct: 0}).pct); weg = Math.max(weg, rivalenWeg(s).weg); oorlogen = Math.max(oorlogen, (s.stats || {}).oorlogen || 0); }
+      try { if (strat === "niets"){} else if (["heg", "markt", "zone"].includes(strat)) doelBot(s, ctx, strat); else if (strat === "passief") passief(s, ctx); else verstandig(s, ctx, strat === "agressief"); } catch(e){ out.push({fout: String(e && e.stack || e).slice(0, 300)}); break; }
       tick(s); ctx.mails.length = 0;
       { const mk = (s.producten || []).filter(x => x.status === "markt"); prS += mk.reduce((t, x) => t + ((s.prodomzet || {})[x.id] || 0), 0); dvS += s.divisions.reduce((t, d) => t + ((s.divomzet || {})[d.name || d.type] || 0), 0); nP += mk.length; nM++; }
     }
-    out.push({prodPct: Math.round(prS / Math.max(1, prS + dvS) * 100), prodN: Math.round(nP / Math.max(1, nM) * 10) / 10, status: s.status, maanden: maandenGespeeld(s), waarde: playerValue(s), cash: Math.round(s.cash), score: s.eind ? s.eind.score : null, derde, weg, heatGesch: (s.history || []).slice(-8).map(h => Math.round(h.heat)), heatDelen: s.gezondheid && s.gezondheid.heat && s.gezondheid.heat.delen, divs: s.divisions.map(d => d.type + d.level).join(","), morale: Math.round(s.morale), heat: Math.round(s.heat)});
+    out.push({eerste, tweede, oorlogen, prodPct: Math.round(prS / Math.max(1, prS + dvS) * 100), prodN: Math.round(nP / Math.max(1, nM) * 10) / 10, status: s.status, maanden: maandenGespeeld(s), waarde: playerValue(s), cash: Math.round(s.cash), score: s.eind ? s.eind.score : null, derde, weg, heatGesch: (s.history || []).slice(-8).map(h => Math.round(h.heat)), heatDelen: s.gezondheid && s.gezondheid.heat && s.gezondheid.heat.delen, divs: s.divisions.map(d => d.type + d.level).join(","), morale: Math.round(s.morale), heat: Math.round(s.heat)});
   }
   return out;
 }
@@ -137,6 +150,7 @@ async function run(strat, n, diff){
     console.log("  hegemonie: mediaan beste 3e continent", med(ok.map(r => r.derde)) + "% · ≥60%:", ok.filter(r => r.derde >= 60).length, "· ≥80%:", ok.filter(r => r.derde >= 80).length, "| rivalen weg: mediaan", med(ok.map(r => r.weg)), "· max", Math.max(...ok.map(r => r.weg)));
     const per = {}; for (const r of ok) (per[r.status.startsWith("OVERWINNING") ? "winst" : r.status] ??= []).push(r.score || 0);
     console.log("  score per einde:", Object.entries(per).map(([k, v]) => `${k} ${med(v)}`).join(" · "));
+    console.log("  continenten: mediaan 1e", med(ok.map(r => r.eerste)) + "% · 2e", med(ok.map(r => r.tweede)) + "% · 3e", med(ok.map(r => r.derde)) + "% · max 2e", Math.max(...ok.map(r => r.tweede)), "· max 3e", Math.max(...ok.map(r => r.derde)), "| oorlogen mediaan", med(ok.map(r => r.oorlogen)));
     const err = res.filter(r => r.fout); if (err.length) console.log("  FOUTEN:", err.length, err[0].fout);
   }
   if (process.env.VROEG){ const res = await p.evaluate(([a, n, d]) => window.__run(a, n, d), ["verstandig", 100, DIFF]); const v = res.filter(r => r.maanden < 30); console.log("vroeg dood:", v.length, "van", res.length); for (const r of v.slice(0, 10)) console.log(r.maanden, r.status, r.divs, "cash", r.cash, "heat", r.heat, "morale", r.morale); }
