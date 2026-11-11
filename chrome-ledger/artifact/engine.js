@@ -609,7 +609,7 @@ function tick(s){
   lingeringTick(s, ctx, diff); invoicesTick(s, ctx, diff); marketTick(s, ctx); factionTick(s, ctx);
   npcTick(s, ctx); nomadDemandTick(s, ctx); chaosTick(s, ctx, diff); rumorTick(s, ctx); arcsTick(s, ctx, diff);
   sectorTick(s); regionTick(s, ctx); bedrijfTick(s, ctx); bedrijfLeven(s, ctx); peopleTick(s, ctx, diff);
-  specialTick(s, ctx); productTick(s, ctx); { const pe = productEffectTick(s); if (pe.heat) gz.hDelen.push(["Producten", r1(pe.heat)]); if (pe.morale) gz.mDelen.push(["Producten", r1(pe.morale)]); } productEventTick(s, ctx); tijdlijnTick(s, ctx); spanningTick(s, ctx); corpoTick(s, ctx); domTick(s, ctx); assistentTick(s, ctx); aanvraagTick(s, ctx); regioTick(s); vraagTick(s); rivalProductTick(s); wereldInvloedProducten(s); eraTick(s, ctx); if (s.date.month === 12) jaarTick(s, ctx); marktTick(s); klusTick(s);
+  specialTick(s, ctx); productTick(s, ctx); { const pe = productEffectTick(s); if (pe.heat) gz.hDelen.push(["Producten", r1(pe.heat)]); if (pe.morale) gz.mDelen.push(["Producten", r1(pe.morale)]); } productEventTick(s, ctx); tijdlijnTick(s, ctx); spanningTick(s, ctx); corpoTick(s, ctx); domTick(s, ctx); assistentTick(s, ctx); aanvraagTick(s, ctx); regioTick(s); grondstofTick(s, ctx); vraagTick(s); rivalProductTick(s); wereldInvloedProducten(s); eraTick(s, ctx); if (s.date.month === 12) jaarTick(s, ctx); marktTick(s); klusTick(s);
   s.accounts.operationeel = s.cash; s.hidden_truth = s.hidden_truth.slice(-30);
 
   let status = "actief";
@@ -666,7 +666,7 @@ function tick(s){
 }
 
 /* ---------- de stad: elke game een andere kaart ---------- */
-const VERSION = "5.11";
+const VERSION = "5.12";
 const MAP_W = 1000, MAP_H = 680;
 const RIVAL_COLORS = ["#ff9a1f", "#3d7bff", "#c6ff2e", "#f2f2f2", "#9b5cff", "#ffd400", "#ff4d4d"];
 const ARCH = {
@@ -2940,7 +2940,7 @@ const delenVan = p => ONDERDELEN[p.aard || aardVan(p.type, p.naam)] || ONDERDELE
 const deelKwal = (p, i) => DEEL_KWAL[((p.delen || [])[i] || {}).kwal] ? p.delen[i].kwal : "standaard";
 const EIGEN_KORTING = 0.85, zelfKost = s => r1(4 * (DIFF[(s && s.player.difficulty)] || 1)); /* 4.7.4: onderdelen zelf maken: eenmalige investering, daarna 15% goedkoper en geen leverancier */
 const eigenDeel = (p, i) => !!((p.delen || [])[i] || {}).eigen;
-const kostFactor = p => ARBEID + delenVan(p).reduce((t, d, i) => t + d[1] * DEEL_KWAL[deelKwal(p, i)].kost * (eigenDeel(p, i) ? EIGEN_KORTING : 1), 0);
+const kostFactor = p => ARBEID + delenVan(p).reduce((t, d, i) => t + d[1] * DEEL_KWAL[deelKwal(p, i)].kost * (eigenDeel(p, i) ? EIGEN_KORTING : 1), 0) * (p.matF ?? 1); /* 5.12: grondstofprijzen werken op het onderdelendeel */
 function leverancier(s, p, i){ if (!s) return null; const D = delenVan(p)[i], x = ((p.delen ??= [])[i] ??= {kwal: "standaard"}), B = s.bedrijven || []; if (x.eigen) return null;
   let b = x.lev && B.find(y => y.id === x.lev); if (!b){ const pool = B.filter(y => D[3].includes(y.sector)), lijst = pool.length ? pool : B; b = lijst.length ? lijst[hashN(p.id, i) % lijst.length] : null; x.lev = b ? b.id : null; }
   return b; }
@@ -3426,6 +3426,31 @@ function actRegio(s, id, c){ const p = (s.producten || []).find(x => x.id === id
   const sel = new Set(regioMarkten(p)); if (sel.has(c)){ if (sel.size <= 1) return {ok: false, msg: "Je moet minstens op één continent verkopen."}; sel.delete(c); } else sel.add(c);
   p.markten = sel.size === regioNamen().length ? null : [...sel]; if (!p.markten) delete p.markten;
   return {ok: true, msg: `${p.naam} verkoopt nu in ${sel.size === regioNamen().length ? "de hele wereld" : [...sel].join(", ")}.`}; }
+/* 5.12: toelevering en voorraad. Grondstoffen komen uit één continent; hun prijs volgt de corpospanning daar, oorlogen en wereldgebeurtenissen (chiptekort 2020, energiecrisis 2022). Voorraad = vooruit betalen tegen de prijs van nu; zolang die strekt, kost die grondstof je niets extra. */
+const GRONDSTOF = {staal: {label: "Staal", bron: "Azië"}, chips: {label: "Chips", bron: "Azië"}, zeldzaam: {label: "Zeldzame aarden", bron: "Afrika"}, brandstof: {label: "Brandstof", bron: "Midden-Oosten"}, chemie: {label: "Chemicaliën", bron: "Europa"}, biogel: {label: "Biogel", bron: "Noord-Amerika"}, lithium: {label: "Lithium", bron: "Zuid-Amerika"}};
+const AARD_GRONDSTOF = {wapen: ["staal", "chips"], beveiliging: ["staal", "chips"], implantaat: ["zeldzaam", "biogel", "chips"], medisch: ["chemie", "biogel"], data: ["chips", "lithium"], logistiek: ["brandstof", "staal"], orbitaal: ["zeldzaam", "brandstof", "lithium"], consument: ["chips", "lithium"], smokkel: ["brandstof"], financieel: ["chips"]};
+const GRONDSTOF_SCHOK = {"2008-10": {staal: -0.2, brandstof: -0.3}, "2011-03": {zeldzaam: 0.4}, "2020-09": {chips: 0.6, lithium: 0.2}, "2022-02": {brandstof: 0.7, chemie: 0.3, staal: 0.2}, "2032-05": {staal: 0.3, zeldzaam: 0.3}, "2040-01": {chips: 0.3, biogel: 0.3}};
+const grondstoffenVan = p => AARD_GRONDSTOF[p.aard || aardVan(p.type, p.naam)] || ["chips"];
+const gsPrijs = (s, m) => (((s.grondstof || {})[m]) || {}).p ?? 1;
+const gsVoorraad = (s, m) => ((s.voorraad || {})[m] || {}).mnd || 0;
+function gsVerbruik(s, m){ let v = 0; for (const p of (s.producten || []).filter(x => x.status === "markt")){ const L = grondstoffenVan(p); if (L.includes(m)) v += ((s.prodomzet || {})[p.id] || 0) * PROD_KOST * 0.8 / L.length; } return r1(Math.max(0.1, v)); }
+const voorraadKost = (s, m, n) => r1(gsVerbruik(s, m) * gsPrijs(s, m) * n);
+function grondstofTick(s, ctx){ const G0 = (s.grondstof ??= {}), sch = (s.gsSchok ??= {}), nu = ym(s), E = GRONDSTOF_SCHOK[nu];
+  for (const [m, g] of Object.entries(GRONDSTOF)){ const x = (G0[m] ??= {p: 1, hist: []}); if (E && E[m]) sch[m] = (sch[m] || 0) + E[m];
+    const oorlog = s.rivals.filter(r => r.status === "oorlog" && (s.districts.find(d => d.id === r.hq) || {}).continent === g.bron).length;
+    const doel = 1 + Math.max(0, spanningVan(s, g.bron) - 40) / 100 + (sch[m] || 0) + oorlog * 0.1, oud = x.p;
+    x.p = Math.round(clamp(x.p + (doel - x.p) * 0.15 + U(-0.03, 0.03), 0.6, 2.5) * 100) / 100; x.hist = [...(x.hist || []), x.p].slice(-12);
+    if (sch[m]){ sch[m] = Math.round(sch[m] * 0.88 * 100) / 100; if (Math.abs(sch[m]) < 0.02) delete sch[m]; }
+    if (oud < 1.5 && x.p >= 1.5){ news(s, `Tekort aan ${g.label.toLowerCase()}`, `De prijs van ${g.label.toLowerCase()} uit ${g.bron} schiet omhoog. Fabrieken kopen wat ze kunnen.`, g.bron, "markt", false); ctx.rep.push(`Tekort: ${g.label} ×${x.p}`); } }
+  const V = s.voorraad || {}; for (const m of Object.keys(V)){ if ((s.producten || []).some(p => p.status === "markt" && grondstoffenVan(p).includes(m))) V[m].mnd -= 1; if (V[m].mnd <= 0){ delete V[m]; ctx.rep.push(`Voorraad ${GRONDSTOF[m].label.toLowerCase()} op`); } }
+  for (const p of s.producten || []){ const L = grondstoffenVan(p); p.matF = Math.round(L.reduce((a, m) => a + (gsVoorraad(s, m) > 0 ? 0 : gsPrijs(s, m)), 0) / L.length * 100) / 100; if (p.matF === 1) delete p.matF; } }
+function actVoorraad(s, ctx, m, n){ if (!GRONDSTOF[m]) return {ok: false, msg: "Onbekende grondstof."}; n = Math.round(+n || 0); if (![3, 6, 12].includes(n)) return {ok: false, msg: "Kies 3, 6 of 12 maanden."};
+  if (gsVoorraad(s, m) + n > 24) return {ok: false, msg: "Meer dan twee jaar voorraad past niet in je loodsen."};
+  const k = voorraadKost(s, m, n); if (s.cash < k) return {ok: false, msg: `Niet genoeg cash (€${k}M nodig).`};
+  s.cash = r1(s.cash - k); s.accounts.operationeel = s.cash; const V = (s.voorraad ??= {}); V[m] = {mnd: gsVoorraad(s, m) + n, prijs: gsPrijs(s, m), sinds: ym(s)};
+  for (const p of s.producten || []){ const L = grondstoffenVan(p); if (!L.includes(m)) continue; p.matF = Math.round(L.reduce((a, x) => a + (gsVoorraad(s, x) > 0 ? 0 : gsPrijs(s, x)), 0) / L.length * 100) / 100; }
+  addLog(s, `Voorraad ${GRONDSTOF[m].label.toLowerCase()} ${n} mnd (€${k}M)`);
+  return {ok: true, msg: `${n} maanden ${GRONDSTOF[m].label.toLowerCase()} ingekocht voor €${k}M (prijs ×${gsPrijs(s, m)}). Zolang de voorraad strekt, kost die grondstof je niets extra, wat de markt ook doet.`}; }
 const spanningGem = s => { const v = Object.values(s.spanning || {}); return v.length ? v.reduce((a, b) => a + b, 0) / v.length : 0; };
 function tijdlijnTick(s, ctx){ const nu = ym(s), gehad = (s.tijdlijnGehad ??= []), B = (s.vraagBasis ??= {});
   for (const t of TIJDLIJN){ if (t.d > nu || gehad.includes(t.d)) continue; gehad.push(t.d); const recent = mndNr(nu) - mndNr(t.d) <= 2;
@@ -3588,6 +3613,9 @@ function adviezen(s){
     if (dreig.length){ const [r, d] = dreig[0]; add(8, `${r.name} mag je niet en kan ${d.name} op straat innemen (spanning ${Math.round(spanningVan(s, d.continent))}). Een patrouille maakt dat veel moeilijker: Wereld → Corpospanning.`, "wereld"); }
     const wet = Object.keys(CORPOWETTEN).find(k => wetStatus(s, k).ok); if (wet) add(5, `Corpowet ${CORPOWETTEN[wet].label} kan nu: ${CORPOWETTEN[wet].uitleg} Wereld → Corpospanning.`, "wereld");
     { const exP = (s.producten || []).filter(p => p.status === "markt" && EXPORT_AARD.includes(p.aard || aardVan(p.type, p.naam))); if (exP.length && !Object.keys(s.exportVergunning || {}).length && s.cash > vergunningKost(s) + 50) add(4, `Je verkoopt ${PRODUCT_AARD[exP[0].aard || aardVan(exP[0].type, exP[0].naam)].label.toLowerCase()} alleen op je eigen continent. Een exportvergunning (Bedrijf → Export, €${vergunningKost(s)}M) geeft +${Math.round(EXPORT_BONUS * 100)}% omzet per continent.`, "bedrijf"); }
+    { const mijn = [...new Set((s.producten || []).filter(p => p.status === "markt").flatMap(grondstoffenVan))], st = mijn.find(m => gsPrijs(s, m) >= 1.4 && !gsVoorraad(s, m)), go = mijn.find(m => gsPrijs(s, m) <= 0.85 && !gsVoorraad(s, m));
+      if (st) add(5, `${GRONDSTOF[st].label} is duur (×${gsPrijs(s, st)}): je productiekosten stijgen. Bij Bedrijf → Toelevering zie je waarom; voorraad helpt pas als de prijs weer zakt.`, "bedrijf");
+      else if (go) add(4, `${GRONDSTOF[go].label} is goedkoop (×${gsPrijs(s, go)}). Nu voorraad aanleggen (Bedrijf → Toelevering) zet die prijs vast.`, "bedrijf"); }
     const av = (s.aanvragen || [])[0]; if (av) add(7, `${av.klant} wil ${av.raam ? "een raamcontract" : "een levering"} (${PRODUCT_AARD[av.aard].label.toLowerCase()}). Inschrijven bij Bedrijf → Klanten, nog ${av.verloopt} maand${av.verloopt > 1 ? "en" : ""}.`, "bedrijf");
     const bijna = s.districts.find(d => (d.domMnd || 0) >= 1); if (bijna) add(6, `${bijna.name} valt je volgende maand toe als je aandeel boven ${DOM_FLIP}% blijft (Kaart).`, "kaart"); }
   if (s.heat > 55) add(9, `Heat ${Math.round(s.heat)}: boven 90 volgt een razzia. Laat een netrunner sporen wissen (Crew), vraag de commissaris om een gunst (Mensen) of gebruik invloed (Kaart).`, "crew");
@@ -4450,6 +4478,7 @@ const API = {
   async "/api/aanvraag"(d){ const s = G.game, ctx = Ctx(); const r = actAanvraag(s, ctx, d.id, d.keuze); if (r.ok) await persist(ctx); return {ok: r.ok, bericht: r.msg}; },
   async "/api/export"(d){ const s = G.game, ctx = Ctx(); const r = actExport(s, ctx, d.soort, d.cont); if (r.ok) await persist(ctx); return {ok: r.ok, bericht: r.msg}; },
   async "/api/regio"(d){ const s = G.game, ctx = Ctx(); const r = actRegio(s, d.id, d.cont); if (r.ok) await persist(ctx); return {ok: r.ok, bericht: r.msg}; },
+  async "/api/voorraad"(d){ const s = G.game, ctx = Ctx(); const r = actVoorraad(s, ctx, d.m, d.n); if (r.ok) await persist(ctx); return {ok: r.ok, bericht: r.msg}; },
   async "/api/corpo"(d){ const s = G.game, ctx = Ctx(); const r = actCorpo(s, ctx, d.soort, d.id); if (r.ok) await persist(ctx); return {ok: r.ok, bericht: r.msg}; },
   async "/api/huisstijl"(d){ const s = G.game, ctx = Ctx(); const r = actHuisstijl(s, d || {}); if (r.ok) await persist(ctx); return {ok: r.ok, bericht: r.msg}; },
   async "/api/product"(d){ const s = G.game, ctx = Ctx(); const r = actProduct(s, ctx, d.soort, d); if (r.ok) await persist(ctx); return {ok: r.ok, bericht: r.msg}; },

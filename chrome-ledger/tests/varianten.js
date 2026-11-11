@@ -216,6 +216,16 @@ const html = '<!doctype html><html><head><meta charset=utf8></head><body>' + fs.
     return {een, f1: Math.round(f1 * 1000) / 1000, f15: Math.round(f15 * 100) / 100, naRijk, afr, voor: Math.round(voor * 1000) / 1000, na: Math.round(na * 1000) / 1000, r1: r1.ok, mk, laatste, nu, terug, varieert}; });
   const rgUI = await p.evaluate(() => { const pm = G.game.producten.find(x => x.status === "markt"); if (!pm) return true; S.view = "bedrijf"; S.prodSheet = pm.id; (S.prodTab ??= {})[pm.id] = "markt"; render(); return /REGIO'S/.test(document.querySelector("main").textContent); });
   ok(rg.geen || (rg.een && rg.f1 === 1 && rg.f15 > 0.9 && rg.f15 < 1.1 && rg.naRijk > 1 && rg.afr < 1 && rg.r1 && rg.mk === 6 && rg.na > rg.voor && !rg.laatste && rg.nu.length === 1 && rg.terug && rg.varieert), "regionale markten: neutraal ×1 bij alles verkopen, rijk/arm per prijs, slechte regio laten vallen loont door focus, minstens één markt, nieuw spel varieert per continent: " + JSON.stringify(rg) + " ui " + rgUI);
+  // 5.12 toelevering en voorraad
+  const gs = await p.evaluate(() => { const c = JSON.parse(JSON.stringify(G.game)); delete c.grondstof; delete c.gsSchok; c.voorraad = {}; c.cash = 900; for (const k of CONTINENTS) (c.spanning ??= {})[k.naam] = 20;
+    const pm = c.producten.find(x => x.status === "markt"); if (!pm) return {geen: true}; pm.aard = "wapen"; delete pm.matF; const kf0 = kostFactor(pm);
+    grondstofTick(c, Ctx()); const p0 = gsPrijs(c, "chips"); c.date = {year: 2020, month: 9}; const ctx = Ctx(); grondstofTick(c, ctx); const pS = gsPrijs(c, "chips");
+    for (let i = 0; i < 6; i++){ c.date.month = 10 + (i % 2); grondstofTick(c, Ctx()); } const pNa = gsPrijs(c, "chips");
+    c.spanning["Azië"] = 95; for (let i = 0; i < 25; i++) grondstofTick(c, Ctx()); const staal = gsPrijs(c, "staal"), mf = pm.matF, kf1 = kostFactor(pm);
+    (c.prodomzet ??= {})[pm.id] = 10; const k3 = voorraadKost(c, "staal", 3), cash0 = c.cash, v = actVoorraad(c, Ctx(), "staal", 3), betaald = Math.round((cash0 - c.cash) * 10) / 10, mfV = pm.matF, te = actVoorraad(c, Ctx(), "staal", 12).ok && actVoorraad(c, Ctx(), "staal", 12).ok;
+    const c2 = JSON.parse(JSON.stringify(c)); c2.voorraad = {staal: {mnd: 3, prijs: 1}}; for (let i = 0; i < 3; i++) grondstofTick(c2, Ctx()); const op = !(c2.voorraad || {}).staal;
+    return {p0, pS, pNa, staal, mf, kf0: Math.round(kf0 * 100) / 100, kf1: Math.round(kf1 * 100) / 100, k3, betaald, v: v.ok, mfV, te, op}; });
+  ok(gs.geen || (Math.abs(gs.p0 - 1) < 0.06 && gs.pS > gs.p0 && gs.pNa > gs.p0 && gs.staal > 1.3 && gs.kf1 > gs.kf0 && gs.v && gs.betaald === gs.k3 && gs.mfV < gs.mf && !gs.te && gs.op), "toelevering: grondstof rond ×1, chiptekort 2020, spanning op het broncontinent maakt duurder en kost meer, voorraad betaalt vooruit en verlaagt de kosten, max 24 mnd, raakt op: " + JSON.stringify(gs));
   ok(/VERKOOP/.test(verkoop) && /KEURING/.test(verkoop), "tabblad Verkoop en keuring");
   ok(/VARIANT/.test(scherm), "varianten staan op het productblad");
   if (out){ const bl = await p.$('.prodblad'); if (bl) await bl.screenshot({path: out + "/verkoop.png"}); }
