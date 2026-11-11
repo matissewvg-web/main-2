@@ -111,6 +111,10 @@ const html = '<!doctype html><html><head><meta charset=utf8></head><body>' + fs.
     const std = await API["/api/autostandaard"]({k: "prijs", aan: true}), nieuw = mkProduct(s, s.divisions[0], "Autonieuw", 3, 50); s.autoStandaard = {};
     return {aan: x.auto, keur: keurStatus(x), f: x.prijsF, c0, c1: prodCap(s, x), v0, melding: ctx.rep.join(" "), nieuw: nieuw.auto.prijs === true, std: std.ok}; });
   ok(ap.aan.prijs && ap.aan.cap && ap.aan.keuring && ap.keur === "bezig" && ap.f > 0.6 && ap.f <= 1.5 && ap.c1 > ap.c0 && /Autopilot/.test(ap.melding) && ap.nieuw, "autopilot: keuring aangevraagd, prijs omhoog naar de beste, capaciteit erbij bij uitverkocht, standaard voor nieuwe producten: " + JSON.stringify(ap));
+  const ad = await p.evaluate(async () => { const s = G.game; s.cash += 200; const d = { name: "Autolab", type: s.divisions[0].type, level: 3, efficiency: 1 }; s.divisions.push(d);
+    const r = await API["/api/autodev"]({divisie: "Autolab", aan: true, schaal: "groot"}); const ctx = Ctx(); autoDevTick(s, ctx); const n1 = s.producten.filter(x => x.divisie === "Autolab").length, sch = (s.producten.find(x => x.divisie === "Autolab") || {}).schaal;
+    autoDevTick(s, Ctx()); const n2 = s.producten.filter(x => x.divisie === "Autolab").length; s.divisions = s.divisions.filter(x => x !== d); s.producten = s.producten.filter(x => x.divisie !== "Autolab"); return {ok: r.ok, n1, n2, sch, melding: ctx.rep.join(" ")}; });
+  ok(ad.ok && ad.n1 === 1 && ad.n2 === 1 && ad.sch === "groot" && /Automatisch ontwikkelen/.test(ad.melding), "automatisch ontwikkelen: start één product op de gekozen schaal, niet twee tegelijk: " + JSON.stringify(ad));
   // 7. scherm
   await p.evaluate(() => { S.view = "bedrijf"; render(); }); const ds = await p.$('[data-a=prodsheet]'); if (ds){ await ds.click(); await p.waitForTimeout(200); }
   const scherm = await p.evaluate(() => { const el = document.querySelector(".prodblad"); return el ? el.textContent : ""; });

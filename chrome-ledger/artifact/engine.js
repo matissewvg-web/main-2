@@ -658,7 +658,7 @@ function tick(s){
 }
 
 /* ---------- de stad: elke game een andere kaart ---------- */
-const VERSION = "5.2";
+const VERSION = "5.2.1";
 const MAP_W = 1000, MAP_H = 680;
 const RIVAL_COLORS = ["#ff9a1f", "#3d7bff", "#c6ff2e", "#f2f2f2", "#9b5cff", "#ffd400", "#ff4d4d"];
 const ARCH = {
@@ -2545,8 +2545,13 @@ function actProduct(s, ctx, soort, a){
   }
   addLog(s, msg); return {ok: true, msg};
 }
+/* 5.2.1: automatisch ontwikkelen per divisie: is er een vrije plek, geen ontwikkeling bezig en genoeg kas (kosten + €30M buffer), dan start de divisie zelf een product */
+function autoDevTick(s, ctx){ for (const d of s.divisions){ const A = d.autoDev; if (!A || !A.aan) continue; const nm = divNaam(d), alle = (s.producten || []).filter(p => p.divisie === nm && p.status !== "teruggeroepen");
+  if (alle.length >= maxProducten(d) || alle.some(p => p.status === "ontwikkeling" || p.status === "wachtrij")) continue;
+  const aard = A.aard || aardVan(d.type, ""), schaal = PRODUCT_SCHAAL[A.schaal] ? A.schaal : "klein", plan = devPlan(s, d, schaal, "standaard", aard), kost = (s.gratisDev || 0) > 0 ? 0 : plan.kost;
+  if (s.cash < kost + 30) continue; const r = actProduct(s, ctx, "ontwikkel", {divisie: nm, schaal, focus: "standaard", aard}); if (r.ok) ctx.rep.push(`Automatisch ontwikkelen ${nm}: ${r.msg.split(":")[0]}`); } }
 function productTick(s, ctx){
-  s.producten ??= [];
+  s.producten ??= []; autoDevTick(s, ctx);
   for (const d of s.divisions){ const had = (d.leeg || 0) > 12; d.leeg = opMarkt(s, d).length ? 0 : (d.leeg || 0) + 1; if (d.leeg === 13) mail(ctx, s, "Verkoop", `${divNaam(d)} verkoopt al een jaar niets`, `Klanten van ${divNaam(d)} stappen over naar rivalen die wel iets nieuws hebben. Zolang we niets op de markt hebben, zakt de omzet van deze divisie elke maand verder, tot −20%. Eén product stopt het meteen.`, "HOOG"); }
   const namen = new Set(s.divisions.map(divNaam)); s.producten = s.producten.filter(p => namen.has(p.divisie));
   for (const d of s.divisions){ const nm = divNaam(d);
@@ -4121,6 +4126,9 @@ const API = {
   async "/api/divisieconcept"(){ const s = G.game, ctx = Ctx(); const r = actDivisieConcept(s, ctx, G.divConcept); if (r.ok){ G.divConcept = null; await persist(ctx); } return {ok: r.ok, bericht: r.msg}; },
   async "/api/concept"(d){ const s = G.game, ctx = Ctx(); const r = actConcept(s, ctx, (G.concepten || {})[d.divisie]); if (r.ok){ delete G.concepten[d.divisie]; await persist(ctx); } return {ok: r.ok, bericht: r.msg}; },
   async "/api/dochter"(d){ const s = G.game, ctx = Ctx(); const r = actDochter(s, d.id, d.actie); if (r.ok) await persist(ctx); return {ok: r.ok, bericht: r.msg}; },
+  async "/api/autodev"(d){ const s = G.game, dv = s.divisions.find(x => divNaam(x) === d.divisie); if (!dv) return {ok: false, bericht: "Onbekende divisie."};
+    const A = (dv.autoDev ??= {aan: false, schaal: "klein"}); if (d.aan != null) A.aan = !!d.aan; if (PRODUCT_SCHAAL[d.schaal]) A.schaal = d.schaal; if (d.aard && PRODUCT_AARD[d.aard]) A.aard = d.aard; await persist(Ctx());
+    return {ok: true, bericht: `${divNaam(dv)}: automatisch ontwikkelen ${A.aan ? `aan (${PRODUCT_SCHAAL[A.schaal].label.toLowerCase()})` : "uit"}.`}; },
   async "/api/autostandaard"(d){ const s = G.game; if (!AUTO[d.k]) return {ok: false, bericht: "Onbekend."}; (s.autoStandaard ??= {})[d.k] = !!d.aan; if (d.alle) for (const p of s.producten || []) (p.auto ??= {})[d.k] = !!d.aan; await persist(Ctx()); return {ok: true, bericht: `${AUTO[d.k].split(" (")[0]}: ${d.aan ? "aan" : "uit"}${d.alle ? " voor alle producten" : " voor nieuwe producten"}.`}; },
   async "/api/huisstijl"(d){ const s = G.game, ctx = Ctx(); const r = actHuisstijl(s, d || {}); if (r.ok) await persist(ctx); return {ok: r.ok, bericht: r.msg}; },
   async "/api/product"(d){ const s = G.game, ctx = Ctx(); const r = actProduct(s, ctx, d.soort, d); if (r.ok) await persist(ctx); return {ok: r.ok, bericht: r.msg}; },
