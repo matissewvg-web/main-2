@@ -669,7 +669,7 @@ function tick(s){
 }
 
 /* ---------- de stad: elke game een andere kaart ---------- */
-const VERSION = "6.3";
+const VERSION = "6.4";
 const MAP_W = 1000, MAP_H = 680;
 const RIVAL_COLORS = ["#ff9a1f", "#3d7bff", "#c6ff2e", "#f2f2f2", "#9b5cff", "#ffd400", "#ff4d4d"];
 const ARCH = {
@@ -2820,7 +2820,7 @@ function doelen(s){
     {id: "uitschakeling", naam: "Marktmeester", tekst: `${RD} van de ${rw.van} oorspronkelijke rivalen uitgeschakeld (overgenomen, failliet of kapotgemaakt)`, pct: RD ? Math.round(clamp(rw.weg / RD, 0, 1) * 100) : 0, klaar: RD > 0 && rw.weg >= RD, nu: `${rw.weg} van ${RD}`},
   ];
   { const thuis = (s.districts.find(x => x.id === s.player.home_district) || {}).continent, sp = spanningVan(s, thuis), aand = (cp.find(c => c.naam === thuis) || {}).pct || 0; /* 6.3: corporate zone */
-    out.push({id: "corpzone", naam: "Corporate zone", tekst: `${thuis} wordt een corporate zone (spanning 90+) en jij hebt er ${CZ_PCT}% of meer`, pct: Math.round(clamp((Math.min(1, sp / 90) + Math.min(1, aand / CZ_PCT)) / 2, 0, 1) * 100), klaar: sp >= 90 && aand >= CZ_PCT, nu: `spanning ${Math.round(sp)}, aandeel ${aand}%`}); }
+    out.push({id: "corpzone", naam: "Corporate zone", tekst: `${thuis} wordt een corporate zone (spanning 90+) en jij hebt er ${CZ_PCT}% of meer`, pct: Math.round(clamp(Math.min(sp / 90, aand / CZ_PCT), 0, 1) * 100), /* 6.4: de zwakste voorwaarde telt */ klaar: sp >= 90 && aand >= CZ_PCT, nu: `spanning ${Math.round(sp)}, aandeel ${aand}%`}); }
   if (L) out.push({id: "termijn", naam: "Einde van de termijn", tekst: `Na ${L / 12} jaar telt je score`, pct: Math.round(clamp(n / L * 100, 0, 100)), klaar: n >= L, nu: `nog ${Math.max(0, L - n)} maanden`});
   return out;
 }
