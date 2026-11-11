@@ -69,6 +69,7 @@ function foutLog(waar, e){
 const pak = s => s && s.map && s.map.kind === "wereld" && s.map.versie === 2 && s.map.frame ? {...s, map: {kind: "wereld", versie: 2, gedeeld: true}} : s;
 function migrate(s){
   if (s.map && s.map.gedeeld) s.map = genWorld().map;
+  if (Array.isArray(s.rivals)) for (const r of s.rivals) if (r && r.name && !r.karakter) r.karakter = Object.keys(RIVAAL_KARAKTER)[hashN(r.name, 0) % 6]; /* 5.8.1: oude saves krijgen een karakterlabel (zonder de cijfers te veranderen) */
   if (!(s.flags || {}).compensatie_473 && s.flags && s.date){ s.cash = r1((s.cash || 0) + 100); if (s.accounts) s.accounts.operationeel = s.cash; s.flags.compensatie_473 = true; (s.log ??= []).push(`${ym(s)} · Compensatie: +€100M omdat facturen en gebeurtenissen te duur waren (4.7.3)`); } /* 4.7.3: eenmalig €100M terug in bestaande saves */
   if (!(s.flags || {}).eigen_475 && s.producten && s.flags){ for (const p of s.producten){ p.delen = [0, 1, 2].map(i => ({kwal: ((p.delen || [])[i] || {}).kwal || "standaard", eigen: true})); } s.flags.eigen_475 = true; } /* 4.7.5: eenmalig alles naar eigen productie */
   if (s.flags && !s.flags.overname_477){ /* 4.7.7: overnamebod weg; een verloren divisie komt terug met haar producten */
@@ -664,7 +665,7 @@ function tick(s){
 }
 
 /* ---------- de stad: elke game een andere kaart ---------- */
-const VERSION = "5.8";
+const VERSION = "5.8.1";
 const MAP_W = 1000, MAP_H = 680;
 const RIVAL_COLORS = ["#ff9a1f", "#3d7bff", "#c6ff2e", "#f2f2f2", "#9b5cff", "#ffd400", "#ff4d4d"];
 const ARCH = {
