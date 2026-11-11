@@ -92,6 +92,10 @@ const html = '<!doctype html><html><head><meta charset=utf8></head><body>' + fs.
     G.game.gratisDev = 1; const c0 = G.game.cash, dv = G.game.divisions[0], r = await API["/api/product"]({soort: "ontwikkel", divisie: divNaam(dv), schaal: "vlag", focus: "standaard", naam: "Gratis Test"}); const betaald = Math.round((c0 - G.game.cash) * 10) / 10;
     return {n1, n2, level: d.level, extra, gratis: oud.gratisDev, ok: r.ok, betaald, over: G.game.gratisDev, nogmaals: oud.cash === c1 + 60 ? "ok" : oud.cash}; });
   ok(z.n1 === 7 && z.n2 === 0 && z.level === 6 && z.extra === 60 && z.gratis === 5 && (!z.ok || (z.betaald === 0 && z.over === 0)), "wapenlijn zelf bouwen: producten weg, niveau 6, +€60M, 5 gratis ontwikkelingen die echt niets kosten: " + JSON.stringify(z));
+  const od = await p.evaluate(() => { const s = G.game, d = s.divisions[0], q = mkProduct(s, d, "Ordertank", 3, 60); Object.assign(q, {aard: "wapen", schaal: "vlag"}); const echt = window.kansRol;
+    window.kansRol = () => 0; const ctx = Ctx(), a = orderOmzet(s, ctx, q, 3); window.kansRol = () => 0.9; const b2 = orderOmzet(s, Ctx(), q, 3); window.kansRol = echt;
+    return {met: Math.round(a * 10) / 10, zonder: b2, orders: (q.orders || []).length, stuks: (q.orders || [{}])[0].stuks, melding: ctx.rep.join(" ")}; });
+  ok(od.met === 10 && od.zonder === 0 && od.orders === 1 && od.stuks >= 1 && /Order:/.test(od.melding), "orders: met een order de omzet van ±3 maanden in één keer, zonder order niets (vaste kans): " + JSON.stringify(od));
   // 7. scherm
   await p.evaluate(() => { S.view = "bedrijf"; render(); }); const ds = await p.$('[data-a=prodsheet]'); if (ds){ await ds.click(); await p.waitForTimeout(200); }
   const scherm = await p.evaluate(() => { const el = document.querySelector(".prodblad"); return el ? el.textContent : ""; });

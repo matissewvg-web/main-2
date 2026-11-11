@@ -518,7 +518,7 @@ function tick(s){
     rev += r; cost += c; heatAdd += t.heat * Math.pow(t.heat <= 1 ? Math.min(d.level, 6) : d.level, 0.75) * 0.5;
     lines.push(`| ${d.name || d.type} (${d.type} L${d.level}) | ${r1(r)} | ${r1(c)} |`); (s.divomzet ??= {})[d.name || d.type] = r1(r);
     const mk = opMarkt(s, d); if (mk.length){ let po = 0, pk = 0, zw = 0, vk = 0; for (const p of mk){ const K = KANAAL[kanaalVan(p)]; let o = prodOmzet(s, p) * eff; if (stukInfo(p).order && !isAbo(p)) o = orderOmzet(s, ctx, p, o); (s.prodomzet ??= {})[p.id] = r1(o); pk += prodKost(p, o);
-        if (K.zwart){ zw += o * K.zwart; po += o * (1 - K.zwart); } else po += o; vk += K.vast * diff + capVast(s, p); heatAdd += K.heat; }
+        if (K.zwart){ zw += o * K.zwart; po += o * (1 - K.zwart); if (o > 0 && kansRol() < 0.04){ s.reputation = clamp(s.reputation - 3); heatAdd += 3; mail(ctx, s, "Journalist", `${p.naam} op de zwarte markt`, `Een reportage volgt een lading ${p.naam} van een kofferbak in een steeg tot een bende. Uw naam staat erbij. Reputatie −3, heat +3.`, "HOOG"); } } else po += o; /* 5.0: zwarte markt is een echt risico */ vk += K.vast * diff + capVast(s, p); heatAdd += K.heat; }
       rev += po; cost += pk + vk; lines.push(`| Producten ${d.name || d.type} (${mk.length}) | ${r1(po)} | ${r1(pk + vk)} |`);
       if (zw){ s.accounts.zwart = r1((s.accounts.zwart || 0) + zw); lines.push(`| Zwarte markt ${d.name || d.type} (naar zwart geld) | ${r1(zw)} | 0 |`); } }
   }
@@ -658,7 +658,7 @@ function tick(s){
 }
 
 /* ---------- de stad: elke game een andere kaart ---------- */
-const VERSION = "4.7.11";
+const VERSION = "5.0";
 const MAP_W = 1000, MAP_H = 680;
 const RIVAL_COLORS = ["#ff9a1f", "#3d7bff", "#c6ff2e", "#f2f2f2", "#9b5cff", "#ffd400", "#ff4d4d"];
 const ARCH = {
@@ -2759,7 +2759,7 @@ function migrate21(s){
 /* ===================== 2.2 DOEL, SCORE EN EINDE ===================== */
 const SPEL_LENGTE = {kort: {label: "10 jaar", maanden: 120}, normaal: {label: "20 jaar", maanden: 240}, eindeloos: {label: "Eindeloos", maanden: 0}};
 const WIN_WAARDE = 8000, HEG_PCT = 60, HEG_N = 3, RIVAAL_DOEL = 3;
-const WIN_LENGTE = {kort: 0.8, normaal: 1.38, eindeloos: 1.9};
+const WIN_LENGTE = {kort: 0.9, normaal: 1.55, eindeloos: 2.1}; /* 5.0: was 0,8 / 1,38 / 1,9; het spel was na de kostenverlagingen te makkelijk */
 const winWaardeVoor = lengte => Math.round(WIN_WAARDE * (WIN_LENGTE[lengte] || 1) / 100) * 100;
 const winWaarde = s => winWaardeVoor(s.player.lengte);
 const RIVAAL_MULT = {Casual: 0.85, Realistisch: 1, Genadeloos: 1.2};
@@ -3280,7 +3280,7 @@ const SPELREGELS = [
   ["Dobbelstenen", "Elke onzekere actie is 2d6 + bonus tegen een doel. Twee zessen lukt altijd, twee enen nooit. De kans die je vooraf ziet is de echte kans. Elke worp staat in Logboek → Dobbelstenen."],
   ["Morale en heat", "Morale onder 10, twee maanden lang: coup. Heat boven 90, twee maanden lang: razzia. Heat komt vooral uit riskante en illegale divisies (Smokkel, Cyberware, Private Security), die met elk niveau meer aandacht trekken; legale divisies trekken boven niveau 6 geen extra aandacht meer. Het overzicht laat zien waarom ze bewegen en waarschuwt ruim op tijd."],
   ["Stilstand", "Verkoopt een divisie een jaar lang niets, dan lopen klanten naar rivalen: de omzet zakt elke maand verder, tot −20%. Eén product op de markt stopt het meteen."],
-  ["Winnen", "Een bedrijfswaarde van €11.000M (10 jaar: €6.400M, eindeloos: €15.200M), 60% op drie continenten, of 3 van de 5 oorspronkelijke rivalen uitgeschakeld. Anders telt na de gekozen speellengte je score."],
+  ["Winnen", "Een bedrijfswaarde van €12.400M (10 jaar: €7.200M, eindeloos: €16.800M), 60% op drie continenten, of 3 van de 5 oorspronkelijke rivalen uitgeschakeld. Anders telt na de gekozen speellengte je score."],
   ["Score", "Bedrijfswaarde telt met de wortel (40 × √waarde), plus dominantie, reputatie, jaren, uitgeschakelde rivalen en status. Winnen ×1,25 plus tempo, termijn uitdienen ×1, verliezen ×0,75 en zonder de waarde van je bedrijf: een verlies scoort dus nooit hoger dan overleven met hetzelfde bedrijf."],
   ["Keuzes", "Keuzemails hebben knoppen; elke optie zegt wat ze kost en doet. Antwoord je niet, dan kiest het spel na twee maanden de standaardoptie."],
 ];
