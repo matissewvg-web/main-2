@@ -44,6 +44,7 @@ function verstandig(s, ctx, agressief){
   if (s.morale < 40) for (const n of s.npcs) actMens(s, ctx, "npc-" + slug(n.name), "bonus");
   if (s.morale > 75 && s.staff.avg_salary > SALARY.marktconform) actStaff(s, "marktconform");
   if (s.heat > 45){ actMens(s, ctx, "politie", "gunst"); if ((s.invloed || 0) >= 20) actInfluence(s, "rust"); }
+  if (s.heat > 60 && typeof actOffensief === "function" && s.cash > offensiefKost(s) + 20) actOffensief(s, ctx); /* 7.2 */
   // personeel op peil
   const tekort = staffNeed(s) - s.staff.count; if (tekort > 0 && s.cash > 20) actStaff(s, "huren", Math.min(tekort, 10));
   // crew

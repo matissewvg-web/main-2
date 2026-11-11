@@ -444,6 +444,13 @@ const html = '<!doctype html><html><head><meta charset=utf8></head><body>' + fs.
     c.spanning[ander] = 75; const w = wanbetaalKans(c, {soort: "leger", cont: ander}), wOud = wanbetaalKans(c, {klant: "oud"});
     return {slijt12, herstel, stromen, t0: t0.ok, t1: t1.ok, t2: t2.ok, t3: t3.via, thuisOk, medOk, w, wOud}; });
   ok(fu.slijt12 < 0.99 && fu.herstel && fu.stromen === "Contract X:3,Contract Y:1" && !fu.t0 && fu.t1 && !fu.t2 && fu.t3 === "smokkel" && fu.thuisOk && fu.medOk && fu.w === 0.03 && fu.wOud === 0, "7.0: een divisie die niet vernieuwt slijt en herstelt met een nieuw product; dubbele contracten samengevoegd; wapens exporteren vraagt een vergunning, bij embargo een smokkelroute; wanbetaling in onrustige gebieden, oude contracten veilig: " + JSON.stringify(fu));
+  // 7.2 razzia als klap, prognose, juridisch offensief
+  const rz = await p.evaluate(() => { const c = JSON.parse(JSON.stringify(G.game)); c.cash = 200; c.accounts.zwart = 30; c.razzias = 0; const d = c.divisions[0]; d.level = 3; const ctx = Ctx();
+    const eind1 = razzia(c, ctx); const na = {cash: c.cash, zw: c.accounts.zwart, lvl: d.level, heat: c.heat, n: c.razzias}; razzia(c, ctx); const eind3 = razzia(c, ctx);
+    const c2 = JSON.parse(JSON.stringify(G.game)); c2.heat = 70; c2.cash = 500; c2.flags.offensief = null; const o1 = actOffensief(c2, Ctx()), h = c2.heat, o2 = actOffensief(c2, Ctx());
+    c2.gezondheid = {heat: {van: 60, naar: 66, delen: [["Divisies", 5], ["Producten", 1]]}}; c2.heat = 66; const hp = heatPrognose(c2);
+    return {eind1, na, eind3, o1: o1.ok, h, o2: o2.ok, hp}; });
+  ok(!rz.eind1 && rz.na.cash < 200 && rz.na.zw === 0 && rz.na.lvl === 2 && rz.na.heat === 50 && rz.na.n === 1 && rz.eind3 && rz.o1 && rz.h === 58 && !rz.o2 && rz.hp.maanden === 4 && rz.hp.bron === "Divisies", "7.2: een razzia is een klap (boete, zwart geld weg, divisie een niveau omlaag, heat 50), de derde is het einde; juridisch offensief −12 eens per vier maanden; prognose wanneer heat 90 is: " + JSON.stringify(rz));
   ok(/VERKOOP/.test(verkoop) && /KEURING/.test(verkoop), "tabblad Verkoop en keuring");
   ok(/VARIANT/.test(scherm), "varianten staan op het productblad");
   if (out){ const bl = await p.$('.prodblad'); if (bl) await bl.screenshot({path: out + "/verkoop.png"}); }

@@ -634,8 +634,9 @@ function tick(s){
   if (s.flags.lage_morale >= 2 && R() < 0.5) status = "COUP IN DE RAAD";
   else if (s.morale < 20) mail(ctx, s, "Anoniem", "De raad vergadert zonder u", "Drie bestuursleden lunchten gisteren samen. U stond niet op de lijst.", "HOOG");
   s.flags.hoge_heat = s.heat > 90 ? (s.flags.hoge_heat || 0) + 1 : 0;
-  if (s.flags.hoge_heat >= 2 && R() < 0.4 * (heeftWet(s, "rechtspraak") ? 0.5 : 1)) status = "RAZZIA / VERVOLGING";
-  else if (s.heat > 75) mail(ctx, s, "Juridische Zaken", "Er wordt een dossier opgebouwd", "Een bevriende griffier zegt dat ons dossier dikker wordt. Bij de huidige heat is een inval een kwestie van tijd.", "KRITIEK");
+  if (s.flags.hoge_heat >= 2 && R() < 0.4 * (heeftWet(s, "rechtspraak") ? 0.5 : 1)){ if (razzia(s, ctx)) status = "RAZZIA / VERVOLGING"; } /* 7.2: pas de derde razzia is het einde */
+  else if (s.heat > 75 && !s.flags.dossier){ s.flags.dossier = true; mail(ctx, s, "Juridische Zaken", "Er wordt een dossier opgebouwd", `Een bevriende griffier zegt dat ons dossier dikker wordt. Boven 90 heat, twee maanden lang, volgt een razzia${(s.razzias || 0) ? ` (we hadden er al ${s.razzias}; de derde is het einde)` : ""}. Snelste weg omlaag: een juridisch offensief (Overzicht → Gezondheid), een gunst van de commissaris of sporen laten wissen.`, "KRITIEK"); }
+  if (s.heat < 65) delete s.flags.dossier;
   if (s.flags.overgenomen){ delete s.flags.overgenomen; status = "OVERGENOMEN"; }
   statsTick(s); gezondheidEind(s, gz, ctx);
   { const runway = net < 0 && s.cash > 0 ? s.cash / -net : 99;
@@ -678,7 +679,7 @@ function tick(s){
 }
 
 /* ---------- de stad: elke game een andere kaart ---------- */
-const VERSION = "7.0";
+const VERSION = "7.2";
 const MAP_W = 1000, MAP_H = 680;
 const RIVAL_COLORS = ["#ff9a1f", "#3d7bff", "#c6ff2e", "#f2f2f2", "#9b5cff", "#ffd400", "#ff4d4d"];
 const ARCH = {
@@ -2869,6 +2870,25 @@ function eindRapport(s, ctx, status){
 }
 
 /* ===================== 2.2 GEZONDHEID: waarom morale en heat bewegen ===================== */
+/* 7.2: een razzia is een zware klap, geen direct einde. De derde is het einde. */
+const RAZZIA_MAX = 3;
+function razzia(s, ctx){ s.razzias = (s.razzias || 0) + 1; s.flags.hoge_heat = 0; if (s.razzias >= RAZZIA_MAX) return true;
+  const boete = r1(Math.max(15, (Math.max(0, s.cash) + (s.accounts.offshore || 0)) * 0.12)), zw = r1(s.accounts.zwart || 0);
+  s.cash = r1(s.cash - boete); s.accounts.zwart = 0; s.accounts.operationeel = s.cash;
+  const d = s.divisions.slice().sort((a, b) => ((typeOf(s, b.type) || {}).heat || 0) * b.level - ((typeOf(s, a.type) || {}).heat || 0) * a.level)[0]; let dl = "";
+  if (d && d.level > 1){ d.level -= 1; dl = ` ${divNaam(d)} zakt naar niveau ${d.level}: machines verzegeld, mensen opgepakt.`; }
+  s.reputation = clamp(s.reputation - 10); s.morale = clamp(s.morale - 10); s.heat = 50;
+  const txt = `Om zes uur 's ochtends staan er busjes voor de deur. Boete €${boete}M${zw ? `, al het zwarte geld (€${zw}M) in beslag genomen` : ""}.${dl} Reputatie −10, morale −10. Heat staat weer op 50. Dit was razzia ${s.razzias} van ${RAZZIA_MAX}: de ${RAZZIA_MAX === s.razzias + 1 ? "volgende" : `${RAZZIA_MAX}e`} is het einde.`;
+  mail(ctx, s, "Juridische Zaken", `Razzia ${s.razzias} van ${RAZZIA_MAX}`, txt, "KRITIEK"); ctx.rep.push(`Razzia ${s.razzias} van ${RAZZIA_MAX}`); news(s, `Inval bij ${s.player.corp_name}`, `Justitie valt binnen bij ${s.player.corp_name}. Dozen met dossiers gaan naar buiten.`, homeLandNaam(s), "wereld", true); addLog(s, `Razzia ${s.razzias}: boete €${boete}M${zw ? `, zwart €${zw}M kwijt` : ""}${dl}`); return false; }
+/* 7.2: heat-prognose: hoe snel stijgt het, wanneer is het 90, wat is de grootste bron */
+function heatPrognose(s){ const g = (s.gezondheid || {}).heat, d = g ? r1(g.naar - g.van) : 0, bron = g ? (g.delen || []).filter(([, v]) => v > 0).sort((a, b) => b[1] - a[1])[0] : null;
+  return {delta: d, maanden: d > 0.2 && s.heat < 90 ? Math.ceil((90 - s.heat) / d) : null, bron: bron ? bron[0] : null, razzias: s.razzias || 0, max: RAZZIA_MAX}; }
+/* 7.2: juridisch offensief: advocaten, lobby en een paar diners. Kost meer naarmate je groter bent; eens per vier maanden. */
+const offensiefKost = s => r1(Math.max(6, 6 + playerValue(s) / 400) * (DIFF[s.player.difficulty] || 1));
+function actOffensief(s, ctx){ const m = ym(s); if (s.flags.offensief && mndNr(m) - mndNr(s.flags.offensief) < 4) return {ok: false, msg: `Het vorige offensief was in ${s.flags.offensief}. Advocaten hebben ook rust nodig: wacht tot vier maanden later.`};
+  const k = offensiefKost(s); if (s.cash < k) return {ok: false, msg: `Een juridisch offensief kost €${k}M.`};
+  s.cash = r1(s.cash - k); s.accounts.operationeel = s.cash; s.flags.offensief = m; const h0 = s.heat; s.heat = clamp(s.heat - 12); addLog(s, `Juridisch offensief: heat ${Math.round(h0)} → ${Math.round(s.heat)} (€${k}M)`);
+  return {ok: true, msg: `Advocaten, lobbyisten en een paar diners: heat ${Math.round(h0)} → ${Math.round(s.heat)} (€${k}M). Volgende kan over vier maanden.`}; }
 function gezondheidStart(s){ return {m0: s.morale, h0: s.heat, mDelen: [], hDelen: []}; }
 function gezondheidEind(s, g, ctx){
   const rest = (v0, v1, delen) => { const d = r1(v1 - v0 - delen.reduce((a, [, v]) => a + v, 0)); return Math.abs(d) >= 0.5 ? [...delen, ["Gebeurtenissen, keuzes en oorlog", d]] : delen; };
@@ -3940,6 +3960,7 @@ function adviezen(s, alles){
   const out = [], add = (prio, tekst, view) => out.push({prio, tekst, view});
   const markt = (s.producten || []).filter(p => p.status === "markt"), dev = (s.producten || []).filter(p => p.status === "ontwikkeling" || p.status === "wachtrij");
   const net = ((s.history || []).slice(-1)[0] || {}).netto;
+  { const hp = heatPrognose(s); if (hp.maanden && hp.maanden <= 8) add(hp.maanden <= 3 ? 10 : 8, `Heat stijgt ${hp.delta}/mnd${hp.bron ? ` (vooral: ${hp.bron.toLowerCase()})` : ""}: over ±${hp.maanden} ${hp.maanden === 1 ? "maand" : "maanden"} zit je op 90, en twee maanden boven 90 geeft een razzia${hp.razzias ? ` (je had er al ${hp.razzias} van ${hp.max})` : ""}. Juridisch offensief (Overzicht → Gezondheid), een gunst van de commissaris of sporen wissen.`, "overzicht"); } /* 7.2 */
   for (const d of s.divisions){ const sl = d.slijt ?? 1; if (sl < 0.9 && !divVernieuwt(s, d)) add(sl < 0.6 ? 9 : 6, `${divNaam(d)} raakt achterop: ze verkoopt nog ${Math.round(sl * 100)}% van wat ze kon en het zakt elke maand. Een nieuw product, een editie of een uitbreiding keert het.`, "bedrijf"); } /* 7.0 */
   if (!markt.length && !dev.length && (s.flags.stappen_weg || maandenGespeeld(s) >= 8)) add(10, "Je verkoopt nog niets. Start je eerste product bij Bedrijf → Productlijn: klein kost €5M en is in 2 maanden klaar, en een divisie met producten verdient meer.", "bedrijf");
   else for (const d of s.divisions) if (!(s.producten || []).some(p => p.divisie === divNaam(d))) add((d.leeg || 0) > 12 ? 9 : 7, (d.leeg || 0) > 12 ? `${divNaam(d)} verkoopt al ${d.leeg} maanden niets: klanten lopen weg, omzet ×${productMult(s, d).toFixed(2)}. Start een product bij Bedrijf → Productlijn.` : `${divNaam(d)} heeft geen producten en draait op ×0,95; na een jaar zonder producten lopen klanten weg. Start er een bij Bedrijf → Productlijn.`, "bedrijf");
@@ -3996,6 +4017,7 @@ function adviesCard(st){
 }
 const SPELREGELS = [
   ["Tijd", "Rechtsboven: ▶ laat de maanden vanzelf lopen, op snelheid 1 (traag) tot 5 (turbo); +1 maand doet er precies één. De tijd pauzeert vanzelf bij een nieuw besluit, een kritieke mail, oorlog, heat boven 85 of een rode kas, en zolang je typt of een venster open hebt. Spatie = afspelen/pauze."],
+  ["Razzia", "Heat boven 90, twee maanden lang, geeft elke maand kans op een razzia: een boete, al je zwart geld kwijt, je heetste divisie een niveau omlaag, reputatie en morale −10, heat terug naar 50. De derde razzia is het einde. Overzicht → Gezondheid toont wanneer je op 90 zit en waar de heat vandaan komt; een juridisch offensief haalt er 12 af."],
   ["Opslaan", "Het spel bewaart zichzelf na elke actie. Een opslagpunt (Ctrl+S, Menu → Opslaan of links OPSLAAN) is een vaste kopie van dit moment; via Menu → Laden ga je er later naar terug. Het staat als apart spel in de lijst."],
   ["Een beurt", "Elke beurt is een maand. Je doet wat je wilt (producten, mensen, crew, deals) en klikt dan +1 maand of laat de tijd lopen. Dan rekent de engine omzet, kosten, gebeurtenissen en rivalen uit en stuurt de CFO een rapport."],
   ["Geld", "Omzet komt uit divisies (hoger niveau = meer), producten (kwaliteit × populariteit × markt), gebieden, contracten en klussen. Kosten: divisies, lonen, crew, rente, projecten en winstbelasting. Drie maanden rood = failliet."],
@@ -4802,6 +4824,7 @@ function vm(){
     dochters: (s.bedrijven || []).filter(b => b.eigenaar === "player" && b.koppeling === "dochter").map(b => ({id: b.id, naam: b.naam, sector: b.sector, land: landNaam(s, b.land), waarde: Math.round(b.waarde), bedrag: ((s.streams || []).find(x => x.naam === "Dochter " + b.naam) || {}).bedrag || 0, verkoop: r1(b.waarde * 0.9), samen: s.divisions.some(d => d.type === b.sector) ? `samenvoegen met ${divNaam(s.divisions.find(d => d.type === b.sector))}` : `eigen divisie (${b.sector})`})),
     focus: (s.focus || []).map(k => ({naam: FOCUS[k].naam, tekst: FOCUS[k].tekst})), volgendeFocus: (() => { const mg = maandenGespeeld(s); return mg < 12 ? 12 - mg : (12 - (mg % 12)) % 12 || 12; })(),
     plannen: (s.plannen || []).filter(p => p.ontdekt).map(p => ({titel: p.titel, wie: p.wie, stap: p.stap, van: p.stappen.length, stappen: p.stappen, wanneer: p.volgende, zacht: !!p.zacht, eind: PLAN_SOORT[p.soort].eindTekst, motief: p.motief || ""})),
+    heatPrognose: heatPrognose(s), offensief: {kost: offensiefKost(s), klaar: !s.flags.offensief || mndNr(ym(s)) - mndNr(s.flags.offensief) >= 4},
     zaad: s.zaad || null, huisstijl: s.huisstijl || null, autoStandaard: s.autoStandaard || {}, adviezen: adviezen(s), doelen: doelen(s), scoreNu: score(s), lengte: spelLengte(s), gezondheid: s.gezondheid || null, eind: s.eind || null,
     crewv: crewVM(s), tijd: tijdVM(s), productlijn: productVM(s), projectRisico: projectRisico(s),
     verdedigingInfo: {waarde: verdediging(s, null), macht: playerPower(s), intel: (s.crew || []).some(m => ["speurder", "fixer"].includes(m.rol)), open: (s.dreigingen || []).map(t => ({label: t.label, van: t.van, maand: t.maand}))},
@@ -4853,6 +4876,7 @@ const API = {
   async "/api/taak"(d){ const s = G.game, ctx = Ctx(); const r = d.rol ? actAannemen(s, ctx, d.rol) : actTaak(s, ctx, d.k, !!d.aan); if (r.ok) await persist(ctx); return {ok: r.ok, bericht: r.msg}; },
   async "/api/pitch"(d){ const s = G.game, ctx = Ctx(); const r = actPitch(s, ctx, d.id); if (r.ok) await persist(ctx); return {ok: r.ok, bericht: r.msg}; },
   async "/api/editie"(d){ const s = G.game, ctx = Ctx(); const r = actEditie(s, ctx, d.id, (G.edities || {})[d.id]); if (r.ok){ delete G.edities[d.id]; await persist(ctx); } return {ok: r.ok, bericht: r.msg}; },
+  async "/api/offensief"(){ const s = G.game, ctx = Ctx(); const r = actOffensief(s, ctx); if (r.ok) await persist(ctx); return {ok: r.ok, bericht: r.msg}; },
   async "/api/aanvraag"(d){ const s = G.game, ctx = Ctx(); const r = actAanvraag(s, ctx, d.id, d.keuze); if (r.ok) await persist(ctx); return {ok: r.ok, bericht: r.msg}; },
   async "/api/export"(d){ const s = G.game, ctx = Ctx(); const r = actExport(s, ctx, d.soort, d.cont); if (r.ok) await persist(ctx); return {ok: r.ok, bericht: r.msg}; },
   async "/api/regio"(d){ const s = G.game, ctx = Ctx(); const r = actRegio(s, d.id, d.cont); if (r.ok) await persist(ctx); return {ok: r.ok, bericht: r.msg}; },
