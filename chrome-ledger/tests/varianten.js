@@ -324,6 +324,13 @@ const html = '<!doctype html><html><head><meta charset=utf8></head><body>' + fs.
   const imUI = await p.evaluate(() => { S.view = "logboek"; S.instOpen = true; render(); const t = document.querySelector("main").textContent; S.instOpen = false; return /Eigen moeilijkheid/.test(t) && /Winstdrempel/.test(t); });
   ok(im.ww === Math.round(im.basis * 1.3 / 100) * 100 && im.sc0 === 1.02 && im.m0 === 1.02 && im.a && im.sc1 === 1.12 && im.scMin === 0.92 && !im.fout && im.oudInst === 1 && im.oudMult && imUI,
     "eigen moeilijkheid: winstdrempel en score-vermenigvuldiger volgen de schuiven, de laagste stand telt, oude saves ongewijzigd, kaart bij Logboek: " + JSON.stringify(im));
+  // 5.21 spiekbriefje en rondleiding
+  const sp21 = await p.evaluate(() => { const uit = {}; for (const v of ["overzicht", "bedrijf", "wereld", "kaart", "financien", "logboek"]){ S.view = v; render(); uit[v] = !!document.querySelector(`details.spiek[data-spiek="${v}"]`); } S.view = "overzicht"; render(); return uit; });
+  await p.evaluate(() => { delete G.game.flags.tour; try { localStorage.removeItem("cl_tour_" + G.gid); } catch(e){} toonTour(0); }); await p.waitForTimeout(100);
+  const t1 = await p.evaluate(() => ({titel: (document.querySelector(".tour h4") || {}).textContent, doel: !!document.querySelector(".tourdoel")}));
+  for (let i = 0; i < 5; i++){ await p.click('.tour [data-a="tourvolgende"]'); await p.waitForTimeout(80); }
+  const t2 = await p.evaluate(() => ({weg: !document.querySelector(".tour"), flag: G.game.flags.tour === true, geenDoel: !document.querySelector(".tourdoel"), nodig: tourNodig()}));
+  ok(Object.values(sp21).every(Boolean) && /Wat nu/.test(t1.titel) && t1.doel && t2.weg && t2.flag && t2.geenDoel && !t2.nodig, "spiekbriefje op elk scherm en rondleiding in vijf stappen (daarna niet meer): " + JSON.stringify({sp21, t1, t2}));
   ok(/VERKOOP/.test(verkoop) && /KEURING/.test(verkoop), "tabblad Verkoop en keuring");
   ok(/VARIANT/.test(scherm), "varianten staan op het productblad");
   if (out){ const bl = await p.$('.prodblad'); if (bl) await bl.screenshot({path: out + "/verkoop.png"}); }
