@@ -60,6 +60,29 @@ a{color:var(--cyan)}
 .top::after{content:"";position:absolute;left:0;right:0;bottom:-1px;height:1px;background:linear-gradient(90deg,var(--mag),transparent 30%,transparent 70%,var(--cyan));opacity:.9}
 .spstat{cursor:pointer;min-width:132px}.spstat:hover{background:var(--panel2)}.spstat:focus-visible{outline:1px solid var(--cyan)}.spstat .v{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.stat .bar.sp i{background:currentColor}
 .spfx{display:flex;flex-wrap:wrap;gap:4px;margin:2px 0 0}.spfx span{font:12px var(--mono);padding:1px 6px;box-shadow:inset 0 0 0 1px var(--line2);color:var(--muted)}.spfx .g{color:var(--green);box-shadow:inset 0 0 0 1px rgba(43,255,154,.35)}.spfx .b{color:#ff9ab6;box-shadow:inset 0 0 0 1px rgba(var(--mag-rgb),.4)}
+.simctl{display:flex;align-items:center;gap:6px;position:relative;flex-shrink:0}
+.simplay{all:unset;cursor:pointer;width:38px;height:38px;display:grid;place-items:center;font:700 15px var(--mono);color:var(--cyan);box-shadow:inset 0 0 0 1px rgba(var(--cyan-rgb),.55);background:rgba(var(--cyan-rgb),.06);transition:background .2s,color .2s,box-shadow .2s}
+.simplay:hover{background:rgba(var(--cyan-rgb),.18)}.simplay:focus-visible{outline:1px solid var(--cyan)}.simplay:disabled{opacity:.4;cursor:default}
+.simctl.loopt .simplay{background:var(--cyan);color:var(--on-cyan);box-shadow:0 0 16px rgba(var(--cyan-rgb),.6);animation:simpuls 1.6s ease-in-out infinite}
+@keyframes simpuls{50%{box-shadow:0 0 4px rgba(var(--cyan-rgb),.3)}}
+.simsnel{display:flex;align-items:flex-end;gap:2px;height:38px;padding:0 4px;box-shadow:inset 0 0 0 1px var(--line2)}
+.simsnel button{all:unset;cursor:pointer;width:9px;height:34px;display:flex;align-items:flex-end;justify-content:center}
+.simsnel button i{display:block;width:6px;background:var(--line2);transition:background .2s,height .2s}
+.simsnel button:hover i{background:var(--muted)}.simsnel button.on i,.simsnel button.on~button i{background:var(--line2)}
+.simsnel button.on i{background:var(--cyan);box-shadow:0 0 6px rgba(var(--cyan-rgb),.7)}.simsnel button:focus-visible{outline:1px solid var(--cyan)}
+.simsnel:has(button.on) button:not(.on):not(.on~button) i{background:rgba(var(--cyan-rgb),.45)}
+.simbar{position:absolute;left:0;right:0;bottom:-6px;height:2px;background:var(--line);overflow:hidden}
+.simbar i{display:block;height:100%;width:100%;background:var(--cyan);transform-origin:left;animation:simvol linear forwards}
+@keyframes simvol{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+.date.tikflits{animation:tikflits .35s ease}@keyframes tikflits{0%{color:#fff;text-shadow:0 0 12px var(--cyan)}}
+.simpauze{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;padding:9px 14px;margin:0 0 12px;background:rgba(255,184,0,.08);box-shadow:inset 3px 0 0 var(--amber),inset 0 0 0 1px rgba(255,184,0,.3);animation:pauzein .35s ease}
+.simpauze b{color:var(--amber);letter-spacing:.1em;font-family:var(--mono);font-size:13px;margin-right:6px}
+@keyframes pauzein{from{opacity:0;transform:translateY(-6px)}}
+.opslagflits{position:fixed;inset:0;pointer-events:none;z-index:90;display:grid;place-items:center;animation:opfl 1.4s ease forwards}
+.opslagflits span{font:800 20px var(--disp);letter-spacing:.3em;color:var(--cyan);text-shadow:0 0 18px rgba(var(--cyan-rgb),.8);padding:14px 26px;box-shadow:inset 0 0 0 1px rgba(var(--cyan-rgb),.6);background:rgba(var(--bg-rgb),.85);animation:opsp 1.4s ease forwards}
+@keyframes opfl{0%{background:rgba(var(--cyan-rgb),.10)}30%{background:transparent}}
+@keyframes opsp{0%{opacity:0;transform:scale(.9)}15%{opacity:1;transform:scale(1)}75%{opacity:1}100%{opacity:0;transform:translateY(-10px)}}
+[data-a="opslaan"].bezig{opacity:.5;pointer-events:none}
 .menuknop{all:unset;cursor:pointer;color:var(--cyan);font-size:18px;margin-right:10px;vertical-align:middle;letter-spacing:0}.menuknop:focus-visible{outline:1px solid var(--cyan)}
 .brand{font-family:var(--disp);font-weight:800;letter-spacing:.16em;color:#fff;font-size:15px;white-space:nowrap;line-height:1.1}
 .brand b{color:var(--mag);text-shadow:var(--glow-m);font-weight:800}
@@ -385,6 +408,11 @@ pre.rolls{font:13px/1.6 var(--mono);white-space:pre-wrap;color:var(--green);marg
 .chip:hover{box-shadow:inset 0 0 0 1px var(--cyan),0 0 10px rgba(var(--cyan-rgb),.2)}
 nav button{transition:background .2s ease,color .2s ease,padding-left .2s ease}nav button:hover{padding-left:16px}
 main.viewin > *{animation:viewin .34s cubic-bezier(.2,.7,.2,1) both}
+main.viewin .bar i,main.tabin .bar i{animation:bargroei .7s cubic-bezier(.2,.7,.2,1) both}@keyframes bargroei{from{width:0}}
+.badge.pop{animation:badgepop .5s cubic-bezier(.3,1.6,.5,1)}@keyframes badgepop{0%{transform:scale(.4)}60%{transform:scale(1.35);box-shadow:0 0 14px currentColor}}
+.date.datumflip{animation:datumflip .55s ease;transform-origin:50% 50%}@keyframes datumflip{0%{transform:perspective(300px) rotateX(-90deg);opacity:0}60%{transform:perspective(300px) rotateX(12deg);opacity:1;color:#fff;text-shadow:0 0 14px var(--cyan)}}
+@media (hover:hover){.card{transition:outline-color .25s ease}.card{outline:1px solid transparent;outline-offset:-1px}.card:hover{outline-color:rgba(var(--cyan-rgb),.25)}}
+.btn{transition:background .18s,color .18s,box-shadow .18s,transform .12s}.btn:active:not(:disabled){transform:translateY(1px) scale(.98)}
 main.viewin > *:nth-child(2){animation-delay:.03s}main.viewin > *:nth-child(3){animation-delay:.06s}main.viewin > *:nth-child(4){animation-delay:.09s}main.viewin > *:nth-child(5){animation-delay:.12s}main.viewin > *:nth-child(6){animation-delay:.15s}main.viewin > *:nth-child(n+7){animation-delay:.18s}
 @keyframes viewin{from{opacity:0;transform:translateY(10px)}}
 main.tabin{animation:tabin .24s ease both}@keyframes tabin{from{opacity:.35;transform:translateY(3px)}}
@@ -421,7 +449,7 @@ main.tabin{animation:tabin .24s ease both}@keyframes tabin{from{opacity:.35;tran
 @media (max-width:860px){
   .app{grid-template-columns:minmax(0,1fr);grid-template-rows:auto auto 1fr}
   .top{flex-wrap:wrap;gap:10px;padding:10px 16px}
-  .brand{order:0} .btn.next{order:1;margin-left:auto;padding:10px 14px} .date{order:2} .nx-long{display:none}
+  .brand{order:0} .simctl{order:1;margin-left:auto} .btn.next{padding:10px 12px} .simplay{width:34px;height:34px} .simsnel{height:34px} .date{order:2} .nx-long{display:none}
   .stats{order:3;width:100%;flex-basis:100%;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;overflow:visible}
   .stat{min-width:0}.stat .k{font-size:11px;letter-spacing:.08em}.stat .v{font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   nav{flex-direction:row;overflow-x:auto;border-right:0;border-bottom:1px solid var(--line);padding:6px 10px}
@@ -668,12 +696,12 @@ function render(){
         ${(() => { const c = (st.spanningThuis || {}); return c.cont ? `<div class="stat spstat" data-a="spanningzien" role="button" tabindex="0" title="Corpospanning in ${esc(c.cont)} (je thuiscontinent): ${c.v}, ${esc(c.fase)}. Klik voor alle gevolgen."><div class="k">Spanning</div><div class="v" style="color:${c.kleur}">${c.v} <small style="font-size:11px;letter-spacing:.04em">${esc(c.fase.toUpperCase())}</small></div><div class="bar sp" style="color:${c.kleur}"><i style="width:${Math.max(0, Math.min(100, c.v))}%"></i></div></div>` : ""; })()}
         ${stat("Invloed", `${Math.floor(st.invloed)} <span class="dim" style="font-size:13px">+${st.dominantie.inv}/b</span>`, null, "var(--violet)")}
       </div>
-      <button class="btn primary next" data-a="tick" title="Volgende maand (N)" ${over?"disabled":""}>VOLGENDE<span class="nx-long"> MAAND</span> ▸</button>
+      ${simCtl(over)}
     </header>
     <nav aria-label="Hoofdmenu">${(() => { let i = 0; return nav.map(n => n[0]==="sep" ? '<div class="sep"></div>' :
       `<button class="${S.view===n[0]?"on":""}" data-view="${n[0]}"><span><span class="ix">${String(++i).padStart(2,"0")}</span>${n[1]}</span>${n[2]}</button>`).join(""); })()}
-      <div class="sys">VERSIE <span class="on">${VERSION}</span><br>OPSLAG <span class="on">● ${G.mode==="db"?"ONLINE":"BROWSER"}</span><br>GM <span class="${G.sample&&!G.sampleOff?"on":""}">● ${G.sample&&!G.sampleOff?"LIVE":"VIA CHAT"}</span><br>MENU <button data-a="menu">hoofdmenu</button><br>HULP <button data-a="help">? regels en toetsen</button><br>EFFECTEN <button data-a="effecten">${S.rustig ? "UIT" : "AAN"}</button><br>GELUID <button data-a="sound">${S.sound?"AAN":"UIT"}</button></div></nav>
-    <main id="main">${over ? gameOver() : spiekHtml(S.view) + (VIEWS[S.view] || VIEWS.overzicht)()}</main>
+      <div class="sys">VERSIE <span class="on">${VERSION}</span><br>OPSLAG <span class="on">● ${G.mode==="db"?"ONLINE":"BROWSER"}</span><br>GM <span class="${G.sample&&!G.sampleOff?"on":""}">● ${G.sample&&!G.sampleOff?"LIVE":"VIA CHAT"}</span><br>OPSLAAN <button data-a="opslaan" title="Ctrl+S">opslagpunt</button><br>MENU <button data-a="menu">hoofdmenu</button><br>HULP <button data-a="help">? regels en toetsen</button><br>EFFECTEN <button data-a="effecten">${S.rustig ? "UIT" : "AAN"}</button><br>GELUID <button data-a="sound">${S.sound?"AAN":"UIT"}</button></div></nav>
+    <main id="main">${over ? gameOver() : simPauzeHtml() + spiekHtml(S.view) + (VIEWS[S.view] || VIEWS.overzicht)()}</main>
   </div>${S.help ? helpOverlay() : ""}${S.view === "comms" ? "" : gmDock(st)}`;
   komma(root); pasStijlToe(st.huisstijl); afterRender();
   restoreUI(_ui); effectenNaRender(_stats);
@@ -1056,6 +1084,7 @@ function setupBonus(homeD){
     <p class="dim" style="font-size:13px;margin:6px 0 0">Elk soort land geeft een ander voordeel: havens, financiële centra, datavalleien, sloppen. Klik verschillende landen aan om ze te vergelijken.</p>` : "";
 }
 const VERSIES = [
+  ["6.9", "De tijd loopt, en opslaan", ["Rechtsboven: ▶ laat de maanden vanzelf lopen. Kies de snelheid met de vijf staafjes: 1 traag (6 seconden per maand) tot 5 turbo (minder dan een halve seconde). +1 maand doet er precies één, zoals vroeger. Spatie = afspelen/pauze, komma en punt = trager/sneller.", "De tijd pauzeert vanzelf bij een nieuw besluit (en zegt welk), een kritieke mail, oorlog, heat boven 85 of een rode kas, en zolang je typt, het menu of een venster open hebt. Een gele balk zegt waarom, met Bekijken en Verder. Wil je bij besluiten of kritieke mails niet meer stoppen: Hierbij niet meer pauzeren (terugzetten bij ?).", "Opslaan: Ctrl+S, Menu → Opslaan of OPSLAAN links maakt een opslagpunt, een vaste kopie van dit moment. Via Menu → Laden ga je ernaar terug; het staat als apart spel in de lijst, met het label opslagpunt.", "Meer animaties: cijfers in de header tellen naar hun nieuwe waarde, balken groeien bij een nieuw scherm, nieuwe meldingen ploppen in het menu, de datum klapt om bij een nieuwe maand, knoppen veren in, kaarten lichten op onder je muis, en opslaan geeft een korte flits. Alles uit te zetten met EFFECTEN."]],
   ["6.8.1", "Contracten makkelijker", ["Voor elk zwaar product (tanks, vliegtuigen, ...) komt er bijna elke maand een aanvraag (85%, soms twee), tot 3 tegelijk open, en ze blijven vier maanden staan.", "De gevraagde kwaliteit ligt altijd onder die van je product, en een contract voor een bepaald product telt dat product: +18 kans. Normaal inschrijven wint meestal 80-95%.", "Op het productblad (Klanten) zie je de open aanvragen en schrijf je meteen in. Zelf aanbieden aan legers en staten (€1,5M, één keer per maand per product) levert direct een nieuwe aanvraag op."]],
   ["6.8", "Meer klanten, handel en spanning", ["Aanvragen: elke maand twee kansen op een nieuwe aanvraag (tot 6 open), ze blijven drie maanden staan en vragen meestal een kwaliteit die je haalt. Je kans om te winnen ligt hoger (basis 62%). De officiële keuring is ook makkelijker.", "Zware producten (tanks, vliegtuigen, satellieten, ...) verkoop je niet meer aan het publiek, alleen via contracten. Legers en staten vragen er vaak om: per zwaar product elke maand 50% kans op een eenmalige levering of een raamcontract. Gewonnen leveringen tellen als omzet van dat product.", "Concurreren via handel: je omzet op een continent geeft je vanzelf aanwezigheid in elk district daar (tot +20). Aanwezigheid kopen kost nog maar 15% van een vestiging in plaats van 25%.", "Corpospanning werkt veel harder: wapens verkopen tot ×2 in een corporate zone, beveiliging tot ×1,8, consument, financieel en logistiek tot ×0,63. De spanning stijgt iets sneller, en jouw wapenverkoop warmt een continent op.", "Duidelijker: de spanning van je thuiscontinent staat in de header (klik voor alles), elk continent toont zijn actieve gevolgen als labels, en een nieuwe fase op je thuiscontinent komt met een mail over wat dat voor jou betekent. Schuld staat alleen in de header als je schuld hebt."]],
   ["6.7", "Effecten", ["Een ander scherm of tabblad schuift vloeiend in beeld, kaart voor kaart. Bij een klik op hetzelfde scherm flikkert er niets.", "Elke klik geeft een korte golf in je kleur (Volgende maand en gevaarlijke knoppen in je accent). Knoppen en chips veren in bij een klik en gloeien bij hover; het zijmenu schuift een stukje mee.", "Cijfers bovenin lichten op als ze veranderen: groen als het beter wordt, rood als het slechter wordt (bij heat en schuld is omhoog rood).", "Na Volgende maand trekt een scanlijn over het scherm. Ingeklapte blokken (Export, Onderzoek, ...) klappen vloeiend open.", "Alles uit: EFFECTEN UIT onderaan het zijmenu, of de systeeminstelling voor minder beweging."]],
@@ -1552,7 +1581,7 @@ function spellenCard(){
   const L = G.slots || [];
   return `<div class="card" style="margin-top:16px"><div class="spread"><h3>Spellen</h3><button class="btn sm primary" data-a="nieuw">Nieuw spel</button></div>
     <p class="muted" style="font-size:13.5px;margin:4px 0 8px">Je spellen staan naast elkaar. Wissel wanneer je wilt; elk spel wordt apart bewaard, met zijn eigen mail en back-ups.</p>
-    ${L.length ? `<div class="opts">${L.map(x => `<div class="opt"><div><div class="t">${esc(x.label || x.naam || "Naamloos spel")}${x.gid === G.gid ? ' <span class="tag cyan">nu</span>' : ""}${x.status && x.status !== "actief" ? ` <span class="tag">${esc(x.status)}</span>` : ""}</div>
+    ${L.length ? `<div class="opts">${L.map(x => `<div class="opt"><div><div class="t">${esc(x.label || x.naam || "Naamloos spel")}${x.gid === G.gid ? ' <span class="tag cyan">nu</span>' : ""}${x.opslag ? ' <span class="tag ok">opslagpunt</span>' : ""}${x.status && x.status !== "actief" ? ` <span class="tag">${esc(x.status)}</span>` : ""}</div>
       <div class="u">${x.label && x.naam ? esc(x.naam) + " · " : ""}${esc(x.datum || "")}</div></div>
       <div class="row" style="flex-wrap:nowrap;gap:6px">${x.gid !== G.gid ? `<button class="btn sm primary" data-a="slot" data-s="wissel" data-g="${esc(x.gid)}">Spelen</button>` : ""}<button class="btn sm" data-a="slot" data-s="naam" data-g="${esc(x.gid)}">Hernoemen</button>${x.gid !== G.gid ? `<button class="btn sm danger" data-a="slot" data-s="weg" data-g="${esc(x.gid)}" aria-label="spel verwijderen">✕</button>` : ""}</div></div>`).join("")}</div>` : '<p class="dim">Laden…</p>'}</div>`;
 }
@@ -1765,14 +1794,22 @@ function hoofdBlok(naam){ const s = G.game, d = s.divisions.find(x => divNaam(x)
   return `<div style="margin-top:8px;padding:6px 8px;box-shadow:inset 0 0 0 1px var(--line)"><div class="spread"><span><b>${esc(h.naam)}</b> <span class="dim" style="font-size:12.5px">hoofd · talent ${h.talent}/5 · loyaliteit ${Math.round(h.loyaliteit)} · €${h.loon}M/mnd</span></span></div>
     <div class="prijzen" style="margin:4px 0 0"><button class="chip ${h.focus === "omzet" ? "on" : ""}" data-a="hoofd" data-s="focus" data-arg="omzet" data-div="${esc(naam)}">Omzet +${2 * h.talent}%</button><button class="chip ${h.focus === "kosten" ? "on" : ""}" data-a="hoofd" data-s="focus" data-arg="kosten" data-div="${esc(naam)}">Kosten −${3 * h.talent}%</button><button class="chip" data-a="hoofd" data-s="bonus" data-div="${esc(naam)}" ${h.bonus === m || s.cash < 1 ? "disabled" : ""}>Bonus · €1M</button><button class="chip" data-a="hoofd" data-s="ontslaan" data-div="${esc(naam)}">Ontslaan</button></div>${h.loyaliteit < 30 ? '<div style="color:var(--red);font-size:12.5px;margin-top:4px">Lage loyaliteit: kan overstappen naar een rivaal.</div>' : ""}</div>`; }
 /* 6.7: effecten na het tekenen */
-function leesStats(){ const o = {}; document.querySelectorAll(".top .stat").forEach(x => { const k = (x.querySelector(".k") || {}).textContent, v = (x.querySelector(".v") || {}).textContent; if (k) o[k.trim()] = v; }); return o; }
+function leesStats(){ const o = {}; document.querySelectorAll(".top .stat").forEach(x => { const k = (x.querySelector(".k") || {}).textContent, v = (x.querySelector(".v") || {}).textContent; if (k) o[k.trim()] = v; });
+  document.querySelectorAll("nav [data-view]").forEach(b => { const n = b.querySelector(".badge"); o["nav:" + b.dataset.view] = n ? n.textContent : ""; }); const d = document.querySelector(".top .date"); if (d) o["datum"] = d.textContent; return o; }
+/* 6.9: cijfers tellen naar hun nieuwe waarde */
+function telOp(v, a, b){ const tn = [...v.childNodes].find(n => n.nodeType === 3 && /\d/.test(n.nodeValue)); if (!tn) return; const orig = tn.nodeValue, m = orig.match(/-?[\d.]+(,\d+)?/); if (!m) return;
+  const dec = m[1] ? m[1].length - 1 : 0, fmt = x => x.toLocaleString("nl-NL", {minimumFractionDigits: dec, maximumFractionDigits: dec}), t0 = performance.now(), D = 650;
+  const stap = t => { const f = Math.min(1, (t - t0) / D), e = 1 - Math.pow(1 - f, 3); if (!tn.isConnected) return; tn.nodeValue = orig.replace(m[0], fmt(a + (b - a) * e)); if (f < 1) requestAnimationFrame(stap); else tn.nodeValue = orig; };
+  requestAnimationFrame(stap); }
 const statGetal = t => { const m = String(t || "").replace(/\./g, "").replace(",", ".").match(/-?\d+(\.\d+)?/); return m ? +m[0] : null; };
 function effectenNaRender(oud){ window._laatsteRender = performance.now(); if (S.rustig) { S._vKey = S.view; S._subKey = subKey(); return; }
   const main = document.getElementById("main"), sub = subKey();
   if (main){ if (S._vKey && S._vKey !== S.view) main.classList.add("viewin"); else if (S._subKey && S._subKey !== sub) main.classList.add("tabin"); }
   S._vKey = S.view; S._subKey = sub;
   if (oud && Object.keys(oud).length) document.querySelectorAll(".top .stat").forEach(x => { const k = ((x.querySelector(".k") || {}).textContent || "").trim(), v = x.querySelector(".v"); if (!v || !(k in oud)) return;
-    const a = statGetal(oud[k]), b = statGetal(v.textContent); if (a == null || b == null || a === b) return; const slecht = /heat|schuld/i.test(k); v.classList.add((b > a) !== slecht ? "op" : "neer"); }); }
+    const a = statGetal(oud[k]), b = statGetal(v.textContent); if (a == null || b == null || a === b) return; const slecht = /heat|schuld/i.test(k); v.classList.add((b > a) !== slecht ? "op" : "neer"); telOp(v, a, b); });
+  if (oud) document.querySelectorAll("nav [data-view]").forEach(bt => { const n = bt.querySelector(".badge"), w = oud["nav:" + bt.dataset.view]; if (n && w !== undefined && n.textContent !== w && (statGetal(n.textContent) || 0) >= (statGetal(w) || 0)) n.classList.add("pop"); });
+  const dt = document.querySelector(".top .date"); if (dt && oud && oud.datum && oud.datum !== dt.textContent) dt.classList.add("datumflip"); }
 const subKey = () => [S.view, S.wtab || "", S.prodSheet || "", S.prodSheet ? ((S.prodTab || {})[S.prodSheet] || "") : "", S.dist || "", S.zone || "", S.mapmode || ""].join("|");
 document.addEventListener("pointerdown", e => { if (S.rustig || e.button > 0) return; const t = e.target.closest("button,.chip,[data-a],[data-view],summary,.dist"); if (!t) return;
   const g = document.createElement("span"); g.className = "klikgolf"; g.style.left = e.clientX + "px"; g.style.top = e.clientY + "px"; if (t.closest(".btn.next,.danger")) g.style.boxShadow = "0 0 0 2px var(--mag),0 0 16px rgba(var(--mag-rgb),.7)"; document.body.appendChild(g); setTimeout(() => g.remove(), 520); }, true);
@@ -1798,7 +1835,7 @@ function spiekHtml(v){ const L = SPIEK[v]; if (!L) return ""; const open = (S.sp
 const TOUR = [
   {view: "overzicht", sel: ".card.advies", titel: "1 · Wat nu?", tekst: "Hier staat steeds wat het belangrijkst is. Begin elke maand hier."},
   {view: "overzicht", sel: '[data-view="bedrijf"]', titel: "2 · Bedrijf", tekst: "Je divisies en producten. Een eerste product starten is de snelste weg naar omzet."},
-  {view: "overzicht", sel: ".btn.next", titel: "3 · Volgende maand", tekst: "Elke beurt is een maand. Klaar? Druk hier (of N). Het maandrapport komt in je inbox."},
+  {view: "overzicht", sel: ".simctl", titel: "3 · De tijd", tekst: "Elke beurt is een maand. +1 maand (of N) doet er één; ▶ laat de tijd lopen op snelheid 1 tot 5 en pauzeert vanzelf als er iets van je nodig is. Het maandrapport komt in je inbox."},
   {view: "overzicht", sel: '[data-view="wereld"]', titel: "4 · De wereld", tekst: "Krant, markten en corpospanning. Wat daar gebeurt, verschuift je vraag en je kansen."},
   {view: "overzicht", sel: ".menuknop", titel: "5 · Menu en hulp", tekst: "☰ opent het hoofdmenu (opslaan in slots, laden, nieuw spel). Elk scherm heeft rechtsboven een spiekbriefje. Succes, CEO."}];
 function toonTour(i = 0){ document.querySelectorAll(".tourdoel").forEach(x => x.classList.remove("tourdoel")); let o = document.querySelector(".tour"); const T = TOUR[i];
@@ -1850,13 +1887,21 @@ function krantHtml(){ const s = G.game, K = krantData(); if (!K) return '<div cl
       <div class="kkol"><div class="ksec">Corpospanning</div><ul class="klist">${span}</ul><div class="kad">${esc(ad)}</div></div></div></div>`; }
 /* 5.17.2: hoofdmenu */
 function menuHtml(){ const s = G.game, h = (s && s.huisstijl) || {}, klaar = !!(s && s.setup_done), L = G.slots || [];
-  const lijst = S.menuLaden ? `<div class="opts hslots">${L.length ? L.map(x => `<div class="opt"><div><div class="t">${esc(x.label || x.naam || "Naamloos spel")}${x.gid === G.gid ? ' <span class="tag cyan">nu</span>' : ""}${x.status && x.status !== "actief" ? ` <span class="tag">${esc(x.status)}</span>` : ""}</div><div class="u">${esc(x.datum || "")}</div></div>${x.gid === G.gid ? `<button class="btn sm" data-a="menudoor">Spelen</button>` : `<button class="btn sm primary" data-a="slot" data-s="wissel" data-g="${esc(x.gid)}">Spelen</button>`}</div>`).join("") : '<p class="dim">Nog geen spellen bewaard.</p>'}</div><p class="dim" style="font-size:12px;margin:4px 0 0">Hernoemen, verwijderen en exporteren kan bij Logboek → Spellen.</p>` : "";
+  const lijst = S.menuLaden ? `<div class="opts hslots">${L.length ? L.map(x => `<div class="opt"><div><div class="t">${esc(x.label || x.naam || "Naamloos spel")}${x.gid === G.gid ? ' <span class="tag cyan">nu</span>' : ""}${x.opslag ? ' <span class="tag ok">opslagpunt</span>' : ""}${x.status && x.status !== "actief" ? ` <span class="tag">${esc(x.status)}</span>` : ""}</div><div class="u">${esc(x.datum || "")}</div></div>${x.gid === G.gid ? `<button class="btn sm" data-a="menudoor">Spelen</button>` : `<button class="btn sm primary" data-a="slot" data-s="wissel" data-g="${esc(x.gid)}">Spelen</button>`}</div>`).join("") : '<p class="dim">Nog geen spellen bewaard.</p>'}</div><p class="dim" style="font-size:12px;margin:4px 0 0">Hernoemen, verwijderen en exporteren kan bij Logboek → Spellen.</p>` : "";
   return `<div class="hpanel" role="dialog" aria-modal="true" aria-label="Hoofdmenu"><div style="display:flex;justify-content:center">${logoHtml(h, klaar ? s.player.corp_name : "Chrome Ledger", 76)}</div>
     <div class="titel"><span class="neon">CHROME</span><b>//</b>LEDGER</div><div class="dim mono" style="font-size:12px">versie ${esc(VERSION)}</div>
     <div class="hknoppen">${klaar ? `<button class="btn primary hk" data-a="menudoor"><b>Doorgaan</b><span>${esc(s.player.corp_name)} · ${esc(ym(s))}${s.status && s.status !== "actief" ? " · " + esc(s.status) : ""}</span></button>` : s ? `<button class="btn primary hk" data-a="menudoor"><b>Verder met oprichten</b><span>je nieuwe bedrijf wacht op een naam</span></button>` : ""}
       <button class="btn hk" data-a="menunieuw"><b>Nieuw spel</b><span>${klaar ? "je huidige spel blijft bewaard" : "een nieuwe corporatie oprichten"}</span></button>
+      ${klaar ? `<button class="btn hk" data-a="opslaan"><b>Opslaan</b><span>bewaar dit moment als opslagpunt (Ctrl+S); laden zet je hier terug</span></button>` : ""}
       <button class="btn hk ${S.menuLaden ? "on" : ""}" data-a="menuladen"><b>Laden</b><span>${L.length} bewaard${L.length === 1 ? " spel" : "e spellen"}</span></button>${lijst}
       <button class="btn hk" data-a="help"><b>Spelregels</b><span>hoe het werkt, toetsen</span></button></div></div>`; }
+/* 6.9: opslaan. Het spel bewaart zichzelf na elke actie; een opslagpunt is een vaste kopie van nu, die je later laadt via Menu → Laden. */
+async function opslaanPunt(){ if (S.opslaan) return; const s = G.game; if (!s || !s.setup_done) return; S.opslaan = true; const was = S.loopt; if (was) simStop(null);
+  const knop = document.querySelectorAll('[data-a="opslaan"]'); knop.forEach(b => b.classList.add("bezig"));
+  try { const r = await Store.saveAs(`${s.player.corp_name} · ${ym(s)}`); if (r.ok){ toast(`Opgeslagen: ${r.label}. Terugzetten kan via Menu → Laden.`); opslagFlits(); if (document.querySelector(".hmenu")) toonMenu(); } else toast(r.msg, true); }
+  catch(e){ toast("Opslaan mislukt: " + (e && (e.message || e.code) || "onbekend"), true); }
+  finally { S.opslaan = false; document.querySelectorAll('[data-a="opslaan"]').forEach(b => b.classList.remove("bezig")); } }
+function opslagFlits(){ if (S.rustig) return; const l = document.createElement("div"); l.className = "opslagflits"; l.innerHTML = '<span>◆ OPGESLAGEN</span>'; document.body.appendChild(l); setTimeout(() => l.remove(), 1400); }
 function toonMenu(){ let o = document.querySelector(".hmenu"); if (!o){ o = document.createElement("div"); o.className = "hmenu"; document.body.appendChild(o); o.addEventListener("click", e => { if (e.target === o) sluitMenu(); }); }
   if (!G.slots && !S.menuSlots){ S.menuSlots = true; Store.slots().then(() => { S.menuSlots = false; if (document.querySelector(".hmenu")) toonMenu(); }).catch(() => { S.menuSlots = false; }); }
   o.innerHTML = menuHtml(); S.menuOpen = true; }
@@ -1902,7 +1947,7 @@ function eersteStappen(){
     ["Zet je fixer aan het werk", "Crew: een opdracht of klus kost niets extra, je betaalt alleen het loon.", ((s.stats || {}).klussen || 0) > 0 || (s.crew || []).some(m => crewStatus(s, m) !== "vrij"), "crew"],
     ["Verdien aan een ander bedrijf", "Wereld → Bedrijven: een leveringscontract levert elke maand geld op.", (s.bedrijven || []).some(b => b.contract || b.aandeel > 0 || b.eigenaar === "player"), "wereld"],
     ["Vraag de GM iets", "Knop GM rechtsonder of toets G. Bijv.: 'Wat moet ik nu doen?'", gmVraag, null],
-    ["Speel je eerste maand", "Volgende maand (toets N). Daarna komt het maandrapport.", maandenGespeeld(s) >= 1, null]];
+    ["Speel je eerste maand", "+1 maand (toets N) of ▶ om de tijd te laten lopen. Daarna komt het maandrapport.", maandenGespeeld(s) >= 1, null]];
   const klaar = st.filter(x => x[2]).length; if (klaar === st.length) return "";
   return `<div class="card stappen"><div class="spread"><h3>Eerste stappen</h3><span class="row" style="gap:8px"><span class="tag cyan">${klaar} van ${st.length}</span><button class="btn sm" data-a="stappenweg" aria-label="eerste stappen verbergen">Verbergen</button></span></div>
     <ol class="stapl">${st.map(([t, u, ok, v]) => `<li class="${ok ? "af" : ""}"><span class="vink" aria-hidden="true">${ok ? "✓" : ""}</span><div><b>${esc(t)}</b><div class="dim" style="font-size:13px">${esc(u)}</div></div>${ok ? "" : v ? `<button class="btn sm" data-view="${v}">Ga</button>` : t.startsWith("Vraag") ? '<button class="btn sm" data-a="gmdock">GM</button>' : ""}</li>`).join("")}</ol></div>`;
@@ -2232,13 +2277,14 @@ function setupView(){
 
 /* ---------- sneltoetsen ---------- */
 const NAVKEYS = ["overzicht", "inbox", "comms", "mensen", "crew", "wereld", "kaart", "bedrijf", "financien", "rivalen", "onderwereld", "logboek"];
-const HOTKEYS = [["1 – 9, 0, −, =", "Naar tab 1 tot 12 (de nummers staan in het menu)"], ["N", "Volgende maand"], ["A", "Assistent openen"], ["G", "De GM openen of sluiten, op elk scherm"], ["/", "Zoeken in de inbox"],
+const HOTKEYS = [["1 – 9, 0, −, =", "Naar tab 1 tot 12 (de nummers staan in het menu)"], ["N", "Eén maand verder"], ["Spatie", "Tijd afspelen of pauzeren"], [", / .", "Trager / sneller (snelheid 1 tot 5)"], ["Ctrl+S", "Opslagpunt maken"], ["A", "Assistent openen"], ["G", "De GM openen of sluiten, op elk scherm"], ["/", "Zoeken in de inbox"],
   ["J / K", "Volgende / vorige mail"], ["R", "Mail beantwoorden"], ["E", "Mail archiveren"], ["C", "Nieuwe mail"], ["M", "Kaartmodus wisselen (op de kaart)"],
   ["Esc", "Sluiten: mail, chat, selectie of dit venster"], ["?", "Dit overzicht"]];
 function helpOverlay(){
   return `<div class="helpov" data-a="help"><div class="box" role="dialog" aria-modal="true" aria-label="Sneltoetsen"><div class="spread"><h2 style="margin:0">Sneltoetsen</h2><button class="btn sm" data-a="help">Esc</button></div>
     <dl class="kv" style="margin-top:12px">${HOTKEYS.map(([k2, t]) => `<dt><kbd>${esc(k2)}</kbd></dt><dd style="font-family:var(--sans)">${esc(t)}</dd>`).join("")}</dl>
     <h2 style="margin:16px 0 6px">Spelregels in het kort</h2><dl class="kv regels">${SPELREGELS.map(([k3, t3]) => `<dt>${esc(k3)}</dt><dd style="font-family:var(--sans)">${esc(t3)}</dd>`).join("")}</dl>
+    ${simNiet().length ? `<p style="font-size:13px;margin:12px 0 0">De tijd pauzeert nu niet bij: ${esc(simNiet().map(k => ({besluit: "nieuwe besluiten", kritiek: "kritieke mails", gevaar: "hoge heat of een rode kas"})[k] || k).join(", "))}. <button class="btn sm" data-a="simalles">Weer overal pauzeren</button></p>` : ""}
     <p class="dim" style="font-size:13px;margin:12px 0 0">Sneltoetsen werken niet terwijl je typt. In de oprichting: 1-4 kiest een stap, Enter gaat verder, pijltjes wisselen van land.</p></div></div>`;
 }
 function goView(v){ S.view = v; localSet("view", v); S.mailBody = v === "inbox" ? S.mailBody : null; render(); document.getElementById("main")?.scrollTo(0, 0); }
@@ -2255,6 +2301,7 @@ document.addEventListener("keydown", e => { if (S.menuOpen){ if (e.key === "Esca
     if (S.dist || S.zone || S.bedrijf){ S.dist = S.zone = S.bedrijf = null; render(); }
     return;
   }
+  if ((e.ctrlKey || e.metaKey) && !e.altKey && (e.key === "s" || e.key === "S")){ e.preventDefault(); if (S.state && S.state.setup_done) opslaanPunt(); return; }
   if (typing || e.ctrlKey || e.metaKey || e.altKey || S.busy) return;
   const st = S.state; if (!st) return;
   if (!st.setup_done){
@@ -2272,6 +2319,9 @@ document.addEventListener("keydown", e => { if (S.menuOpen){ if (e.key === "Esca
   if (k2 === "="){ goView("logboek"); return; }
   if (k2 === "?"){ S.help = !S.help; render(); return; }
   if (k2 === "n"){ e.preventDefault(); if (st.status === "actief") doTick(false); return; }
+  if (k2 === " "){ e.preventDefault(); if (S.loopt) simStop(null); else simStart(); return; }
+  if (k2 === ","){ simSnelheid(S.snel - 1); return; }
+  if (k2 === "."){ simSnelheid(S.snel + 1); return; }
   if (k2 === "a"){ S.view = "comms"; S.chat = "gm"; S.chatOpen = true; render(); document.getElementById("chattxt")?.focus({preventScroll: true}); e.preventDefault(); return; }
   if (k2 === "g"){ e.preventDefault(); S.gmDock = !S.gmDock; render(); if (S.gmDock) document.getElementById("gmtxt")?.focus({preventScroll: true}); return; }
   if (k2 === "/"){ e.preventDefault(); if (S.view !== "inbox") goView("inbox"); document.getElementById("q")?.focus(); return; }
@@ -2313,6 +2363,12 @@ document.addEventListener("click", async e => {
   switch (a){
     case "sound": S.sound = !S.sound; localSet("sound", S.sound ? "1" : ""); if (S.sound) blip(880,.06); render(); return;
     case "tick": return doTick(false);
+    case "simplay": if (S.loopt) simStop(null); else simStart(); return;
+    case "simsnel": simSnelheid(t.dataset.n); return;
+    case "simweg": S.simPauze = null; render(); return;
+    case "simniet": { const L = new Set(simNiet()); L.add(t.dataset.k); localSet("simniet", JSON.stringify([...L])); toast(`Bij ${({besluit: "nieuwe besluiten", kritiek: "kritieke mails", gevaar: "hoge heat of een rode kas"})[t.dataset.k] || t.dataset.k} pauzeert de tijd niet meer. Terugzetten: ? (sneltoetsen en spelregels).`); S.simPauze = null; render(); return; }
+    case "simalles": localSet("simniet", "[]"); toast("De tijd pauzeert weer bij alles."); render(); return;
+    case "opslaan": return opslaanPunt();
     case "toassist": { const txt = val("ordertxt"); if (!txt || !txt.trim()) return toast("Schrijf eerst wat er moet gebeuren.", true);
       delete S.keep.ordertxt; S.view = "comms"; S.chat = "gm"; S.chatOpen = true; localSet("view","comms"); render(); chatSend("gm", txt); return; }
     case "chatwith": S.view = "comms"; S.chat = t.dataset.key; S.chatOpen = true; localSet("view","comms"); render(); document.getElementById("chattxt")?.focus({preventScroll: true}); return;
@@ -2506,8 +2562,45 @@ async function openMail(id){
   render();
   if (!m.gelezen) Store.patchMail(id, {gelezen: true}).then(render).catch(() => {});
 }
-async function doTick(force){
+/* 6.9: simulatiesnelheid. Afspelen laat de maanden vanzelf lopen (5 snelheden); de tijd pauzeert bij besluiten, kritieke mails, oorlog, gevaar en als je ergens typt of een venster open hebt. */
+const SIM_MS = {1: 6000, 2: 3500, 3: 2000, 4: 1000, 5: 400}, SIM_LABEL = {1: "traag", 2: "rustig", 3: "normaal", 4: "snel", 5: "turbo"};
+S.snel = +(localGet("snel") || 3) || 3; S.loopt = false; S.simPauze = null; S.simT = null;
+function simCtl(over){ const dur = SIM_MS[S.snel] || 2000, gedaan = S.loopt && S.simStart ? Math.min(dur, Date.now() - S.simStart) : 0;
+  return `<div class="simctl ${S.loopt ? "loopt" : ""}" role="group" aria-label="Tijd"><button class="simplay" data-a="simplay" title="${S.loopt ? "Pauze" : "Afspelen"} (spatie)" aria-label="${S.loopt ? "Pauze" : "Afspelen"}" ${over ? "disabled" : ""}>${S.loopt ? "❚❚" : "▶"}</button>
+    <div class="simsnel" title="Snelheid (, en .)">${[1, 2, 3, 4, 5].map(n => `<button class="${S.snel === n ? "on" : ""}" data-a="simsnel" data-n="${n}" aria-label="Snelheid ${n}: ${SIM_LABEL[n]}" title="${n} · ${SIM_LABEL[n]}"><i style="height:${4 + n * 3}px"></i></button>`).join("")}</div>
+    <button class="btn primary next" data-a="tick" title="Eén maand verder (N)" ${over ? "disabled" : ""}>+1<span class="nx-long"> MAAND</span> ▸</button>
+    ${S.loopt ? `<span class="simbar"><i style="animation-duration:${dur}ms;animation-delay:-${gedaan}ms"></i></span>` : ""}</div>`; }
+function simPauzeHtml(){ if (S.loopt || !S.simPauze) return ""; return `<div class="simpauze" role="status"><span><b>❚❚ GEPAUZEERD</b> ${esc(S.simPauze.tekst)}</span><span class="row" style="gap:6px">${S.simPauze.view ? `<button class="btn sm" data-view="${S.simPauze.view}">Bekijken</button>` : ""}${S.simPauze.soort ? `<button class="btn sm" data-a="simniet" data-k="${S.simPauze.soort}" title="Terugzetten kan bij ? (sneltoetsen en spelregels)">Hierbij niet meer pauzeren</button>` : ""}<button class="btn sm primary" data-a="simplay">Verder ▶</button><button class="btn sm" data-a="simweg" aria-label="Sluiten">✕</button></span></div>`; }
+const simNiet = () => { try { return JSON.parse(localGet("simniet") || "[]"); } catch(e){ return []; } };
+const besluitSleutels = st => [...(st.besluiten || []).map(b => "b:" + (b.arc || b.titel)), ...(st.keuzes || []).map(k => "k:" + (k.id || k.titel))];
+function simSnap(){ const st = S.state || {}; return {besluit: new Set(besluitSleutels(st)), mails: new Set((st.mails || []).map(m => m.id)), oorlog: ((st.macht || {}).oorlogen) || 0, heat: st.heat || 0, cash: st.cash || 0}; }
+function simReden(v){ const st = S.state || {}; if (!st.setup_done) return null;
+  if (st.status && st.status !== "actief") return {tekst: "Het spel is voorbij."};
+  const niet = new Set(simNiet()), nieuw = (st.mails || []).filter(m => !v.mails.has(m.id));
+  const krit = nieuw.find(m => m.prio === "KRITIEK"); if (krit && !niet.has("kritiek")) return {tekst: `Kritieke mail: ${krit.onderwerp}`, view: "inbox", soort: "kritiek"};
+  const nb = [...(st.besluiten || []).filter(b => !v.besluit.has("b:" + (b.arc || b.titel))), ...(st.keuzes || []).filter(k => !v.besluit.has("k:" + (k.id || k.titel)))];
+  if (nb.length && !niet.has("besluit")) return {tekst: `Er wacht een besluit: ${nb[0].titel}${nb.length > 1 ? ` (en nog ${nb.length - 1})` : ""}.`, view: "overzicht", soort: "besluit"};
+  if (((st.macht || {}).oorlogen || 0) > v.oorlog) return {tekst: "Er is oorlog uitgebroken.", view: "rivalen"};
+  if (st.heat >= 85 && v.heat < 85 && !niet.has("gevaar")) return {tekst: `Heat is ${Math.round(st.heat)}: een razzia komt dichtbij.`, view: "financien", soort: "gevaar"};
+  if (st.cash < 0 && v.cash >= 0 && !niet.has("gevaar")) return {tekst: "Je kas staat rood.", view: "financien", soort: "gevaar"};
+  return null; }
+function simBezet(){ const a = document.activeElement; return S.busy || S.menuOpen || S.help || document.hidden || !!document.querySelector(".modal,.tour,.hmenu") || !!(a && (/^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName) || a.isContentEditable)); }
+function simPlan(){ clearTimeout(S.simT); if (!S.loopt) return; S.simStart = Date.now(); S.simT = setTimeout(simStap, SIM_MS[S.snel] || 2000); }
+async function simStap(){ if (!S.loopt) return; if (simBezet()){ S.simT = setTimeout(simStap, 400); return; }
+  await doTick(false, true); if (S.loopt){ simPlan(); renderSimCtl(); } }
+function renderSimCtl(){ const el = document.querySelector(".simctl"); if (el){ const t = document.createElement("div"); t.innerHTML = simCtl((S.state || {}).status !== "actief"); el.replaceWith(t.firstElementChild); } }
+function simStart(){ const st = S.state; if (!st || st.status !== "actief") return; S.loopt = true; S.simPauze = null; render(); simPlan(); renderSimCtl(); }
+function simStop(reden){ S.loopt = false; clearTimeout(S.simT); S.simPauze = reden || null; render(); if (reden){ toast("Gepauzeerd: " + reden.tekst); if (S.sound) blip(); } }
+function simSnelheid(n){ S.snel = clamp(+n || 3, 1, 5); localSet("snel", S.snel); if (S.loopt) simPlan(); renderSimCtl(); }
+async function doTick(force, auto){
   if (S.busy) return;
+  if (auto){ const v = simSnap(); const r = await act("/api/tick", {force}, {silent: true});
+    if (!r) return simStop({tekst: "De maand kon niet verwerkt worden."});
+    if (r.vraag) return simStop({tekst: "Er staan nog voorstellen of gesprekken open. Rond ze af of druk op +1 maand.", view: "comms"});
+    if (!r.ok) return simStop({tekst: r.bericht || "De maand liep vast."});
+    if (S.snel < 4) maandScan(); else if (!S.rustig) document.querySelector(".date")?.classList.add("tikflits");
+    const reden = simReden(v); if (reden) simStop(reden); return; }
+  if (S.loopt){ S.loopt = false; clearTimeout(S.simT); }
   const d = S.state.datum, nm = d.month === 12 ? [1, d.year+1] : [d.month+1, d.year];
   const ov = showSync(MONTHS[d.month-1].toUpperCase() + " " + d.year + "  →  " + MONTHS[nm[0]-1].toUpperCase() + " " + nm[1]);
   if (S.sound) sweep();

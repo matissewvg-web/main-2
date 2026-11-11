@@ -669,7 +669,7 @@ function tick(s){
 }
 
 /* ---------- de stad: elke game een andere kaart ---------- */
-const VERSION = "6.8.1";
+const VERSION = "6.9";
 const MAP_W = 1000, MAP_H = 680;
 const RIVAL_COLORS = ["#ff9a1f", "#3d7bff", "#c6ff2e", "#f2f2f2", "#9b5cff", "#ffd400", "#ff4d4d"];
 const ARCH = {
@@ -3892,7 +3892,9 @@ function adviesCard(st){
     ${A.some(a => a.oud) ? `<details style="margin-top:6px"><summary class="dim" style="cursor:pointer;font-size:13px">Staat al een tijdje (${A.filter(a => a.oud).length})</summary><ul class="alist dim" style="font-size:13.5px">${A.filter(a => a.oud).map(a => `<li><span>${esc(a.tekst)}</span>${a.view && a.view !== "overzicht" ? `<button class="btn sm" data-view="${a.view}">Ga</button>` : ""}</li>`).join("")}</ul></details>` : ""}</div>`;
 }
 const SPELREGELS = [
-  ["Een beurt", "Elke beurt is een maand. Je doet wat je wilt (producten, mensen, crew, deals) en klikt dan Volgende maand. Dan rekent de engine omzet, kosten, gebeurtenissen en rivalen uit en stuurt de CFO een rapport."],
+  ["Tijd", "Rechtsboven: ▶ laat de maanden vanzelf lopen, op snelheid 1 (traag) tot 5 (turbo); +1 maand doet er precies één. De tijd pauzeert vanzelf bij een nieuw besluit, een kritieke mail, oorlog, heat boven 85 of een rode kas, en zolang je typt of een venster open hebt. Spatie = afspelen/pauze."],
+  ["Opslaan", "Het spel bewaart zichzelf na elke actie. Een opslagpunt (Ctrl+S, Menu → Opslaan of links OPSLAAN) is een vaste kopie van dit moment; via Menu → Laden ga je er later naar terug. Het staat als apart spel in de lijst."],
+  ["Een beurt", "Elke beurt is een maand. Je doet wat je wilt (producten, mensen, crew, deals) en klikt dan +1 maand of laat de tijd lopen. Dan rekent de engine omzet, kosten, gebeurtenissen en rivalen uit en stuurt de CFO een rapport."],
   ["Geld", "Omzet komt uit divisies (hoger niveau = meer), producten (kwaliteit × populariteit × markt), gebieden, contracten en klussen. Kosten: divisies, lonen, crew, rente, projecten en winstbelasting. Drie maanden rood = failliet."],
   ["Dobbelstenen", "Elke onzekere actie is 2d6 + bonus tegen een doel. Twee zessen lukt altijd, twee enen nooit. De kans die je vooraf ziet is de echte kans. Elke worp staat in Logboek → Dobbelstenen."],
   ["Morale en heat", "Morale onder 10, twee maanden lang: coup. Heat boven 90, twee maanden lang: razzia. Heat komt vooral uit riskante en illegale divisies (Smokkel, Cyberware, Private Security), die met elk niveau meer aandacht trekken; legale divisies trekken boven niveau 6 geen extra aandacht meer. Het overzicht laat zien waarom ze bewegen en waarschuwt ruim op tijd."],
@@ -4341,6 +4343,17 @@ const Store = {
       const d = JSON.parse(localStorage.getItem("cl_slot_" + gid) || "null"); G.gid = gid; G.game = d ? d.game : null; G.mails = d ? d.mails || [] : []; G.chats = d ? d.chats || {} : {};
       localStorage.setItem("cl_huidig", gid); localSave(); return true; } catch(e){ toast("Wisselen lukte niet: de browseropslag weigert.", true); return false; }
   },
+  /* 6.9: opslagpunt = een vaste kopie van het huidige spel als apart spel in de lijst; laden = wisselen naar die kopie */
+  async saveAs(label){ const s = G.game; if (!s || !s.setup_done) return {ok: false, msg: "Er is nog geen spel om op te slaan."};
+    const L = await this.slots().catch(() => G.slots || []), nieuw = "g" + uid(), info = this.slotInfo(nieuw, s);
+    if (G.mode !== "db"){ if (L.length >= MAX_SLOTS_LOKAAL) return {ok: false, msg: `Er passen ${MAX_SLOTS_LOKAAL} spellen en opslagpunten in deze browser. Verwijder er een via Menu → Laden (of exporteer het eerst bij Logboek).`};
+      try { localSave(); localStorage.setItem("cl_slot_" + nieuw, JSON.stringify({game: pak(s), mails: G.mails.slice(0, 120), chats: G.chats})); } catch(e){ foutLog("opslagpunt", e); return {ok: false, msg: "De browseropslag is vol. Verwijder een ouder spel via Menu → Laden of exporteer het bij Logboek."}; } }
+    else { await this.saveGame(); await G.db.doc("games/" + nieuw).set({s: pak(s), bijgewerkt: Date.now(), tab: G.tab});
+      const col = G.db.collection("games/" + nieuw + "/mails"); await Promise.all(G.mails.slice(0, 80).map(({id, ...body}) => col.doc(id).set(clone(body))));
+      await Promise.all(Object.values(G.chats).map(c => { const {_pending, ...body} = c; return G.db.doc(`games/${nieuw}/chats/${c.key}`).set(clone(body)); })); }
+    const naam = String(label || "Opslagpunt").slice(0, 40), i = Math.max(0, L.findIndex(x => x.gid === G.gid));
+    L.splice(i + 1, 0, {gid: nieuw, ...info, label: naam, opslag: true, t: Date.now()}); await this.saveSlots(L).catch(() => {});
+    addLog(s, `Opslagpunt gemaakt: ${naam}`); return {ok: true, label: naam, gid: nieuw}; },
   async renameSlot(gid, label){ const L = await this.slots(), x = L.find(y => y.gid === gid); if (!x) return; x.label = String(label || "").trim().slice(0, 40); await this.saveSlots(L); },
   async deleteSlot(gid){
     if (!gid || gid === G.gid) return false;
@@ -4536,7 +4549,7 @@ function openProposal(ch){ for (let i = ch.berichten.length - 1; i >= 0; i--){ c
 const GM_SNEL = {watnu: "Wat moet ik nu doen? Geef de drie belangrijkste dingen, met wat het kost en waarom.", maand: "Vat mijn laatste maand samen: wat ging goed, wat ging fout, waar moet ik op letten?", stand: "Hoe sta ik ervoor tegenover mijn rivalen en de doelen?"};
 function lokaalAntwoord(s, soort){
   if (soort === "watnu"){ const A = adviezen(s).slice(0, 3); return A.length ? "Uit de cijfers (de GM is niet live): " + A.map((a, i) => `${i + 1}. ${a.tekst}`).join(" ") : "Uit de cijfers: niets dringends. Bouw door waar je sterk staat."; }
-  if (soort === "maand"){ const r = s.laatste_rapport; if (!r || !r.maand) return "Er is nog geen maand gespeeld. Klik Volgende maand (toets N)."; const g = (r.gebeurd || []).slice(0, 6);
+  if (soort === "maand"){ const r = s.laatste_rapport; if (!r || !r.maand) return "Er is nog geen maand gespeeld. Klik +1 maand (toets N) of laat de tijd lopen met ▶."; const g = (r.gebeurd || []).slice(0, 6);
     return `Uit het rapport van ${r.maand} (de GM is niet live): omzet €${r.omzet}M, kosten €${r.kosten}M, netto ${r.netto >= 0 ? "+" : "−"}€${Math.abs(r.netto)}M. ${g.length ? "Gebeurd: " + g.join("; ") + "." : "Verder rustig."} Heat ${Math.round(s.heat)}, morale ${Math.round(s.morale)}, cash €${Math.round(s.cash)}M.`; }
   const D = doelen(s).filter(d => d.id !== "termijn").sort((a, b) => b.pct - a.pct)[0]; let plek = ""; try { plek = `Je staat ${wereldVM(s).plek}e op de ranglijst. `; } catch(e){ foutLog("stand voor de GM", e); }
   const r0 = s.rivals.slice().sort((a, b) => rivalPower(s, b) - rivalPower(s, a))[0];

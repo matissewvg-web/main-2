@@ -399,6 +399,15 @@ const html = '<!doctype html><html><head><meta charset=utf8></head><body>' + fs.
     c.spanning[thuis] = 95; const ef = spanningEffecten(c, thuis).map(e => e.t).join("|");
     return {zonder, met, h, verdeeld, kost: aanwezigKost(c, d), cost: districtCost(c, d), w: spanningVraagF("wapen", 95), cons: spanningVraagF("consument", 95), rust: spanningVraagF("wapen", 20), ef, kop: !!document.querySelector(".spstat")}; });
   ok(hdom.zonder === 0 && hdom.met > 10 && hdom.h === 20 && (hdom.verdeeld == null || Math.abs(hdom.verdeeld - 20) < 0.3) && hdom.kost <= Math.max(2, hdom.cost * 0.15) + 0.05 && hdom.w > 1.8 && hdom.cons < 0.7 && hdom.rust === 1 && /Wapens ×/.test(hdom.ef) && /Heat zakt sneller/.test(hdom.ef) && /Straatgevechten/.test(hdom.ef) && hdom.kop, "omzet op een continent geeft aanwezigheid in elk district daar; aanwezigheid kopen is goedkoper; corpospanning verdubbelt bijna de wapenvraag en drukt consument; effecten per continent en in de header: " + JSON.stringify(hdom));
+  // 6.9 simulatiesnelheid en opslagpunten
+  const tijd0 = await p.evaluate(() => { document.querySelectorAll(".tour,.hmenu,.modal").forEach(x => x.remove()); S.menuOpen = false; S.help = false; if (document.activeElement) document.activeElement.blur(); localSet("simniet", JSON.stringify(["besluit", "kritiek", "gevaar"])); simSnelheid(5); simStart(); return {m: ym(G.game), ctl: !!document.querySelector(".simctl.loopt .simbar")}; });
+  await p.waitForFunction(m => ym(G.game) !== m, tijd0.m, {timeout: 8000}).catch(() => {});
+  const tijd = await p.evaluate(async m0 => { const m1 = ym(G.game); simStop(null); const stil = ym(G.game); await new Promise(r => setTimeout(r, 900)); const na = ym(G.game);
+    const v = simSnap(); v.besluit = new Set(); localSet("simniet", "[]"); const nep = {...S.state, besluiten: [{arc: "x", titel: "Testbesluit"}]}; const oud = S.state; S.state = nep; const reden = simReden(v); S.state = oud;
+    const md = document.createElement("div"); md.className = "modal"; document.body.appendChild(md); const bezet = simBezet(); md.remove();
+    const r = await Store.saveAs("Testpunt"); const L = await Store.slots(); const punt = L.find(x => x.gid === r.gid);
+    return {m0, m1, stil: stil === na, reden: reden && reden.tekst, soort: reden && reden.soort, bezet, ok: r.ok, punt: punt && {label: punt.label, opslag: punt.opslag, datum: punt.datum}, nu: ym(G.game), knop: !!document.querySelector('[data-a="opslaan"]')}; }, tijd0.m);
+  ok(tijd0.ctl && tijd.m1 !== tijd.m0 && tijd.stil && /Testbesluit/.test(tijd.reden || "") && tijd.soort === "besluit" && tijd.bezet && tijd.ok && tijd.punt && tijd.punt.opslag && tijd.punt.datum === tijd.nu && tijd.knop, "tijd loopt vanzelf op snelheid 5, stopt bij pauze, pauzeert bij een nieuw besluit en als er een venster open is; opslagpunt komt als apart spel in de lijst: " + JSON.stringify({tijd0, tijd}));
   ok(/VERKOOP/.test(verkoop) && /KEURING/.test(verkoop), "tabblad Verkoop en keuring");
   ok(/VARIANT/.test(scherm), "varianten staan op het productblad");
   if (out){ const bl = await p.$('.prodblad'); if (bl) await bl.screenshot({path: out + "/verkoop.png"}); }
