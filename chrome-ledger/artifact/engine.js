@@ -610,7 +610,7 @@ function tick(s){
   lingeringTick(s, ctx, diff); invoicesTick(s, ctx, diff); marketTick(s, ctx); factionTick(s, ctx);
   npcTick(s, ctx); nomadDemandTick(s, ctx); chaosTick(s, ctx, diff); rumorTick(s, ctx); arcsTick(s, ctx, diff);
   sectorTick(s); regionTick(s, ctx); bedrijfTick(s, ctx); bedrijfLeven(s, ctx); peopleTick(s, ctx, diff);
-  specialTick(s, ctx); productTick(s, ctx); { const pe = productEffectTick(s); if (pe.heat) gz.hDelen.push(["Producten", r1(pe.heat)]); if (pe.morale) gz.mDelen.push(["Producten", r1(pe.morale)]); } productEventTick(s, ctx); tijdlijnTick(s, ctx); spanningTick(s, ctx); corpoTick(s, ctx); domTick(s, ctx); assistentTick(s, ctx); aanvraagTick(s, ctx); regioTick(s); grondstofTick(s, ctx); patentTick(s, ctx); onderzoekTick(s, ctx); beursTick(s, ctx); eigenPlanTick(s, ctx); vraagTick(s); rivalProductTick(s); wereldInvloedProducten(s); eraTick(s, ctx); if (s.date.month === 12) jaarTick(s, ctx); marktTick(s); klusTick(s);
+  specialTick(s, ctx); productTick(s, ctx); { const pe = productEffectTick(s); if (pe.heat) gz.hDelen.push(["Producten", r1(pe.heat)]); if (pe.morale) gz.mDelen.push(["Producten", r1(pe.morale)]); } productEventTick(s, ctx); tijdlijnTick(s, ctx); spanningTick(s, ctx); corpoTick(s, ctx); domTick(s, ctx); assistentTick(s, ctx); aanvraagTick(s, ctx); regioTick(s); grondstofTick(s, ctx); patentTick(s, ctx); onderzoekTick(s, ctx); beursTick(s, ctx); eigenPlanTick(s, ctx); ceoTick(s, ctx); vraagTick(s); rivalProductTick(s); wereldInvloedProducten(s); eraTick(s, ctx); if (s.date.month === 12) jaarTick(s, ctx); marktTick(s); klusTick(s);
   s.accounts.operationeel = s.cash; s.hidden_truth = s.hidden_truth.slice(-30);
 
   let status = "actief";
@@ -668,7 +668,7 @@ function tick(s){
 }
 
 /* ---------- de stad: elke game een andere kaart ---------- */
-const VERSION = "5.18";
+const VERSION = "5.19";
 const MAP_W = 1000, MAP_H = 680;
 const RIVAL_COLORS = ["#ff9a1f", "#3d7bff", "#c6ff2e", "#f2f2f2", "#9b5cff", "#ffd400", "#ff4d4d"];
 const ARCH = {
@@ -3576,6 +3576,32 @@ function eigenPlanTick(s, ctx){ for (const p of [...(s.eigenPlannen || [])]){ if
   p.stap += 1; if (p.stap >= P.stappen.length){ s.eigenPlannen = s.eigenPlannen.filter(x => x !== p); eigenPlanEind(s, ctx, p); continue; }
   const kost = eigenPlanKost(s, p.k); if (s.cash < kost){ s.eigenPlannen = s.eigenPlannen.filter(x => x !== p); ctx.rep.push(`Plan ${P.label} gestopt: geen geld voor de volgende stap`); continue; }
   s.cash = r1(s.cash - kost); p.volgende = plusMonths(s, 2); ctx.rep.push(`Plan ${P.label}: stap ${p.stap} gelukt, nu ${P.stappen[p.stap]} (€${kost}M)`); } }
+/* 5.19: de CEO als persoon. Leeftijd, gezondheid en stress; privéleven (partner, kinderen); een opvolger (een kind = dynastie, of iemand uit de directie). Zonder opvolger kiest de raad bij je vertrek een buitenstaander: zware klap, maar het spel gaat door. Rivaliserende CEO's worden ouder, worden vervangen en hebben een persoonlijke relatie met jou. */
+function ceoInit(s, d){ if (s.ceo) return s.ceo; const naam = String((d && d.ceo_naam) || "").trim().slice(0, 40);
+  s.ceo = {naam: naam || "De CEO", leeftijd: RI(34, 48), gezondheid: RI(78, 92), stress: 20, partner: R() < 0.55, kinderen: RI(0, 2), opvolger: null, generatie: 1}; return s.ceo; }
+const ceoLeeftijd = s => Math.floor((s.ceo || {}).leeftijd || 40);
+function ceoOpvolgers(s){ const C = s.ceo || {}, L = []; for (let i = 0; i < (C.kinderen || 0); i++) L.push({id: "kind" + i, naam: `Kind ${i + 1} (${C.naam === "De CEO" ? "erfgenaam" : C.naam.split(" ").slice(-1)[0]})`, soort: "dynastie"});
+  for (const n of s.npcs || []) if (!n.verraad) L.push({id: "npc:" + n.name, naam: `${n.name} (${n.role})`, soort: "raad"}); return L; }
+function actCeo(s, ctx, soort, arg){ const C = ceoInit(s); const pay = k => { if (s.cash < k) return false; s.cash = r1(s.cash - k); s.accounts.operationeel = s.cash; return true; }; const m = ym(s);
+  if (soort === "vakantie"){ if (C.vakantie === m) return {ok: false, msg: "Je bent deze maand al weg geweest."}; if (!pay(2)) return {ok: false, msg: "Een vakantie kost €2M."}; C.vakantie = m; C.stress = clamp(C.stress - 30); s.morale = clamp(s.morale - 1); return {ok: true, msg: "Twee weken op een privé-eiland zonder netwerk. Stress −30. Het bedrijf mist je even (morale −1)."}; }
+  if (soort === "kliniek"){ if (!pay(10)) return {ok: false, msg: "De kliniek kost €10M."}; C.gezondheid = clamp(C.gezondheid + 20); s.heat = clamp(s.heat + 2); return {ok: true, msg: "Nieuwe organen uit een kliniek die niet op de kaart staat. Gezondheid +20, heat +2."}; }
+  if (soort === "gezin"){ if (C.gezin === m) return {ok: false, msg: "Je hebt deze maand al tijd voor je gezin gemaakt."}; C.gezin = m; C.stress = clamp(C.stress - 12); s.morale = clamp(s.morale + 1); if (!C.partner && kansRol() < 0.25){ C.partner = true; return {ok: true, msg: "Een avond die uitliep. Je hebt een partner. Stress −12."}; } if (C.partner && C.kinderen < 3 && kansRol() < 0.12){ C.kinderen += 1; return {ok: true, msg: "Er is een kind op komst. Een erfgenaam, als je wilt. Stress −12."}; } return {ok: true, msg: "Een weekend zonder telefoon. Stress −12, morale +1."}; }
+  if (soort === "opvolger"){ const o = ceoOpvolgers(s).find(x => x.id === arg); if (!o) return {ok: false, msg: "Kies een opvolger."}; C.opvolger = o; return {ok: true, msg: `${o.naam} is je opvolger (${o.soort === "dynastie" ? "een dynastie" : "uit de directie"}).`}; }
+  if (soort === "golf"){ const r = s.rivals.find(x => x.name === arg); if (!r) return {ok: false, msg: "Kies een rivaal."}; if (r.golf === m) return {ok: false, msg: `Je hebt deze maand al met ${r.ceo} gegolfd.`}; if (!pay(1)) return {ok: false, msg: "Golf kost €1M."};
+    r.golf = m; r.ceoRel = Math.round(clamp((r.ceoRel || 0) + 10, -100, 100)); relShift(r, 4); return {ok: true, msg: `Achttien holes met ${r.ceo}. Persoonlijke band +10, relatie met ${r.name} +4.`}; }
+  return {ok: false, msg: "Onbekende actie."}; }
+function ceoOpvolging(s, ctx, reden){ const C = s.ceo, o = C.opvolger, oud = C.naam; let txt;
+  if (o && o.soort === "dynastie"){ C.naam = `${oud === "De CEO" ? "De nieuwe CEO" : oud.split(" ")[0] + " jr."}`; C.leeftijd = RI(26, 34); C.gezondheid = RI(80, 95); C.stress = 25; C.kinderen = 0; C.partner = false; s.morale = clamp(s.morale - 3); txt = `${oud} ${reden}. ${C.naam} neemt het roer over: de dynastie gaat door.`; }
+  else if (o && o.soort === "raad"){ const n = o.id.slice(4); C.naam = n; C.leeftijd = RI(40, 55); C.gezondheid = RI(70, 88); C.stress = 30; C.kinderen = RI(0, 2); C.partner = R() < 0.5; s.npcs = (s.npcs || []).filter(x => x.name !== n); s.morale = clamp(s.morale - 5); txt = `${oud} ${reden}. ${n} wordt CEO, zoals afgesproken. De directie schuift een plek op.`; }
+  else { C.naam = genCeoNaam(new Set()); C.leeftijd = RI(42, 58); C.gezondheid = RI(70, 88); C.stress = 35; C.kinderen = 0; C.partner = R() < 0.5; s.morale = clamp(s.morale - 12); s.reputation = clamp(s.reputation - 8); txt = `${oud} ${reden}. Er was geen opvolger: de raad haalt ${C.naam} van buiten. Onrust op de vloer (morale −12) en in de pers (reputatie −8).`; }
+  C.opvolger = null; C.generatie = (C.generatie || 1) + 1; mail(ctx, s, "De Raad van Bestuur", "Een nieuwe CEO", txt + " Jij speelt verder als de nieuwe CEO.", "KRITIEK"); news(s, `Nieuwe CEO bij ${s.player.corp_name}`, txt, "", "markt", true); ctx.rep.push(`Nieuwe CEO: ${C.naam}`); addLog(s, txt); }
+function ceoTick(s, ctx){ const C = ceoInit(s); C.leeftijd = Math.round((C.leeftijd + 1 / 12) * 1000) / 1000;
+  const doel = clamp(15 + s.heat * 0.35 + (s.cash < 0 ? 25 : 0) + (100 - s.morale) * 0.15 + (s.rivals.filter(r => r.status === "oorlog").length * 8) - (C.partner ? 5 : 0), 0, 100); C.stress = Math.round(clamp(C.stress + (doel - C.stress) * 0.15) * 10) / 10;
+  const L = ceoLeeftijd(s), daling = (L > 55 ? (L - 55) * 0.06 : 0) + (C.stress > 60 ? (C.stress - 60) * 0.03 : 0) - (C.stress < 30 && L < 55 ? 0.15 : 0); C.gezondheid = Math.round(clamp(C.gezondheid - daling + U(-0.3, 0.3)) * 10) / 10;
+  if (C.stress > 75 && kansRol() < 0.05){ C.gezondheid = clamp(C.gezondheid - 12); s.morale = clamp(s.morale - 3); mail(ctx, s, "Huisarts", "Burn-out", `${C.naam} zakte in elkaar in de lift. Gezondheid −12. Rust, zegt de dokter. Ze zeggen het altijd.`, "HOOG"); ctx.rep.push("CEO: burn-out"); }
+  if (C.gezondheid <= 0) ceoOpvolging(s, ctx, "overlijdt na een kort ziekbed"); else if (L >= 78 && kansRol() < 0.1) ceoOpvolging(s, ctx, "gaat met pensioen, of wordt daartoe gedwongen");
+  for (const r of s.rivals){ r.ceoLeeftijd ??= RI(40, 66); if (s.date.month === 1) r.ceoLeeftijd += 1; r.ceoRel = Math.round((r.ceoRel || 0) * 0.98);
+    if (s.date.month === 1 && (r.ceoLeeftijd >= 72 || kansRol() < 0.03)){ const oud = r.ceo; r.ceo = genCeoNaam(new Set(s.rivals.map(x => x.ceo))); r.ceoLeeftijd = RI(38, 55); r.ceoRel = 0; delete r.karakter; geefKarakter(r); news(s, `Nieuwe CEO bij ${r.name}`, `${oud} vertrekt. ${r.ceo} neemt over: ${RIVAAL_KARAKTER[r.karakter].label.toLowerCase()}, zeggen insiders.`, "", "markt", false); ctx.rep.push(`${r.name}: nieuwe CEO ${r.ceo}`); } } }
 const spanningGem = s => { const v = Object.values(s.spanning || {}); return v.length ? v.reduce((a, b) => a + b, 0) / v.length : 0; };
 function tijdlijnTick(s, ctx){ const nu = ym(s), gehad = (s.tijdlijnGehad ??= []), B = (s.vraagBasis ??= {});
   for (const t of TIJDLIJN){ if (t.d > nu || gehad.includes(t.d)) continue; gehad.push(t.d); const recent = mndNr(nu) - mndNr(t.d) <= 2;
@@ -4012,6 +4038,7 @@ function newGame0(d){
   marktTick(s); klusTick(s); s.dreigingen = []; regioTick(s, true); startProducten(s); vraagInit(s); rivalProductInit(s);
   news(s, `Nieuwe corporatie: ${p.corp_name}`, `${p.corp_name} vestigt zich in ${s.districts.find(x => x.id === home).name}${p.hq_stad ? " (" + p.hq_stad + ")" : ""}. Doctrine: ${p.doctrine}. De concurrentie kijkt mee.`, homeCont, "markt", true);
   if (d.huisstijl && typeof d.huisstijl === "object") actHuisstijl(s, d.huisstijl); /* 5.17.1: huisstijl uit de setup */
+  ceoInit(s, d); for (const r of s.rivals) r.ceoLeeftijd ??= RI(40, 66); /* 5.19 */
   s.setup_done = true; s.accounts.operationeel = s.cash;
   const hn = s.districts.find(x => x.id === home).name;
   mail(ctx, s, "Marta Delcourt (CFO)", "Welkom, CEO",
@@ -4614,6 +4641,7 @@ const API = {
   async "/api/termijn"(d){ const s = G.game, ctx = Ctx(); const r = actTermijn(s, ctx, d.bedrag, d.n); if (r.ok) await persist(ctx); return {ok: r.ok, bericht: r.msg}; },
   async "/api/beurs"(d){ const s = G.game, ctx = Ctx(); const r = actBeurs(s, ctx, d.soort, d.pct); if (r.ok) await persist(ctx); return {ok: r.ok, bericht: r.msg}; },
   async "/api/eigenplan"(d){ const s = G.game, ctx = Ctx(); const r = d.stop ? actEigenPlanStop(s) : actEigenPlan(s, ctx, d.k, d.doel); if (r.ok) await persist(ctx); return {ok: r.ok, bericht: r.msg}; },
+  async "/api/ceo"(d){ const s = G.game, ctx = Ctx(); const r = actCeo(s, ctx, d.soort, d.arg); if (r.ok) await persist(ctx); return {ok: r.ok, bericht: r.msg}; },
   async "/api/corpo"(d){ const s = G.game, ctx = Ctx(); const r = actCorpo(s, ctx, d.soort, d.id); if (r.ok) await persist(ctx); return {ok: r.ok, bericht: r.msg}; },
   async "/api/huisstijl"(d){ const s = G.game, ctx = Ctx(); const r = actHuisstijl(s, d || {}); if (r.ok) await persist(ctx); return {ok: r.ok, bericht: r.msg}; },
   async "/api/product"(d){ const s = G.game, ctx = Ctx(); const r = actProduct(s, ctx, d.soort, d); if (r.ok) await persist(ctx); return {ok: r.ok, bericht: r.msg}; },
