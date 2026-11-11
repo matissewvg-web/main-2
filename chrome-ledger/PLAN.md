@@ -94,6 +94,14 @@ Wens: "niet dingen locken, maak het duurder; dieper gaan; contracten cleaner; ni
 | 3 | 9.2 ✓ | Contractgesprekken: elke klant een persoonlijkheid en wensen; jij kiest wat je zegt, de klant reageert en dat verandert de deal; met de GM live in je eigen woorden | 1 |
 | 4 | 9.3 ✓ | Opruimstap en balans | 1 |
 
+### Roadmap 10 (voor vanavond, 11 nov: "dieper gaan, echte communicatie")
+| # | Stap | Wat | Prio |
+|---|---|---|---|
+| 1 | 10.0 | Gesprekken ook met rivalen en bedrijven: een handelsverdrag, vrede of een overname onderhandel je in beurten (zelfde systeem als contractgesprekken, met karakter van de CEO) | 1 |
+| 2 | 10.1 | Klantrelaties: klanten onthouden wat je beloofde en hoe je leverde (vaste klant, wantrouwen na wanbetaling of een gebroken belofte); volgende aanvragen beginnen daarmee | 1 |
+| 3 | 10.2 | Contractlevering: capaciteit per maand tegen je productie; tekort = boete en een bozere klant | 2 |
+| 4 | 10.3 | Opruimstap en balans (de testbot leert ook een gesprek voeren) | 1 |
+
 ### Ideeën (brainstorm 11 nov, aangevuld na de review)
 - Rivalen voeren onderling corpo-oorlogen; legers van beide kanten kopen bij jou (of bij je concurrent).
 - Klantrelaties: vaste klanten die terugkomen als je goed levert, en wegblijven na wanbetaling of te late levering.
