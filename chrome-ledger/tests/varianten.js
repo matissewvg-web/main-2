@@ -283,6 +283,11 @@ const html = '<!doctype html><html><head><meta charset=utf8></head><body>' + fs.
   const epUI = await p.evaluate(() => { S.view = "rivalen"; S.epOpen = true; render(); const t = document.querySelector("main").textContent; S.epOpen = false; render(); return /Zelf een plan smeden/.test(t) && /Prijsoorlog/.test(t); });
   ok(ep.kans >= 25 && ep.a && ep.betaald === ep.kost && !ep.dubbel && ep.klaar && (ep.aandeel == null || ep.aandeel === 0.24) && ep.relDaling >= 15 && !ep.geenBende && ep2.weg && ep2.heat >= 12 && ep2.rel >= 10 && ep2.rep && epUI,
     "eigen plannen: drie stappen met worpen, eerste stap vooraf betaald, één tegelijk, gelukte prijsoorlog kost hen 20% aandeel, mislukte stap = ontdekt (heat, relatie), kaart bij Rivalen: " + JSON.stringify([ep, ep2]));
+  // 5.17.1 huisstijl bij het oprichten
+  const hs1 = await p.evaluate(() => { const set = {...S.setup, corp_name: "Stijl BV", doctrine: ["Biotech"], home: "BNL", huisstijl: {kleur: "#123456", accent: "nee", thema: "bloed", logo: {soort: "gen", symbool: "◆", vorm: "cirkel"}}};
+    const n = newGame(set).s, kaart = setupHuisstijl({corp_name: "Stijl BV", huisstijl: set.huisstijl});
+    return {h: n.huisstijl, kaart: /Hoofdkleur/.test(kaart) && /THEMA/.test(kaart) && /LOGO/.test(kaart)}; });
+  ok(hs1.h && hs1.h.kleur === "#123456" && !hs1.h.accent && hs1.h.thema === "bloed" && hs1.h.logo.vorm === "cirkel" && hs1.kaart, "huisstijl bij het oprichten: kleuren, thema en logo uit de setup komen in het spel (ongeldige kleur genegeerd): " + JSON.stringify(hs1));
   ok(/VERKOOP/.test(verkoop) && /KEURING/.test(verkoop), "tabblad Verkoop en keuring");
   ok(/VARIANT/.test(scherm), "varianten staan op het productblad");
   if (out){ const bl = await p.$('.prodblad'); if (bl) await bl.screenshot({path: out + "/verkoop.png"}); }
