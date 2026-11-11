@@ -54,13 +54,13 @@ Grootste risico's: 5.6 (dominantie) raakt kaart, oorlog en hegemonie tegelijk; 5
 ### Roadmap 6 (voorstel na de masterroadmap, 11 nov)
 | # | Stap | Wat | Prio |
 |---|---|---|---|
-| 1 | 6.0 | Opruimen en balans: balans.js-bots laten patrouilleren, inschrijven op aanvragen, onderzoeken en exportvergunningen kopen, zodat de 40%-doelstelling echt gemeten wordt | 2 |
+| 1 | 6.0 ✓ | Opruimen en balans: balans.js-bots laten patrouilleren, inschrijven op aanvragen, onderzoeken en exportvergunningen kopen, zodat de 40%-doelstelling echt gemeten wordt | 2 |
 | 2 | 6.1 | Een hoofd per divisie (overgebleven uit 5.8): talent geeft omzet- of kostenbonus, eigen loyaliteit | 1 |
 | 3 | 6.2 | Rivalen met dezelfde regels: zij bouwen aanwezigheid op, schrijven in op aanvragen, kopen exportvergunningen | 2 |
 | 4 | 6.3 | Nieuwe overwinning: corporate zone (spanning 90+) op je thuiscontinent met 60% dominantie | 1 |
 
 ### Doorlopend (elke ronde in het achterhoofd)
-- Balans: verstandige bot op Realistisch ±40%; sinds 5.12-5.14 41-50% (grondstoffen, rivaalpatenten en rivaalonderzoek maken het late spel zwaarder). Razzia blijft grootste verliezer. Knop in 5.20.
+- Balans: verstandige bot zonder 5.x-systemen 46%, met alles ±60% (6.0). Razzia blijft grootste verliezer. Knop: eigen moeilijkheid (5.20). Na een echte speelronde bijstellen.
 - Reputatie zakt bij wie beslissingen negeert (bewust); sinds 5.6.1 herstelt een lage reputatie langzaam vanzelf.
 - Het begin is traag (±€5M winst per maand de eerste jaren).
 - Tests mogen nooit op toeval falen.
@@ -179,6 +179,7 @@ Werkwijze: elk uur een ronde (automatisch). Grote punten zijn verdeeld in stappe
 - 5.19.1 Opruimstap (11 nov): adviezen bij CEO-stress > 70, gezondheid < 35, en 58+ of zwak zonder opvolger (getest). Mobiel Mensen gecontroleerd.
 - 5.20 Eigen moeilijkheid (11 nov): s.player.instel {events, chaos, spanning, heat: 0,6/1/1,4; winst: 0,75/1/1,3}; hooks: regionTick-kans en incidentele facturen (events), chaosTick-kans, spanninggroei, heatAdd, winWaarde. instelScore = 1 + 0,25 × Σ(afwijking) + 0,4 × winst-afwijking (0,6-1,5); score.mult × laagste instelScore ooit. Setup stap 3 en Logboek-kaart. Oude saves: alles 1.
 - 5.21 Uitleg en begin (11 nov): SPIEK per scherm (details.spiek rechtsboven, op mobiel boven de titel), TOUR van 5 stappen met .tourdoel-markering; start na het oprichten of bij openen zolang < 2 maanden gespeeld en niet gezien (flags.tour + localStorage per spel), niet onder webdriver. Rondleiding opnieuw via Logboek. Masterroadmap 5.0-5.21 is af.
+- 6.0 Balans met alle systemen (11 nov): balans.js verstandig gebruikt klanten (normaal/scherp bij ≥40%, syndicaten af), onderzoek (hoogste omzet), patenten, export (max 3, groot en zonder embargo), voorraad (≤0,85), patrouilles, corpowetten, CEO (vakantie, opvolger); SKIP=… en STRATS=… omgevingsvariabelen voor ablatie. Alles aan 60-61%, alles uit 46%; los: zonder klant 56, oz 66, pat 69, exp 61, wet 61, vr 55, patr 59, ceo 63 (ruis ±4). Geen enkele uitschieter; kleine correcties: AANVRAAG_MARGE 0,45, techKost × clamp(omvang, 1, 4). Conclusie: een bot die alles perfect gebruikt wint ±60%; mensen lager. Eigen moeilijkheid (5.20) is de knop.
 - 5.2.1 Automatisch ontwikkelen + opruimcontrole (11 nov, nacht): d.autoDev {aan, schaal, aard}, autoDevTick bij het begin van productTick (vrije plek, niets bezig, kas ≥ kosten + €30M, gratis ontwikkelingen eerst), schakelaar en schaal per divisie in de Productlijn. Mensrun: geen fouten; reputatie eindigde op 2,6 door een lekkende PR-chef (pr_lekt), repdiag over 12 spellen toont geen nieuwe bron.
 - 5.2 deel 1 Autopilot (11 nov, nacht): p.auto {prijs, cap, keuring}, autoTick in productTick (prijs naar besteprijs maar ≤150%, capaciteit +15 bij vraag >105% cap en €20M buffer, −15 bij >25 leegloop als er een betaalde uitbreiding is, keuring officieel), s.autoStandaard voor nieuwe producten, drie schakelaars bovenaan de Productlijn. Deel 2 (automatisch ontwikkelen per divisie) volgt.
 - 5.1 Huisstijl (11 nov, nacht): THEMAS (neon, corporate, terminal, bloed, chroom), hoofd- en accentkleur via CSS-variabelen, logo-generator (vorm, symbool, initialen als SVG) of eigen afbeelding (canvas 96×96, data-URL ≤90 kB, alleen png/jpeg/webp), logo in de kopregel, kaart bovenaan Bedrijf. Test in varianten.js. Nieuwe spellen krijgen de herstel-vlaggen van 4.7.x meteen (geen per ongeluk teruggezette wapendivisie).

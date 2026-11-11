@@ -193,8 +193,8 @@ const html = '<!doctype html><html><head><meta charset=utf8></head><body>' + fs.
     return {n1, k, r1: r1.ok, winst, con: con ? {perMaand: con.perMaand, over: con.over} : null, maand, verbroken: ctx4.rep.some(x => /verbroken/.test(x)), repDaling: Math.round((rep0 - c.reputation) * 10) / 10, over: c.contracten.length}; });
   await p.evaluate(() => { crypto.getRandomValues = window.__echt9; });
   const klUI = await p.evaluate(() => { const s = G.game, a = maakAanvraag(s); (s.aanvragen ??= []).push(a); S.view = "bedrijf"; render(); const t = document.querySelector("main").textContent; s.aanvragen = s.aanvragen.filter(x => x !== a); render(); return /Klanten/.test(t) && /Scherp/.test(t) && /Afwijzen/.test(t); });
-  ok(kl.n1 === 1 && kl.k[0] > kl.k[2] && kl.k[0] >= kl.k[1] && kl.k[1] >= kl.k[2] && kl.r1 && kl.winst === 5.5 && kl.con && kl.con.perMaand === 4.8 && kl.maand === 2.6 && kl.verbroken && kl.repDaling >= 5 && kl.over === 0 && klUI,
-    "klanten komen naar jou: aanvraag verschijnt, scherp geeft meer kans dan hoog, levering betaalt 55% marge, raamcontract betaalt elke maand, zonder product verbroken met boete, kaart op Bedrijf: " + JSON.stringify(kl));
+  ok(kl.n1 === 1 && kl.k[0] > kl.k[2] && kl.k[0] >= kl.k[1] && kl.k[1] >= kl.k[2] && kl.r1 && kl.winst === 4.5 && kl.con && kl.con.perMaand === 4.8 && kl.maand === 2.2 && kl.verbroken && kl.repDaling >= 5 && kl.over === 0 && klUI,
+    "klanten komen naar jou: aanvraag verschijnt, scherp geeft meer kans dan hoog, levering betaalt 45% marge, raamcontract betaalt elke maand, zonder product verbroken met boete, kaart op Bedrijf: " + JSON.stringify(kl));
   // 5.10 export en vergunningen
   const ex = await p.evaluate(() => { const c = JSON.parse(JSON.stringify(G.game)), ctx = Ctx(); c.cash = 500; c.exportVergunning = {}; c.smokkelroute = {}; const pm = c.producten.find(x => x.status === "markt"); if (!pm) return {geen: true}; pm.aard = "wapen";
     const thuis = exportThuis(c), ander = CONTINENTS.find(k => k.naam !== thuis).naam; for (const k of CONTINENTS) (c.spanning ??= {})[k.naam] = 20;

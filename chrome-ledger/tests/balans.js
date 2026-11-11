@@ -11,7 +11,8 @@ function pagina(){
   return '<!doctype html><html><head><meta charset=utf8></head><body>' + html + "</body></html>";
 }
 
-const STRATEGIE = `const LENGTE = "${LENGTE}";
+const SKIP = (process.env.SKIP || "").split(",").filter(Boolean);
+const STRATEGIE = `const LENGTE = "${LENGTE}"; const SKIP = ${JSON.stringify(SKIP)};
 
 const KIES = {headhunt: 1, opslag: 1, cao: 0, klant: 0, subsidie: 0, sponsor: 1, interview: 0, data: 1, tip: 0, vreemdeling: 1, sekte: 1, klokkenluider: 0, isra_vracht: 1, diner_rivaal: 0};
 function kiesKeuzes(s, ctx, slim){
@@ -62,6 +63,17 @@ function verstandig(s, ctx, agressief){
     for (const p of ps) if (p.status === "markt" && bereik(p) > prodCap(s, p) && s.cash > capKost(s, p) + 50) actProduct(s, ctx, "capaciteit", {id: p.id});
     if (ps.length < maxProducten(d) && !ps.some(p => p.status === "ontwikkeling") && s.cash > 60) actProduct(s, ctx, "ontwikkel", {divisie: divNaam(d), schaal: s.cash > 140 ? "groot" : "klein"});
     const oud = ps.find(p => p.status === "markt" && p.leeftijd > 30 && !p.verbetering && p.kwaliteit < 5); if (oud && s.cash > 80) actProduct(s, ctx, "verbeter", {id: oud.id}); }
+  // 6.0: de systemen uit 5.x gebruiken zoals een verstandige speler
+  if (typeof aanvraagKans === "function"){
+    if (!SKIP.includes("klant")) for (const a of [...(s.aanvragen || [])]){ if (a.soort === "syndicaat"){ actAanvraag(s, ctx, a.id, "afwijzen"); continue; } if (aanvraagKans(s, a, "normaal") >= 40) actAanvraag(s, ctx, a.id, "normaal"); else if (aanvraagKans(s, a, "laag") >= 40) actAanvraag(s, ctx, a.id, "laag"); }
+    const O = s.onderzoek || {}; if (!SKIP.includes("oz") && !O.lopend && s.cash > 120){ const om = {}; for (const p of (s.producten || []).filter(x => x.status === "markt")){ const a = p.aard || aardVan(p.type, p.naam); om[a] = (om[a] || 0) + ((s.prodomzet || {})[p.id] || 0); }
+      const a = Object.keys(om).filter(x => TECH_NAMEN[x] && techNiveau(s, x) < 3).sort((x, y) => om[y] - om[x])[0]; if (a) actOnderzoek(s, ctx, a); }
+    if (!SKIP.includes("pat")) for (const p of (s.producten || []).filter(x => x.status === "markt" && !x.patent && besteSpec(x).v >= PATENT_MIN)) if (s.cash > patentKost(s) + 80) actPatent(s, ctx, p.id);
+    if (!SKIP.includes("exp") && (s.producten || []).some(p => p.status === "markt" && EXPORT_AARD.includes(p.aard || aardVan(p.type, p.naam))) && Object.keys(s.exportVergunning || {}).length < 3 && s.cash > vergunningKost(s) + 150){ const c = Object.keys(REGIO).filter(x => x !== exportThuis(s) && !(s.exportVergunning || {})[x] && !embargo(s, x)).sort((x, y) => REGIO[y].w - REGIO[x].w)[0]; if (c) actExport(s, ctx, "vergunning", c); }
+    if (!SKIP.includes("vr")) for (const [m] of Object.entries(GRONDSTOF)) if (gsPrijs(s, m) <= 0.85 && !gsVoorraad(s, m) && s.cash > 150 && (s.producten || []).some(p => p.status === "markt" && grondstoffenVan(p).includes(m))) actVoorraad(s, ctx, m, 6);
+    if (!SKIP.includes("patr")) for (const r of s.rivals){ if (r.status === "oorlog" || (r.relatie || 0) > -20) continue; for (const d of playerDistricts(s)) if (d.id !== s.player.home_district && !(s.patrouille || {})[d.id] && patrouilleMag(s, d) && reachable(s, r.name, d) && s.cash > 60) actCorpo(s, ctx, "patrouille", d.id); }
+    if (!SKIP.includes("wet")) for (const k of ["immuniteit", "rechtspraak", "beveiliging", "zone"]) if (wetStatus(s, k).ok && s.cash > CORPOWETTEN[k].cash + 60) actCorpo(s, ctx, "wet", k);
+    if (s.ceo && !SKIP.includes("ceo")){ if (s.ceo.stress > 65 && s.cash > 20) actCeo(s, ctx, "vakantie"); if (!s.ceo.opvolger){ const o = ceoOpvolgers(s)[0]; if (o) actCeo(s, ctx, "opvolger", o.id); } } }
   // groeien
   const d0 = s.divisions.slice().sort((a, b) => a.level - b.level)[0];
   if (d0 && s.cash > upgradeCost(s, d0) + 50 && !s.projects.some(p => p.division === divNaam(d0)) && !(s.heat > 50 && (typeOf(s, d0.type) || {}).heat >= 2)) actProject(s, "upgrade", {divisie: divNaam(d0)});
@@ -112,7 +124,7 @@ async function run(strat, n, diff){
   await p.goto("http://balans.test/"); await p.waitForTimeout(800);
   await p.evaluate(STRATEGIE + "; window.__run = run;");
   const med = a => { const x = a.slice().sort((p, q) => p - q); return x.length ? x[Math.floor(x.length / 2)] : 0; };
-  for (const strat of ["passief", "verstandig", "agressief"]){
+  for (const strat of (process.env.STRATS ? process.env.STRATS.split(",") : ["passief", "verstandig", "agressief"])){
     const t0 = Date.now(), res = await p.evaluate(([a, n, d]) => window.__run(a, n, d), [strat, N, DIFF]);
     const ok = res.filter(r => !r.fout), eind = {};
     for (const r of ok) eind[r.status] = (eind[r.status] || 0) + 1;

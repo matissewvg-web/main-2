@@ -668,7 +668,7 @@ function tick(s){
 }
 
 /* ---------- de stad: elke game een andere kaart ---------- */
-const VERSION = "5.21";
+const VERSION = "6.0";
 const MAP_W = 1000, MAP_H = 680;
 const RIVAL_COLORS = ["#ff9a1f", "#3d7bff", "#c6ff2e", "#f2f2f2", "#9b5cff", "#ffd400", "#ff4d4d"];
 const ARCH = {
@@ -3353,7 +3353,7 @@ const KLANT_SOORT = {
   syndicaat: {label: "Syndicaat", namen: [], aard: ["wapen", "smokkel", "implantaat", "medisch"], zwart: true, heat: 4},
 };
 const AANVRAAG_PRIJS = {laag: {label: "Scherp", f: 0.85, mod: 15}, normaal: {label: "Normaal", f: 1, mod: 0}, hoog: {label: "Hoog", f: 1.2, mod: -15}};
-const AANVRAAG_MARGE = 0.55;
+const AANVRAAG_MARGE = 0.45; /* 6.0: was 0,55 */
 const besteVanAard = (s, aard) => (s.producten || []).filter(p => p.status === "markt" && (p.aard || aardVan(p.type, p.naam)) === aard).sort((a, b) => b.kwaliteit - a.kwaliteit || bereik(b) - bereik(a))[0] || null;
 const aanvraagRivalen = (s, aard) => s.rivals.filter(r => (r.producten || []).some(p => p.aard === aard));
 function aanvraagKans(s, a, prijs){ const p = besteVanAard(s, a.aard), P = AANVRAAG_PRIJS[prijs] || AANVRAAG_PRIJS.normaal; if (!p) return 0; const K = KLANT_SOORT[a.soort] || {};
@@ -3491,7 +3491,7 @@ const TECH_NAMEN = {wapen: ["Slimme munitie", "Modulaire chassis", "Exo-gevechts
 const TECH_EFFECT = ["+5% omzet", "+5% omzet en 8% goedkopere onderdelen", "+5% omzet en +1 op alle eigenschappen"];
 const techNiveau = (s, aard) => ((s.onderzoek || {}).niveau || {})[aard] || 0;
 const techF = (s, p) => 1 + 0.05 * techNiveau(s, p.aard || aardVan(p.type, p.naam));
-const techKost = (s, n) => r1(15 * n * (DIFF[s.player.difficulty] || 1)), techMaanden = n => 4 + 2 * n;
+const techKost = (s, n) => r1(15 * n * (DIFF[s.player.difficulty] || 1) * clamp(omvang(s), 1, 4)), techMaanden = n => 4 + 2 * n; /* 6.0: groter bedrijf = duurder onderzoek */
 function actOnderzoek(s, ctx, aard){ if (!TECH_NAMEN[aard]) return {ok: false, msg: "Onbekende soort."}; const O = (s.onderzoek ??= {niveau: {}}); if (O.lopend) return {ok: false, msg: `Er loopt al onderzoek: ${O.lopend.naam}.`};
   const n = techNiveau(s, aard) + 1; if (n > 3) return {ok: false, msg: "Deze soort is volledig onderzocht."}; const k = techKost(s, n), m = techMaanden(n), pm = r1(k / m); if (s.cash < pm + 10) return {ok: false, msg: `Niet genoeg cash voor de eerste maand (€${pm}M).`};
   O.lopend = {aard, n, naam: TECH_NAMEN[aard][n - 1], over: m, maanden: m, perMaand: pm, sinds: ym(s)}; addLog(s, `Onderzoek gestart: ${O.lopend.naam}`);
