@@ -668,7 +668,7 @@ function tick(s){
 }
 
 /* ---------- de stad: elke game een andere kaart ---------- */
-const VERSION = "5.19";
+const VERSION = "5.19.1";
 const MAP_W = 1000, MAP_H = 680;
 const RIVAL_COLORS = ["#ff9a1f", "#3d7bff", "#c6ff2e", "#f2f2f2", "#9b5cff", "#ffd400", "#ff4d4d"];
 const ARCH = {
@@ -3769,6 +3769,9 @@ function adviezen(s){
       else if (go) add(4, `${GRONDSTOF[go].label} is goedkoop (×${gsPrijs(s, go)}). Nu voorraad aanleggen (Bedrijf → Toelevering) zet die prijs vast.`, "bedrijf"); }
     { const pp = (s.producten || []).find(p => p.status === "markt" && !p.patent && besteSpec(p).v >= PATENT_MIN); if (pp && s.cash > patentKost(s) + 30) add(4, `${pp.naam} heeft een sterke ${besteSpec(pp).naam.toLowerCase()} (${besteSpec(pp).v}). Een patent (productblad → Markt, €${patentKost(s)}M) geeft +${Math.round(PATENT_BONUS * 100)}% omzet en licentiegeld.`, "bedrijf"); }
     { const O = s.onderzoek || {}; const aa = [...new Set((s.producten || []).filter(p => p.status === "markt").map(p => p.aard || aardVan(p.type, p.naam)))].find(x => techNiveau(s, x) < 3 && TECH_NAMEN[x]); if (!O.lopend && aa && s.cash > techKost(s, techNiveau(s, aa) + 1) / techMaanden(techNiveau(s, aa) + 1) + 60 && maandenGespeeld(s) >= 6) add(3, `Er loopt geen onderzoek. ${TECH_NAMEN[aa][techNiveau(s, aa)]} geeft ${PRODUCT_AARD[aa].label.toLowerCase()} ${TECH_EFFECT[techNiveau(s, aa)]} (Bedrijf → Onderzoek).`, "bedrijf"); }
+    if (s.ceo){ const C = s.ceo, L = Math.floor(C.leeftijd || 40); if (C.stress > 70) add(6, `Je stress is ${Math.round(C.stress)}: kans op een burn-out en je gezondheid zakt. Vakantie of tijd voor je gezin helpt (Mensen → Jij, de CEO).`, "mensen");
+      else if (C.gezondheid < 35) add(6, `Je gezondheid is ${Math.round(C.gezondheid)}. Een kliniek (€10M) of minder stress helpt; regel ook een opvolger.`, "mensen");
+      if (!C.opvolger && (L >= 58 || C.gezondheid < 40)) add(5, `Je bent ${L} en hebt geen opvolger. Valt je weg, dan haalt de raad een buitenstaander (morale −12, reputatie −8). Wijs iemand aan bij Mensen → Jij, de CEO.`, "mensen"); }
     const av = (s.aanvragen || [])[0]; if (av) add(7, `${av.klant} wil ${av.raam ? "een raamcontract" : "een levering"} (${PRODUCT_AARD[av.aard].label.toLowerCase()}). Inschrijven bij Bedrijf → Klanten, nog ${av.verloopt} maand${av.verloopt > 1 ? "en" : ""}.`, "bedrijf");
     const bijna = s.districts.find(d => (d.domMnd || 0) >= 1); if (bijna) add(6, `${bijna.name} valt je volgende maand toe als je aandeel boven ${DOM_FLIP}% blijft (Kaart).`, "kaart"); }
   if (s.heat > 55) add(9, `Heat ${Math.round(s.heat)}: boven 90 volgt een razzia. Laat een netrunner sporen wissen (Crew), vraag de commissaris om een gunst (Mensen) of gebruik invloed (Kaart).`, "crew");

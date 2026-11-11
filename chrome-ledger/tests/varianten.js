@@ -310,9 +310,10 @@ const html = '<!doctype html><html><head><meta charset=utf8></head><body>' + fs.
     const m0 = c.morale; C.gezondheid = 0.1; C.stress = 90; C.opvolger = null; c.date = {...c.date, month: 5}; ceoTick(c, Ctx()); const zonder = {naam: C.naam, gen: C.generatie, morale: Math.round(m0 - c.morale)};
     C.kinderen = 1; const opv = actCeo(c, ctx, "opvolger", "kind0").ok; C.gezondheid = 0.1; C.stress = 90; ceoTick(c, Ctx()); const dyn = {naam: C.naam, gen: C.generatie, leeftijd: Math.floor(C.leeftijd)};
     const r = c.rivals[0], rel0 = r.relatie, golf = actCeo(c, ctx, "golf", r.name).ok, band = r.ceoRel, relUp = r.relatie - rel0; r.ceoLeeftijd = 80; const oudCeo = r.ceo; c.date = {...c.date, month: 1}; ceoTick(c, Ctx());
-    return {naam0, l0, v, st1, nogeens, zonder, opv, dyn, golf, band, relUp, nieuweCeo: r.ceo !== oudCeo && r.ceoLeeftijd < 60}; });
+    C.stress = 85; C.opvolger = null; C.leeftijd = 60; const adv = adviezen(c).map(x => x.tekst).join(" | "), advOk = /stress is 85/.test(adv) && /geen opvolger/.test(adv);
+    return {naam0, l0, v, st1, nogeens, zonder, opv, dyn, golf, band, relUp, advOk, nieuweCeo: r.ceo !== oudCeo && r.ceoLeeftijd < 60}; });
   const ceUI = await p.evaluate(() => { S.view = "mensen"; render(); const t = document.querySelector("main").textContent; return /Jij, de CEO/.test(t) && /GEZONDHEID/.test(t) && /Andere CEO/.test(t); });
-  ok(ce.naam0 === "Mira Kade" && ce.l0 >= 34 && ce.v && ce.st1 === 50 && !ce.nogeens && ce.zonder.naam !== "Mira Kade" && ce.zonder.gen === 2 && ce.zonder.morale >= 12 && ce.opv && / jr\.$/.test(ce.dyn.naam) && ce.dyn.gen === 3 && ce.dyn.leeftijd <= 34 && ce.golf && ce.band === 10 && ce.relUp === 4 && ce.nieuweCeo && ceUI,
+  ok(ce.naam0 === "Mira Kade" && ce.l0 >= 34 && ce.v && ce.st1 === 50 && !ce.nogeens && ce.zonder.naam !== "Mira Kade" && ce.zonder.gen === 2 && ce.zonder.morale >= 12 && ce.opv && / jr\.$/.test(ce.dyn.naam) && ce.dyn.gen === 3 && ce.dyn.leeftijd <= 34 && ce.golf && ce.band === 10 && ce.relUp === 4 && ce.nieuweCeo && ce.advOk && ceUI,
     "CEO als persoon: naam uit de setup, vakantie tegen stress, overlijden zonder opvolger = buitenstaander, met kind = dynastie, golfen met rivaal-CEO's, oude rivaal-CEO's worden vervangen: " + JSON.stringify(ce));
   ok(/VERKOOP/.test(verkoop) && /KEURING/.test(verkoop), "tabblad Verkoop en keuring");
   ok(/VARIANT/.test(scherm), "varianten staan op het productblad");
