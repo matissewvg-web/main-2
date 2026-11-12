@@ -66,7 +66,7 @@ const Store = {
     if (G.mode !== "db") return localSave();
     const body = {s: pak(G.game), bijgewerkt: Date.now(), tab: G.tab}, n = JSON.stringify(body).length;
     if (n > 700000 && G.game){ G.game.log = G.game.log.slice(-100); G.game.nieuws = (G.game.nieuws || []).slice(0, 30); G.game.worpen = G.game.worpen.slice(-40); G.game.keuzes_klaar = (G.game.keuzes_klaar || []).slice(0, 15); }
-    await G.db.doc("games/" + G.gid).set(body);
+    await G.db.doc("games/" + G.gid).set(body); G.opgeslagen = Date.now();
   },
   async backup(){
     const s = G.game; if (!s || !s.setup_done) return; const slot = maandenGespeeld(s) % 3, body = {s: clone(pak(s)), maand: ym(s), t: Date.now()};

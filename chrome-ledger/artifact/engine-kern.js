@@ -61,6 +61,8 @@ function template(){
 }
 
 /* 3.6: foutlog, zodat vangnetten geen echte fouten meer verbergen */
+/* 12.0: ook fouten die nergens opgevangen worden, komen in de foutlog (Logboek), zodat ze te melden zijn */
+try { window.addEventListener("unhandledrejection", e => { try { foutLog("onverwacht", e.reason || e); } catch(_){} }); window.addEventListener("error", e => { try { if (e && e.error) foutLog("onverwacht", e.error); } catch(_){} }); } catch(_){}
 function foutLog(waar, e){
   const f = {t: new Date().toISOString().slice(0, 16).replace("T", " "), waar, fout: String((e && e.message) || e).slice(0, 200)};
   G.fouten = [f, ...(G.fouten || [])].slice(0, 30);

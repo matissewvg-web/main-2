@@ -1,6 +1,6 @@
 /* Chrome Ledger engine, deel engine-wereld.js: wereld: kaart, zee, dominantie, eigen soorten, personeel, rivalen en acties. 7.4: de engine staat in zes bestanden die in deze volgorde laden (kern, wereld, leven, producten, gm, opslag); alles deelt dezelfde globale scope. */
 /* ---------- de stad: elke game een andere kaart ---------- */
-const VERSION = "11.2";
+const VERSION = "11.3";
 const MAP_W = 1000, MAP_H = 680;
 const RIVAL_COLORS = ["#ff9a1f", "#3d7bff", "#c6ff2e", "#f2f2f2", "#9b5cff", "#ffd400", "#ff4d4d"];
 const ARCH = {
@@ -645,10 +645,6 @@ function rivalAI(s, ctx, diff){
       const lv = r.divs[r.sector] || 0, inv = 30 + lv * 15;
       if (lv < 8 && r.cash > inv * 2.5 && R() < 0.15){ r.divs[r.sector] = lv + 1; r.staff += 6; r.cash = r1(r.cash - inv); }
       if (r.relatie > 25 && !r.verdragen.length && R() < 0.1) addOffer(r, "handel", tradeAmount(s, r), null, `Wat zou u zeggen van twaalf maanden samenwerking? Beide kanten ongeveer €${tradeAmount(s, r)}M per maand beter af.`, "Een zakelijk voorstel");
-      const mine = playerDistricts(s).filter(d => d.id !== s.player.home_district);
-      if (false && mine.length && r.relatie > -20 && R() < 0.05){ /* 11.0: landen koop je niet meer */ const d = CH(mine), p = Math.round(districtValue(d) * U(0.9, 1.35)); if (r.cash > p * 1.2) addOffer(r, "district_koop", p, d.id, `Wij bieden €${p}M voor uw positie in ${d.name}. Een eerlijke prijs, en een die niet lang blijft staan.`, `Bod op ${d.name}`); }
-      const theirs = rivalDistricts(s, r).filter(d => d.id !== r.hq);
-      if (false && theirs.length && r.cash < 40 && R() < 0.25){ /* 11.0 */ const d = CH(theirs), p = Math.round(districtValue(d) * U(0.7, 1)); addOffer(r, "district_verkoop", p, d.id, `Wij willen af van ${d.name}. €${p}M en het is van u.`, `Te koop: ${d.name}`); }
       if (r.status === "vrede" && r.relatie < -45 && r.aggression > 0.45 && R() < 0.2){
         const b = Math.round(10 + r.aggression * 30); addOffer(r, "ultimatum", b, null, `Uw bedrijf zit in de weg. €${b}M voor het einde van volgende maand, en we laten u met rust. Zo niet, dan is het oorlog.`, "Ultimatum");
       }

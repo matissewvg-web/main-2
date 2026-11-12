@@ -100,10 +100,33 @@ Wens: "niet dingen locken, maak het duurder; dieper gaan; contracten cleaner; ni
 | 1 | 10.0 ✓ (11.1) | Gesprekken ook met rivalen en bedrijven: een handelsverdrag, vrede of een overname onderhandel je in beurten (zelfde systeem als contractgesprekken, met karakter van de CEO) | 1 |
 | 2 | 10.1 ✓ (11.1) | Klantrelaties: klanten onthouden wat je beloofde en hoe je leverde (vaste klant, wantrouwen na wanbetaling of een gebroken belofte); volgende aanvragen beginnen daarmee | 1 |
 | 3 | 10.2 ✓ (11.1) | Contractlevering: capaciteit per maand tegen je productie; tekort = boete en een bozere klant | 2 |
-| 4 | 10.3 | Opruimstap en balans (de testbot leert ook een gesprek voeren) | 1 |
+| 4 | 10.3 ✓ (11.1) | Opruimstap en balans (de testbot leert ook een gesprek voeren) | 1 |
 | 5 | 10.4 ✓ | (wens 20:11) Contracten vaker langdurig in plaats van eenmalig, langer, en in het gesprek om te zetten | 1 |
 | 6 | 10.5 ✓ | Save blijft online: opnieuw proberen, keuzescherm, nieuwere browserstand als apart spel online zetten | 1 |
 | 7 | 11.0 ✓ | (wens playtest 11 nov) Gebied win je, je koopt het niet: vestiging = basis, campagnes versterken alleen, geen landen kopen/verkopen/ruilen, rivalen openen vestigingen in plaats van landen te kopen, zee via kustaandeel + eskaders (minder per extra schip) en twee maanden volhouden; rivalen betwisten de zee ook in vrede | 1 |
+
+### Roadmap 12: klaar voor release (wens 11 nov, 22u: "gameplay is oké, bugfixes en QoL, zorg dat het goed is")
+Doel: versie 12.0 is de releaseversie. Geen nieuwe spelsystemen meer, alleen fouten, gemak en afwerking.
+
+Audit (11 nov, 22u), gemeten en niet geschat:
+- Prestaties: elk scherm rendert in < 70 ms en een maand duurt ±40 ms op een save van 9 jaar (pc en gsm); save 135 KB na 9 jaar. Geen actie nodig.
+- Stabiliteit: 7 botstrategieën × 3 moeilijkheden × 8 spellen: 0 paginafouten, geen NaN/undefined op 13 schermen.
+- Contrast: grijze hulptekst ±6:1 op de achtergrond (AA). In orde.
+- Toegankelijkheid: op 1 knop na (← in een chat) heeft alles een naam voor schermlezers.
+- Gsm: tot 80 knoppen per scherm kleiner dan 28 px (btn.sm 27 px, chips 25 px, uitklappers 14-25 px). Opslagstatus (online of alleen browser) was op de gsm nergens te zien; zo raakte de speler eerder een save kwijt.
+- Uitleg: spelregels, spiekbriefje van de kaart en de corpomacht-tekst beschreven nog het oude kopen van gebied.
+- Balans: Casual verstandig 100%, Realistisch 75-80%, Genadeloos 25% winst en ±40% failliet. Gameplay is volgens de speler oké: niet aanpassen zonder klacht.
+
+| # | Stap | Wat | Prio |
+|---|---|---|---|
+| 1 | 12.0a ✓ (11.3) | Vingervriendelijke knoppen op touchscreens (≥ 38 px), opslagstatus altijd zichtbaar (⚠ ALLEEN IN DEZE BROWSER in de kop, ‘online opgeslagen om hh:mm’ in het menu), onverwachte fouten komen in de foutlog | 1 |
+| 2 | 12.0b ✓ (11.3) | Uitleg bijgewerkt: spelregels Gebied, Zee, Klanten en capaciteit; spiekbriefje kaart; corpomacht; rondleiding noemt de opslaanknop; ← krijgt een naam; dode code van landhandel weg | 1 |
+| 3 | 12.0c ✓ (11.2) | Opslaanknop in de kop, scroll/menu/opengeklapte blokken blijven staan, compactere gsm-kop, spellenlijst raakt niet meer leeg | 1 |
+| 4 | 12.1 | Speltest door de speler op de gsm: wat valt nog op? Alleen fouten en gemak oplossen | 1 |
+| 5 | 12.2 | Eindcontrole: alle tests (ook mobiel.js), botruns op 3 moeilijkheden zonder paginafouten, oude saves (2002, 2009) laden, export/import, opslaan/laden online en in de browser | 1 |
+| 6 | 12.3 | Release 12.0: versienotities samenvatten (wat het spel is, in één blok), README ‘hoe speel je’, VERSION 12.0 | 1 |
+
+Bewust niet in de release (later, alleen op wens): nieuwe spelsystemen uit de ideeënlijsten hieronder, Genadeloos-balans, een geluidsontwerp.
 
 ### Ideeën (brainstorm 11 nov, aangevuld na de review)
 - Rivalen voeren onderling corpo-oorlogen; legers van beide kanten kopen bij jou (of bij je concurrent).
