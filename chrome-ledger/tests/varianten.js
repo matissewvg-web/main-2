@@ -554,5 +554,21 @@ const html = '<!doctype html><html><head><meta charset=utf8></head><body>' + fs.
     return {k, z1: z1.ok, z2: z2.ok, z3: z3.ok, b, m, ja: ja.ok, verdrag, oorlog: r.status === "oorlog", ultWeg: !c.aanbiedingen.some(o => o.id === "u1")}; });
   ok(ond.k > 0 && ond.z1 && ond.z2 && !ond.z3 && ond.b === 2.6 && ond.m === 18 && ond.ja && ond.verdrag && ond.verdrag.bedrag === 2.6 && ond.verdrag.maanden === 18 && ond.oorlog && ond.ultWeg,
     "onderhandelen met rivalen: twee zetten, meer en langer komen in het verdrag, mislukt dreigen = oorlog: " + JSON.stringify(ond));
+  // 11.4 speciale opdrachten
+  const mwt = await p.evaluate(() => { const c = JSON.parse(JSON.stringify(G.game)), ctx = Ctx(), oud = window.rolKans, oudK = window.kansRol; c.cash = 500; c.maatwerk = null;
+    const m = maakMaatwerk(c); if (!m) return {geen: true}; c.maatwerk = m; const stap = [];
+    window.kansRol = () => 0.99; window.rolKans = () => ({ok: true, txt: "test"});
+    stap.push(actMaatwerk(c, ctx, "luisteren").ok && c.maatwerk.fase); maatwerkTick(c, ctx); stap.push(c.maatwerk.fase);
+    const kD = maatwerkKans(c, c.maatwerk, "degelijk"), vroeg = actMaatwerk(c, ctx, "aannemen").ok;
+    stap.push(actMaatwerk(c, ctx, "degelijk").ok && c.maatwerk.fase); const k0 = c.cash; maatwerkTick(c, ctx); stap.push(c.maatwerk.fase); const voorschot = r1(c.cash - k0);
+    const bij = actMaatwerk(c, ctx, "bijpraten").ok, bij2 = actMaatwerk(c, ctx, "bijpraten").ok;
+    for (let i = 0; i < 10 && c.maatwerk.fase === "bouw"; i++) maatwerkTick(c, ctx); stap.push(c.maatwerk.fase);
+    const band = (c.klanten[m.klant] || {}).band, n0 = c.producten.length; c.divisions.forEach(d => d.level = 5); const op = actMaatwerk(c, ctx, "opnemen", "Testontwerp X");
+    const nieuw = c.producten.find(x => x.naam === "Testontwerp X");
+    c.maatwerk = maakMaatwerk(c); for (let i = 0; i < 3 && c.maatwerk; i++) maatwerkTick(c, ctx); const verlopen = !c.maatwerk;
+    window.rolKans = oud; window.kansRol = oudK; return {stap, kD, vroeg, voorschot, prijs: m.prijs, bij, bij2, band, op: op.ok, opMsg: op.msg, nieuw: nieuw && {status: nieuw.status, aard: nieuw.aard}, weg: !c.maatwerk, verlopen}; });
+  const mwUI = await p.evaluate(() => { const c = G.game, oud = c.maatwerk; c.maatwerk = maakMaatwerk(c); S.view = "contracten"; render(); const t = document.querySelector("main").textContent, knop = !!document.querySelector('[data-a="maatwerk"][data-z="luisteren"]'); c.maatwerk = oud; render(); return /Speciale opdracht/.test(t) && knop; });
+  ok(mwt.geen || (mwt.stap.join() === "luistert,ontwerp,beoordeelt,bouw,geleverd" && mwt.kD > 0 && !mwt.vroeg && mwt.voorschot > 0 && mwt.bij && !mwt.bij2 && mwt.band >= 15 && mwt.op && mwt.nieuw && mwt.nieuw.status === "ontwikkeling" && mwt.weg && mwt.verlopen) && mwUI,
+    "speciale opdracht: kennismaken, ontwerp, akkoord met voorschot, bouwen met bijpraten, leveren, opnemen in assortiment; zonder antwoord haken ze af: " + JSON.stringify(mwt));
   console.log(log.join("\n")); console.log("FOUTEN OP DE PAGINA:", JSON.stringify(errs)); await b.close(); process.exit(log.some(l => l.startsWith("FOUT")) || errs.length ? 1 : 0);
 })();
