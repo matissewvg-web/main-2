@@ -586,6 +586,7 @@ const API = {
   async "/api/onderhandel"(d){ const s = G.game, ctx = Ctx(); const r = actOnderhandel(s, ctx, d.id); if (r.ok) await persist(ctx); return {ok: r.ok, bericht: r.msg}; },
   async "/api/lobby"(d){ const s = G.game, ctx = Ctx(); const r = actLobby(s, ctx, d.id); if (r.ok) await persist(ctx); return {ok: r.ok, bericht: r.msg}; },
   async "/api/gesprek"(d){ const s = G.game, ctx = Ctx(); const r = actGesprek(s, ctx, d.id, d.zet); if (r.ok) await persist(ctx); return {ok: r.ok, bericht: r.msg}; },
+  async "/api/contracteval"(d){ const s = G.game, ctx = Ctx(); const r = actContractEval(s, ctx, d.id, d.keuze); if (r.ok) await persist(ctx); return {ok: r.ok, bericht: r.msg}; }, /* 11.5 */
   async "/api/maatwerk"(d){ const s = G.game, ctx = Ctx(); const r = actMaatwerk(s, ctx, d.zet, d.arg); if (r.ok) await persist(ctx); return {ok: r.ok, bericht: r.msg}; }, /* 11.4 */
   async "/api/aanvraag"(d){ const s = G.game, ctx = Ctx(); const r = actAanvraag(s, ctx, d.id, d.keuze); if (r.ok) await persist(ctx); return {ok: r.ok, bericht: r.msg}; },
   async "/api/export"(d){ const s = G.game, ctx = Ctx(); const r = actExport(s, ctx, d.soort, d.cont); if (r.ok) await persist(ctx); return {ok: r.ok, bericht: r.msg}; },

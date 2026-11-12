@@ -570,5 +570,17 @@ const html = '<!doctype html><html><head><meta charset=utf8></head><body>' + fs.
   const mwUI = await p.evaluate(() => { const c = G.game, oud = c.maatwerk; c.maatwerk = maakMaatwerk(c); S.view = "contracten"; render(); const t = document.querySelector("main").textContent, knop = !!document.querySelector('[data-a="maatwerk"][data-z="luisteren"]'); c.maatwerk = oud; render(); return /Speciale opdracht/.test(t) && knop; });
   ok(mwt.geen || (mwt.stap.join() === "luistert,ontwerp,beoordeelt,bouw,geleverd" && mwt.kD > 0 && !mwt.vroeg && mwt.voorschot > 0 && mwt.bij && !mwt.bij2 && mwt.band >= 15 && mwt.op && mwt.nieuw && mwt.nieuw.status === "ontwikkeling" && mwt.weg && mwt.verlopen) && mwUI,
     "speciale opdracht: kennismaken, ontwerp, akkoord met voorschot, bouwen met bijpraten, leveren, opnemen in assortiment; zonder antwoord haken ze af: " + JSON.stringify(mwt));
+  // 11.5 productdiepgang en diepere contracten
+  const pd = await p.evaluate(() => { const c = JSON.parse(JSON.stringify(G.game)), ctx = Ctx(), oudK = window.kansRol; c.cash = 500; const p = c.producten.find(x => x.status === "markt"); if (!p) return {geen: true};
+    const v0 = prodSpecs(p)[1].v, r = actProduct(c, ctx, "specverbeter", {id: p.id, i: 1}), dubbel = actProduct(c, ctx, "specverbeter", {id: p.id, i: 0}).ok;
+    for (let i = 0; i < 2; i++){ p.specBezig.over > 1 ? (p.specBezig.over -= 1) : null; } p.specBezig.over = 1; window.kansRol = () => 0.99; productTick(c, ctx); const v1 = prodSpecs(p)[1].v;
+    const a = {id: "w1", klant: "Wenser", soort: "staat", aard: p.aard, product: p.id, minKwal: 1, raam: false, bedrag: 5, verloopt: 3};
+    a.wens = {i: 1, naam: "x", min: v1}; const bOk = bodScore(c, a, "normaal"); a.wens = {i: 1, naam: "x", min: v1 + 2}; const bNee = bodScore(c, a, "normaal"); delete a.wens; const b0 = bodScore(c, a, "normaal");
+    const con = {id: "e1", klant: "Evaluant", soort: "staat", aard: p.aard, product: p.id, perMaand: 1, over: 6, maanden: 12, sinds: ym(c)}; c.contracten = [con]; window.kansRol = () => 0; const oR = window.R; 
+    contractEvaluatie(c, ctx, con); const soort = con.eval && con.eval.soort; let res = null; if (soort === "verlengen" || soort === "uitbreiden"){ const pm = con.perMaand, ov = con.over; res = actContractEval(c, ctx, "e1", "ja"); res = {ok: res.ok, langer: con.over > ov, meer: con.perMaand > pm}; }
+    const con2 = {id: "e2", klant: "Klager", soort: "staat", aard: p.aard, product: p.id, perMaand: 2, over: 6, maanden: 12, tekort: 1, sinds: ym(c)}; c.contracten.push(con2); contractEvaluatie(c, ctx, con2); const k2 = con2.eval && con2.eval.soort, kr = actContractEval(c, ctx, "e2", "ja"), nogeens = actContractEval(c, ctx, "e2", "ja").ok;
+    window.kansRol = oudK; return {v0, v1, r: r.ok, dubbel, bOk, bNee, b0, soort, res, k2, korting: con2.perMaand, kr: kr.ok, nogeens}; });
+  ok(pd.geen || (pd.r && !pd.dubbel && pd.v1 === Math.min(10, pd.v0 + 2) && pd.bOk === pd.b0 + 8 && pd.bNee < pd.b0 && (pd.soort === "verlengen" ? pd.res.langer : pd.soort === "uitbreiden" ? pd.res.meer : true) && pd.k2 === "klacht" && pd.korting === 1.8 && pd.kr && !pd.nogeens),
+    "productdiepgang en contracten: gerichte verbetering +2, wens telt mee in het bod, evaluatie biedt verlenging of uitbreiding, klacht met korting: " + JSON.stringify(pd));
   console.log(log.join("\n")); console.log("FOUTEN OP DE PAGINA:", JSON.stringify(errs)); await b.close(); process.exit(log.some(l => l.startsWith("FOUT")) || errs.length ? 1 : 0);
 })();

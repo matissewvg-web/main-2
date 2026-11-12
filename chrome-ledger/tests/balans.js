@@ -93,6 +93,8 @@ function verstandig(s, ctx, agressief){
       if (war.moeheid > 70 && s.morale < 40) actDiplo(s, ctx, war.name, "vrede", {bedrag: 10});
     }
     for (const o of [...(s.aanbiedingen || [])]) if (o.type === "vrede" && s.morale < 40) offerDecide(s, ctx, o.id, true);
+    if (typeof actContractEval === "function") for (const c of [...(s.contracten || [])]) if (c.eval && !c.eval.klaar && c.eval.soort !== "ok") actContractEval(s, ctx, c.id, c.eval.soort === "uitbreiden" && typeof contractLast === "function" && (s.producten || []).some(p => p.id === (c.product || c.lev) && contractLast(s, p) + c.perMaand * 1.2 > prodCap(s, p)) ? "nee" : "ja"); /* 11.5 */
+    if (typeof wensBonus === "function" && s.cash > 120) for (const a of s.aanvragen || []){ const p = aanvraagProduct(s, a); if (p && a.wens && wensBonus(s, a, p) < 0 && !p.specBezig){ actProduct(s, ctx, "specverbeter", {id: p.id, i: a.wens.i}); break; } }
     if (typeof offerZet === "function" && !SKIP.includes("praat")) for (const o of [...(s.aanbiedingen || [])]) if (o.type === "handel"){ /* 11.1: de bot onderhandelt eerst */
       if (offerZetKans(s, o, "meer") >= 58) offerZet(s, ctx, o.id, "meer"); if (s.aanbiedingen.includes(o) && offerZetKans(s, o, "langer") >= 58) offerZet(s, ctx, o.id, "langer"); if (s.aanbiedingen.includes(o)) offerDecide(s, ctx, o.id, true); }
   }
