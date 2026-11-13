@@ -609,14 +609,14 @@ const html = '<!doctype html><html><head><meta charset=utf8></head><body>' + fs.
     S.menuThema = true; toonMenu(); document.querySelector('.hmenu [data-a="hsui"][data-k="dichtheid"][data-v="normaal"]').click(); await new Promise(r => setTimeout(r, 300)); sluitMenu(); S.menuThema = false;
     goView("bedrijf"); const naMenu = open(); hsOpenZet(); render(); const zelf = open(); goView("overzicht"); goView("bedrijf"); const naWissel = open(); return {naMenu, zelf, naWissel}; });
   ok(!hsd.naMenu && hsd.zelf && !hsd.naWissel, "huisstijl op Bedrijf staat dicht, ook na een themawijziging via het menu; open terwijl je ermee bezig bent: " + JSON.stringify(hsd));
-  // 11.7 capaciteit: maximum per divisieniveau, niet meer betalen voor niets, contracten verdeeld
-  const cmx = await p.evaluate(() => { const c = JSON.parse(JSON.stringify(G.game)), ctx = Ctx(); c.cash = 900; const p = c.producten.find(x => x.status === "markt"); if (!p) return {geen: true}; const d = capDiv(c, p); d.level = 2;
-    p.capExtra = 0; let n = 0; while (actProduct(c, ctx, "capaciteit", {id: p.id}).ok && n < 20) n++; const opMax = prodCap(c, p), max = capMax(c, p), weiger = !actProduct(c, ctx, "capaciteit", {id: p.id}).ok;
-    p.capExtra = 150; const vast = capVast(c, p), vastEff = r1(Math.ceil((max - capBasis(c, p)) / 15) * 0.3 * (DIFF[c.player.difficulty] || 1));
-    const k0 = c.cash; c.flags.cap_herstel_117 = false; migrate(c); const terug = r1(c.cash - k0), capNa = p.capExtra;
-    const q = {...JSON.parse(JSON.stringify(p)), id: "ptwee", naam: "Tweede", capExtra: 0, kwaliteit: p.kwaliteit}; c.producten = [p, q]; p.capExtra = 0;
+  // 11.9 capaciteit zonder limiet, contracten verdeeld; bouw van een speciale opdracht zichtbaar
+  const cmx = await p.evaluate(() => { const c = JSON.parse(JSON.stringify(G.game)), ctx = Ctx(); c.cash = 5000; const p = c.producten.find(x => x.status === "markt"); if (!p) return {geen: true};
+    p.capExtra = 0; let n = 0; while (n < 12 && actProduct(c, ctx, "capaciteit", {id: p.id}).ok) n++; const cap = prodCap(c, p), vast = capVast(c, p);
+    const q = {...JSON.parse(JSON.stringify(p)), id: "ptwee", naam: "Tweede", capExtra: 0}; c.producten = [p, q]; p.capExtra = 0;
     c.contracten = [{id: "v1", klant: "A", aard: p.aard, product: p.id, perMaand: 10, over: 5, maanden: 12}, {id: "v2", klant: "B", aard: p.aard, product: null, perMaand: 3, over: 5, maanden: 12}]; levVerdeel(c); const naar = c.contracten[1].lev;
-    return {n, opMax, max, weiger, vast, vastEff, terug, capNa, naar, tweede: q.id}; });
-  ok(cmx.geen || (cmx.opMax === cmx.max && cmx.max === 145 && cmx.weiger && cmx.vast === cmx.vastEff && cmx.terug > 0 && cmx.capNa <= cmx.max && cmx.naar === cmx.tweede), "capaciteit: maximum per divisieniveau (145 op niveau 2), daarboven geen uitbreiding en geen vaste kosten, teveel betaald terug, contracten zonder product naar het product met ruimte: " + JSON.stringify(cmx));
+    const m = maakMaatwerk(c); let bouw = null; if (m){ c.maatwerk = m; m.fase = "bouw"; m.ontwerp = "degelijk"; m.prijs = 40; m.voorschot = 12; m.maanden = 4; m.over = 4; m.gebouwd = 0; const oudK = window.kansRol; window.kansRol = () => 0.99; maatwerkTick(c, ctx); actMaatwerk(c, ctx, "bijpraten"); window.kansRol = oudK;
+      bouw = {voortgang: m.log.some(l => /Maand 1 klaar, nog 3/.test(l.tekst)), bij: /1 van de 4 maanden/.test((m.log.filter(l => l.wie === "Jij").slice(-1)[0] || {}).tekst || ""), lev: mwLevering(c, m)}; }
+    return {n, cap, vast, naar, tweede: q.id, bouw}; });
+  ok(cmx.geen || (cmx.n === 12 && cmx.cap > 200 && cmx.vast > 0) && cmx.naar === cmx.tweede && (!cmx.bouw || (cmx.bouw.voortgang && cmx.bouw.bij && /^\d{4}-\d{2}$/.test(cmx.bouw.lev))), "capaciteit zonder limiet (alleen steeds duurder), contracten zonder product naar het product met ruimte, bouw van een speciale opdracht toont echte voortgang en leverdatum: " + JSON.stringify(cmx));
   console.log(log.join("\n")); console.log("FOUTEN OP DE PAGINA:", JSON.stringify(errs)); await b.close(); process.exit(log.some(l => l.startsWith("FOUT")) || errs.length ? 1 : 0);
 })();
