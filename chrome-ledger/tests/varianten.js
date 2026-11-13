@@ -397,7 +397,7 @@ const html = '<!doctype html><html><head><meta charset=utf8></head><body>' + fs.
   const tijd0 = await p.evaluate(() => { document.querySelectorAll(".tour,.hmenu,.modal").forEach(x => x.remove()); S.menuOpen = false; S.help = false; if (document.activeElement) document.activeElement.blur(); localSet("simniet", JSON.stringify(["besluit", "kritiek", "gevaar"])); simSnelheid(5); simStart(); return {m: ym(G.game), ctl: !!document.querySelector(".simctl.loopt .simbar")}; });
   await p.waitForFunction(m => ym(G.game) !== m, tijd0.m, {timeout: 8000}).catch(() => {});
   const tijd = await p.evaluate(async m0 => { const m1 = ym(G.game); simStop(null); const stil = ym(G.game); await new Promise(r => setTimeout(r, 900)); const na = ym(G.game);
-    const v = simSnap(); v.besluit = new Set(); localSet("simniet", "[]"); const nep = {...S.state, besluiten: [{arc: "x", titel: "Testbesluit"}]}; const oud = S.state; S.state = nep; const reden = simReden(v); S.state = oud;
+    const v = simSnap(); v.besluit = new Set(); localSet("simniet", "[]"); const nep = {...S.state, besluiten: [{arc: "x", titel: "Testbesluit"}]}; const oud = S.state, mw = G.game.maatwerk; G.game.maatwerk = null; S.state = nep; const reden = simReden(v); S.state = oud; G.game.maatwerk = mw; /* een speciale opdracht pauzeert ook; hier testen we het besluit */
     const md = document.createElement("div"); md.className = "modal"; document.body.appendChild(md); const bezet = simBezet(); md.remove();
     const r = await Store.saveAs("Testpunt"); const L = await Store.slots(); const punt = L.find(x => x.gid === r.gid);
     return {m0, m1, stil: stil === na, reden: reden && reden.tekst, soort: reden && reden.soort, bezet, ok: r.ok, punt: punt && {label: punt.label, opslag: punt.opslag, datum: punt.datum}, nu: ym(G.game), knop: !!document.querySelector('[data-a="opslaan"]')}; }, tijd0.m);
@@ -590,8 +590,9 @@ const html = '<!doctype html><html><head><meta charset=utf8></head><body>' + fs.
     for (let i = 0; i < 30 && c.crisis; i++) crisisTick(c, ctx); const klaar = !c.crisis, opnieuw = (crisisTick(c, ctx), !!c.crisis);
     c.crisis = {id: "wo3", fase: 1, over: 5, conts: []}; c.aanvragen = []; window.kansRol = () => 0.3; aanvraagTick(c, Ctx()); const crisisOrder = c.aanvragen.some(a => a.crisis); delete c.crisis;
     window.kansRol = () => 0; delete c.hype; c.maanden = 30; hypeTick(c, ctx); const golf = !!(c.hype && PRODUCT_AARD[c.hype.aard]); window.kansRol = oudK;
-    const a = maakAanvraag(c, p.aard); if (!a) return {geen2: true}; a.soort = "leger"; a.aard = p.aard; a.pakket = null; maakPakket(c, a); const delen = pakketDelen(c, a), marge = pakketMarge(c, a), eigenAlles = delen.every(x => !x.onder);
-    return {f0, f1, geenDesign, start, fase0, wv, fase1, wv1, klaar, opnieuw, crisisOrder, golf, pakket: !!a.pakket && a.pakket.length >= 2, som: r1(a.pakket.reduce((t, x) => t + x.deel, 0)), marge, eigenAlles}; });
+    const a = maakAanvraag(c, p.aard); if (!a) return {geen2: true}; a.soort = "leger"; a.aard = p.aard; a.pakket = null; maakPakket(c, a); const delen = pakketDelen(c, a), eigenAlles = delen.every(x => !x.onder), geenAndere = PAKKET_COMBO.leger.filter(x => x !== p.aard && besteVanAard(c, x)).length === 0;
+    const b2 = {...a, id: "pk1", raam: false, bedrag: 5, verloopt: 3, pakket: [{aard: p.aard, deel: 0.5}, {aard: Object.keys(PRODUCT_AARD).find(x => !besteVanAard(c, x)) || "orbitaal", deel: 0.5}]}; c.aanvragen.push(b2); const geblokt = !actAanvraag(c, Ctx(), "pk1", "normaal").ok;
+    return {f0, f1, geenDesign, start, fase0, wv, fase1, wv1, klaar, opnieuw, crisisOrder, golf, pakket: !!a.pakket && a.pakket.length >= 2, som: a.pakket ? r1(a.pakket.reduce((t, x) => t + x.deel, 0)) : 1, eigenAlles, geenAndere, geblokt}; });
   const thema = await p.evaluate(async () => { const s = G.game, oud = JSON.parse(JSON.stringify(s.huisstijl || {})), cs = () => getComputedStyle(document.documentElement);
     await API["/api/huisstijl"]({thema: "ijs"}); render(); const bgIjs = cs().getPropertyValue("--bg").trim();
     await API["/api/huisstijl"]({eigen: {bg: "#101010", panel: "#203040", tekst: "#222222"}}); render(); const eigenBg = cs().getPropertyValue("--bg").trim(), tekst = cs().getPropertyValue("--text").trim();
@@ -599,8 +600,8 @@ const html = '<!doctype html><html><head><meta charset=utf8></head><body>' + fs.
     const fout = (await API["/api/huisstijl"]({font: "comic"}), s.huisstijl.font === "terminal");
     S.menuThema = true; toonMenu(); const menu = !!document.querySelector('.hmenu .themapaneel [data-a="hsthema"][data-t="synthwave"]'); sluitMenu(); S.menuThema = false;
     s.huisstijl = oud; render(); return {bgIjs, eigenBg, tekst, kl, fout, menu, hersteld: !cl.contains("ui-font-terminal")}; });
-  ok(u6.geen || u6.geen2 || (u6.f1 > u6.f0 && u6.geenDesign && u6.start === "wo3" && u6.fase0 === "Mobilisatie" && u6.wv === 25 && u6.fase1 === "Oorlog" && u6.wv1 === 60 && u6.klaar && !u6.opnieuw && u6.crisisOrder && u6.golf && u6.pakket && u6.som === 1 && (u6.eigenAlles || u6.marge < 0.45)),
-    "modegolf per soort, geen productontwerp meer, WO3 in fases met vraag en crisisorders, pakketcontracten met onderaanneming: " + JSON.stringify(u6));
+  ok(u6.geen || u6.geen2 || (u6.f1 > u6.f0 && u6.geenDesign && u6.start === "wo3" && u6.fase0 === "Mobilisatie" && u6.wv === 25 && u6.fase1 === "Oorlog" && u6.wv1 === 60 && u6.klaar && !u6.opnieuw && u6.crisisOrder && u6.golf && (u6.pakket ? u6.eigenAlles && u6.som === 1 : u6.geenAndere) && u6.geblokt),
+    "modegolf per soort, geen productontwerp meer, WO3 in fases met vraag en crisisorders, pakketcontracten alleen met eigen goederen: " + JSON.stringify(u6));
   ok(thema.bgIjs === "#020b14" && thema.eigenBg === "#101010" && thema.tekst && thema.tekst !== "#222222" && thema.kl && thema.fout && thema.menu && thema.hersteld,
     "thema van het spel: kant-en-klaar, eigen kleuren (tekst blijft leesbaar), lettertype, hoeken, dichtheid en effecten, ook via het menu: " + JSON.stringify(thema));
   console.log(log.join("\n")); console.log("FOUTEN OP DE PAGINA:", JSON.stringify(errs)); await b.close(); process.exit(log.some(l => l.startsWith("FOUT")) || errs.length ? 1 : 0);
