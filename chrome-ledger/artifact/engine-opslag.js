@@ -511,7 +511,7 @@ function vm(){
       vredeKans: peaceChance(s, r, 0), handelKans: tradeChance(s, r), handelBedrag: tradeAmount(s, r),
       districten: rivalDistricts(s, r).map(d => ({id: d.id, naam: d.kort || d.name, hq: d.id === r.hq, vraag: askPrice(s, r, d), bereik: reachable(s, "player", d)})),
       biedt: playerDistricts(s).filter(d => d.id !== s.player.home_district).map(d => ({id: d.id, naam: d.name, bod: bidPrice(s, r, d), kan: r.cash >= bidPrice(s, r, d)})),
-      acties: Object.entries(WAR).map(([key, w]) => ({key, label: w.label, uitleg: w.uitleg, kost: r1(w.kost * (DIFF[s.player.difficulty] || 1) * (relV(s, "fixer") >= 50 ? 0.8 : 1)), kans: warChance(s, r, w.mod)}))})),
+      acties: Object.entries(WAR).map(([key, w]) => ({key, label: w.label, uitleg: w.uitleg, kost: r1(w.kost * (DIFF[s.player.difficulty] || 1) * (relV(s, "fixer") >= 50 ? 0.8 : 1)), kans: warChance(s, r, w.mod, key), soort: WAR_SOORT[key]})), kracht: {jij: (({uit, ...k}) => k)(strijdkracht(s, "player")), zij: (({uit, ...k}) => k)(strijdkracht(s, r)), uitJij: strijdkracht(s, "player").uit, uitZij: strijdkracht(s, r).uit}})),
     macht: {speler: playerPower(s), defensie: s.defensie || 0, defkost: r1(15 * ((s.defensie || 0) + 1) * (DIFF[s.player.difficulty] || 1)), oorlogen: atWar(s).length},
     aanbiedingen: s.aanbiedingen.map(o => ({...o, districtNaam: o.district ? (s.districts.find(d => d.id === o.district) || {}).name : ""})),
     npcs: s.npcs.map(n => ({naam: n.name, rol: n.role, indruk: impression(n), key: "npc-" + slug(n.name)})),

@@ -177,7 +177,7 @@ const html = '<!doctype html><html><head><meta charset=utf8></head><body>' + fs.
   await p.evaluate(() => { window.__echt9 = crypto.getRandomValues; crypto.getRandomValues = a => { a[0] = 5; return a; }; });
   const kl = await p.evaluate(() => { const c = JSON.parse(JSON.stringify(G.game)), ctx = Ctx(); c.aanvragen = []; c.contracten = []; c.cash = 300;
     const oud = window.kansRol; window.kansRol = () => 0; aanvraagTick(c, ctx); window.kansRol = oud; const n1 = c.aanvragen.length, a0 = c.aanvragen[0];
-    if (a0) a0.minKwal = 1; c.reputation = 40; const k = a0 ? [aanvraagKans(c, a0, "laag"), aanvraagKans(c, a0, "normaal"), aanvraagKans(c, a0, "hoog")] : [];
+    if (a0){ a0.minKwal = 1; delete a0.pakket; delete a0.wens; delete a0.crisis; } c.reputation = 40; /* pakket en wens zijn toeval; hier testen we de prijzen */ const k = a0 ? [aanvraagKans(c, a0, "laag"), aanvraagKans(c, a0, "normaal"), aanvraagKans(c, a0, "hoog")] : [];
     const e = maakAanvraag(c); delete e.pakket; delete e.wens; for (const r of c.rivals) r.producten = (r.producten || []).filter(x => x.aard !== e.aard); e.raam = false; e.bedrag = 10; e.minKwal = 1; delete e.maanden; delete e.perMaand; e.soort = "staat"; c.aanvragen.push(e); const cash0 = c.cash, r1 = actAanvraag(c, ctx, e.id, "normaal"), winst = Math.round((c.cash - cash0) * 10) / 10;
     const f = maakAanvraag(c); delete f.pakket; f.raam = true; f.maanden = 6; f.perMaand = 4; delete f.bedrag; f.soort = "staat"; f.minKwal = 1; c.aanvragen.push(f); actAanvraag(c, ctx, f.id, "hoog"); const con = c.contracten.find(x => x.id === f.id);
     const cash1 = c.cash; window.kansRol = () => 0.99; aanvraagTick(c, Ctx()); const maand = Math.round((c.cash - cash1) * 10) / 10;
@@ -502,7 +502,7 @@ const html = '<!doctype html><html><head><meta charset=utf8></head><body>' + fs.
     const c = JSON.parse(JSON.stringify(G.game)), r = c.rivals[0]; r.sector = "Cyberware"; r.divs = {"Cyberware": 3, "Weapon Manufacturing": 1}; r.divReden = {}; r.sectorNet = false; r.producten = [{id: "x1", naam: "Raar Tank", aard: "wapen", kwaliteit: 3, pop: 50}, {id: "x2", naam: "Goed Oog", aard: "implantaat", kwaliteit: 3, pop: 50}];
     rivSectorOpruimen(c); const opgeruimd = !r.divs["Weapon Manufacturing"] && !r.producten.some(p => p.aard === "wapen") && Object.keys(r.divs).every(k => verwant(r, k));
     const pr = mkProduct(c, c.divisions[0], "Alleen Medisch", 4, 70); Object.assign(pr, {aard: "medisch", keuring: "ok"}); c.producten = [pr]; c.prodomzet = {[pr.id]: 20}; for (const q of c.rivals) q.producten = (q.producten || []).filter(x => x.aard !== "medisch");
-    r.cash = 900; r.expM = null; delete r.divs["Biotech"]; const oudR = RNG; RNG = () => 0; rivUitbreiding(c, r); RNG = oudR;
+    r.cash = 900; r.expM = null; delete r.divs["Biotech"]; for (const x of Object.values(c.vraag || {})) x.idx = 100; delete c.hype; delete c.crisis; /* geen toevallig hoge vraag elders */ const oudR = RNG; RNG = () => 0; rivUitbreiding(c, r); RNG = oudR;
     return {vakOk, opgeruimd, uitgebreid: !!r.divs["Biotech"], reden: (r.divReden || {})["Biotech"] || ""}; });
   ok(r86.vakOk && r86.opgeruimd && r86.uitgebreid && /alleen/.test(r86.reden), "8.6: rivalen starten in verwante sectoren, losse vreemde divisies (en hun producten) verdwijnen, en ze breiden uit met een reden (bv. jij hebt een markt alleen): " + JSON.stringify(r86));
   // 8.7/9.0 vakgebied en niveau: niet op slot, wel duurder; zeldzaamheid
@@ -584,7 +584,7 @@ const html = '<!doctype html><html><head><meta charset=utf8></head><body>' + fs.
     "productdiepgang en contracten: gerichte verbetering +2, wens telt mee in het bod, evaluatie biedt verlenging of uitbreiding, klacht met korting: " + JSON.stringify(pd));
   // 11.6 thema van het spel, modegolf, crises, pakketten
   const u6 = await p.evaluate(() => { const c = JSON.parse(JSON.stringify(G.game)), ctx = Ctx(), oudK = window.kansRol; c.cash = 900; const p = c.producten.find(x => x.status === "markt"); if (!p) return {geen: true};
-    const f0 = hypeF(c, p); c.hype = {aard: p.aard, f: 0.2, over: 3}; const f1 = hypeF(c, p); delete c.hype; const geenDesign = typeof DESIGN_STIJL === "undefined" && !actProduct(c, ctx, "design", {id: p.id, stijl: "neon"}).ok;
+    delete c.hype; const f0 = hypeF(c, p); c.hype = {aard: p.aard, f: 0.2, over: 3}; const f1 = hypeF(c, p); delete c.hype; const geenDesign = typeof DESIGN_STIJL === "undefined" && !actProduct(c, ctx, "design", {id: p.id, stijl: "neon"}).ok;
     window.kansRol = () => 0; c.maanden = 30; c.flags.crises_gehad = ["pandemie", "energie"]; delete c.crisis; crisisTick(c, ctx); const start = c.crisis && c.crisis.id, fase0 = crisisFase(c).naam, wv = crisisVraag(c, "wapen");
     for (let i = 0; i < 3; i++) crisisTick(c, ctx); const fase1 = crisisFase(c) && crisisFase(c).naam, wv1 = crisisVraag(c, "wapen");
     for (let i = 0; i < 30 && c.crisis; i++) crisisTick(c, ctx); const klaar = !c.crisis, opnieuw = (crisisTick(c, ctx), !!c.crisis);
@@ -620,5 +620,13 @@ const html = '<!doctype html><html><head><meta charset=utf8></head><body>' + fs.
       bouw = {voortgang: m.log.some(l => /Maand 1 klaar, nog 3/.test(l.tekst)), bij: /1 van de 4 maanden/.test((m.log.filter(l => l.wie === "Jij").slice(-1)[0] || {}).tekst || ""), lev: mwLevering(c, m), versneld: vs && !vs2 && m.over === o0 - 1 && c.cash < k0, st, balk}; }
     return {n, cap, vast, naar, tweede: q.id, bouw}; });
   ok(cmx.geen || (cmx.n === 12 && cmx.cap > 200 && cmx.vast > 0) && cmx.naar === cmx.tweede && (!cmx.bouw || (cmx.bouw.voortgang && cmx.bouw.bij && /^\d{4}-\d{2}$/.test(cmx.bouw.lev) && cmx.bouw.versneld && cmx.bouw.st.maandKost > 0 && cmx.bouw.st.bijLevering === 28 && cmx.bouw.balk)), "capaciteit zonder limiet (alleen steeds duurder), contracten zonder product naar het product met ruimte, bouw van een speciale opdracht toont echte voortgang en leverdatum: " + JSON.stringify(cmx));
+  // 11.11 strijdkracht: wat elke kant heeft telt
+  const sk = await p.evaluate(() => { const c = JSON.parse(JSON.stringify(G.game)); const r = c.rivals[0]; if (!r) return {geen: true};
+    const zet = (mijnDivs, mijnProd, rDivs, rProd) => { c.divisions = Object.entries(mijnDivs).map(([t, l]) => ({name: t, type: t, level: l})); c.producten = mijnProd.map((a, i) => ({id: "k" + i, naam: "K" + i, aard: a[0], kwaliteit: a[1], status: "markt", divisie: Object.keys(mijnDivs)[0], type: Object.keys(mijnDivs)[0], pop: 50}));
+      c.crew = []; c.defensie = 0; c.huurleger = null; c.patrouille = {}; r.divs = rDivs; r.producten = rProd.map(a => ({aard: a[0], kwaliteit: a[1], pop: 50})); r.defensie = 0; return {inname: warChance(c, r, 0, "overval"), sabotage: warChance(c, r, 0, "sabotage"), terug: Math.round(rivalHitChance(c, r, 0, "sabotage")), hunInname: Math.round(rivalHitChance(c, r, 0, "overval"))}; };
+    const laat = zet({"Weapon Manufacturing": 5, "Private Security": 3}, [["wapen", 4], ["wapen", 5], ["beveiliging", 4]], {"Smokkel": 5}, [["smokkel", 3], ["smokkel", 4]]);
+    const begin = zet({"Weapon Manufacturing": 1}, [], {"Smokkel": 1}, []);
+    const k = strijdkracht(c, r); return {laat, begin, uit: !!(k.uit && k.uit.heimelijk.length)}; });
+  ok(sk.geen || (sk.laat.inname >= 75 && sk.laat.hunInname <= 25 && sk.laat.sabotage < sk.laat.inname && sk.laat.terug > sk.laat.hunInname && sk.begin.inname >= 42 && sk.begin.inname <= 72 && sk.uit), "strijdkracht per soort: een wapenmacht neemt gebied in van een smokkelaar, die slaat terug met sabotage; aan het begin is het vooral geluk: " + JSON.stringify(sk));
   console.log(log.join("\n")); console.log("FOUTEN OP DE PAGINA:", JSON.stringify(errs)); await b.close(); process.exit(log.some(l => l.startsWith("FOUT")) || errs.length ? 1 : 0);
 })();

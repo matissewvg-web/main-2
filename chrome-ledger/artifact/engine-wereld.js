@@ -1,6 +1,6 @@
 /* Chrome Ledger engine, deel engine-wereld.js: wereld: kaart, zee, dominantie, eigen soorten, personeel, rivalen en acties. 7.4: de engine staat in zes bestanden die in deze volgorde laden (kern, wereld, leven, producten, gm, opslag); alles deelt dezelfde globale scope. */
 /* ---------- de stad: elke game een andere kaart ---------- */
-const VERSION = "11.10";
+const VERSION = "11.11";
 const MAP_W = 1000, MAP_H = 680;
 const RIVAL_COLORS = ["#ff9a1f", "#3d7bff", "#c6ff2e", "#f2f2f2", "#9b5cff", "#ffd400", "#ff4d4d"];
 const ARCH = {
@@ -376,8 +376,27 @@ function releaseDistricts(s, r, to = "neutral"){ for (const d of s.districts) if
 function relShift(r, v){ r.relatie = Math.round(clamp(r.relatie + v, -100, 100)); }
 function atWar(s){ return s.rivals.filter(r => r.status === "oorlog"); }
 
-function warChance(s, r, mod){ return snapKans(Math.round(clamp(50 + (playerPower(s) - rivalPower(s, r)) * 1.2 + mod + (s.flags.fixer_klus ? 15 : 0) + (s.flags["dossier_" + r.name] ? 15 : 0), 5, 90))); }
-function rivalHitChance(s, r, mod){ return clamp(50 + (rivalPower(s, r) - playerPower(s)) * 1.2 + mod, 10, 85); }
+/* 11.11: strijdkracht per soort in plaats van één machtsgetal. Wat elk bedrijf echt heeft telt: een wapenfabriek met een beveiligingsleger wint een open oorlog van een smokkelaar, maar die kan terugslaan met sabotage en hacks. Kansen hangen van de verhouding af, dus in het begin (als niemand veel heeft) is het vooral geluk. */
+const KRACHT_DIV = {militair: {"Private Security": 10, "Weapon Manufacturing": 7, "Orbitaal": 3, "Logistiek": 2}, heimelijk: {"Media & Data": 8, "Smokkel": 8, "Cyberware": 5, "Financieel": 2}, media: {"Media & Data": 8, "Financieel": 3}};
+const KRACHT_AARD = {wapen: ["militair", 3], beveiliging: ["militair", 2], implantaat: ["militair", 1], data: ["heimelijk", 2], smokkel: ["heimelijk", 2]};
+const KRACHT_LABEL = {militair: "Militair", heimelijk: "Heimelijk", media: "Media"};
+function strijdkracht(s, wie){ const P = wie === "player", r = P ? null : wie, k = {militair: 5, heimelijk: 5, media: 5}, uit = {militair: [], heimelijk: [], media: []}, add = (soort, v, wat) => { v = Math.round(v); if (!v) return; k[soort] += v; uit[soort].push([wat, v]); };
+  const divs = {}; if (P) for (const d of s.divisions) divs[d.type] = (divs[d.type] || 0) + d.level; else Object.assign(divs, r.divs || {});
+  for (const [soort, T] of Object.entries(KRACHT_DIV)) for (const [t, w] of Object.entries(T)) if (divs[t]) add(soort, divs[t] * w, `${t} niveau ${divs[t]}`);
+  const prods = P ? (s.producten || []).filter(p => p.status === "markt") : (r.producten || []);
+  const per = {}; for (const p of prods){ const aard = p.aard || aardVan(p.type, p.naam), x = KRACHT_AARD[aard]; if (x) per[x[0] + "|" + aard] = (per[x[0] + "|" + aard] || 0) + (p.kwaliteit || 1) * x[1]; }
+  for (const [key, v] of Object.entries(per)){ const [soort, aard] = key.split("|"); add(soort, v, `eigen ${PRODUCT_AARD[aard] ? PRODUCT_AARD[aard].label.toLowerCase() : aard} op de markt`); }
+  const def = P ? s.defensie || 0 : r.defensie || 0; if (def) add("militair", def * 8, `verdediging niveau ${def}`);
+  if (P){ const lm = legerMacht(s); if (lm) add("militair", lm, "huurleger"); const pt = patrouilles(s).length; if (pt) add("militair", pt * 3, `${pt} patrouille${pt === 1 ? "" : "s"}`);
+    for (const m of s.crew || []){ if (m.rol === "huurling") add("militair", (m.niveau || 1) * 2, `huurling ${m.naam}`); if (m.rol === "netrunner") add("heimelijk", (m.niveau || 1) * 3, `netrunner ${m.naam}`); if (m.rol === "spindokter") add("media", (m.niveau || 1) * 3, `spindokter ${m.naam}`); }
+    add("media", (s.reputation || 0) / 4, "reputatie"); add("militair", playerDistricts(s).length * 2, "eigen gebied (bases)"); }
+  else { add("militair", rivalDistricts(s, r).length * 2, "eigen gebied (bases)"); add("media", 8, "pr-afdeling"); }
+  return {...k, uit}; }
+const WAR_SOORT = {sabotage: "heimelijk", hack: "heimelijk", smaad: "media", overval: "militair", hq: "militair", straat: "militair"};
+const krachtVerdediging = (K, soort) => soort === "heimelijk" ? K.heimelijk * 0.7 + K.militair * 0.3 : K[soort]; /* beveiliging helpt ook tegen sabotage */
+const krachtKans = (A, D) => 45 * (A - D) / Math.max(1, A + D);
+function warChance(s, r, mod, kind = "overval"){ const soort = WAR_SOORT[kind] || "militair", A = strijdkracht(s, "player")[soort], D = krachtVerdediging(strijdkracht(s, r), soort) * (kind === "hq" ? 1.2 : 1); return snapKans(Math.round(clamp(50 + krachtKans(A, D) + mod + (s.flags.fixer_klus ? 15 : 0) + (s.flags["dossier_" + r.name] ? 15 : 0), 5, 90))); }
+function rivalHitChance(s, r, mod, kind = "overval"){ const soort = WAR_SOORT[kind] || "militair", A = strijdkracht(s, r)[soort], D = krachtVerdediging(strijdkracht(s, "player"), soort) * (kind === "overval" || kind === "straat" ? 1.1 : 1); return clamp(50 + krachtKans(A, D) + mod, 8, 88); }
 const WAR = {
   sabotage: {label: "Sabotage", uitleg: "Brand in een loods, kapotte machines, zendingen die verdwijnen.", kost: 5, mod: 0, heat: 4},
   hack: {label: "Hack", uitleg: "Hun klantdata stelen en verkopen. Hun klanten gaan twijfelen.", kost: 7, mod: -5, heat: 2},
@@ -408,11 +427,11 @@ function actWar(s, ctx, name, kind, districtId){
   if (w.district){ target = s.districts.find(d => d.id === districtId && d.control === r.name && d.id !== r.hq); if (!target) return {ok: false, msg: "Kies een district van hen (niet hun HQ)."};
     if (!reachable(s, "player", target)) return {ok: false, msg: `${target.name} grenst niet aan jouw gebied en ligt niet aan een zee die jij beheerst.`}; }
   if (kind === "hq"){ const hqd = s.districts.find(d => d.id === r.hq); if (hqd && !reachable(s, "player", hqd)) return {ok: false, msg: "Hun hoofdkantoor ligt buiten bereik. Je gebied moet eraan grenzen, of je moet de zee ervoor beheersen."}; }
-  if (kind === "hq" && rivalDistricts(s, r).length > 1 && rivalPower(s, r) > playerPower(s) * 0.8) return {ok: false, msg: "Hun HQ is nog te goed beschermd. Neem eerst hun andere districten in of verzwak hun macht."};
+  if (kind === "hq" && rivalDistricts(s, r).length > 1 && strijdkracht(s, r).militair > strijdkracht(s, "player").militair * 0.8) return {ok: false, msg: "Hun HQ is nog te goed beschermd. Neem eerst hun andere districten in of verzwak hun macht."};
   const kost = r1(w.kost * (DIFF[s.player.difficulty] || 1) * (relV(s, "fixer") >= 50 ? 0.8 : 1));
   if (s.cash < kost) return {ok: false, msg: `Niet genoeg cash (€${kost}M nodig).`};
   s.cash = r1(s.cash - kost);
-  const kans = warChance(s, r, w.mod), roll = rolKans(kans), ok = roll.ok;
+  const kans = warChance(s, r, w.mod, kind), roll = rolKans(kans), ok = roll.ok;
   addRoll(s, `${w.label} tegen ${r.name}: ${roll.txt} → ${ok ? "GELUKT" : "MISLUKT"}`); delete s.flags.fixer_klus; delete s.flags["dossier_" + r.name];
   s.heat = clamp(s.heat + (ok ? w.heat : w.heat / 2)); s.reputation = clamp(s.reputation - 1); relShift(r, -8);
   let msg;
@@ -610,13 +629,13 @@ function rivalAI(s, ctx, diff){
     // status
     if (r.status === "wapenstilstand" && --r.statusMaanden <= 0){ r.status = "vrede"; mail(ctx, s, "Juridische Zaken", `Wapenstilstand met ${r.name} voorbij`, "De wapenstilstand is afgelopen. Formeel is het vrede. In de praktijk is het afwachten."); }
     if (r.status === "oorlog"){
-      r.statusMaanden += 1; r.moeheid = clamp(r.moeheid + 6 + (playerPower(s) > rivalPower(s, r) ? 4 : 0));
+      r.statusMaanden += 1; r.moeheid = clamp(r.moeheid + 6 + (strijdkracht(s, "player").militair > strijdkracht(s, r).militair ? 4 : 0));
       if (r.cash > 60 && r.defensie < 5 && R() < 0.3){ r.defensie += 1; r.cash = r1(r.cash - 25); }
       // aanvallen
       if (R() < 0.35 + r.aggression * 0.3){
         const opts = ["sabotage", "hack", "smaad"]; const mine = playerDistricts(s).filter(d => d.id !== s.player.home_district && reachable(s, r.name, d));
         if (mine.length) opts.push("overval");
-        const kind = CH(opts), w = WAR[kind], kans = rivalHitChance(s, r, w.mod), hit = R() * 100 < kans;
+        const kind = CH(opts), w = WAR[kind], kans = rivalHitChance(s, r, w.mod, kind), hit = R() * 100 < kans;
         r.cash = r1(r.cash - w.kost * 0.7);
         if (hit){
           let txt;
@@ -654,7 +673,7 @@ function rivalAI(s, ctx, diff){
   // rivalen onderling
   if (s.rivals.length >= 2 && R() < 0.05){
     const [a, b] = [...s.rivals].sort(() => R() - 0.5), loot = rivalDistricts(s, b).filter(d => d.id !== b.hq);
-    if (loot.length && rivalPower(s, a) > rivalPower(s, b) * 0.9){ const d = CH(loot); d.control = a.name;
+    if (loot.length && R() * 100 < 50 + krachtKans(strijdkracht(s, a).militair, strijdkracht(s, b).militair * 1.1)){ /* 11.11: wie militair sterker is, wint meestal */ const d = CH(loot); d.control = a.name;
       news(s, `${a.name} neemt ${d.name} over van ${b.name}`, `Een stille oorlog tussen ${a.name} en ${b.name} kost ${b.name} een gebied. Niemand wil commentaar geven.`, d.continent, "oorlog"); ctx.rep.push(`${a.name} neemt ${d.name} van ${b.name}`); }
   }
   // oorlog vreet aan je eigen mensen
