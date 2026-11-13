@@ -126,6 +126,7 @@ Audit (11 nov, 22u), gemeten en niet geschat:
 | 3c | 11.5 ✓ | (wens 12 nov) Productdiepgang (wensen op eigenschappen, gerichte verbetering), diepere contracten (evaluaties), speciale opdrachten 8% | 1 |
 | 3d | 11.6 ✓ | (wens 13 nov) Wereldcrises in fases (WO3, pandemie, energie), modegolven (dynamische vraag), pakketcontracten | 1 |
 | 3e | 11.7 ✓ | (wens 13 nov, ‘custom designs’ bleek het thema van het spel te zijn) Productontwerp eruit; thema's, eigen kleuren, lettertype, hoeken, dichtheid, effecten | 1 |
+| 3f | 11.8 ✓ | (bug 13 nov) Capaciteit-autopilot liep vast op 130: maximum per divisieniveau, terugbetaling, contracten verdeeld | 1 |
 | 4 | 12.1 | Speltest door de speler op de gsm: wat valt nog op? Alleen fouten en gemak oplossen | 1 |
 | 5 | 12.2 | Eindcontrole: alle tests (ook mobiel.js), botruns op 3 moeilijkheden zonder paginafouten, oude saves (2002, 2009) laden, export/import, opslaan/laden online en in de browser | 1 |
 | 6 | 12.3 | Release 12.0: versienotities samenvatten (wat het spel is, in één blok), README ‘hoe speel je’, VERSION 12.0 | 1 |
