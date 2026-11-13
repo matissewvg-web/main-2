@@ -604,5 +604,10 @@ const html = '<!doctype html><html><head><meta charset=utf8></head><body>' + fs.
     "modegolf per soort, geen productontwerp meer, WO3 in fases met vraag en crisisorders, pakketcontracten alleen met eigen goederen: " + JSON.stringify(u6));
   ok(thema.bgIjs === "#020b14" && thema.eigenBg === "#101010" && thema.tekst && thema.tekst !== "#222222" && thema.kl && thema.fout && thema.menu && thema.hersteld,
     "thema van het spel: kant-en-klaar, eigen kleuren (tekst blijft leesbaar), lettertype, hoeken, dichtheid en effecten, ook via het menu: " + JSON.stringify(thema));
+  // 11.7 huisstijl staat niet altijd open
+  const hsd = await p.evaluate(async () => { const open = () => !!(document.querySelector("details.huisstijl") || {}).open; S.hsOpen = false;
+    S.menuThema = true; toonMenu(); document.querySelector('.hmenu [data-a="hsui"][data-k="dichtheid"][data-v="normaal"]').click(); await new Promise(r => setTimeout(r, 300)); sluitMenu(); S.menuThema = false;
+    goView("bedrijf"); const naMenu = open(); hsOpenZet(); render(); const zelf = open(); goView("overzicht"); goView("bedrijf"); const naWissel = open(); return {naMenu, zelf, naWissel}; });
+  ok(!hsd.naMenu && hsd.zelf && !hsd.naWissel, "huisstijl op Bedrijf staat dicht, ook na een themawijziging via het menu; open terwijl je ermee bezig bent: " + JSON.stringify(hsd));
   console.log(log.join("\n")); console.log("FOUTEN OP DE PAGINA:", JSON.stringify(errs)); await b.close(); process.exit(log.some(l => l.startsWith("FOUT")) || errs.length ? 1 : 0);
 })();
