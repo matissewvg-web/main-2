@@ -178,8 +178,8 @@ const html = '<!doctype html><html><head><meta charset=utf8></head><body>' + fs.
   const kl = await p.evaluate(() => { const c = JSON.parse(JSON.stringify(G.game)), ctx = Ctx(); c.aanvragen = []; c.contracten = []; c.cash = 300;
     const oud = window.kansRol; window.kansRol = () => 0; aanvraagTick(c, ctx); window.kansRol = oud; const n1 = c.aanvragen.length, a0 = c.aanvragen[0];
     if (a0) a0.minKwal = 1; c.reputation = 40; const k = a0 ? [aanvraagKans(c, a0, "laag"), aanvraagKans(c, a0, "normaal"), aanvraagKans(c, a0, "hoog")] : [];
-    const e = maakAanvraag(c); for (const r of c.rivals) r.producten = (r.producten || []).filter(x => x.aard !== e.aard); e.raam = false; e.bedrag = 10; e.minKwal = 1; delete e.maanden; delete e.perMaand; e.soort = "staat"; c.aanvragen.push(e); const cash0 = c.cash, r1 = actAanvraag(c, ctx, e.id, "normaal"), winst = Math.round((c.cash - cash0) * 10) / 10;
-    const f = maakAanvraag(c); f.raam = true; f.maanden = 6; f.perMaand = 4; delete f.bedrag; f.soort = "staat"; f.minKwal = 1; c.aanvragen.push(f); actAanvraag(c, ctx, f.id, "hoog"); const con = c.contracten.find(x => x.id === f.id);
+    const e = maakAanvraag(c); delete e.pakket; delete e.wens; for (const r of c.rivals) r.producten = (r.producten || []).filter(x => x.aard !== e.aard); e.raam = false; e.bedrag = 10; e.minKwal = 1; delete e.maanden; delete e.perMaand; e.soort = "staat"; c.aanvragen.push(e); const cash0 = c.cash, r1 = actAanvraag(c, ctx, e.id, "normaal"), winst = Math.round((c.cash - cash0) * 10) / 10;
+    const f = maakAanvraag(c); delete f.pakket; f.raam = true; f.maanden = 6; f.perMaand = 4; delete f.bedrag; f.soort = "staat"; f.minKwal = 1; c.aanvragen.push(f); actAanvraag(c, ctx, f.id, "hoog"); const con = c.contracten.find(x => x.id === f.id);
     const cash1 = c.cash; window.kansRol = () => 0.99; aanvraagTick(c, Ctx()); const maand = Math.round((c.cash - cash1) * 10) / 10;
     for (const p of c.producten) if ((p.aard || aardVan(p.type, p.naam)) === f.aard) p.status = "teruggeroepen"; const rep0 = c.reputation; const ctx4 = Ctx(); aanvraagTick(c, ctx4); window.kansRol = oud;
     return {n1, k, r1: r1.ok, winst, con: con ? {perMaand: con.perMaand, over: con.over} : null, maand, verbroken: ctx4.rep.some(x => /verbroken/.test(x)), repDaling: Math.round((rep0 - c.reputation) * 10) / 10, over: c.contracten.length}; });
@@ -582,5 +582,20 @@ const html = '<!doctype html><html><head><meta charset=utf8></head><body>' + fs.
     window.kansRol = oudK; return {v0, v1, r: r.ok, dubbel, bOk, bNee, b0, soort, res, k2, korting: con2.perMaand, kr: kr.ok, nogeens}; });
   ok(pd.geen || (pd.r && !pd.dubbel && pd.v1 === Math.min(10, pd.v0 + 2) && pd.bOk === pd.b0 + 8 && pd.bNee < pd.b0 && (pd.soort === "verlengen" ? pd.res.langer : pd.soort === "uitbreiden" ? pd.res.meer : true) && pd.k2 === "klacht" && pd.korting === 1.8 && pd.kr && !pd.nogeens),
     "productdiepgang en contracten: gerichte verbetering +2, wens telt mee in het bod, evaluatie biedt verlenging of uitbreiding, klacht met korting: " + JSON.stringify(pd));
+  // 11.6 uiterlijk, modegolf, crises, pakketten
+  const u6 = await p.evaluate(() => { const c = JSON.parse(JSON.stringify(G.game)), ctx = Ctx(), oudK = window.kansRol; c.cash = 900; const p = c.producten.find(x => x.status === "markt"); if (!p) return {geen: true};
+    const st = Object.keys(DESIGN_STIJL).find(x => DESIGN_STIJL[x].aard.includes(p.aard)) || "chrome", f0 = designF(c, p), k0 = c.cash, d = actProduct(c, ctx, "design", {id: p.id, stijl: st, kleur: "#112233", accent: "#ffcc00"}), betaald = r1(k0 - c.cash), f1 = designF(c, p);
+    const kleur = actProduct(c, ctx, "design", {id: p.id, stijl: st, kleur: "#445566"}), gratis = r1(k0 - c.cash) === betaald, kl = p.design.kleur;
+    c.hype = {stijl: st, aard: null, f: 0.2, over: 3}; const f2 = designF(c, p); delete c.hype;
+    window.kansRol = () => 0; c.maanden = 30; c.history = c.history || []; c.flags.crises_gehad = ["pandemie", "energie"]; delete c.crisis; crisisTick(c, ctx); const start = c.crisis && c.crisis.id, fase0 = crisisFase(c).naam, wv = crisisVraag(c, "wapen");
+    for (let i = 0; i < 3; i++) crisisTick(c, ctx); const fase1 = crisisFase(c) && crisisFase(c).naam, wv1 = crisisVraag(c, "wapen");
+    for (let i = 0; i < 30 && c.crisis; i++) crisisTick(c, ctx); const klaar = !c.crisis, opnieuw = (crisisTick(c, ctx), !!c.crisis);
+    c.crisis = {id: "wo3", fase: 1, over: 5, conts: []}; c.aanvragen = []; window.kansRol = () => 0.3; const kr = Ctx(); aanvraagTick(c, kr); const crisisOrder = c.aanvragen.some(a => a.crisis); delete c.crisis;
+    window.kansRol = oudK;
+    const a = maakAanvraag(c, p.aard); if (!a) return {geen2: true}; a.soort = "leger"; a.aard = p.aard; a.pakket = null; maakPakket(c, a); const delen = pakketDelen(c, a), marge = pakketMarge(c, a), eigenAlles = delen.every(x => !x.onder);
+    return {st, f0, f1, f2, d: d.ok, betaald, kleur: kleur.ok, gratis, kl, start, fase0, wv, fase1, wv1, klaar, opnieuw, crisisOrder, pakket: !!a.pakket && a.pakket.length >= 2, som: r1(a.pakket.reduce((t, x) => t + x.deel, 0)), marge, eigenAlles}; });
+  const u6UI = await p.evaluate(() => { const p = G.game.producten.find(x => x.status === "markt"); if (!p) return true; S.view = "bedrijf"; (S.prodTab ??= {})[p.id] = "uiterlijk"; S.prodSheet = p.id; render(); const html = document.querySelector("main").innerHTML; delete S.prodTab[p.id]; S.prodSheet = null; return /<svg[^>]*aria-label="Uiterlijk/.test(html); });
+  ok(u6.geen || u6.geen2 || (u6.d && u6.betaald > 0 && u6.f1 > u6.f0 && u6.kleur && u6.gratis && u6.kl === "#445566" && u6.f2 > u6.f1 && u6.start === "wo3" && u6.fase0 === "Mobilisatie" && u6.wv === 25 && u6.fase1 === "Oorlog" && u6.wv1 === 60 && u6.klaar && !u6.opnieuw && u6.crisisOrder && u6.pakket && u6.som === 1 && (u6.eigenAlles || u6.marge < 0.45)) && u6UI,
+    "uiterlijk (stijl kost geld, kleuren gratis, past = +5%, modegolf), WO3 in fases met vraag en crisisorders, pakketcontracten met onderaanneming: " + JSON.stringify(u6) + " ui " + u6UI);
   console.log(log.join("\n")); console.log("FOUTEN OP DE PAGINA:", JSON.stringify(errs)); await b.close(); process.exit(log.some(l => l.startsWith("FOUT")) || errs.length ? 1 : 0);
 })();

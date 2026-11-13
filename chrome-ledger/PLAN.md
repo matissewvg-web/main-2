@@ -124,6 +124,7 @@ Audit (11 nov, 22u), gemeten en niet geschat:
 | 3 | 12.0c ✓ (11.2) | Opslaanknop in de kop, scroll/menu/opengeklapte blokken blijven staan, compactere gsm-kop, spellenlijst raakt niet meer leeg | 1 |
 | 3b | 11.4 ✓ | (wens 12 nov) Speciale opdrachten: zeldzaam maatwerk dat over maanden loopt via gesprekken, daarna in het assortiment | 1 |
 | 3c | 11.5 ✓ | (wens 12 nov) Productdiepgang (wensen op eigenschappen, gerichte verbetering), diepere contracten (evaluaties), speciale opdrachten 8% | 1 |
+| 3d | 11.6 ✓ | (wens 13 nov) Uiterlijk van producten, wereldcrises in fases (WO3, pandemie, energie), modegolven (dynamische vraag), pakketcontracten | 1 |
 | 4 | 12.1 | Speltest door de speler op de gsm: wat valt nog op? Alleen fouten en gemak oplossen | 1 |
 | 5 | 12.2 | Eindcontrole: alle tests (ook mobiel.js), botruns op 3 moeilijkheden zonder paginafouten, oude saves (2002, 2009) laden, export/import, opslaan/laden online en in de browser | 1 |
 | 6 | 12.3 | Release 12.0: versienotities samenvatten (wat het spel is, in één blok), README ‘hoe speel je’, VERSION 12.0 | 1 |

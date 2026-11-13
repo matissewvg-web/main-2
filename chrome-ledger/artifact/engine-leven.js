@@ -1040,6 +1040,54 @@ function specialTick(s, ctx){
   const k = e.keuze(s); k.soort = "special_" + e.id; addKeuze(s, ctx, k);
 }
 
+/* 11.6: grote crises in fases (zoals een derde wereldoorlog). Zeldzaam (±1,5% per maand na twee jaar, elke crisis één keer per spel). Elke fase duurt maanden en verschuift de vraag, grondstoffen, de spanning en wie er bij je komt bestellen. */
+const CRISES = {
+  wo3: {naam: "De Derde Wereldoorlog", fases: [
+    {naam: "Mobilisatie", maanden: 3, tekst: "Grenzen gaan dicht, reservisten worden opgeroepen, beurzen trillen. Iedereen weet wat er komt.", vraag: {wapen: 25, beveiliging: 15, consument: -8}, gs: {staal: 0.15, brandstof: 0.2}, spanning: 60, orders: ["wapen", "beveiliging"]},
+    {naam: "Oorlog", maanden: 8, tekst: "Twee machtsblokken in open oorlog. Fabrieken draaien voor het front, havens liggen onder vuur, en elk leger koopt wat het krijgen kan.", vraag: {wapen: 60, beveiliging: 35, medisch: 25, logistiek: -15, consument: -25, financieel: -20, orbitaal: 15}, gs: {staal: 0.4, brandstof: 0.5, chips: 0.3, zeldzaam: 0.35}, spanning: 85, orders: ["wapen", "beveiliging", "medisch", "logistiek"]},
+    {naam: "Wapenstilstand", maanden: 3, tekst: "Een fragiel bestand. Niemand vertrouwt het, iedereen telt de doden en de schulden.", vraag: {wapen: 10, medisch: 20, logistiek: 10}, gs: {brandstof: 0.15}, spanning: 55, orders: ["medisch", "logistiek"]},
+    {naam: "Wederopbouw", maanden: 8, tekst: "Steden, havens en netwerken moeten opnieuw. Wie bouwt, verdient; wie wapens maakt, zoekt nieuwe klanten.", vraag: {logistiek: 30, consument: 15, medisch: 15, financieel: 10, data: 10, wapen: -20}, gs: {staal: 0.2}, spanning: 0, orders: ["logistiek", "data"]}],
+    keuze: s => ({van: "Raad van Bestuur", titel: "Oorlog: aan welke kant staan we?", tekst: "De wereld kiest kamp. Wij ook, of juist niet. Wat we nu doen, onthoudt men na de oorlog.", opties: [
+      {label: "Eén blok steunen", uitleg: "Overheid +10, reputatie +4, politie +4.", eff: {factions: {stad: 10, politie: 4}, reputation: 4}},
+      {label: "Leveren aan wie betaalt", uitleg: "+€15M zwart, heat +8, reputatie −4.", eff: {zwart: 15, heat: 8, reputation: -4}},
+      {label: "Geen rol in deze oorlog", uitleg: "Reputatie +8, de straat +6.", eff: {reputation: 8, factions: {straat: 6}}}], standaard: 0})},
+  pandemie: {naam: "De Grote Pandemie", fases: [
+    {naam: "Uitbraak", maanden: 2, tekst: "Een nieuw virus springt van stad naar stad. Ziekenhuizen lopen vol, aandelen niet.", vraag: {medisch: 40, consument: -15, logistiek: -8}, gs: {biogel: 0.3, chemie: 0.2}, spanning: 40, orders: ["medisch"]},
+    {naam: "Lockdowns", maanden: 5, tekst: "Steden op slot, grenzen dicht. Alles gaat via het net; alles wat aangeraakt moet worden, staat stil.", vraag: {medisch: 60, data: 25, beveiliging: 10, consument: -35, logistiek: -20}, gs: {biogel: 0.5, chemie: 0.35, chips: 0.15}, spanning: 50, orders: ["medisch", "data", "beveiliging"]},
+    {naam: "Het vaccin", maanden: 3, tekst: "Er is een vaccin, en een gevecht om wie het eerst krijgt.", vraag: {medisch: 30, logistiek: 15, consument: 10}, gs: {biogel: 0.2}, spanning: 35, orders: ["medisch", "logistiek"]},
+    {naam: "Herstel", maanden: 4, tekst: "De straten lopen weer vol. Mensen willen uitgeven wat ze opspaarden.", vraag: {consument: 25, logistiek: 15, financieel: 10}, gs: {}, spanning: 0, orders: ["logistiek"]}],
+    keuze: s => ({van: "COO", titel: "De pandemie: wat doen we?", tekst: "We kunnen onze fabrieken omzetten, onze mensen thuis laten werken, of doordraaien alsof er niets is.", opties: [
+      {label: "Productie omzetten voor de zorg · €8M", kost: 8, uitleg: "Reputatie +8, overheid +6.", eff: {reputation: 8, factions: {stad: 6}}},
+      {label: "Thuiswerken", uitleg: "Morale +6, €4M minder omzet.", eff: {morale: 6, cash: -4}},
+      {label: "Doordraaien", uitleg: "+€6M, morale −8, vakbond −8.", eff: {cash: 6, morale: -8, factions: {vakbond: -8}}}], standaard: 1})},
+  energie: {naam: "De Energiecrisis", fases: [
+    {naam: "Tekorten", maanden: 4, tekst: "Pijpleidingen dicht, centrales stil. Stroom wordt rantsoen, brandstof goud.", vraag: {logistiek: -20, data: -15, orbitaal: 20, beveiliging: 10, consument: -10}, gs: {brandstof: 0.8, lithium: 0.4}, spanning: 55, orders: ["logistiek", "beveiliging"]},
+    {naam: "Rantsoenering", maanden: 4, tekst: "Overheden verdelen stroom per wijk. Wie eigen opwekking heeft, is koning.", vraag: {logistiek: -10, data: -10, orbitaal: 25, smokkel: 20}, gs: {brandstof: 0.5, lithium: 0.5}, spanning: 50, orders: ["orbitaal", "smokkel"]},
+    {naam: "Nieuwe bronnen", maanden: 4, tekst: "Zonnevelden in de woestijn, fusie-experimenten, orbitale spiegels. De crisis ebt weg.", vraag: {orbitaal: 15, data: 10, logistiek: 10}, gs: {lithium: 0.2}, spanning: 0, orders: ["orbitaal", "data"]}],
+    keuze: s => ({van: "CFO", titel: "Energiecrisis: eigen stroom?", tekst: "We kunnen eigen opwekking kopen, op de markt blijven gokken, of brandstof hamsteren en doorverkopen.", opties: [
+      {label: "Eigen opwekking · €12M", kost: 12, uitleg: "12 maanden +€1,8M per maand.", eff: {stream: {naam: "Eigen opwekking", bedrag: 1.8, maanden: 12}}},
+      {label: "Hamsteren en doorverkopen", uitleg: "+€8M zwart, heat +5.", eff: {zwart: 8, heat: 5}},
+      {label: "Afwachten", uitleg: "", eff: {}}], standaard: 2})}};
+const CRISIS_KANS = 0.015;
+const crisisFase = s => { const c = s.crisis; if (!c || !CRISES[c.id]) return null; return CRISES[c.id].fases[c.fase] || null; };
+const crisisVraag = (s, aard) => { const f = crisisFase(s); return f ? (f.vraag[aard] || 0) : 0; };
+function crisisTick(s, ctx){ const c = s.crisis;
+  if (!c){ const had = s.flags.crises_gehad || []; if (maandenGespeeld(s) < 24 || kansRol() >= CRISIS_KANS) return; const L = Object.keys(CRISES).filter(k => !had.includes(k)); if (!L.length) return;
+    const id = CH(L), C = CRISES[id]; (s.flags.crises_gehad ??= []).push(id); s.crisis = {id, fase: 0, over: C.fases[0].maanden, sinds: ym(s), conts: [...CONTINENTS].sort(() => R() - 0.5).slice(0, 4).map(x => x.naam)};
+    const F = C.fases[0]; news(s, `${C.naam}: ${F.naam}`, F.tekst, "", "special", true); mail(ctx, s, "Strategie", `${C.naam}`, `${F.tekst} Dit gaat maanden duren, in fases. Wat het betekent voor de vraag, staat bij Wereld en op je overzicht.`, "KRITIEK"); ctx.rep.push(`Wereldcrisis: ${C.naam}`);
+    const k = C.keuze(s); k.soort = "crisis_" + id; addKeuze(s, ctx, k); crisisToepassen(s); return; }
+  c.over -= 1; if (c.over > 0){ crisisToepassen(s); return; }
+  const C = CRISES[c.id]; c.fase += 1; if (c.fase >= C.fases.length){ news(s, `${C.naam} is voorbij`, "De wereld haalt adem. Wat blijft, zijn de littekens en de nieuwe eigenaars.", "", "special", true); ctx.rep.push(`${C.naam} voorbij`); delete s.crisis; return; }
+  const F = C.fases[c.fase]; c.over = F.maanden; news(s, `${C.naam}: ${F.naam}`, F.tekst, "", "special", true); mail(ctx, s, "Strategie", `${C.naam}: ${F.naam}`, F.tekst, "HOOG"); ctx.rep.push(`${C.naam}: ${F.naam}`); crisisToepassen(s); }
+function crisisToepassen(s){ const F = crisisFase(s); if (!F) return; const sch = (s.gsSchok ??= {}); for (const [m, v] of Object.entries(F.gs || {})) sch[m] = Math.max(sch[m] || 0, v);
+  if (F.spanning) for (const cn of s.crisis.conts || []) if (s.spanning && s.spanning[cn] != null) s.spanning[cn] = Math.max(s.spanning[cn], s.spanning[cn] + (F.spanning - s.spanning[cn]) * 0.35); }
+/* 11.6: modegolven. Af en toe wordt een uiterlijk populair (soms alleen voor één soort product): 4 tot 8 maanden +12 tot 20% verkoop voor producten in die stijl. */
+function hypeTick(s, ctx){ const h = s.hype; if (h){ h.over -= 1; if (h.over <= 0){ news(s, `De ${DESIGN_STIJL[h.stijl].label.toLowerCase()}-golf is voorbij`, "Wat vorige maand nog overal was, ligt nu in de uitverkoop.", "", "markt", false); delete s.hype; } return; }
+  if (maandenGespeeld(s) < 4 || kansRol() >= 0.1) return; const st = CH(Object.keys(DESIGN_STIJL).filter(x => x !== "standaard")), aarden = DESIGN_STIJL[st].aard, aard = aarden.length && R() < 0.6 ? CH(aarden) : null;
+  s.hype = {stijl: st, aard, f: r1(U(0.12, 0.2) * 100) / 100, over: RI(4, 8), sinds: ym(s)}; const wat = aard ? PRODUCT_AARD[aard].label.toLowerCase() : "alles";
+  news(s, `Modegolf: ${DESIGN_STIJL[st].label.toLowerCase()} is in`, `${DESIGN_STIJL[st].uitleg} Ineens wil iedereen het, bij ${wat}. Hoe lang het duurt, weet niemand.`, "", "markt", true);
+  ctx.rep.push(`Modegolf: ${DESIGN_STIJL[st].label.toLowerCase()} (${wat}, +${Math.round(s.hype.f * 100)}%)`); }
+
 function migrate20(s){
   if (!s.player || !s.districts) return;
   s.crew ??= []; s.huurmarkt ??= []; s.klussen ??= []; s.huurleger ??= null; s.netwerk_namen ??= {};
