@@ -582,20 +582,26 @@ const html = '<!doctype html><html><head><meta charset=utf8></head><body>' + fs.
     window.kansRol = oudK; return {v0, v1, r: r.ok, dubbel, bOk, bNee, b0, soort, res, k2, korting: con2.perMaand, kr: kr.ok, nogeens}; });
   ok(pd.geen || (pd.r && !pd.dubbel && pd.v1 === Math.min(10, pd.v0 + 2) && pd.bOk === pd.b0 + 8 && pd.bNee < pd.b0 && (pd.soort === "verlengen" ? pd.res.langer : pd.soort === "uitbreiden" ? pd.res.meer : true) && pd.k2 === "klacht" && pd.korting === 1.8 && pd.kr && !pd.nogeens),
     "productdiepgang en contracten: gerichte verbetering +2, wens telt mee in het bod, evaluatie biedt verlenging of uitbreiding, klacht met korting: " + JSON.stringify(pd));
-  // 11.6 uiterlijk, modegolf, crises, pakketten
+  // 11.6 thema van het spel, modegolf, crises, pakketten
   const u6 = await p.evaluate(() => { const c = JSON.parse(JSON.stringify(G.game)), ctx = Ctx(), oudK = window.kansRol; c.cash = 900; const p = c.producten.find(x => x.status === "markt"); if (!p) return {geen: true};
-    const st = Object.keys(DESIGN_STIJL).find(x => DESIGN_STIJL[x].aard.includes(p.aard)) || "chrome", f0 = designF(c, p), k0 = c.cash, d = actProduct(c, ctx, "design", {id: p.id, stijl: st, kleur: "#112233", accent: "#ffcc00"}), betaald = r1(k0 - c.cash), f1 = designF(c, p);
-    const kleur = actProduct(c, ctx, "design", {id: p.id, stijl: st, kleur: "#445566"}), gratis = r1(k0 - c.cash) === betaald, kl = p.design.kleur;
-    c.hype = {stijl: st, aard: null, f: 0.2, over: 3}; const f2 = designF(c, p); delete c.hype;
-    window.kansRol = () => 0; c.maanden = 30; c.history = c.history || []; c.flags.crises_gehad = ["pandemie", "energie"]; delete c.crisis; crisisTick(c, ctx); const start = c.crisis && c.crisis.id, fase0 = crisisFase(c).naam, wv = crisisVraag(c, "wapen");
+    const f0 = hypeF(c, p); c.hype = {aard: p.aard, f: 0.2, over: 3}; const f1 = hypeF(c, p); delete c.hype; const geenDesign = typeof DESIGN_STIJL === "undefined" && !actProduct(c, ctx, "design", {id: p.id, stijl: "neon"}).ok;
+    window.kansRol = () => 0; c.maanden = 30; c.flags.crises_gehad = ["pandemie", "energie"]; delete c.crisis; crisisTick(c, ctx); const start = c.crisis && c.crisis.id, fase0 = crisisFase(c).naam, wv = crisisVraag(c, "wapen");
     for (let i = 0; i < 3; i++) crisisTick(c, ctx); const fase1 = crisisFase(c) && crisisFase(c).naam, wv1 = crisisVraag(c, "wapen");
     for (let i = 0; i < 30 && c.crisis; i++) crisisTick(c, ctx); const klaar = !c.crisis, opnieuw = (crisisTick(c, ctx), !!c.crisis);
-    c.crisis = {id: "wo3", fase: 1, over: 5, conts: []}; c.aanvragen = []; window.kansRol = () => 0.3; const kr = Ctx(); aanvraagTick(c, kr); const crisisOrder = c.aanvragen.some(a => a.crisis); delete c.crisis;
-    window.kansRol = oudK;
+    c.crisis = {id: "wo3", fase: 1, over: 5, conts: []}; c.aanvragen = []; window.kansRol = () => 0.3; aanvraagTick(c, Ctx()); const crisisOrder = c.aanvragen.some(a => a.crisis); delete c.crisis;
+    window.kansRol = () => 0; delete c.hype; c.maanden = 30; hypeTick(c, ctx); const golf = !!(c.hype && PRODUCT_AARD[c.hype.aard]); window.kansRol = oudK;
     const a = maakAanvraag(c, p.aard); if (!a) return {geen2: true}; a.soort = "leger"; a.aard = p.aard; a.pakket = null; maakPakket(c, a); const delen = pakketDelen(c, a), marge = pakketMarge(c, a), eigenAlles = delen.every(x => !x.onder);
-    return {st, f0, f1, f2, d: d.ok, betaald, kleur: kleur.ok, gratis, kl, start, fase0, wv, fase1, wv1, klaar, opnieuw, crisisOrder, pakket: !!a.pakket && a.pakket.length >= 2, som: r1(a.pakket.reduce((t, x) => t + x.deel, 0)), marge, eigenAlles}; });
-  const u6UI = await p.evaluate(() => { const p = G.game.producten.find(x => x.status === "markt"); if (!p) return true; S.view = "bedrijf"; (S.prodTab ??= {})[p.id] = "uiterlijk"; S.prodSheet = p.id; render(); const html = document.querySelector("main").innerHTML; delete S.prodTab[p.id]; S.prodSheet = null; return /<svg[^>]*aria-label="Uiterlijk/.test(html); });
-  ok(u6.geen || u6.geen2 || (u6.d && u6.betaald > 0 && u6.f1 > u6.f0 && u6.kleur && u6.gratis && u6.kl === "#445566" && u6.f2 > u6.f1 && u6.start === "wo3" && u6.fase0 === "Mobilisatie" && u6.wv === 25 && u6.fase1 === "Oorlog" && u6.wv1 === 60 && u6.klaar && !u6.opnieuw && u6.crisisOrder && u6.pakket && u6.som === 1 && (u6.eigenAlles || u6.marge < 0.45)) && u6UI,
-    "uiterlijk (stijl kost geld, kleuren gratis, past = +5%, modegolf), WO3 in fases met vraag en crisisorders, pakketcontracten met onderaanneming: " + JSON.stringify(u6) + " ui " + u6UI);
+    return {f0, f1, geenDesign, start, fase0, wv, fase1, wv1, klaar, opnieuw, crisisOrder, golf, pakket: !!a.pakket && a.pakket.length >= 2, som: r1(a.pakket.reduce((t, x) => t + x.deel, 0)), marge, eigenAlles}; });
+  const thema = await p.evaluate(async () => { const s = G.game, oud = JSON.parse(JSON.stringify(s.huisstijl || {})), cs = () => getComputedStyle(document.documentElement);
+    await API["/api/huisstijl"]({thema: "ijs"}); render(); const bgIjs = cs().getPropertyValue("--bg").trim();
+    await API["/api/huisstijl"]({eigen: {bg: "#101010", panel: "#203040", tekst: "#222222"}}); render(); const eigenBg = cs().getPropertyValue("--bg").trim(), tekst = cs().getPropertyValue("--text").trim();
+    await API["/api/huisstijl"]({font: "terminal", hoeken: "rond", dichtheid: "compact", scan: false, glow: false}); render(); const cl = document.documentElement.classList, kl = ["ui-font-terminal", "ui-hoek-rond", "ui-dicht-compact", "ui-geenscan", "ui-geenglow"].every(x => cl.contains(x));
+    const fout = (await API["/api/huisstijl"]({font: "comic"}), s.huisstijl.font === "terminal");
+    S.menuThema = true; toonMenu(); const menu = !!document.querySelector('.hmenu .themapaneel [data-a="hsthema"][data-t="synthwave"]'); sluitMenu(); S.menuThema = false;
+    s.huisstijl = oud; render(); return {bgIjs, eigenBg, tekst, kl, fout, menu, hersteld: !cl.contains("ui-font-terminal")}; });
+  ok(u6.geen || u6.geen2 || (u6.f1 > u6.f0 && u6.geenDesign && u6.start === "wo3" && u6.fase0 === "Mobilisatie" && u6.wv === 25 && u6.fase1 === "Oorlog" && u6.wv1 === 60 && u6.klaar && !u6.opnieuw && u6.crisisOrder && u6.golf && u6.pakket && u6.som === 1 && (u6.eigenAlles || u6.marge < 0.45)),
+    "modegolf per soort, geen productontwerp meer, WO3 in fases met vraag en crisisorders, pakketcontracten met onderaanneming: " + JSON.stringify(u6));
+  ok(thema.bgIjs === "#020b14" && thema.eigenBg === "#101010" && thema.tekst && thema.tekst !== "#222222" && thema.kl && thema.fout && thema.menu && thema.hersteld,
+    "thema van het spel: kant-en-klaar, eigen kleuren (tekst blijft leesbaar), lettertype, hoeken, dichtheid en effecten, ook via het menu: " + JSON.stringify(thema));
   console.log(log.join("\n")); console.log("FOUTEN OP DE PAGINA:", JSON.stringify(errs)); await b.close(); process.exit(log.some(l => l.startsWith("FOUT")) || errs.length ? 1 : 0);
 })();

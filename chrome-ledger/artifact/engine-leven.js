@@ -1081,12 +1081,15 @@ function crisisTick(s, ctx){ const c = s.crisis;
   const F = C.fases[c.fase]; c.over = F.maanden; news(s, `${C.naam}: ${F.naam}`, F.tekst, "", "special", true); mail(ctx, s, "Strategie", `${C.naam}: ${F.naam}`, F.tekst, "HOOG"); ctx.rep.push(`${C.naam}: ${F.naam}`); crisisToepassen(s); }
 function crisisToepassen(s){ const F = crisisFase(s); if (!F) return; const sch = (s.gsSchok ??= {}); for (const [m, v] of Object.entries(F.gs || {})) sch[m] = Math.max(sch[m] || 0, v);
   if (F.spanning) for (const cn of s.crisis.conts || []) if (s.spanning && s.spanning[cn] != null) s.spanning[cn] = Math.max(s.spanning[cn], s.spanning[cn] + (F.spanning - s.spanning[cn]) * 0.35); }
-/* 11.6: modegolven. Af en toe wordt een uiterlijk populair (soms alleen voor één soort product): 4 tot 8 maanden +12 tot 20% verkoop voor producten in die stijl. */
-function hypeTick(s, ctx){ const h = s.hype; if (h){ h.over -= 1; if (h.over <= 0){ news(s, `De ${DESIGN_STIJL[h.stijl].label.toLowerCase()}-golf is voorbij`, "Wat vorige maand nog overal was, ligt nu in de uitverkoop.", "", "markt", false); delete s.hype; } return; }
-  if (maandenGespeeld(s) < 4 || kansRol() >= 0.1) return; const st = CH(Object.keys(DESIGN_STIJL).filter(x => x !== "standaard")), aarden = DESIGN_STIJL[st].aard, aard = aarden.length && R() < 0.6 ? CH(aarden) : null;
-  s.hype = {stijl: st, aard, f: r1(U(0.12, 0.2) * 100) / 100, over: RI(4, 8), sinds: ym(s)}; const wat = aard ? PRODUCT_AARD[aard].label.toLowerCase() : "alles";
-  news(s, `Modegolf: ${DESIGN_STIJL[st].label.toLowerCase()} is in`, `${DESIGN_STIJL[st].uitleg} Ineens wil iedereen het, bij ${wat}. Hoe lang het duurt, weet niemand.`, "", "markt", true);
-  ctx.rep.push(`Modegolf: ${DESIGN_STIJL[st].label.toLowerCase()} (${wat}, +${Math.round(s.hype.f * 100)}%)`); }
+/* 11.6: modegolven (dynamische vraag). Af en toe is een soort product ineens populair: 4 tot 8 maanden +15 tot 30% verkoop voor wie het levert, met een vraagschok erbij. Daarna zakt het terug. */
+const HYPE_WAT = {wapen: "zelfverdediging is ineens overal", beveiliging: "iedereen wil een eigen beveiliger", medisch: "een gezondheidsrage op alle schermen", implantaat: "een nieuw implantaat is het statussymbool van het jaar", data: "iedereen wil zijn eigen data-abonnement", logistiek: "bezorgen binnen het uur is de nieuwe norm", financieel: "een beleggingsgekte onder gewone mensen", smokkel: "verboden waar is ineens hip", orbitaal: "ruimtetoerisme is de droom van iedereen", consument: "een gadget dat iedereen moet hebben"};
+function hypeTick(s, ctx){ const h = s.hype; if (h){ h.over -= 1; if (h.over <= 0){ news(s, `De gekte rond ${PRODUCT_AARD[h.aard] ? PRODUCT_AARD[h.aard].label.toLowerCase() : "het"} is voorbij`, "Wat vorige maand nog overal was, ligt nu in de uitverkoop.", "", "markt", false); delete s.hype; } return; }
+  if (maandenGespeeld(s) < 4 || kansRol() >= 0.1) return; const aard = CH(Object.keys(PRODUCT_AARD)); if (!aard) return;
+  s.hype = {aard, f: r1(U(0.15, 0.3) * 100) / 100, over: RI(4, 8), sinds: ym(s)}; vraagSchok(s, aard, 0.06, "Modegolf");
+  const mijn = (s.producten || []).some(p => p.status === "markt" && (p.aard || aardVan(p.type, p.naam)) === aard);
+  news(s, `Modegolf: ${PRODUCT_AARD[aard].label.toLowerCase()}`, `${(HYPE_WAT[aard] || "Iedereen wil het ineens.").replace(/^./, c => c.toUpperCase())}. Hoe lang het duurt, weet niemand.`, "", "markt", mijn);
+  ctx.rep.push(`Modegolf: ${PRODUCT_AARD[aard].label.toLowerCase()} +${Math.round(s.hype.f * 100)}%`); }
+
 
 function migrate20(s){
   if (!s.player || !s.districts) return;
