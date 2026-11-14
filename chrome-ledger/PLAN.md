@@ -129,6 +129,7 @@ Audit (11 nov, 22u), gemeten en niet geschat:
 | 3f | 11.8 ✓ | (bug 13 nov) Capaciteit-autopilot liep vast op 130: maximum per divisieniveau, terugbetaling, contracten verdeeld | 1 |
 | 3g | 11.9 ✓ | (wens 13 nov) Productielimiet weg; voortgang en leverdatum bij het bouwen van speciale opdrachten | 1 |
 | 3h | 11.11 ✓ | (wens 13 nov) Oorlogen op strijdkracht per soort (militair, heimelijk, media) in plaats van één machtsgetal | 1 |
+| 3i | 11.12-11.14 ✓ | (wensen 14 nov) Kaart toont wie wint, overal strijden om dominantie, tabblad Spanning, vraag per werelddeel, opzeggen met een reden | 1 |
 | 4 | 12.1 | Speltest door de speler op de gsm: wat valt nog op? Alleen fouten en gemak oplossen | 1 |
 | 5 | 12.2 | Eindcontrole: alle tests (ook mobiel.js), botruns op 3 moeilijkheden zonder paginafouten, oude saves (2002, 2009) laden, export/import, opslaan/laden online en in de browser | 1 |
 | 6 | 12.3 | Release 12.0: versienotities samenvatten (wat het spel is, in één blok), README ‘hoe speel je’, VERSION 12.0 | 1 |

@@ -199,7 +199,7 @@ const html = '<!doctype html><html><head><meta charset=utf8></head><body>' + fs.
     "export: vergunning per continent +6%, duurder per vergunning, embargo bij spanning 50-89 tenzij smokkelroute (zwart, heat), alleen wapens/beveiliging/implantaten, kaart op Bedrijf: " + JSON.stringify(ex));
   // 5.11 regionale markten
   const rg = await p.evaluate(() => { const c = JSON.parse(JSON.stringify(G.game)); delete c.regioVraag; regioTick(c); const pm = c.producten.find(x => x.status === "markt"); if (!pm) return {geen: true}; delete pm.markten;
-    const een = Object.values(c.regioVraag).every(v => Object.values(v).every(x => x === 1)); const oudP = pm.prijsF; pm.prijsF = 1; const f1 = regioF(c, pm);
+    const tw = Object.values(REGIO).reduce((t, r) => t + r.w, 0), een = Object.keys(PRODUCT_AARD).every(a => Math.abs(Object.entries(REGIO).reduce((t, [cn, r]) => t + r.w * c.regioVraag[cn][a], 0) / tw - 1) < 0.02) && new Set(Object.keys(REGIO).map(cn => c.regioVraag[cn].wapen)).size > 2; /* 11.14: werelddelen verschillen, de wereld als geheel blijft gemiddeld */ const oudP = pm.prijsF; pm.prijsF = 1; const f1 = regioF(c, pm);
     pm.prijsF = 1.5; const f15 = regioF(c, pm); const D = regioDelen(c, pm), naRijk = D.find(x => x.c === "Noord-Amerika").tol, afr = D.find(x => x.c === "Afrika").tol;
     pm.prijsF = 1; c.regioVraag["Afrika"][pm.aard || aardVan(pm.type, pm.naam)] = 0.3; const voor = regioF(c, pm), r1 = actRegio(c, pm.id, "Afrika"), na = regioF(c, pm), mk = (pm.markten || []).length;
     for (const k of regioNamen()) if (k !== "Europa" && regioMarkten(pm).includes(k)) actRegio(c, pm.id, k); const laatste = actRegio(c, pm.id, "Europa").ok, nu = regioMarkten(pm);
@@ -207,7 +207,7 @@ const html = '<!doctype html><html><head><meta charset=utf8></head><body>' + fs.
     const n = newGame({...S.setup, corp_name: "Regio BV", doctrine: ["Biotech"], home: "BNL", zaad: "REGIO1"}).s, varieert = new Set(Object.values(n.regioVraag).map(v => v.medisch)).size > 1;
     return {een, f1: Math.round(f1 * 1000) / 1000, f15: Math.round(f15 * 100) / 100, naRijk, afr, voor: Math.round(voor * 1000) / 1000, na: Math.round(na * 1000) / 1000, r1: r1.ok, mk, laatste, nu, terug, varieert}; });
   const rgUI = await p.evaluate(() => { const pm = G.game.producten.find(x => x.status === "markt"); if (!pm) return true; S.view = "bedrijf"; S.prodSheet = pm.id; (S.prodTab ??= {})[pm.id] = "markt"; render(); return /REGIO'S/.test(document.querySelector("main").textContent); });
-  ok(rg.geen || (rg.een && rg.f1 === 1 && rg.f15 > 0.9 && rg.f15 < 1.1 && rg.naRijk > 1 && rg.afr < 1 && rg.r1 && rg.mk === 6 && rg.na > rg.voor && !rg.laatste && rg.nu.length === 1 && rg.terug && rg.varieert), "regionale markten: neutraal ×1 bij alles verkopen, rijk/arm per prijs, slechte regio laten vallen loont door focus, minstens één markt, nieuw spel varieert per continent: " + JSON.stringify(rg) + " ui " + rgUI);
+  ok(rg.geen || (rg.een && Math.abs(rg.f1 - 1) < 0.03 && rg.f15 > 0.9 && rg.f15 < 1.1 && rg.naRijk > 1 && rg.afr < 1 && rg.r1 && rg.mk === 6 && rg.na > rg.voor && !rg.laatste && rg.nu.length === 1 && rg.terug && rg.varieert), "regionale markten: elk werelddeel een eigen profiel maar wereldwijd gemiddeld ×1, rijk/arm per prijs, slechte regio laten vallen loont door focus, minstens één markt, nieuw spel varieert per continent: " + JSON.stringify(rg) + " ui " + rgUI);
   // 5.12 toelevering en voorraad
   const gs = await p.evaluate(() => { const c = JSON.parse(JSON.stringify(G.game)); delete c.grondstof; delete c.gsSchok; c.voorraad = {}; c.cash = 900; for (const k of CONTINENTS) (c.spanning ??= {})[k.naam] = 20;
     const pm = c.producten.find(x => x.status === "markt"); if (!pm) return {geen: true}; pm.aard = "wapen"; delete pm.matF; const kf0 = kostFactor(pm);
@@ -634,5 +634,17 @@ const html = '<!doctype html><html><head><meta charset=utf8></head><body>' + fs.
     const stip = !!document.querySelector(`[data-dist="${d.id}"] [stroke-dasharray]`); d.dom = {staat: 60, [r.name]: 25, player: 15}; const geen = !mapView(c).cells.find(x => x.id === d.id).winnaar; G.game = G0; S.view = "overzicht"; render();
     return {wint: cel.winnaar && cel.winnaar.o === r.name, kleur: cel.winnaar && cel.winnaar.kleur === ownerColor(c, r.name), stip, geen}; });
   ok(kw.geen === true && !("wint" in kw) || (kw.wint && kw.kleur && kw.stip && kw.geen), "kaart: een gebied dat iemand anders wint, is getint in zijn kleur met een stippellijn; zonder winnaar niet: " + JSON.stringify(kw));
+  // 11.14 spanning-tabblad, opzeggen met een reden, vraag per werelddeel
+  const sp14 = await p.evaluate(() => { const c = JSON.parse(JSON.stringify(G.game)), ctx = Ctx(), oudK = window.kansRol; const p = c.producten.find(x => x.status === "markt"); if (!p) return {geen: true};
+    c.spanning["Europa"] = 15; c.spanningHist = {"Europa": [60, 55, 40, 30, 15]}; delete c.crisis;
+    const wapen = {id: "o1", klant: "Generale Staf (X)", soort: "leger", cont: "Europa", aard: "wapen", product: null, perMaand: 2, over: 10, maanden: 12};
+    c.spanning["Azië"] = 85; const lux = {id: "o2", klant: "Bedrijf Y", soort: "staat", cont: "Azië", aard: "consument", product: null, perMaand: 2, over: 10, maanden: 12};
+    const rW = opzegReden(c, wapen), rL = opzegReden(c, lux); c.spanning["Europa"] = 50; c.spanningHist = {"Europa": [50, 50, 50, 50, 50]}; const rGeen = opzegReden(c, wapen);
+    c.spanning["Europa"] = 15; c.spanningHist = {"Europa": [60, 55, 40, 30, 15]}; wapen.product = p.id; c.contracten = [wapen]; window.kansRol = () => 0; const k0 = c.cash; aanvraagTick(c, ctx); window.kansRol = oudK;
+    const opgezegd = wapen.over === 0 && c.cash > k0 && (c.contractHist[0] || {}).uitkomst === "opgezegd" && /spanning/.test((c.contractHist[0] || {}).reden || "");
+    const verschil = Math.round((regioVraag(c, "Midden-Oosten", "wapen") - regioVraag(c, "Oceanië", "wapen")) * 100);
+    const G0 = G.game; G.game = c; S.view = "spanning"; render(); const tab = /Wil hier veel/.test(document.querySelector("main").textContent) && !!document.querySelector('nav [data-view="spanning"]'); G.game = G0; S.view = "overzicht"; render();
+    return {rW: !!rW, rL: !!rL, rGeen: !rGeen, opgezegd, verschil, tab}; });
+  ok(sp14.geen || (sp14.rW && sp14.rL && sp14.rGeen && sp14.opgezegd && sp14.verschil > 20 && sp14.tab), "spanning: eigen tabblad, contracten opgezegd met een reden (wapens als de spanning zakt, luxe bij hoge spanning), vraag verschilt per werelddeel: " + JSON.stringify(sp14));
   console.log(log.join("\n")); console.log("FOUTEN OP DE PAGINA:", JSON.stringify(errs)); await b.close(); process.exit(log.some(l => l.startsWith("FOUT")) || errs.length ? 1 : 0);
 })();
