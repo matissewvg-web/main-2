@@ -139,7 +139,7 @@ function actProduct(s, ctx, soort, a){
       const sp = prodSpecs(p).find(x => x.naam === (SPECS[p.aard] || SPECS.consument)[D[2]]);
       msg = `${p.naam}: ${D[0].toLowerCase()} nu ${DEEL_KWAL[a.kwal].label.toLowerCase()}${k ? ` (omschakelen €${k}M)` : ""}. Kostprijs €${kp0} → €${kostPrijs(p)} per stuk, ${sp.naam.toLowerCase()} ${sp.v}/10.`; prodLog(p, s, `${D[0]}: ${DEEL_KWAL[a.kwal].label.toLowerCase()}`); }
     else if (soort === "krimpen"){ if (p.status !== "markt") return {ok: false, msg: "Het staat niet op de markt."}; if (prodCap(s, p) - 15 < 45) return {ok: false, msg: "Kleiner dan 45 kan niet; haal het product anders uit de markt."};
-      const terug = (p.capExtra || 0) > 0 ? r1((5 + ((p.capExtra || 0) - 15) / 5) * (DIFF[s.player.difficulty] || 1)) : 0; /* een betaalde uitbreiding terugdraaien: investering terug */
+      const terug = (p.capExtra || 0) > 0 ? r1((5 + ((p.capExtra || 0) - 15) / 10) * (DIFF[s.player.difficulty] || 1)) : 0; /* een betaalde uitbreiding terugdraaien: investering terug (11.15: zelfde formule als capKost) */
       p.capExtra = (p.capExtra || 0) - 15; if (terug){ s.cash = r1(s.cash + terug); s.accounts.operationeel = s.cash; } prodLog(p, s, "Productie ingekrompen");
       msg = `Productielijn van ${p.naam} ingekrompen: capaciteit nu ${prodCap(s, p)} (vraag ${Math.round(vraagNa(p))}).${terug ? ` De €${terug}M van de uitbreiding komt terug.` : ""} Vaste kosten van de lijn nu ${capVast(s, p) >= 0 ? `€${capVast(s, p)}M` : `€${-capVast(s, p)}M bespaard`} per maand.`; }
     else if (soort === "capaciteit"){ if (p.status !== "markt") return {ok: false, msg: "Het staat niet op de markt."}; if (prodCap(s, p) >= capMax(s, p)) return {ok: false, msg: `${p.naam} zit aan het maximum (${capMax(s, p)}) voor een divisie op niveau ${((capDiv(s, p) || {}).level) || 1}. Breid de divisie uit voor +15, of laat een ander product meer leveren.`}; const k = capKost(s, p); if (!pay(k)) return {ok: false, msg: `Productie uitbreiden kost €${k}M.`}; p.capExtra = (p.capExtra || 0) + 15; msg = `Productielijn van ${p.naam} uitgebreid: capaciteit nu ${prodCap(s, p)} (vraag ${Math.round(vraagNa(p))}). Vaste kosten van de lijn nu €${capVast(s, p)}M per maand.`; }
@@ -661,9 +661,11 @@ const AUTO = {prijs: "Prijs volgt de prijs met de meeste winst (hoogstens 150%, 
 function autoTick(s, ctx, p){ const A = p.auto || {}; if (p.status !== "markt" || !(A.prijs || A.cap || A.keuring)) return; const uit = [];
   if (A.keuring && ["nodig", "afgekeurd"].includes(keurStatus(p)) && kanaalVan(p) !== "zwart" && s.cash > keurKost(s) + 10){ const r = actProduct(s, ctx, "keuring", {id: p.id, wijze: "officieel"}); if (r.ok) uit.push("keuring aangevraagd"); }
   if (A.prijs){ const b = besteprijs(s, p), nf = b ? Math.min(b.f, 1.5) : null; if (nf && Math.abs(nf - prijsF(p)) >= 0.05){ const r = actPrijs(s, p.id, nf); if (r.ok) uit.push(`prijs naar ${Math.round(nf * 100)}%`); } } /* nooit boven 150%: daar beginnen woekerprijzen */
-  if (A.cap){ const v = vraagNa(p) + contractLast(s, p), c = prodCap(s, p); /* 10.2: contracten tellen mee */
-    if (v > c * 1.05 && s.cash > capKost(s, p) + 20 && c < capMax(s, p)){ /* 11.7: tot het maximum van de divisie (was vast 130) */ const r = actProduct(s, ctx, "capaciteit", {id: p.id}); if (r.ok) uit.push(`capaciteit naar ${prodCap(s, p)}`); }
-    else if (v < c - 25 && c - 15 >= 45 && (p.capExtra || 0) > 0){ const r = actProduct(s, ctx, "krimpen", {id: p.id}); if (r.ok) uit.push(`capaciteit naar ${prodCap(s, p)}`); } }
+  if (A.cap){ const nodig = () => vraagNa(p) + contractLast(s, p), c0 = prodCap(s, p); let n = 0; /* 11.15: zoveel stappen als nodig in één maand, zonder maximum; krimpen pas na drie maanden ruim te groot */
+    while (nodig() > prodCap(s, p) * 1.02 && s.cash > capKost(s, p) + 20 && n < 40){ const r = actProduct(s, ctx, "capaciteit", {id: p.id}); if (!r.ok) break; n++; }
+    if (n){ p.capLeeg = 0; uit.push(`capaciteit ${c0} → ${prodCap(s, p)}`); }
+    else if (nodig() < prodCap(s, p) - 40 && prodCap(s, p) - 15 >= 45 && (p.capExtra || 0) > 0){ p.capLeeg = (p.capLeeg || 0) + 1; if (p.capLeeg >= 3){ const r = actProduct(s, ctx, "krimpen", {id: p.id}); if (r.ok){ uit.push(`capaciteit naar ${prodCap(s, p)}`); p.capLeeg = 0; } } }
+    else p.capLeeg = 0; }
   if (uit.length) ctx.rep.push(`Autopilot ${p.naam}: ${uit.join(", ")}`); }
 const omschakelKost = s => r1(2 * (DIFF[(s && s.player.difficulty)] || 1));
 const nadrukVan = v => v === "" || v == null || isNaN(+v) || +v < 0 || +v > 2 ? null : +v;
@@ -704,7 +706,7 @@ function prodCap(s, p){ return Math.round(clamp(capBasis(s, p) + (p.capExtra || 
 const capExtraEff = (s, p) => Math.min(p.capExtra || 0, capMax(s, p) - capBasis(s, p));
 const effBereik = (p, s) => s ? Math.min(vraagNa(p), Math.max(0, prodCap(s, p) - contractLast(s, p))) : vraagNa(p); /* 10.2: contracten gaan voor */
 const capVast = (s, p) => r1((Math.ceil(capExtraEff(s, p) / 15 - 1e-9) || 0) * 0.3 * (DIFF[s.player.difficulty] || 1)); /* 11.7: alleen wat echt iets doet */ /* 4.7.6: elke 15 capaciteit boven of onder de basis kost of bespaart €0,3M per maand */
-const capKost = (s, p) => r1((5 + (p.capExtra || 0) / 5) * (DIFF[s.player.difficulty] || 1));
+const capKost = (s, p) => r1((5 + Math.max(0, p.capExtra || 0) / 10) * (DIFF[s.player.difficulty] || 1)); /* 11.15: elke volgende uitbreiding wordt half zo snel duurder als eerst */
 function segment(s, p){
   const a = p.aard || aardVan(p.type, p.naam), mijn = (s.producten || []).filter(x => x.status === "markt" && (x.aard || aardVan(x.type, x.naam)) === a);
   const rival = s.rivals.flatMap(r => (r.producten || []).filter(x => x.aard === a).map(x => ({naam: x.naam, wie: r.name, w: x.kwaliteit * x.pop / 100})));
@@ -1897,3 +1899,25 @@ const SPELREGELS = [
   ["Keuzes", "Keuzemails hebben knoppen; elke optie zegt wat ze kost en doet. Antwoord je niet, dan kiest het spel na twee maanden de standaardoptie."],
 ];
 
+/* 11.15: een divisie verkopen of opheffen. Verkopen: een koper uit die sector (een rivaal, anders een bedrijf, anders investeerders) betaalt naar omzet en niveau; producten, contracten op die producten en de mensen gaan mee. Opheffen: geen opbrengst, wel een ontslagvergoeding, en lopende contracten op die producten breek je af (boete, boze klant). Minstens één divisie blijft. */
+function divVerkoopInfo(s, naam){ const d = s.divisions.find(x => divNaam(x) === naam); if (!d) return null; const dif = DIFF[s.player.difficulty] || 1;
+  const omzet = ((s.divomzet || {})[naam] || 0) + (s.producten || []).filter(p => p.divisie === naam && p.status === "markt").reduce((a, p) => a + ((s.prodomzet || {})[p.id] || 0), 0);
+  const riv = s.rivals.filter(r => r.sector === d.type || (SECTOR_VERWANT[r.sector] || []).includes(d.type)).sort((a, b) => b.cash - a.cash)[0], bed = (s.bedrijven || []).filter(b => !b.eigenaar && b.sector === d.type).sort((a, b) => b.waarde - a.waarde)[0];
+  const waarde = r1((omzet * 10 + d.level * 15 * dif) * (riv ? 1 : bed ? 0.9 : 0.7)), koper = riv && riv.cash >= waarde ? riv.name : bed ? bed.naam : "investeerders";
+  const prods = (s.producten || []).filter(p => p.divisie === naam), ids = new Set(prods.map(p => p.id)), contr = (s.contracten || []).filter(c => c.over > 0 && (ids.has(c.product) || ids.has(c.lev)));
+  return {d, naam, waarde, koper, rivaal: koper === (riv || {}).name ? riv : null, prods, contr, afvloei: r1(d.level * 4 * dif), mensen: d.level * 4}; }
+function actDivisie(s, ctx, naam, wijze){ const I = divVerkoopInfo(s, naam); if (!I) return {ok: false, msg: "Onbekende divisie."}; if (s.divisions.length <= 1) return {ok: false, msg: "Je laatste divisie kun je niet weghalen: zonder divisie heb je geen bedrijf."};
+  if (s.projects.some(p => p.division === naam)) return {ok: false, msg: "Er loopt nog een uitbreiding van deze divisie. Wacht tot die klaar is."};
+  const ids = new Set(I.prods.map(p => p.id)); let msg;
+  if (wijze === "verkopen"){ s.cash = r1(s.cash + I.waarde); s.accounts.operationeel = s.cash;
+    for (const c of I.contr){ c.over = 0; klantZet(s, c.klant, 0, `contract overgedragen aan ${I.koper}`); }
+    if (I.rivaal){ const r = I.rivaal; r.divs[I.d.type] = (r.divs[I.d.type] || 0) + I.d.level; r.cash = r1(r.cash - I.waarde); for (const p of I.prods.filter(x => x.status === "markt")) (r.producten ??= []).push({id: "rp" + hex8(), naam: p.naam.replace(s.player.corp_name, r.name.split(" ")[0]), aard: p.aard || aardVan(p.type, p.naam), kwaliteit: p.kwaliteit, pop: Math.round(p.pop * 0.8), sinds: ym(s)}); relShift(r, 6); remember(r, s, `kocht divisie ${naam} van de speler`); }
+    else { const b = (s.bedrijven || []).find(x => x.naam === I.koper); if (b) b.waarde = r1(b.waarde + I.waarde * 0.8); }
+    msg = `${naam} verkocht aan ${I.koper} voor €${I.waarde}M. ${I.prods.length ? `${I.prods.length} product${I.prods.length === 1 ? "" : "en"}` : "Geen producten"}${I.contr.length ? `, ${I.contr.length} contract${I.contr.length === 1 ? "" : "en"}` : ""} en ${I.mensen} mensen gaan mee.`;
+    news(s, `${s.player.corp_name} verkoopt ${naam}`, `${I.koper} neemt ${naam} over voor ongeveer €${Math.round(I.waarde)}M.`, "", "markt", true); }
+  else if (wijze === "opheffen"){ if (s.cash < I.afvloei) return {ok: false, msg: `De ontslagvergoeding is €${I.afvloei}M.`}; s.cash = r1(s.cash - I.afvloei); s.accounts.operationeel = s.cash; s.morale = clamp(s.morale - 5);
+    let boete = 0; for (const c of I.contr){ boete += c.perMaand; c.over = 0; klantZet(s, c.klant, -10, "contract afgebroken: divisie opgeheven"); } boete = r1(boete); s.cash = r1(s.cash - boete);
+    msg = `${naam} opgeheven. Ontslagvergoeding €${I.afvloei}M${boete ? `, boete voor ${I.contr.length} afgebroken contract${I.contr.length === 1 ? "" : "en"} €${boete}M` : ""}. Morale −5.`; }
+  else return {ok: false, msg: "Kies verkopen of opheffen."};
+  s.producten = (s.producten || []).filter(p => !ids.has(p.id)); s.divisions = s.divisions.filter(x => x !== I.d); if (s.divomzet) delete s.divomzet[naam];
+  s.staff.count = Math.max(staffNeed(s), s.staff.count - I.mensen); s.contracten = (s.contracten || []).filter(c => c.over > 0); addLog(s, msg); return {ok: true, msg}; }

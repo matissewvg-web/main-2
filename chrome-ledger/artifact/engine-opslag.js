@@ -559,6 +559,7 @@ const API = {
     const r = actInvoice(s, d.id, d.actie); if (r.ok) await persist(); return {ok: r.ok, bericht: r.msg};
   },
   async "/api/besluit"(d){ const r = actDecision(G.game, d.arc, d.keuze, d.budget); if (r.ok) await persist(); return {ok: r.ok, bericht: r.msg}; },
+  async "/api/divisie"(d){ const s = G.game, ctx = Ctx(); const r = actDivisie(s, ctx, d.naam, d.wijze); if (r.ok) await persist(ctx); return {ok: r.ok, bericht: r.msg}; }, /* 11.15 */
   async "/api/project"(d){ const r = actProject(G.game, d.soort, d); if (r.ok) await persist(); return {ok: r.ok, bericht: r.msg}; },
   async "/api/personeel"(d){ const r = actStaff(G.game, d.soort, d.aantal); if (r.ok) await persist(); return {ok: r.ok, bericht: r.msg}; },
   async "/api/soort"(d){

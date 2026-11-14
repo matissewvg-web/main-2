@@ -646,5 +646,18 @@ const html = '<!doctype html><html><head><meta charset=utf8></head><body>' + fs.
     const G0 = G.game; G.game = c; S.view = "spanning"; render(); const tab = /Wil hier veel/.test(document.querySelector("main").textContent) && !!document.querySelector('nav [data-view="spanning"]'); G.game = G0; S.view = "overzicht"; render();
     return {rW: !!rW, rL: !!rL, rGeen: !rGeen, opgezegd, verschil, tab}; });
   ok(sp14.geen || (sp14.rW && sp14.rL && sp14.rGeen && sp14.opgezegd && sp14.verschil > 20 && sp14.tab), "spanning: eigen tabblad, contracten opgezegd met een reden (wapens als de spanning zakt, luxe bij hoge spanning), vraag verschilt per werelddeel: " + JSON.stringify(sp14));
+  // 11.15 autopilot groeit in één maand mee, krimpt pas na drie maanden; divisie verkopen of opheffen
+  const ap15 = await p.evaluate(() => { const c = JSON.parse(JSON.stringify(G.game)), ctx = Ctx(); c.cash = 2000; const p = c.producten.find(x => x.status === "markt"); if (!p) return {geen: true}; p.auto = {cap: true}; p.capExtra = 0;
+    c.contracten = [{id: "g1", klant: "Groot", aard: p.aard, product: p.id, perMaand: 40, over: 12, maanden: 12}]; const nodig = vraagNa(p) + contractLast(c, p); autoTick(c, ctx, p); const na = prodCap(c, p);
+    c.contracten = []; const c1 = prodCap(c, p); autoTick(c, ctx, p); autoTick(c, ctx, p); const na2 = prodCap(c, p); autoTick(c, ctx, p); const na3 = prodCap(c, p);
+    return {nodig: Math.round(nodig), na, c1, na2, na3}; });
+  ok(ap15.geen || (ap15.na >= ap15.nodig * 0.98 && ap15.na > 200 && ap15.na2 === ap15.c1 && ap15.na3 < ap15.c1), "autopilot capaciteit: in één maand zoveel als nodig (geen maximum), krimpen pas na drie maanden: " + JSON.stringify(ap15));
+  const dv = await p.evaluate(() => { const c = JSON.parse(JSON.stringify(G.game)), ctx = Ctx(); c.cash = 500; const d0 = c.divisions[0]; const extra = {name: "Testdivisie", type: d0.type, level: 2}; c.divisions.push(extra);
+    const q = mkProduct(c, extra, "Testproduct", 3, 50); q.aard = aardVan(extra.type, ""); c.producten.push(q); c.contracten = [{id: "t1", klant: "K", aard: q.aard, product: q.id, perMaand: 2, over: 6, maanden: 12}];
+    const I = divVerkoopInfo(c, "Testdivisie"), k0 = c.cash, v = actDivisie(c, ctx, "Testdivisie", "verkopen"); const weg = !c.divisions.some(d => d.name === "Testdivisie") && !c.producten.some(p => p.id === q.id) && !c.contracten.length;
+    const c2 = JSON.parse(JSON.stringify(G.game)); c2.cash = 500; c2.divisions.push({name: "Weg", type: d0.type, level: 1}); const k1 = c2.cash, o = actDivisie(c2, Ctx(), "Weg", "opheffen");
+    const c3 = JSON.parse(JSON.stringify(G.game)); c3.divisions = [c3.divisions[0]]; const laatste = actDivisie(c3, Ctx(), divNaam(c3.divisions[0]), "opheffen").ok;
+    return {waarde: I.waarde, koper: I.koper, v: v.ok, erbij: r1(c.cash - k0), weg, o: o.ok, kost: r1(k1 - c2.cash), laatste}; });
+  ok(dv.v && dv.waarde > 0 && dv.erbij === dv.waarde && dv.weg && dv.o && dv.kost > 0 && !dv.laatste, "divisie verkopen (geld erbij, producten en contracten weg) of opheffen (ontslagvergoeding); je laatste divisie niet: " + JSON.stringify(dv));
   console.log(log.join("\n")); console.log("FOUTEN OP DE PAGINA:", JSON.stringify(errs)); await b.close(); process.exit(log.some(l => l.startsWith("FOUT")) || errs.length ? 1 : 0);
 })();
