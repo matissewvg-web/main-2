@@ -464,6 +464,8 @@ function applyChoice(s, ctx, eff, out = []){
   if (eff.plan) planActie(s, eff.plan, out);
   if (eff.focus && FOCUS[eff.focus] && !heeftFocus(s, eff.focus)){ (s.focus ??= []).push(eff.focus); out.push(`Nieuwe koers: ${FOCUS[eff.focus].naam}. ${FOCUS[eff.focus].tekst}`); }
   if (eff.integratie) out.push(koppelBedrijf(s, eff.integratie.id, eff.integratie.wijze));
+  for (const [id, v] of Object.entries(eff.aandeel || {})){ const b = (s.bedrijven || []).find(x => x.id === id); if (b && !b.eigenaar) b.aandeel = Math.min(40, (b.aandeel || 0) + num(v, 0, 10)); } /* 11.18 */
+  if (eff.contact && typeof contactZet === "function") contactZet(s, eff.contact.naam, String(eff.contact.tekst || "").slice(0, 100));
   if (eff.tekst) out.push(eff.tekst);
   return out;
 }

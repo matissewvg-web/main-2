@@ -1,6 +1,6 @@
 /* Chrome Ledger engine, deel engine-wereld.js: wereld: kaart, zee, dominantie, eigen soorten, personeel, rivalen en acties. 7.4: de engine staat in zes bestanden die in deze volgorde laden (kern, wereld, leven, producten, gm, opslag); alles deelt dezelfde globale scope. */
 /* ---------- de stad: elke game een andere kaart ---------- */
-const VERSION = "11.17";
+const VERSION = "11.18";
 const MAP_W = 1000, MAP_H = 680;
 const RIVAL_COLORS = ["#ff9a1f", "#3d7bff", "#c6ff2e", "#f2f2f2", "#9b5cff", "#ffd400", "#ff4d4d"];
 const ARCH = {
@@ -687,6 +687,10 @@ const districtCost = (s, d) => r1((d.upkeep * 8 + d.income * 4) * (s.rivals.some
 const upgradeCost = (s, d) => r1(20 * Math.pow(d.level, 1.3) * (DIFF[s.player.difficulty] || 1));
 const newDivCost = s => r1(30 * (DIFF[s.player.difficulty] || 1));
 
+/* 11.18: een gemelde overboeking kostte +6 heat plus 1 per €20M, zonder maximum (€276M = +20). Nu: hoogstens +12, en de kans op controle staat vooraf in beeld. Tussen operationeel en offshore is het een gewone bankoverboeking: kleinere kans. */
+function transferRisico(s, van, naar, amount){ amount = Math.max(0, +amount || 0); const zw = [van, naar].includes("zwart");
+  let risk = Math.min(zw ? 0.45 : 0.3, (zw ? 0.06 : 0.03) + Math.min(0.25, amount / 1500) + s.heat / 400); if (faction(s, "politie") > 30) risk *= 0.6;
+  return {kans: snapKans(Math.round(risk * 100)), heat: r1(Math.min(12, 4 + amount / 50))}; }
 function actTransfer(s, ctx, van, naar, amount){
   const A = ["operationeel", "zwart", "offshore"]; amount = +amount;
   if (!A.includes(van) || !A.includes(naar) || van === naar || !(amount > 0)) return {ok: false, msg: "Kies twee verschillende rekeningen en een bedrag."};
@@ -695,13 +699,12 @@ function actTransfer(s, ctx, van, naar, amount){
   const pct = (5 + RI(0, 10)) / 100, fee = r1(amount * pct);
   if (van === "operationeel") s.cash = r1(s.cash - amount); else s.accounts[van] = r1(s.accounts[van] - amount);
   if (naar === "operationeel") s.cash = r1(s.cash + amount - fee); else s.accounts[naar] = r1(s.accounts[naar] + amount - fee);
-  let risk = Math.min(0.6, 0.05 + amount / 400 + s.heat / 300 + ([van, naar].includes("zwart") ? 0.08 : 0));
-  if (faction(s, "politie") > 30) risk *= 0.6;
-  const roll = rolKans(snapKans(Math.round(risk * 100))), caught = roll.ok;
+  const TR = transferRisico(s, van, naar, amount);
+  const roll = rolKans(TR.kans), caught = roll.ok;
   addRoll(s, `Controle bij transfer €${amount}M: ${roll.txt} → ${caught ? "GEMELD" : "onopgemerkt"}`);
   let msg = `€${amount}M van ${van} naar ${naar}. Fee ${Math.round(pct * 100)}% (€${fee}M). Controle: ${caught ? "gemeld" : "onopgemerkt"}.`;
   if (caught){
-    s.heat = clamp(s.heat + 6 + amount / 20); s.flags.transfer_onderzoek = ym(s);
+    s.heat = clamp(s.heat + TR.heat); s.flags.transfer_onderzoek = ym(s); msg += ` Heat +${TR.heat}.`;
     mail(ctx, s, "Nordhavn Bank, afdeling Compliance", "Ongebruikelijke transactie", `Wij hebben een transactie van €${amount}M gemeld bij de toezichthouder. Dit is een standaardprocedure. Wij hopen voor u dat het standaard blijft.`, "HOOG");
   }
   s.accounts.operationeel = s.cash; addLog(s, msg);

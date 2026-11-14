@@ -442,11 +442,11 @@ const html = '<!doctype html><html><head><meta charset=utf8></head><body>' + fs.
     const pr = mkProduct(c, d, "Nieuw", 3, 50); c.producten.push(pr); slijtTick(c, Ctx()); const herstel = d.slijt > slijt12;
     c.streams = [{naam: "Contract X", bedrag: 2}, {naam: "Contract X", bedrag: 3}, {naam: "Contract Y", bedrag: 1}]; stromenSamen(c); const stromen = c.streams.map(x => x.naam + ":" + x.bedrag).join(",");
     const thuis = exportThuis(c), ander = CONTINENTS.map(x => x.naam).find(n => n !== thuis); c.exportVergunning = {}; c.smokkelroute = {}; c.spanning ??= {}; c.spanning[ander] = 20;
-    const a = {aard: "wapen", cont: ander, soort: "staat"}, t0 = contractToegang(c, a); c.exportVergunning[ander] = "2000-01"; const t1 = contractToegang(c, a); c.spanning[ander] = 60; const t2 = contractToegang(c, a); c.smokkelroute[ander] = "2000-01"; const t3 = contractToegang(c, a);
+    const a = {aard: "wapen", cont: ander, soort: "bedrijf"}, t0 = contractToegang(c, a); c.exportVergunning[ander] = "2000-01"; const t1 = contractToegang(c, a); c.spanning[ander] = 60; const t2 = contractToegang(c, a); const t2s = contractToegang(c, {...a, soort: "leger"}); c.smokkelroute[ander] = "2000-01"; const t3 = contractToegang(c, a);
     const thuisOk = contractToegang(c, {aard: "wapen", cont: thuis}).ok, medOk = contractToegang(c, {aard: "medisch", cont: ander}).ok;
     c.spanning[ander] = 75; const w = wanbetaalKans(c, {soort: "leger", cont: ander}), wOud = wanbetaalKans(c, {klant: "oud"});
-    return {slijt12, herstel, stromen, t0: t0.ok, t1: t1.ok, t2: t2.ok, t3: t3.via, thuisOk, medOk, w, wOud}; });
-  ok(fu.slijt12 < 0.99 && fu.herstel && fu.stromen === "Contract X:3,Contract Y:1" && !fu.t0 && fu.t1 && !fu.t2 && fu.t3 === "smokkel" && fu.thuisOk && fu.medOk && fu.w === 0.03 && fu.wOud === 0, "7.0: een divisie die niet vernieuwt slijt en herstelt met een nieuw product; dubbele contracten samengevoegd; wapens exporteren vraagt een vergunning, bij embargo een smokkelroute; wanbetaling in onrustige gebieden, oude contracten veilig: " + JSON.stringify(fu));
+    return {slijt12, herstel, stromen, t0: t0.ok, t1: t1.ok, t2: t2.ok, t2s: t2s.ok && t2s.via, t3: t3.via, thuisOk, medOk, w, wOud}; });
+  ok(fu.slijt12 < 0.99 && fu.herstel && fu.stromen === "Contract X:3,Contract Y:1" && !fu.t0 && fu.t1 && !fu.t2 && fu.t2s === "legaal" && fu.t3 === "smokkel" && fu.thuisOk && fu.medOk && fu.w === 0.03 && fu.wOud === 0, "7.0: een divisie die niet vernieuwt slijt en herstelt met een nieuw product; dubbele contracten samengevoegd; wapens exporteren vraagt een vergunning, bij embargo een smokkelroute; wanbetaling in onrustige gebieden, oude contracten veilig: " + JSON.stringify(fu));
   // 7.2 razzia als klap, prognose, juridisch offensief
   const rz = await p.evaluate(() => { const c = JSON.parse(JSON.stringify(G.game)); c.cash = 200; c.accounts.zwart = 30; c.razzias = 0; const d = c.divisions[0]; d.level = 3; const ctx = Ctx();
     const eind1 = razzia(c, ctx); const na = {cash: c.cash, zw: c.accounts.zwart, lvl: d.level, heat: c.heat, n: c.razzias}; razzia(c, ctx); const eind3 = razzia(c, ctx);
@@ -673,5 +673,15 @@ const html = '<!doctype html><html><head><meta charset=utf8></head><body>' + fs.
     const r = actProduct(c, ctx, "ontwikkel", {divisie: divNaam(d), schaal: "klein", focus: "standaard", naam: "Stoptest"}); const q = c.producten.find(x => x.naam === "Stoptest"); if (!r.ok || !q) return {fout: r.msg};
     const kas = c.cash, s2 = actProduct(c, ctx, "staken", {id: q.id}); return {ok: s2.ok, weg: !c.producten.some(x => x.naam === "Stoptest"), terug: Math.round((c.cash - kas) * 10) / 10, kost: q.devKost, msg: s2.msg}; });
   ok(stz.ok && stz.weg && Math.abs(stz.terug - Math.round(stz.kost * 0.25 * 10) / 10) < 0.11, "ontwikkeling stopzetten: product weg, kwart terug: " + JSON.stringify(stz));
+  // 11.18 verzoeken van andere bedrijven en contact
+  const vz = await p.evaluate(() => { const c = JSON.parse(JSON.stringify(G.game)), ctx = Ctx(); if (!(c.producten || []).some(x => x.status === "markt")) return {geen: true}; c.keuzes = []; c.cash = 900; c.accounts.operationeel = 900;
+    const P = contactPartners(c), r = P.find(x => x.soort === "rivaal"), b = P.find(x => x.soort === "bedrijf"); const uit = {};
+    if (r){ const rel0 = Math.round(r.r.relatie); const k = actContact(c, ctx, r.naam, "bellen"); const k2 = actContact(c, ctx, r.naam, "bellen"); uit.bel = [k.ok, !k2.ok, Math.round(r.r.relatie) - rel0];
+      r.r.cash = 100; uit.lening = maakVerzoek(c, ctx, contactPartners(c).find(x => x.naam === r.naam), "lening"); const kz = c.keuzes.find(x => /^verzoek_lening/.test(x.soort)); const cash0 = c.cash; if (kz){ actKeuze(c, ctx, kz.id, 0); uit.leen = [r1(cash0 - c.cash), (c.streams || []).some(x => x.naam === "Aflossing " + r.naam)]; } }
+    if (b){ uit.inkoop = maakVerzoek(c, ctx, contactPartners(c).find(x => x.naam === b.naam), "inkoop"); const kz = c.keuzes.find(x => /^verzoek_inkoop/.test(x.soort)); if (kz){ actKeuze(c, ctx, kz.id, 0); uit.stream = (c.streams || []).some(x => x.naam === "Levering aan " + b.naam); uit.log = (c.contact[b.naam] || []).length; } }
+    return uit; });
+  ok(vz.geen || ((!vz.bel || (vz.bel[0] && vz.bel[1] && vz.bel[2] >= 2)) && (!vz.leen || (vz.leen[0] > 0 && vz.leen[1])) && (!vz.stream === false || vz.inkoop === undefined) && (vz.inkoop === undefined || (vz.stream && vz.log >= 2))), "verzoeken van bedrijven en rivalen, bellen eens per maand, contactlog: " + JSON.stringify(vz));
+  const trz = await p.evaluate(() => { const c = JSON.parse(JSON.stringify(G.game)); c.heat = 90; return {groot: transferRisico(c, "zwart", "offshore", 600), klein: transferRisico(c, "zwart", "offshore", 20), wit: transferRisico(c, "operationeel", "offshore", 600)}; });
+  ok(trz.groot.heat === 12 && trz.klein.heat < 5 && trz.groot.kans <= 45 && trz.wit.kans <= 30, "gemelde overboeking: hoogstens +12 heat, kans begrensd: " + JSON.stringify(trz));
   console.log(log.join("\n")); console.log("FOUTEN OP DE PAGINA:", JSON.stringify(errs)); await b.close(); process.exit(log.some(l => l.startsWith("FOUT")) || errs.length ? 1 : 0);
 })();

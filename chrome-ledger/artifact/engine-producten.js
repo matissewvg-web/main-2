@@ -891,7 +891,7 @@ const oorlogPrijs = s => { const v = spanningThuis(s); return v >= 90 ? {rep: 0,
 const CORPO_LADDER = [
   {v: 0, naam: "Rustig", kort: "Zaken zoals altijd. De staat houdt de corporaties in toom.", jij: ["Producten, contracten, vestigingen openen en campagne voeren", "Oorlog verklaren kan, maar de staat let op: reputatie −4, heat +3, andere rivalen worden wantrouwig"], riv: ["Concurreren, lobbyen, headhunten", "Een ultimatum stellen; weiger je, dan is het oorlog"]},
   {v: 30, naam: "Onrust", kort: "Protesten en sabotage. De staat verliest grip op de straat.", jij: ["Wapens en beveiliging verkopen beter, consumentenspul slechter", "Je aandeel in districten groeit makkelijker: de staat telt minder mee"], riv: ["Hetzelfde voordeel als jij"]},
-  {v: 50, naam: "Sancties", kort: "Staten slaan terug met embargo's en sancties.", jij: ["Embargo op export: alleen met een smokkelroute verkoop je wapens nog over de grens", "De Privébeveiligingswet kopen: dan mag je al patrouilleren", "Op je thuiscontinent zakt heat trager"], riv: ["Hetzelfde embargo"]},
+  {v: 50, naam: "Sancties", kort: "Staten slaan terug met embargo's en sancties.", jij: ["Embargo op export naar bedrijven: alleen met een smokkelroute verkoop je wapens daar nog aan de markt; een staat of leger mag je wel legaal leveren", "De Privébeveiligingswet kopen: dan mag je al patrouilleren", "Op je thuiscontinent zakt heat trager"], riv: ["Hetzelfde embargo"]},
   {v: 70, naam: "Privélegers", kort: "Corporaties zetten eigen legers op straat.", jij: ["Patrouilles in je districten (macht +2, bendes en rivalen krijgen minder grip)", "Straatgevechten: een district van een rivaal innemen zonder oorlogsverklaring", "Bedrijfsimmuniteit en de Belastingvrije corpozone kopen", "Oorlog verklaren kost minder: reputatie −2, heat +1"], riv: ["Rivalen die je niet mogen, nemen ook districten van jou op straat (hooguit één per maand)"]},
   {v: 90, naam: "Corporate zone", kort: "De corporaties regeren. Corpo-oorlogen: geen staat die ingrijpt.", jij: ["Corpo-oorlog: oorlog verklaren kost geen reputatie en geen heat, andere rivalen vinden het normaal", "Eigen rechtspraak kopen: een razzia lukt half zo vaak", "Heat zakt sneller, het embargo is weg", "Winnen: een corporate zone thuis met 60% dominantie"], riv: ["Vijandige rivalen (relatie onder −40) kunnen jou zelf de oorlog verklaren, zonder ultimatum"]}];
 const corpoTrede = v => CORPO_LADDER.slice().reverse().find(x => v >= x.v) || CORPO_LADDER[0];
@@ -1151,11 +1151,13 @@ function aanvraagVergelijk(s, a, prijs){ const jij = bodScore(s, a, prijs), p = 
 function aanvraagKans(s, a, prijs){ return aanvraagVergelijk(s, a, prijs).kans; }
 const rivPrijsVoor = (s, aard) => Object.fromEntries(aanvraagRivalen(s, aard).map(r => [r.name, RI(RIV_PRIJS[0], RIV_PRIJS[1])]));
 /* 7.0: mag je leveren? Wapens, beveiliging en implantaten naar een ander continent vragen een exportvergunning; bij een embargo alleen via een smokkelroute (zwart, heat) */
+const OVERHEID = new Set(["staat", "leger"]);
 function contractToegang(s, a){ if (!a || !a.cont || !EXPORT_AARD.includes(a.aard) || a.cont === exportThuis(s)) return {ok: true, via: "legaal"};
   const verg = !!(s.exportVergunning || {})[a.cont], emb = embargo(s, a.cont), sm = !!(s.smokkelroute || {})[a.cont];
   if (verg && !emb) return {ok: true, via: "legaal"};
+  if (verg && emb && OVERHEID.has(a.soort)) return {ok: true, via: "legaal", reden: `embargo op ${a.cont}, maar het geldt niet voor overheden: legaal`}; /* 11.18: een embargo raakt alleen bedrijven */
   if (sm && verg) return {ok: true, via: "smokkel", reden: `embargo op ${a.cont}: alleen via je smokkelroute (zwart geld, heat +2)`};
-  return {ok: false, reden: emb ? `embargo op ${a.cont}: je hebt een vergunning én een smokkelroute nodig` : `exportvergunning voor ${a.cont} nodig (Bedrijf → Export)`}; }
+  return {ok: false, reden: emb ? `embargo op ${a.cont} voor bedrijven: je hebt een vergunning én een smokkelroute nodig (overheden mogen wel)` : `exportvergunning voor ${a.cont} nodig (Bedrijf → Export)`}; }
 /* 7.0: wanbetaling: in onrustige gebieden kan een klant stoppen met betalen */
 function wanbetaalKans(s, c){ if (!c || (!c.cont && c.soort !== "syndicaat")) return 0; const x = (klantRel(s, c.klant) || {}).wanbetaler ? 3 : 1; /* 10.1: wie al eens niet betaalde */ if (c.soort === "syndicaat") return 0.02 * x; const v = c.cont ? spanningVan(s, c.cont) : 0; return x * (c.soort === "bedrijf" ? 0.005 : v >= 70 ? 0.03 : v >= 50 ? 0.015 : 0.003); }
 function maakAanvraag(s, aard0){ const p0 = (s.producten || []).filter(p => p.status === "markt"); if (!p0.length) return null;
@@ -1259,7 +1261,7 @@ function actMaatwerk(s, ctx, zet, arg){ const m = s.maatwerk; if (!m) return {ok
     const p = mkProduct(s, d, naam, clamp(maatwerkKunde(s, m.aard) + MAATWERK_ONTWERP[m.ontwerp].kw, 1, 5), 0); p.status = "ontwikkeling"; p.eta = 1; p.schaal = "groot"; p.focus = "standaard"; p.aard = m.aard; p.pitch = `Gebouwd op maat voor ${m.klant}: ${m.wat}. Nu voor iedereen.`; (s.producten ??= []).push(p); prodLog(p, s, `Uit een speciale opdracht voor ${m.klant}`);
     addLog(s, `${naam} opgenomen in het assortiment (€${kost}M)`); delete s.maatwerk; return {ok: true, msg: `${naam} komt volgende maand op de markt: het ontwerp ligt er al, alleen de lijn moet nog draaien (€${kost}M).`}; }
   return {ok: false, msg: "Dat kan nu niet."}; }
-function aanvraagTick(s, ctx){ s.aanvragen ??= []; s.contracten ??= []; bedrijfAanbodTick(s, ctx); maatwerkTick(s, ctx); /* 11.4 */
+function aanvraagTick(s, ctx){ s.aanvragen ??= []; s.contracten ??= []; bedrijfAanbodTick(s, ctx); maatwerkTick(s, ctx); /* 11.4 */ verzoekTick(s, ctx); /* 11.18 */
   for (const a of s.aanvragen) a.verloopt -= 1; /* 6.8: meer aanvragen, langer geldig */ const weg = s.aanvragen.filter(a => a.verloopt <= 0); for (const a of weg){ const rv = aanvraagRivalen(s, a.aard); contractHist(s, a, "verlopen", rv.length ? CH(rv).name : null); } if (weg.length) ctx.rep.push(`${weg.length} aanvra${weg.length > 1 ? "gen" : "ag"} verlopen`); s.aanvragen = s.aanvragen.filter(a => a.verloopt > 0);
   const nP = (s.producten || []).filter(p => p.status === "markt").length;
   for (let poging = 0; poging < (s.reputation >= 45 ? 2 : 1); poging++) if (nP && s.aanvragen.length < AANVRAAG_MAX && kansRol() < (poging ? 0.3 : Math.min(0.7, 0.35 + 0.05 * nP))){ /* 8.5: meer aanvragen */ /* 7.0: minder, de tweede pas bij een goede naam */ const a = maakAanvraag(s); if (a){ s.aanvragen.push(a); ctx.rep.push(`Aanvraag: ${a.klant}`); mail(ctx, s, "Verkoop", `Aanvraag van ${a.klant}`, a.tekst + " Inschrijven kan bij Bedrijf → Klanten, binnen drie maanden.", "NORMAAL"); } }
@@ -1965,3 +1967,51 @@ function actHeat(s, ctx, id){ const m = ym(s), h0 = s.heat, A = (s.heatActies ??
     msg = `Een directeur neemt de schuld op zich en vertrekt met een doos en een zwijgcontract. Heat ${Math.round(h0)} → ${Math.round(s.heat)}, morale −8, reputatie −3.`; }
   else return {ok: false, msg: "Die optie bestaat niet."};
   addLog(s, msg); return {ok: true, msg}; }
+/* 11.18: andere bedrijven komen zelf met verzoeken (rivalen én bedrijven op de kaart), en je kunt ze bellen of iets voorstellen. Elk contact komt in een logboek per bedrijf. */
+const contactZet = (s, naam, tekst) => { if (!naam) return; const C = (s.contact ??= {}), L = (C[naam] ??= []); L.unshift(`${ym(s)} ${tekst}`); C[naam] = L.slice(0, 6); };
+const relLabel = v => v >= 30 ? "warm" : v >= 10 ? "vriendelijk" : v > -10 ? "zakelijk" : v > -30 ? "koel" : "vijandig";
+function contactPartners(s){ const R = (s.rivals || []).filter(r => r.status !== "oorlog" && (r.relatie ?? 0) > -45).map(r => ({soort: "rivaal", naam: r.name, rel: Math.round(r.relatie ?? 0), sector: r.sector, r}));
+  const B = (s.bedrijven || []).filter(b => !b.eigenaar && b.relatie > -45).map(b => ({soort: "bedrijf", naam: b.naam, rel: Math.round(b.relatie), sector: b.sector, b})); return [...R, ...B]; }
+function partnerRel(s, P, d){ if (P.soort === "rivaal") relShift(P.r, d); else P.b.relatie = Math.round(clamp(P.b.relatie + d, -100, 100)); }
+function verzoekOpties(s, P){ const markt = (s.producten || []).filter(p => p.status === "markt"); if (!markt.length) return [];
+  const eigen = P.soort === "rivaal" ? new Set((P.r.producten || []).map(x => x.aard)) : new Set(), los = markt.filter(p => !eigen.has(p.aard || aardVan(p.type, p.naam))), p = CH(los.length ? los : markt), om = Math.max(1, prodOmzet(s, p) || 2), L = [];
+  L.push({soort: "inkoop", p, bedrag: r1(clamp(om * 0.2, 0.5, 6)), maanden: CH([12, 18, 24])});
+  if (P.soort === "rivaal"){ L.push({soort: "licentie", p, bedrag: r1(clamp(om * 2.5, 3, 40))}); if ((P.r.cash || 0) < 250) L.push({soort: "lening", bedrag: r1(clamp(15 + playerValue(s) / 250, 10, 60))}); }
+  else { L.push({soort: "bestelling", p, bedrag: r1(clamp(om * 1.5, 2, 30))}); if ((P.b.aandeel || 0) <= 30) L.push({soort: "investeerder", kost: r1(P.b.waarde * 0.1 * 0.8)}); }
+  return L; }
+function maakVerzoek(s, ctx, P, voorkeur){ const L = verzoekOpties(s, P); if (!L.length) return false; const V = L.find(x => x.soort === voorkeur) || CH(L), id = P.soort === "rivaal" ? P.naam : P.b.id;
+  const rel = o => P.soort === "rivaal" ? {rivaal: {[P.naam]: {relatie: o}}} : {bedrijf: {[P.b.id]: {relatie: o}}}, ct = t => ({contact: {naam: P.naam, tekst: t}}), kans = snapKans(Math.round(clamp(45 + P.rel / 2 + (s.reputation - 30) / 4, 15, 85)));
+  const van = P.soort === "rivaal" ? `${P.r.ceo || "De directie"} (${P.naam})` : P.b.ceo ? `${P.b.ceo} (${P.naam})` : P.naam; let titel, tekst, opties;
+  if (V.soort === "inkoop"){ const hoog = r1(Math.min(8, V.bedrag * 1.35)); titel = `${P.naam} wil ${V.p.naam} inkopen`; tekst = `${P.naam} (${P.sector}) wil ${V.maanden} maanden lang ${V.p.naam} van ons afnemen voor hun eigen klanten: ±€${V.bedrag}M per maand.${P.soort === "rivaal" ? " Een concurrent die bij ons koopt, maakt het zelf niet." : ""}`;
+    opties = [{label: `Tekenen (€${V.bedrag}M/mnd)`, uitleg: "Zeker. Relatie +6.", eff: {stream: {naam: `Levering aan ${P.naam}`, bedrag: V.bedrag, maanden: V.maanden}, ...rel(6), ...ct(`leveringsdeal ${V.p.naam} getekend, €${V.bedrag}M/mnd`)}},
+      {label: `Hoger inzetten (€${hoog}M/mnd, ${kans}%)`, uitleg: "Lukt het niet, dan haken ze af: relatie −6.", eff: {kans, succes: {stream: {naam: `Levering aan ${P.naam}`, bedrag: hoog, maanden: V.maanden}, ...rel(3), ...ct(`leveringsdeal ${V.p.naam} getekend na onderhandelen, €${hoog}M/mnd`)}, falen: {...rel(-6), ...ct("haakten af na ons hogere bod")}}},
+      {label: "Afslaan", uitleg: "Relatie −3.", eff: {...rel(-3), ...ct("leveringsverzoek afgeslagen")}}]; }
+  else if (V.soort === "licentie"){ const hoog = r1(Math.min(100, V.bedrag * 1.4)); titel = `${P.naam} wil een licentie op ${V.p.naam}`; tekst = `${P.naam} wil ${V.p.naam} onder licentie zelf maken: €${V.bedrag}M ineens. Het geld is goed, maar ze worden er een concurrent mee: ${V.p.naam} verliest wat populariteit.`;
+    opties = [{label: `Verkopen (€${V.bedrag}M)`, uitleg: `Relatie +8, ${V.p.naam} populariteit −8.`, eff: {cash: V.bedrag, product: {[V.p.id]: {pop: -8}}, ...rel(8), ...ct(`licentie op ${V.p.naam} verkocht voor €${V.bedrag}M`)}},
+      {label: `Meer vragen (€${hoog}M, ${kans}%)`, uitleg: "Lukt het niet: relatie −5 en geen deal.", eff: {kans, succes: {cash: hoog, product: {[V.p.id]: {pop: -8}}, ...rel(4), ...ct(`licentie op ${V.p.naam} verkocht voor €${hoog}M`)}, falen: {...rel(-5), ...ct("licentieonderhandeling geklapt")}}},
+      {label: "Weigeren", uitleg: "Relatie −4. Je ontwerp blijft van jou.", eff: {...rel(-4), ...ct("licentie geweigerd")}}]; }
+  else if (V.soort === "lening"){ const m = 12, terug = r1(V.bedrag * 1.15 / m), duur = r1(V.bedrag * 1.3 / m); titel = `${P.naam} vraagt een lening`; tekst = `${P.naam} zit krap en vraagt €${V.bedrag}M. Ze betalen ${m} maanden lang €${terug}M terug (15% rente). Een rivaal die bij je in het krijt staat, valt je minder snel aan.`;
+    opties = [{label: `Lenen (€${V.bedrag}M, 15%)`, uitleg: "Relatie +12, agressie omlaag.", eff: {cash: -V.bedrag, stream: {naam: `Aflossing ${P.naam}`, bedrag: terug, maanden: m}, rivaal: {[P.naam]: {relatie: 12, agressie: -0.1}}, ...ct(`€${V.bedrag}M geleend tegen 15%`)}},
+      {label: `Lenen tegen 30% (${kans}%)`, uitleg: "Lukt het niet: relatie −4 en geen lening.", eff: {kans, succes: {cash: -V.bedrag, stream: {naam: `Aflossing ${P.naam}`, bedrag: duur, maanden: m}, rivaal: {[P.naam]: {relatie: 4}}, ...ct(`€${V.bedrag}M geleend tegen 30%`)}, falen: {...rel(-4), ...ct("lening geweigerd: onze rente was te hoog")}}},
+      {label: "Weigeren", uitleg: "Relatie −2.", eff: {...rel(-2), ...ct("lening geweigerd")}}]; }
+  else if (V.soort === "bestelling"){ titel = `${P.naam} plaatst een grote bestelling`; tekst = `${P.naam} wil eenmalig een partij ${V.p.naam}: €${V.bedrag}M, betaling bij levering.`;
+    opties = [{label: `Leveren (€${V.bedrag}M)`, uitleg: "Relatie +5.", eff: {cash: V.bedrag, ...rel(5), ...ct(`bestelling ${V.p.naam} geleverd, €${V.bedrag}M`)}}, {label: "Afslaan", uitleg: "Relatie −3.", eff: {...rel(-3), ...ct("bestelling afgeslagen")}}]; }
+  else { titel = `${P.naam} zoekt een investeerder`; tekst = `${P.naam} haalt geld op en biedt ons 10% voor €${V.kost}M, 20% onder de waarde. Daarna krijg je dividend.`;
+    opties = [{label: `Instappen (€${V.kost}M)`, uitleg: "10% erbij, relatie +6.", eff: {cash: -V.kost, aandeel: {[P.b.id]: 10}, ...rel(6), ...ct(`10% gekocht voor €${V.kost}M`)}}, {label: "Bedanken", uitleg: "Geen gevolgen.", eff: ct("investering afgewezen")}]; }
+  addKeuze(s, ctx, {soort: `verzoek_${V.soort}_${id}`, van, titel, tekst, opties, standaard: opties.length - 1}); contactZet(s, P.naam, `verzoek: ${titel.replace(P.naam + " ", "")}`); ctx.rep.push(`Verzoek: ${titel}`); return true; }
+function verzoekTick(s, ctx){ const open = (s.keuzes || []).filter(k => /^verzoek_/.test(k.soort || "")), W = s.contactWacht || {}, nu = mndNr(ym(s)), P = contactPartners(s);
+  for (const [naam, w] of Object.entries(W)){ if (nu - mndNr(w.m) < 1) continue; delete W[naam]; const x = P.find(q => q.naam === naam); if (!x || open.length >= 3) continue;
+    const ja = w.soort === "voorstel" ? kansRol() < clamp(0.35 + x.rel / 100, 0.15, 0.85) : kansRol() < 0.5;
+    if (ja){ if (maakVerzoek(s, ctx, x, w.soort === "voorstel" ? "inkoop" : null)) open.push(1); } else if (w.soort === "voorstel"){ contactZet(s, naam, "ons voorstel afgewezen"); ctx.rep.push(`${naam} zegt nee tegen je voorstel`); } }
+  if (open.length >= 2 || !P.length || kansRol() >= clamp(0.2 + (s.reputation - 30) / 300, 0.12, 0.35)) return;
+  const kies = P.filter(x => x.rel > -30); if (kies.length) maakVerzoek(s, ctx, CH(kies)); }
+function actContact(s, ctx, naam, wat){ const P = contactPartners(s).find(x => x.naam === naam); if (!P) return {ok: false, msg: "Met dat bedrijf valt nu niet te praten."};
+  const C = (s.contactBel ??= {}); if (C[naam] === ym(s)) return {ok: false, msg: `Je sprak ${naam} deze maand al.`}; C[naam] = ym(s); const W = (s.contactWacht ??= {});
+  if (wat === "bellen"){ partnerRel(s, P, 3); W[naam] = {m: ym(s), soort: "bellen"};
+    const info = P.soort === "rivaal" ? `${P.naam} (${P.sector}) is ${relLabel(P.r.relatie)}. Ze hebben ${(P.r.producten || []).length} producten en ${P.r.cash < 250 ? "zitten krap bij kas" : "geld genoeg"}.` : `${P.naam} (${P.sector}, ${landNaam(s, P.b.land)}) is ${relLabel(P.b.relatie)}${P.b.contract ? " en levert al met ons" : ""}.`;
+    contactZet(s, naam, "gebeld"); return {ok: true, msg: `Een gesprek met ${naam}. ${info} Relatie +3. Misschien komen ze volgende maand met iets.`}; }
+  if (wat === "voorstel"){ if (P.rel < -10) return {ok: false, msg: `${naam} is te ${relLabel(P.rel)} voor een voorstel. Bel eerst eens.`}; W[naam] = {m: ym(s), soort: "voorstel"};
+    contactZet(s, naam, "leveringsvoorstel gedaan"); return {ok: true, msg: `Je stelt ${naam} voor om bij jou in te kopen. Ze denken erover na en antwoorden volgende maand (kans ±${Math.round(clamp(35 + P.rel, 15, 85))}%).`}; }
+  return {ok: false, msg: "Kies bellen of een voorstel."}; }
+function contactOverzicht(s){ return contactPartners(s).map(x => ({naam: x.naam, soort: x.soort, sector: x.sector, rel: x.rel, label: relLabel(x.rel), log: ((s.contact || {})[x.naam] || []).slice(0, 3), gesproken: (s.contactBel || {})[x.naam] === ym(s), wacht: !!(s.contactWacht || {})[x.naam]}))
+  .sort((a, b) => (b.log.length ? 1 : 0) - (a.log.length ? 1 : 0) || b.rel - a.rel); }

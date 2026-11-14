@@ -72,6 +72,7 @@ function foutLog(waar, e){
 /* 3.6: de wereldkaart komt altijd uit WORLD_DATA; ze hoeft niet in elke save (was 75% van de grootte) */
 const pak = s => s && s.map && s.map.kind === "wereld" && s.map.versie === 2 && s.map.frame ? {...s, map: {kind: "wereld", versie: 2, gedeeld: true}} : s;
 function migrate(s){
+  if (s.flags && !s.flags.embargo_overheid_118){ s.flags.embargo_overheid_118 = true; for (const c of (s.contracten || [])) if (c.zwart && (c.soort === "staat" || c.soort === "leger")) c.zwart = false; } /* 11.18: overheden kopen ook onder embargo legaal */
   if (s.producten && s.divisions && s.flags && !s.flags.cap_herstel_117 && typeof capMax === "function"){ s.flags.cap_herstel_117 = true; let terug = 0; const dif = (typeof DIFF !== "undefined" && s.player && DIFF[s.player.difficulty]) || 1;
     for (const p of s.producten){ const vrij = capMax(s, p) - capBasis(s, p), nodig = Math.ceil(Math.max(0, vrij) / 15) * 15; let e = p.capExtra || 0; while (e > nodig){ e -= 15; terug += (5 + e / 5) * dif; } if (e !== (p.capExtra || 0)){ p.capExtra = e; } }
     if (terug > 0){ terug = Math.round(terug * 10) / 10; s.cash = Math.round((s.cash + terug) * 10) / 10; if (s.accounts) s.accounts.operationeel = s.cash; (s.log ??= []).push(`${s.date ? s.date.year + "-" + String(s.date.month).padStart(2, "0") : ""} · Terugbetaald: €${terug}M voor productie-uitbreidingen boven het maximum, die niets deden (11.7)`); } } /* 11.7 */
