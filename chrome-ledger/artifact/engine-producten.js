@@ -661,12 +661,16 @@ const AUTO = {prijs: "Prijs volgt de prijs met de meeste winst (hoogstens 150%, 
 function autoTick(s, ctx, p){ const A = p.auto || {}; if (p.status !== "markt" || !(A.prijs || A.cap || A.keuring)) return; const uit = [];
   if (A.keuring && ["nodig", "afgekeurd"].includes(keurStatus(p)) && kanaalVan(p) !== "zwart" && s.cash > keurKost(s) + 10){ const r = actProduct(s, ctx, "keuring", {id: p.id, wijze: "officieel"}); if (r.ok) uit.push("keuring aangevraagd"); }
   if (A.prijs){ const b = besteprijs(s, p), nf = b ? Math.min(b.f, 1.5) : null; if (nf && Math.abs(nf - prijsF(p)) >= 0.05){ const r = actPrijs(s, p.id, nf); if (r.ok) uit.push(`prijs naar ${Math.round(nf * 100)}%`); } } /* nooit boven 150%: daar beginnen woekerprijzen */
-  if (A.cap){ const nodig = () => vraagNa(p) + contractLast(s, p), c0 = prodCap(s, p); let n = 0; /* 11.15: zoveel stappen als nodig in één maand, zonder maximum; krimpen pas na drie maanden ruim te groot */
-    while (nodig() > prodCap(s, p) * 1.02 && s.cash > capKost(s, p) + 20 && n < 40){ const r = actProduct(s, ctx, "capaciteit", {id: p.id}); if (!r.ok) break; n++; }
-    if (n){ p.capLeeg = 0; uit.push(`capaciteit ${c0} → ${prodCap(s, p)}`); }
-    else if (nodig() < prodCap(s, p) - 40 && prodCap(s, p) - 15 >= 45 && (p.capExtra || 0) > 0){ p.capLeeg = (p.capLeeg || 0) + 1; if (p.capLeeg >= 3){ const r = actProduct(s, ctx, "krimpen", {id: p.id}); if (r.ok){ uit.push(`capaciteit naar ${prodCap(s, p)}`); p.capLeeg = 0; } } }
-    else p.capLeeg = 0; }
+  if (A.cap) capVul(s, ctx, p, uit);
   if (uit.length) ctx.rep.push(`Autopilot ${p.naam}: ${uit.join(", ")}`); }
+/* 11.16: capaciteit vullen tot wat nodig is (vraag + contracten), zonder maximum en zonder kasbuffer: zolang je een uitbreiding kunt betalen, gebeurt ze. Eerst worden de contracten verdeeld, zodat de autopilot ze allemaal ziet. Krimpen pas na drie maanden ruim te groot. */
+function capVul(s, ctx, p, uit, geenKrimp){ if (s._levM !== ym(s)){ levVerdeel(s); s._levM = ym(s); } const nodig = () => vraagNa(p) + contractLast(s, p), c0 = prodCap(s, p); let n = 0;
+  while (nodig() > prodCap(s, p) * 1.02 && s.cash >= capKost(s, p) && n < 80){ const r = actProduct(s, ctx, "capaciteit", {id: p.id}); if (!r.ok) break; n++; }
+  if (n){ p.capLeeg = 0; if (uit) uit.push(`capaciteit ${c0} → ${prodCap(s, p)}`); return n; }
+  if (geenKrimp) return 0;
+  if (nodig() < prodCap(s, p) - 40 && prodCap(s, p) - 15 >= 45 && (p.capExtra || 0) > 0){ p.capLeeg = (p.capLeeg || 0) + 1; if (p.capLeeg >= 3){ const r = actProduct(s, ctx, "krimpen", {id: p.id}); if (r.ok){ if (uit) uit.push(`capaciteit naar ${prodCap(s, p)}`); p.capLeeg = 0; } } }
+  else p.capLeeg = 0; return 0; }
+function capVulAlles(s, ctx){ s._levM = null; for (const p of (s.producten || []).filter(x => x.status === "markt" && (x.auto || {}).cap)){ const uit = []; capVul(s, ctx, p, uit, true); if (uit.length) ctx.rep.push(`Autopilot ${p.naam}: ${uit.join(", ")}`); } }
 const omschakelKost = s => r1(2 * (DIFF[(s && s.player.difficulty)] || 1));
 const nadrukVan = v => v === "" || v == null || isNaN(+v) || +v < 0 || +v > 2 ? null : +v;
 function prodSpecs(p){ const names = SPECS[p.aard] || SPECS.consument, F = {kwaliteit: [1, 1, 1], veilig: [0, 2, 0], snel: [0, -1, 0], goedkoop: [-1, -1, 0], innovatief: [2, -1, 0]}[p.focus] || [0, 0, 0];
@@ -1339,6 +1343,7 @@ function actAanvraag(s, ctx, id, keuze){ const a = (s.aanvragen || []).find(x =>
     if (K.zwart && kansRol() < 0.15){ s.reputation = clamp(s.reputation - 4); msg += " Een journalist zag de levering: reputatie −4."; } }
   else { const w = beste ? beste.naam : null; msg = `Verloren: ${a.klant} kiest ${w || "een andere leverancier"}${beste ? `: hun bod (${beste.score}) was beter dan het jouwe (${V.jij})` : ""}.`; contractHist(s, a, "verloren", w); }
   if (roll.ok) contractHist(s, a, "gewonnen", "jij", (a.raam ? a.perMaand * a.maanden : a.bedrag) * P.f);
+  if (roll.ok && a.raam) capVulAlles(s, ctx); /* 11.16: meteen genoeg capaciteit voor het nieuwe contract */
   { const k0 = klantRel(s, a.klant), aarden = [...new Set([...((k0 || {}).aarden || []), a.aard])]; klantZet(s, a.klant, roll.ok ? (a.raam ? 3 : 8) : 0, roll.ok ? (a.raam ? "raamcontract gegund" : "eenmalig geleverd") : `koos ${beste ? beste.naam : "een ander"}`, {soort: a.soort, cont: a.cont, aarden}); } /* 10.1 */
   s.accounts.operationeel = s.cash; addLog(s, msg); mail(ctx, s, "Verkoop", `Inschrijving ${a.klant}: ${roll.ok ? "gewonnen" : "verloren"}`, msg + ` (${roll.txt}.)`, "NORMAAL");
   return {ok: true, msg: msg + ` (${V.mono ? "Je was de enige aanbieder." : `Vergelijking: ${roll.txt}.`})`}; }

@@ -659,5 +659,10 @@ const html = '<!doctype html><html><head><meta charset=utf8></head><body>' + fs.
     const c3 = JSON.parse(JSON.stringify(G.game)); c3.divisions = [c3.divisions[0]]; const laatste = actDivisie(c3, Ctx(), divNaam(c3.divisions[0]), "opheffen").ok;
     return {waarde: I.waarde, koper: I.koper, v: v.ok, erbij: r1(c.cash - k0), weg, o: o.ok, kost: r1(k1 - c2.cash), laatste}; });
   ok(dv.v && dv.waarde > 0 && dv.erbij === dv.waarde && dv.weg && dv.o && dv.kost > 0 && !dv.laatste, "divisie verkopen (geld erbij, producten en contracten weg) of opheffen (ontslagvergoeding); je laatste divisie niet: " + JSON.stringify(dv));
+  // 11.16 autopilot ziet ook contracten die nog geen product hebben, en breidt uit zonder kasbuffer
+  const cv = await p.evaluate(() => { const c = JSON.parse(JSON.stringify(G.game)), ctx = Ctx(); const p = c.producten.find(x => x.status === "markt"); if (!p) return {geen: true}; c.producten = [p]; p.auto = {cap: true}; p.capExtra = 0;
+    c.contracten = [{id: "z1", klant: "Zonder lev", aard: p.aard || aardVan(p.type, p.naam), product: null, lev: null, perMaand: 30, over: 12, maanden: 12}]; c.cash = capKost(c, p) * 30; c._levM = null;
+    const uit = []; capVul(c, ctx, p, uit); const nodig = Math.round(vraagNa(p) + contractLast(c, p)); return {cap: prodCap(c, p), nodig, uit: uit.join(""), cash: c.cash}; });
+  ok(cv.geen || (cv.cap >= cv.nodig * 0.98 && /→/.test(cv.uit)), "autopilot ziet ook contracten zonder toegewezen product en breidt uit zolang hij het kan betalen: " + JSON.stringify(cv));
   console.log(log.join("\n")); console.log("FOUTEN OP DE PAGINA:", JSON.stringify(errs)); await b.close(); process.exit(log.some(l => l.startsWith("FOUT")) || errs.length ? 1 : 0);
 })();
