@@ -975,7 +975,8 @@ function domDoel(s, d, idx){ const o = {}, sp = spanningVan(s, d.continent), sta
   const tot = Object.values(o).reduce((a, b) => a + b, 0) || 1; return Object.fromEntries(Object.entries(o).map(([k, v]) => [k, v / tot * 100])); }
 const domVan = (s, d) => d.dom || domDoel(s, d);
 const domEigenaar = (s, d) => { const D = domVan(s, d); return d.control === "neutral" ? (D.staat || 0) : (D[d.control] || 0); };
-const aanwezigKost = (s, d) => r1(Math.max(2, districtCost(s, d) * 0.15)); /* 6.8: was een kwart van een vestiging */
+const verWeg = (s, d) => !!d && d.control !== "player" && !reachable(s, "player", d); /* 11.13: buiten je bereik kan wel, maar zonder netwerk is het 50% duurder */
+const aanwezigKost = (s, d) => r1(Math.max(2, districtCost(s, d) * 0.15) * (verWeg(s, d) ? 1.5 : 1)); /* 6.8: was een kwart van een vestiging */
 const AANWEZIG_STAP = 20, HANDEL_MAX = 20;
 /* 6.8: concurreren via handel. Je omzet per continent (producten verdeeld over hun markten; wapens/beveiliging/implantaten alleen thuis en waar je een vergunning hebt) geeft je aanwezigheid in elk district daar. */
 function productContinenten(s, p){ const aard = p.aard || aardVan(p.type, p.naam);
@@ -996,7 +997,7 @@ function handelTick(s){ const H = {}, W = {};
 const rivHandelAanwezig = (s, rn, cont) => { const v = ((s.rivHandel || {})[rn] || {})[cont] || 0; return v > 0 ? Math.min(HANDEL_MAX, Math.round(Math.sqrt(v) * 5 * 10) / 10) : 0; };
 const contractAanwezig = (s, wie, cont) => { const v = ((s.contractCont || {})[wie] || {})[cont] || 0; return v > 0 ? Math.min(CONTRACT_AANW_MAX, Math.round(Math.sqrt(v) * 6 * 10) / 10) : 0; };
 const handelAanwezig = (s, cont) => { const v = (s.handel || {})[cont] || 0; return v > 0 ? Math.min(HANDEL_MAX, Math.round(Math.sqrt(v) * 5 * 10) / 10) : 0; };
-const aanwezigMag = (s, d) => !!d && reachable(s, "player", d);
+const aanwezigMag = (s, d) => !!d; /* 11.13: overal op de kaart */
 function aandeelInkomen(s){ let geld = 0, n = 0; for (const d of s.districts){ if (d.control === "player") continue; if (heeftVestiging(s, "player", d.id)){ geld += incOf(d) * VEST_OMZET * gebiedF(s); if (!(d.dom && (d.dom.player || 0) >= DOM_INKOMEN_MIN)) n++; } /* 11.0: een vestiging verkoopt zelf ook */ if (!d.dom) continue; const v = d.dom.player || 0; if (v >= DOM_INKOMEN_MIN){ geld += incOf(d) * v / 100 * 0.35 * gebiedF(s); n++; /* 8.2: was 0,4 */ } } return {geld: r1(geld), n}; }
 function actAanwezig(s, ctx, id){ const d = s.districts.find(x => x.id === id); if (!d) return {ok: false, msg: "Onbekend district."};
   if (!aanwezigMag(s, d)) return {ok: false, msg: `${d.name} grenst niet aan jouw gebied en ligt niet aan een zee die jij beheerst.`};
@@ -1588,6 +1589,7 @@ function rivAanwezigTick(s, ctx, idx, hqs){ const RA = (s.rivAanwezig ??= {});
   for (const r of s.rivals){ const M = (RA[r.name] ??= {}); for (const k of Object.keys(M)){ M[k] = r1(M[k] * 0.95); if (M[k] < 1) delete M[k]; }
     if (r.cash < 120 || kansRol() >= 0.1) continue;
     const eigen = s.districts.filter(d => d.control === r.name), kand = new Set(); for (const d of eigen) for (const n of d.neighbors || []){ const b = idx.get(n); if (!b || hqs.has(b.id) || b.id === s.player.home_district) continue; if (b.control === "neutral" || (b.control === "player" && (r.relatie || 0) < -20) || (b.control !== "player" && b.control !== r.name && s.rivals.some(x => x.name === b.control) && R() < 0.35)) kand.add(b); } /* 8.1: rivalen vechten ook onderling */
+    for (const id of Object.keys((s.vestiging || {})[r.name] || {})){ const b = idx.get(id); if (b && b.control !== r.name && !hqs.has(b.id) && b.id !== s.player.home_district) kand.add(b); } /* 11.13: ook waar ze ver weg een vestiging hebben */
     if (!kand.size) continue; const L = [...kand], speler = L.filter(d => d.control === "player"), d = speler.length && R() < 0.4 ? CH(speler) : CH(L);
     M[d.id] = Math.min(AANWEZIG_MAX, r1((M[d.id] || 0) + 12)); r.cash = r1(r.cash - 10); /* 11.0: was +20 tot 150 */
     if (d.control === "player" && M[d.id] >= 24 && !(d.rivWaarsch === r.name)){ d.rivWaarsch = r.name; mail(ctx, s, "Strategie", `${r.name} wil ${d.name}`, `${r.name} sponsort clubs, verkoopt er en zet mensen op straat in ${d.name}. Wordt hun aandeel groter dan het onze, dan valt het district hen toe. Meer verkopen en contracten op dit continent, een campagne of een patrouille helpt.`, "HOOG"); } }
@@ -1829,7 +1831,7 @@ function adviezen(s, alles){
   if (vrijeCrew.length && !out.some(x => x.view === "crew")) add(4, `${vrijeCrew.length} crewlid(en) doen deze maand nog niets. Opdrachten kosten niets extra.`, "crew");
   const ups = s.divisions.filter(d => !s.projects.some(p => p.division === divNaam(d))).map(d => ({d, ...upgradePlan(s, d)})).filter(x => x.terug && x.kost < s.cash - 20).sort((a, b) => a.terug - b.terug)[0];
   if (ups) add(ups.terug <= 18 ? 6 : 3, `${divNaam(ups.d)} uitbreiden naar L${ups.d.level + 1}: €${ups.kost}M, ±+€${ups.extra}M per maand na belasting, terugverdiend in ±${ups.terug} maanden.`, "bedrijf");
-  const vest = s.districts.filter(d => d.control !== "player" && !heeftVestiging(s, "player", d.id) && !s.rivals.some(r => r.hq === d.id) && reachable(s, "player", d) && !s.projects.some(p => p.district === d.id)).map(d => ({d, ...vestigingPlan(s, d)})).filter(x => x.terug && x.kost < s.cash - 20).sort((a, b) => a.terug - b.terug)[0];
+  const vest = s.districts.filter(d => d.control !== "player" && !heeftVestiging(s, "player", d.id) && !s.rivals.some(r => r.hq === d.id) && !s.projects.some(p => p.district === d.id)).map(d => ({d, ...vestigingPlan(s, d)})).filter(x => x.terug && x.kost < s.cash - 20).sort((a, b) => a.terug - b.terug)[0];
   if (vest) add(5, `Vestiging in ${vest.d.name}: €${vest.kost}M, ±+€${vest.extra}M per maand, terugverdiend in ±${vest.terug} maanden. Een basis van +${VEST_BASIS} in de strijd om het land.`, "kaart");
   for (const g of s.gangs || []) if (!g.deal && gangLanden(s, g).length){ add(5, `${g.naam} zit in je gebied zonder afspraak. Vroeg of laat komt er een rekening: bescherming kost €${gangFee(s, g)}M per maand.`, "onderwereld"); break; }
   const best = doelen(s).filter(d => d.id !== "termijn").sort((a, b) => b.pct - a.pct)[0];
@@ -1846,7 +1848,7 @@ function adviesCard(st){
 }
 const SPELREGELS = [
   ["Tijd", "Rechtsboven: ▶ laat de maanden vanzelf lopen, op snelheid 1 (traag) tot 5 (turbo); +1 maand doet er precies één. De tijd pauzeert vanzelf bij een nieuw besluit, een kritieke mail, oorlog, heat boven 85 of een rode kas, en zolang je typt of een venster open hebt. Spatie = afspelen/pauze."],
-  ["Gebied", "Landen koop je niet, je wint ze. Elk land is verdeeld in aandelen: de eigenaar heeft een basis, en iedereen verdient aandeel met winkels (verkoop op dat continent), contracten met klanten daar, een vestiging (+22, ook in het land van een rivaal), campagnes (versterken wat er al is, tot 40), patrouilles en landen ernaast; een hoofdkantoor telt zwaar. Heeft iemand twee maanden 55% of meer en meer dan de eigenaar, dan valt het land hem toe. Rivalen spelen met dezelfde regels."],
+  ["Gebied", "Landen koop je niet, je wint ze. Elk land is verdeeld in aandelen: de eigenaar heeft een basis, en iedereen verdient aandeel met winkels (verkoop op dat continent), contracten met klanten daar, een vestiging (+22, ook in het land van een rivaal), campagnes (versterken wat er al is, tot 40), patrouilles en landen ernaast; een hoofdkantoor telt zwaar. Heeft iemand twee maanden 55% of meer en meer dan de eigenaar, dan valt het land hem toe. Vestigingen en campagnes kunnen overal (ver van je gebied 50% duurder); oorlog alleen aan je grenzen of zee. Rivalen spelen met dezelfde regels."],
   ["Mode en vraag", "De vraag schuift: tijdlijn, oorlogen, spanning en modegolven. Soms is een soort product een paar maanden ineens 15 tot 30% populairder (Wereld en je overzicht tonen het); wie dan levert, verdient extra."],
   ["Wereldcrises", "Zeldzaam en groot: een derde wereldoorlog, een pandemie of een energiecrisis, in fases van maanden. Elke fase verschuift de vraag, de grondstofprijzen en de spanning en brengt crisisorders die 30% meer betalen. Kijk op je overzicht wat de huidige fase doet."],
   ["Oorlog", "Strijdkracht heeft drie soorten. Militair (beveiliging, wapenproductie, eigen wapens, verdediging, huurlingen, bases) beslist over gebied innemen, hoofdkantoren en straatgevechten; heimelijk (data, smokkel, cyberware, netrunners) over sabotage en hacks; media over smaad. De kans hangt af van de verhouding: aan het begin vooral geluk, later wint wie echt een leger heeft. Zie het dossier van een rivaal."],

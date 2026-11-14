@@ -1,6 +1,6 @@
 /* Chrome Ledger engine, deel engine-wereld.js: wereld: kaart, zee, dominantie, eigen soorten, personeel, rivalen en acties. 7.4: de engine staat in zes bestanden die in deze volgorde laden (kern, wereld, leven, producten, gm, opslag); alles deelt dezelfde globale scope. */
 /* ---------- de stad: elke game een andere kaart ---------- */
-const VERSION = "11.12";
+const VERSION = "11.13";
 const MAP_W = 1000, MAP_H = 680;
 const RIVAL_COLORS = ["#ff9a1f", "#3d7bff", "#c6ff2e", "#f2f2f2", "#9b5cff", "#ffd400", "#ff4d4d"];
 const ARCH = {
@@ -656,7 +656,7 @@ function rivalAI(s, ctx, diff){
     } else {
       // vrede: groeien, handelen, dreigen
       const hqs = new Set(s.rivals.map(x => x.hq)), nVest = Object.keys((s.vestiging || {})[r.name] || {}).length;
-      const free = nVest >= 6 ? [] : s.districts.filter(d => d.control !== r.name && d.id !== s.player.home_district && !hqs.has(d.id) && !heeftVestiging(s, r.name, d.id) && (d.control === "neutral" || R() < 0.3) && reachable(s, r.name, d)); /* 11.0: ook in andermans land, om het te betwisten */
+      const free = nVest >= 6 ? [] : s.districts.filter(d => d.control !== r.name && d.id !== s.player.home_district && !hqs.has(d.id) && !heeftVestiging(s, r.name, d.id) && (d.control === "neutral" || R() < 0.3) && (reachable(s, r.name, d) || R() < 0.25)); /* 11.13: soms ook ver weg */ /* 11.0: ook in andermans land, om het te betwisten */
       if (free.length && maandenGespeeld(s) >= 4 && rivalDistricts(s, r).length < Math.min(10, 3 + Math.floor(maandenGespeeld(s) / 12) * 2) && r.cash > 90 && R() < 0.06 + r.hebzucht * 0.06){
         const d = CH(free), p = districtValue(d) * 0.8;
         if (r.cash > p * 2 && !heeftVestiging(s, r.name, d.id)){ zetVestiging(s, r.name, d.id); r.cash = r1(r.cash - p * 0.6); news(s, `${r.name} opent een vestiging in ${d.name}`, `${r.name} heeft er panden en een kantoor. Het land is nog niet van hen: dat moeten ze winnen van wie er verkoopt en levert.`, d.continent, "markt", (d.neighbors || []).some(n => (s.districts.find(x => x.id === n) || {}).control === "player")); ctx.rep.push(`${r.name} opent een vestiging in ${d.name}`); } /* 11.0: was meteen eigenaar */
@@ -682,7 +682,7 @@ function rivalAI(s, ctx, diff){
 
 /* ---------- acties van de speler ---------- */
 const loanCap = s => r1(Math.max(0, s.reputation * 4 - s.debt - termijnRest(s) + Math.max(0, s.cash) * 0.5 + (relV(s, "bank") >= 40 ? 50 : 0)));
-const vestigingKost = (s, d) => r1(districtCost(s, d) * 0.6 * (d.control !== "neutral" ? 1.3 : 1)); /* 11.0: een basis, geen land: goedkoper, in andermans land duurder */
+const vestigingKost = (s, d) => r1(districtCost(s, d) * 0.6 * (d.control !== "neutral" ? 1.3 : 1) * (verWeg(s, d) ? 1.5 : 1)); /* 11.13: ver weg 50% duurder */ /* 11.0: een basis, geen land: goedkoper, in andermans land duurder */
 const districtCost = (s, d) => r1((d.upkeep * 8 + d.income * 4) * (s.rivals.some(r => r.hq === d.id) ? 2 : 1) * (DIFF[s.player.difficulty] || 1) * vestigingMult(s) * (1 + 0.12 * Math.max(0, playerDistricts(s).length - 1)));
 const upgradeCost = (s, d) => r1(20 * Math.pow(d.level, 1.3) * (DIFF[s.player.difficulty] || 1));
 const newDivCost = s => r1(30 * (DIFF[s.player.difficulty] || 1));
@@ -785,7 +785,6 @@ function actProject(s, kind, a){
     if (!d || d.control === "player") return {ok: false, msg: "Dat district is al van jou."};
     if (heeftVestiging(s, "player", d.id)) return {ok: false, msg: `Je hebt al een vestiging in ${d.name}. Meer aandeel komt nu van verkopen, contracten, campagnes en patrouilles.`};
     if (s.rivals.some(r => r.hq === d.id)) return {ok: false, msg: `${d.name} is het hoofdkantoor van ${d.control}. Daar laten ze niemand binnen; dat neem je alleen in een oorlog.`};
-    if (!reachable(s, "player", d)) return {ok: false, msg: `${d.name} ligt buiten bereik. Breid uit via een buurdistrict, of beheers de zee aan die kust.`};
     if (s.projects.some(p => p.district === d.id)) return {ok: false, msg: "Daar loopt al een vestiging."};
     cost = s.flags.vergunning ? 0 : vestigingKost(s, d); if (s.flags.vergunning) delete s.flags.vergunning;
     proj = {name: `Vestiging in ${d.name}`, eta_months: 3, cost_per_month: 1, district: d.id,
