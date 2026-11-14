@@ -664,5 +664,14 @@ const html = '<!doctype html><html><head><meta charset=utf8></head><body>' + fs.
     c.contracten = [{id: "z1", klant: "Zonder lev", aard: p.aard || aardVan(p.type, p.naam), product: null, lev: null, perMaand: 30, over: 12, maanden: 12}]; c.cash = capKost(c, p) * 30; c._levM = null;
     const uit = []; capVul(c, ctx, p, uit); const nodig = Math.round(vraagNa(p) + contractLast(c, p)); return {cap: prodCap(c, p), nodig, uit: uit.join(""), cash: c.cash}; });
   ok(cv.geen || (cv.cap >= cv.nodig * 0.98 && /→/.test(cv.uit)), "autopilot ziet ook contracten zonder toegewezen product en breidt uit zolang hij het kan betalen: " + JSON.stringify(cv));
+  // 11.17 heat verlagen op één plek, en ontwikkeling stopzetten
+  const hv = await p.evaluate(() => { const c = JSON.parse(JSON.stringify(G.game)), ctx = Ctx(); c.heat = 80; c.cash = 500; c.accounts.operationeel = 500; c.smokkelroute = {"Azië": "2004-01"}; c.flags.offensief = null; c.heatActies = {};
+    const ids = heatOpties(c).map(o => o.id); const r1h = actHeat(c, ctx, "smokkeldicht"), h1 = c.heat, r2 = actHeat(c, ctx, "zondebok"), h2 = c.heat, r3 = actHeat(c, ctx, "zondebok"), r4 = actHeat(c, ctx, "compliance"), r5 = actHeat(c, ctx, "offensief"), h5 = c.heat;
+    return {ids, ok: [r1h.ok, r2.ok, !r3.ok, r4.ok, r5.ok], h1, h2, h5, routes: Object.keys(c.smokkelroute).length, comp: !!c.compliance}; });
+  ok(hv.ok.every(Boolean) && hv.h1 === 76 && hv.h2 === 61 && hv.h5 === 49 && hv.routes === 0 && hv.comp && hv.ids.includes("offensief") && hv.ids.includes("compliance"), "heat verlagen: smokkelroutes dicht, zondebok met wachttijd, compliance, offensief: " + JSON.stringify(hv));
+  const stz = await p.evaluate(() => { const c = JSON.parse(JSON.stringify(G.game)), ctx = Ctx(); const d = c.divisions[0]; c.cash = 900; c.accounts.operationeel = 900; c.producten = (c.producten || []).filter(x => x.divisie !== divNaam(d));
+    const r = actProduct(c, ctx, "ontwikkel", {divisie: divNaam(d), schaal: "klein", focus: "standaard", naam: "Stoptest"}); const q = c.producten.find(x => x.naam === "Stoptest"); if (!r.ok || !q) return {fout: r.msg};
+    const kas = c.cash, s2 = actProduct(c, ctx, "staken", {id: q.id}); return {ok: s2.ok, weg: !c.producten.some(x => x.naam === "Stoptest"), terug: Math.round((c.cash - kas) * 10) / 10, kost: q.devKost, msg: s2.msg}; });
+  ok(stz.ok && stz.weg && Math.abs(stz.terug - Math.round(stz.kost * 0.25 * 10) / 10) < 0.11, "ontwikkeling stopzetten: product weg, kwart terug: " + JSON.stringify(stz));
   console.log(log.join("\n")); console.log("FOUTEN OP DE PAGINA:", JSON.stringify(errs)); await b.close(); process.exit(log.some(l => l.startsWith("FOUT")) || errs.length ? 1 : 0);
 })();

@@ -96,7 +96,7 @@ function actProduct(s, ctx, soort, a){
     const naam = String(a.naam || "").trim().slice(0, 40) || nieuwProductNaam(s, d.type);
     if ((s.producten || []).some(p => p.naam === naam)) return {ok: false, msg: "Die naam bestaat al."};
     if (!pay(kost)) return {ok: false, msg: `Dit kost €${kost}M. Niet genoeg cash.`}; if (gratis) s.gratisDev -= 1;
-    const p = mkProduct(s, d, naam, plan.kw, 0); p.status = "ontwikkeling"; p.eta = plan.maanden; p.schaal = a.schaal; p.focus = focus; p.nadruk = nadrukVan(a.nadruk); if (beta) p.beta = true; if (DEEL_KWAL[a.delen] && a.delen !== "standaard") p.delen = [0, 1, 2].map(() => ({kwal: a.delen, eigen: true})); p.aard = aardK || aardVan(d.type, naam); if (a.vorm === "abonnement") p.soort = "abonnement"; (s.producten ??= []).push(p);
+    const p = mkProduct(s, d, naam, plan.kw, 0); p.status = "ontwikkeling"; p.eta = plan.maanden; p.devKost = gratis ? 0 : kost; p.schaal = a.schaal; p.focus = focus; p.nadruk = nadrukVan(a.nadruk); if (beta) p.beta = true; if (DEEL_KWAL[a.delen] && a.delen !== "standaard") p.delen = [0, 1, 2].map(() => ({kwal: a.delen, eigen: true})); p.aard = aardK || aardVan(d.type, naam); if (a.vorm === "abonnement") p.soort = "abonnement"; (s.producten ??= []).push(p);
     const K = devPlan(s, d, a.schaal, focus, p.aard, beta).kansen; prodLog(p, s, `Ontwikkeling gestart (${PRODUCT_SCHAAL[a.schaal].label.toLowerCase()}, focus ${F.label.toLowerCase()})`);
     msg = `${naam} in ontwikkeling bij ${divNaam(d)}: €${kost}M, ${plan.maanden} maanden. Bij de lancering: hit ${K.hit}%, gewoon ${K.gewoon}%, matig ${K.neutraal}%, flop ${K.flop}%, terugroepactie ${K.terug}%.`;
   } else {
@@ -144,6 +144,12 @@ function actProduct(s, ctx, soort, a){
       msg = `Productielijn van ${p.naam} ingekrompen: capaciteit nu ${prodCap(s, p)} (vraag ${Math.round(vraagNa(p))}).${terug ? ` De €${terug}M van de uitbreiding komt terug.` : ""} Vaste kosten van de lijn nu ${capVast(s, p) >= 0 ? `€${capVast(s, p)}M` : `€${-capVast(s, p)}M bespaard`} per maand.`; }
     else if (soort === "capaciteit"){ if (p.status !== "markt") return {ok: false, msg: "Het staat niet op de markt."}; if (prodCap(s, p) >= capMax(s, p)) return {ok: false, msg: `${p.naam} zit aan het maximum (${capMax(s, p)}) voor een divisie op niveau ${((capDiv(s, p) || {}).level) || 1}. Breid de divisie uit voor +15, of laat een ander product meer leveren.`}; const k = capKost(s, p); if (!pay(k)) return {ok: false, msg: `Productie uitbreiden kost €${k}M.`}; p.capExtra = (p.capExtra || 0) + 15; msg = `Productielijn van ${p.naam} uitgebreid: capaciteit nu ${prodCap(s, p)} (vraag ${Math.round(vraagNa(p))}). Vaste kosten van de lijn nu €${capVast(s, p)}M per maand.`; }
     else if (soort === "loyaliteit"){ if (!isAbo(p)) return {ok: false, msg: "Alleen voor abonnementen."}; p.loyaal = !p.loyaal; msg = p.loyaal ? `Loyaliteitsprogramma voor ${p.naam}: €${loyKost(p)}M per maand, opzeggers −1,2 procentpunt.` : `Loyaliteitsprogramma van ${p.naam} gestopt.`; }
+    else if (soort === "staken"){ /* 11.17: ontwikkeling of een nieuwe versie stopzetten. Een kwart van wat je betaalde komt terug (de rest is al uitgegeven) */
+      if (p.status === "ontwikkeling" || p.status === "wachtrij"){ const terug = p.status === "ontwikkeling" ? r1((p.devKost || 0) * 0.25) : (p.betaald ? r1((p.devKost || 0) * 0.25) : 0); s.producten = s.producten.filter(x => x !== p); if (terug){ s.cash = r1(s.cash + terug); s.accounts.operationeel = s.cash; }
+        msg = `Ontwikkeling van ${p.naam} stopgezet.${terug ? ` €${terug}M komt terug (een kwart van wat het kostte).` : p.status === "ontwikkeling" ? " Het geld is al uitgegeven." : ""} De divisie is vrij voor iets nieuws.`; }
+      else if (p.verbetering){ delete p.verbetering; prodLog(p, s, "Nieuwe versie stopgezet"); msg = `De nieuwe versie van ${p.naam} is stopgezet. ${p.naam} blijft gewoon op de markt.`; }
+      else return {ok: false, msg: "Er loopt niets om stop te zetten."};
+      addLog(s, msg); }
     else if (soort === "stop"){ s.producten = s.producten.filter(x => x !== p); msg = `${p.naam} is uit de markt gehaald.`; }
     else return {ok: false, msg: "Onbekende actie."};
   }
@@ -162,7 +168,7 @@ function productTick(s, ctx){
     for (const q of s.producten.filter(p => p.divisie === nm && p.status === "wachtrij")){
     const sc = PRODUCT_SCHAAL[q.schaal || "klein"], F = DEV_FOCUS[q.focus || "standaard"] || DEV_FOCUS.standaard, kost = q.betaald ? 0 : q.kostOverride != null ? q.kostOverride : r1(sc.kost * (DIFF[s.player.difficulty] || 1) * (F.kost || 1) * (q.beta ? 1.2 : 1));
     if (s.cash < kost + 10){ if (!q.wachtgeld) ctx.rep.push(`${q.naam} wacht in de rij op €${kost}M`); q.wachtgeld = true; continue; }
-    s.cash = r1(s.cash - kost); q.status = "ontwikkeling"; q.eta = (q.maandenOverride || Math.max(1, sc.maanden + (F.maanden || 0))) + 1 + (q.beta ? 1 : 0); delete q.wachtgeld; ctx.rep.push(`Productie gestart: ${q.naam}${kost ? ` (€${kost}M)` : ""}`); } }
+    s.cash = r1(s.cash - kost); q.devKost = kost; q.status = "ontwikkeling"; q.eta = (q.maandenOverride || Math.max(1, sc.maanden + (F.maanden || 0))) + 1 + (q.beta ? 1 : 0); delete q.wachtgeld; ctx.rep.push(`Productie gestart: ${q.naam}${kost ? ` (€${kost}M)` : ""}`); } }
   for (const p of [...s.producten]){
     const d = s.divisions.find(x => divNaam(x) === p.divisie);
     if (p.status === "wachtrij") continue;
@@ -1926,3 +1932,36 @@ function actDivisie(s, ctx, naam, wijze){ const I = divVerkoopInfo(s, naam); if 
   else return {ok: false, msg: "Kies verkopen of opheffen."};
   s.producten = (s.producten || []).filter(p => !ids.has(p.id)); s.divisions = s.divisions.filter(x => x !== I.d); if (s.divomzet) delete s.divomzet[naam];
   s.staff.count = Math.max(staffNeed(s), s.staff.count - I.mensen); s.contracten = (s.contracten || []).filter(c => c.over > 0); addLog(s, msg); return {ok: true, msg}; }
+/* 11.17: heat verlagen op één plek. Elke optie zegt wat ze kost, wat ze doet en wanneer ze weer kan. Specifiek voor wapenmakers: wapens schenken aan de eigen staat, smokkelroutes sluiten en een compliance-afdeling. */
+const HEAT_WACHT = {schenking: 3, zondebok: 6};
+const schenkKost = s => r1(Math.max(4, 4 + playerValue(s) / 800) * (DIFF[s.player.difficulty] || 1));
+const complianceKost = s => r1(Math.max(1, 1 + playerValue(s) / 2000) * (DIFF[s.player.difficulty] || 1));
+const COMPLIANCE_DECAY = 2.5;
+const heatWacht = (s, id) => { const m = (s.heatActies || {})[id]; return m ? Math.max(0, HEAT_WACHT[id] - (mndNr(ym(s)) - mndNr(m))) : 0; };
+const heeftWapenwaar = s => (s.producten || []).some(p => p.status === "markt" && ["wapen", "beveiliging"].includes(p.aard || aardVan(p.type, p.naam)));
+function heatOpties(s){ const L = [], cash = s.cash, routes = Object.keys(s.smokkelroute || {});
+  const off = !s.flags.offensief || mndNr(ym(s)) - mndNr(s.flags.offensief) >= 4, ok = offensiefKost(s);
+  L.push({id: "offensief", label: "Juridisch offensief", effect: "heat −12", kost: `€${ok}M`, uitleg: "Advocaten, lobbyisten en een paar diners. Eens per vier maanden.", kan: off && cash >= ok, reden: !off ? `weer in ${4 - (mndNr(ym(s)) - mndNr(s.flags.offensief))} mnd` : cash < ok ? "te weinig cash" : ""});
+  if (heeftWapenwaar(s)){ const k = schenkKost(s), w = heatWacht(s, "schenking"); L.push({id: "schenking", label: "Wapens schenken aan je eigen staat", effect: "heat −10, politie +6, reputatie +2", kost: `€${k}M aan goederen`, uitleg: "Een vrachtwagen vol aan de nationale politie, met fotograaf. Wie de staat bewapent, wordt minder snel binnengevallen. Eens per drie maanden.", kan: !w && cash >= k, reden: w ? `weer in ${w} mnd` : cash < k ? "te weinig cash" : "", wapen: true}); }
+  if (routes.length) L.push({id: "smokkeldicht", label: `Smokkelroutes sluiten (${routes.join(", ")})`, effect: `heat −${4 * routes.length} nu, en geen heat meer van smokkelcontracten`, kost: "omzet: contracten onder embargo kun je niet meer leveren", uitleg: "Elke levering via een smokkelroute is zwart geld en +2 heat. Lopende contracten lopen door; nieuwe onder embargo kun je niet meer aannemen.", kan: true, reden: "", wapen: true});
+  L.push({id: "compliance", label: s.compliance ? "Compliance-afdeling (actief): stoppen" : "Compliance-afdeling opzetten", effect: `heat −${COMPLIANCE_DECAY} per maand, zolang ze bestaat`, kost: `€${complianceKost(s)}M per maand`, uitleg: "Juristen die eindgebruikers controleren en papieren op orde houden. Werkt elke maand, zonder wachttijd. Je kunt haar altijd weer opheffen.", kan: !!s.compliance || cash >= complianceKost(s), reden: "", aan: !!s.compliance});
+  { const w = heatWacht(s, "zondebok"); L.push({id: "zondebok", label: "Een zondebok aanwijzen", effect: "heat −15, morale −8, reputatie −3", kost: "€2M afvloeiing", uitleg: "Een directeur neemt de schuld op zich en vertrekt. Justitie heeft een naam, je mensen weten wat het betekent. Eens per zes maanden.", kan: !w && cash >= 2, reden: w ? `weer in ${w} mnd` : cash < 2 ? "te weinig cash" : ""}); }
+  L.push({id: "commissaris", label: "Gunst van de commissaris", effect: "heat −10", kost: "relatie met de politie", uitleg: "Een dossier laten verdwijnen. Kan als je band met de commissaris hoog genoeg is.", view: "mensen", kan: true});
+  L.push({id: "crew", label: "Sporen wissen of een schandaal begraven", effect: "heat −6 of −5", kost: "een netrunner of spindokter in je crew", uitleg: "Een klus voor je crew, met een worp.", view: "crew", kan: true});
+  L.push({id: "rust", label: "Rust in de straat", effect: "heat −8", kost: "invloed", uitleg: "Een paar telefoontjes via je invloed op de kaart.", view: "kaart", kan: true});
+  return L; }
+function actHeat(s, ctx, id){ const m = ym(s), h0 = s.heat, A = (s.heatActies ??= {}); let msg;
+  const pay = k => { if (s.cash < k) return false; s.cash = r1(s.cash - k); s.accounts.operationeel = s.cash; return true; };
+  if (id === "offensief") return actOffensief(s, ctx);
+  if (id === "schenking"){ if (!heeftWapenwaar(s)) return {ok: false, msg: "Je hebt geen wapens of beveiliging op de markt om te schenken."}; const w = heatWacht(s, id); if (w) return {ok: false, msg: `De vorige schenking is nog vers. Over ${w} maand(en) kan het weer.`};
+    const k = schenkKost(s); if (!pay(k)) return {ok: false, msg: `De schenking kost €${k}M aan goederen.`}; A[id] = m; s.heat = clamp(s.heat - 10); shiftFaction(s, "politie", 6); s.reputation = clamp(s.reputation + 2);
+    msg = `Een konvooi wapens voor de nationale politie, met fotograaf en een minister. Heat ${Math.round(h0)} → ${Math.round(s.heat)}, politie +6, reputatie +2 (€${k}M).`; }
+  else if (id === "smokkeldicht"){ const routes = Object.keys(s.smokkelroute || {}); if (!routes.length) return {ok: false, msg: "Je hebt geen smokkelroutes."}; s.smokkelroute = {}; s.heat = clamp(s.heat - 4 * routes.length);
+    msg = `Smokkelroutes naar ${routes.join(", ")} gesloten. Heat ${Math.round(h0)} → ${Math.round(s.heat)}. Contracten onder embargo kun je niet meer aannemen.`; }
+  else if (id === "compliance"){ if (s.compliance){ delete s.compliance; msg = "De compliance-afdeling is opgeheven. Heat zakt weer in het gewone tempo."; }
+    else { if (s.cash < complianceKost(s)) return {ok: false, msg: `Een compliance-afdeling kost €${complianceKost(s)}M per maand.`}; s.compliance = m; msg = `Compliance-afdeling opgezet: heat −${COMPLIANCE_DECAY} per maand, €${complianceKost(s)}M per maand.`; } }
+  else if (id === "zondebok"){ const w = heatWacht(s, id); if (w) return {ok: false, msg: `Er is net iemand opgeofferd. Over ${w} maand(en) kan het weer.`}; if (!pay(2)) return {ok: false, msg: "De afvloeiing kost €2M."};
+    A[id] = m; s.heat = clamp(s.heat - 15); s.morale = clamp(s.morale - 8); s.reputation = clamp(s.reputation - 3);
+    msg = `Een directeur neemt de schuld op zich en vertrekt met een doos en een zwijgcontract. Heat ${Math.round(h0)} → ${Math.round(s.heat)}, morale −8, reputatie −3.`; }
+  else return {ok: false, msg: "Die optie bestaat niet."};
+  addLog(s, msg); return {ok: true, msg}; }

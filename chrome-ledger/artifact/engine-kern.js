@@ -567,6 +567,7 @@ function tick(s){
   { const hl = r1(s.divisions.reduce((a, d) => a + ((d.hoofd || {}).loon || 0), 0)); if (hl){ cost += hl; lines.push(`| Divisiehoofden (${s.divisions.filter(d => d.hoofd).length}) | 0 | ${hl} |`); } } /* 6.1 */
   { const dl = directieLoon(s); if (dl){ cost += dl; lines.push(`| Directie: loon nieuwe assistenten | 0 | ${dl} |`); } } /* 5.8 */
   { const np = patrouilles(s).length, pk = r1(np * patrouilleKost(s)); if (pk){ cost += pk; lines.push(`| Patrouilles op straat (${np}) | 0 | ${pk} |`); if (!heeftWet(s, "beveiliging")) heatAdd += np * 0.25; } } /* 5.5 */
+  if (s.compliance){ const ck = complianceKost(s); cost += ck; lines.push(`| Compliance-afdeling | 0 | ${ck} |`); } /* 11.17 */
   if (npcActive(s, "kosten")) cost *= 0.97;
   if (heeftFocus(s, "lean")) cost *= 0.95;
   const off = (s.accounts.offshore >= 20 ? 0.08 : 0) + (heeftWet(s, "zone") ? 0.05 : 0), winst0 = Math.max(0, rev - cost), belasting = r1(Math.min(winst0, 60) * (0.2 - off) + Math.max(0, winst0 - 60) * (0.35 - off));
@@ -574,6 +575,7 @@ function tick(s){
   const net = r1(rev - cost); s.cash = r1(s.cash + net);
 
   { const h0 = s.heat, ha = heatAdd * 0.7 * inst(s, "heat") * (s.player.difficulty === "Casual" ? 0.9 : 1) * (heeftFocus(s, "juristen") ? 0.9 : 1), dec = (s.culture.heat_decay ?? 2) + s.heat * 0.07 + spanningHeat(s); s.heat = clamp(s.heat + ha - dec); gz.hDelen.push(["Divisies (omzet trekt aandacht)", r1(ha)], ["Vanzelf afnemen", r1(s.heat - h0 - ha)]); }
+  if (s.compliance){ const h1 = s.heat; s.heat = clamp(s.heat - COMPLIANCE_DECAY); gz.hDelen.push(["Compliance-afdeling", r1(s.heat - h1)]); } /* 11.17 */
   { const pv = playerValue(s), tz = pv > 300 ? r1(Math.log10(pv / 300) * 1.2 * (typeof drukF === "function" ? drukF(s) : 1)) : 0; /* 7.5: een groot bedrijf trekt toezicht */
     if (tz > 0){ s.heat = clamp(s.heat + tz); gz.hDelen.push(["Toezicht op een groot bedrijf", tz]); } }
   let drift = (s.culture.morale_drift || 0) + (net > 0 ? 1 : -2); if (s.culture.layoff_policy === "hard") drift -= 2;
