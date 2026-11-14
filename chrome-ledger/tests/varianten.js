@@ -628,5 +628,11 @@ const html = '<!doctype html><html><head><meta charset=utf8></head><body>' + fs.
     const begin = zet({"Weapon Manufacturing": 1}, [], {"Smokkel": 1}, []);
     const k = strijdkracht(c, r); return {laat, begin, uit: !!(k.uit && k.uit.heimelijk.length)}; });
   ok(sk.geen || (sk.laat.inname >= 75 && sk.laat.hunInname <= 25 && sk.laat.sabotage < sk.laat.inname && sk.laat.terug > sk.laat.hunInname && sk.begin.inname >= 42 && sk.begin.inname <= 72 && sk.uit), "strijdkracht per soort: een wapenmacht neemt gebied in van een smokkelaar, die slaat terug met sabotage; aan het begin is het vooral geluk: " + JSON.stringify(sk));
+  // 11.12 kaart: wie wint een gebied, getint in zijn kleur
+  const kw = await p.evaluate(() => { const c = JSON.parse(JSON.stringify(G.game)), r = c.rivals[0]; const d = c.districts.find(x => x.control === "neutral" && !c.rivals.some(q => q.hq === x.id)); if (!r || !d) return {geen: true};
+    d.dom = {staat: 30, [r.name]: 45, player: 25}; const G0 = G.game; G.game = c; S.view = "kaart"; S.mapmode = "politiek"; render(); const M = mapView(c), cel = M.cells.find(x => x.id === d.id);
+    const stip = !!document.querySelector(`[data-dist="${d.id}"] [stroke-dasharray]`); d.dom = {staat: 60, [r.name]: 25, player: 15}; const geen = !mapView(c).cells.find(x => x.id === d.id).winnaar; G.game = G0; S.view = "overzicht"; render();
+    return {wint: cel.winnaar && cel.winnaar.o === r.name, kleur: cel.winnaar && cel.winnaar.kleur === ownerColor(c, r.name), stip, geen}; });
+  ok(kw.geen === true && !("wint" in kw) || (kw.wint && kw.kleur && kw.stip && kw.geen), "kaart: een gebied dat iemand anders wint, is getint in zijn kleur met een stippellijn; zonder winnaar niet: " + JSON.stringify(kw));
   console.log(log.join("\n")); console.log("FOUTEN OP DE PAGINA:", JSON.stringify(errs)); await b.close(); process.exit(log.some(l => l.startsWith("FOUT")) || errs.length ? 1 : 0);
 })();
