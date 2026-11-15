@@ -97,12 +97,10 @@ const shots = process.argv.includes('--shots');
   const telFra = async () => page.evaluate(() => { const o = JSON.parse(localStorage.getItem('frontlinie.v1')); const c = Object.values(o.campagnes).find((x) => x.scenarioId === 'europa1938'); return [c.regios.lotharingen.eigenaar, c.regios.parijs.eigenaar, (c.verf || '').length]; });
   const voor = await telFra();
   const pt = async (id) => page.evaluate((rid) => { const el = document.querySelector('.kaartlaag svg [data-id="' + rid + '"]'); const b = el.getBoundingClientRect(); return [b.x + b.width / 2, b.y + b.height / 2]; }, id);
-  await klik(page, 'Breed');
-  const [x1, y1] = await pt('rijnland'), [x2, y2] = await pt('lotharingen'), [x3, y3] = await pt('parijs');
-  await page.mouse.move(x1, y1); await page.mouse.down();
-  for (let i = 0; i <= 30; i++) await page.mouse.move(x1 + (x2 - x1) * i / 30, y1 + (y2 - y1) * i / 30);
-  for (const [dx, dy] of [[-18, -18], [18, -18], [-18, 18], [18, 18], [0, 0], [-30, 0], [30, 0], [0, 30], [0, -30]]) await page.mouse.move(x2 + dx, y2 + dy, { steps: 4 });
-  for (let i = 0; i <= 20; i++) await page.mouse.move(x2 + (x3 - x2) * i / 40, y2 + (y3 - y2) * i / 40);
+  // omlijn Lotharingen: een lus rond de regio, bij loslaten wordt hij gevuld
+  const vakL = await page.evaluate(() => { const el = document.querySelector('.kaartlaag svg [data-id="lotharingen"]'); el.scrollIntoView({ block: 'center', inline: 'center' }); const b = el.getBoundingClientRect(); return [b.x + b.width / 2, b.y + b.height / 2, b.width / 2, b.height / 2]; });
+  await page.mouse.move(vakL[0] + vakL[2], vakL[1]); await page.mouse.down();
+  for (let i = 1; i <= 48; i++) { const a = i / 48 * Math.PI * 2; await page.mouse.move(vakL[0] + Math.cos(a) * vakL[2], vakL[1] + Math.sin(a) * vakL[3]); if (i === 30) await foto(page, '15a-omlijnen'); }
   await page.mouse.up();
   await foto(page, '15-getekend');
   const na = await telFra();

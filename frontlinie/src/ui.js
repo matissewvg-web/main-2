@@ -8,7 +8,7 @@ import { genereerTafel, tafelSvg, STUKKEN, STANDAARD_VOORRAAD, STANDAARD_TAFEL }
 import { kaartInfo, kaartVan, nieuweCampagne, losBezitOp, datumVan, grondVan, GRONDNAAM, LENGTES, factie, zijdeVan, regiosVan, heeftDoc, limieten, beschikbareOrders, orderDoelen, telling, voegOrderToe, verwijderOrder, ORDERTYPES, voorspel, zietVersterking, effectieveFort, actieveFacties, klimaatVan, planVolgorde, volgendePlanner, bekendeAanvallen, onthul, vervangOrder, startGevechten, tafelVan, voerUitslagIn, bonusDoelen, bonusAanval, herrolTerrein, kiesTweedeDoctrine, wisselDoctrine, stand, kanBeurtEindigen, eindeBeurt, veteraanBonus } from './engine.js';
 import { kaartSvg, esc, ORDERCODE } from './ui-kaart.js';
 import { scenarioBlad } from './ui-blad.js';
-import { verfSync, verfTeken, verfKwast } from './ui-verf.js';
+import { verfSync, verfTeken, verfPasToe, verfVoorbeeld } from './ui-verf.js';
 
 const SLEUTEL = 'frontlinie.v1';
 const INGEBED = (() => { try { return window.self !== window.top; } catch (e) { return true; } })();
@@ -189,7 +189,7 @@ function orderTekst(s, o) {
   return `${ORDERTYPES[o.type].naam}${o.van ? ' vanuit ' + esc(info.opId[o.van].naam) : ''} ${o.type === 'aanval' ? 'op' : '→'} ${esc(info.opId[o.naar].naam)}`;
 }
 function instructie(s) {
-  if (ui.teken) return 'Sleep over de kaart om gebied in te kleuren. De frontlijn loopt mee.';
+  if (ui.teken) return ui.teken.modus === 'lasso' ? 'Trek een lijn rond het veroverde gebied. Laat los en het wordt ingekleurd.' : 'Sleep over de kaart om een strook in te kleuren.';
   const fid = ui.plannend || (ui.auftrag && ui.auftrag.fid);
   if (!fid) return s.fase === 'gevechten' ? 'Rood kruis: open gevecht. Grijs kruis: afgehandeld.' : '';
   if (!ui.orderType) return 'Kies rechts een order en klik dan op de kaart.';
@@ -324,7 +324,7 @@ function campagneScherm() {
     : `<div style="width:${Math.round(ui.zoom * 100)}%">${kaartSvg(s, ko)}</div>`;
   const tekenBalk = !verf ? '' : ui.teken
     ? `<div class="tekenbalk"><label class="inlijn">Kleur in voor <select id="tk-land" data-c="tk" data-veld="fid">${s.facties.map((f) => `<option value="${f.id}" ${ui.teken.fid === f.id ? 'selected' : ''}>${esc(f.naam)}</option>`).join('')}<option value="neutraal" ${ui.teken.fid === 'neutraal' ? 'selected' : ''}>Niemandsland</option></select></label>
-        <span class="knoppen">${[['12', 'Fijn'], ['28', 'Middel'], ['60', 'Breed']].map(([m, t]) => `<button type="button" class="knop mini${String(ui.teken.maat) === m ? ' gekozen' : ''}" data-a="tekenMaat" data-m="${m}">${t}</button>`).join('')}${knop('tekenUit', 'Klaar met tekenen', '', 'hoofd mini')}</span></div>`
+        <span class="knoppen">${[['lasso', 'Omlijnen en vullen'], ['kwast', 'Kwast']].map(([m, t]) => `<button type="button" class="knop mini${ui.teken.modus === m ? ' gekozen' : ''}" data-a="tekenModus" data-m="${m}">${t}</button>`).join('')}${ui.teken.modus === 'kwast' ? [['10', 'Fijn'], ['24', 'Middel'], ['50', 'Breed']].map(([m, t]) => `<button type="button" class="knop mini${String(ui.teken.maat) === m ? ' gekozen' : ''}" data-a="tekenMaat" data-m="${m}">${t}</button>`).join('') : ''}${knop('tekenUit', 'Klaar met tekenen', '', 'hoofd mini')}</span></div>`
     : '';
   return `<main class="camp">
   <section class="kaartvak"><div class="kaartbalk"><p class="instructie">${esc(instructie(s))}</p><div class="knoppen">${verf && !ui.teken ? knop('tekenAan', 'Teken gebied', '', 'mini') : ''}${knop('zoom', '−', 'data-d="-1" aria-label="Zoom uit"', 'mini')}${knop('zoom', '+', 'data-d="1" aria-label="Zoom in"', 'mini')}</div></div>
@@ -467,7 +467,8 @@ const ACT = {
     const fout = ui.auftrag ? muteer((st) => vervangOrder(st, fid, ui.auftrag.index, o)) : muteer((st) => voegOrderToe(st, fid, o));
     if (fout) ui.melding = fout; else { ui.orderVan = null; if (ui.auftrag) { ui.auftrag = null; ui.orderType = null; } }
   },
-  tekenAan() { const s = C(); ui.teken = { fid: ui.plannend || (s.facties.find((f) => f.speler === 'mens') || s.facties[0]).id, maat: 28 }; },
+  tekenAan() { const s = C(); ui.teken = { fid: ui.plannend || (s.facties.find((f) => f.speler === 'mens') || s.facties[0]).id, modus: 'lasso', maat: 24 }; },
+  tekenModus(d) { ui.teken.modus = d.m; },
   tekenUit() { ui.teken = null; },
   tekenMaat(d) { ui.teken.maat = +d.m; },
   plan(d) { ui.plannend = d.id; ui.tab = 'beurt'; ui.sel = null; ui.undo = null; resetPlan(); },
@@ -532,19 +533,26 @@ export function startApp(el) {
     if (r !== false) teken();
   });
   // tekenen: slepen over de kaart kleurt cellen in
-  let streek = false, wachtend = false;
-  const kaartPunt = (e) => { const svg = wortel.querySelector('.kaartlaag svg'); if (!svg) return null; const m = svg.getScreenCTM(); if (!m) return null; const p = new DOMPoint(e.clientX, e.clientY).matrixTransform(m.inverse()); return p; };
-  const kwast = (e) => {
+  let streek = null, wachtend = false;
+  const kaartPunt = (e) => { const svg = wortel.querySelector('.kaartlaag svg'); const m = svg && svg.getScreenCTM(); return m ? new DOMPoint(e.clientX, e.clientY).matrixTransform(m.inverse()) : null; };
+  const voegPunt = (e) => {
     const p = kaartPunt(e); if (!p) return;
-    verfKwast(C(), p.x, p.y, ui.teken.maat, ui.teken.fid);
-    if (!wachtend) { wachtend = true; requestAnimationFrame(() => { wachtend = false; const doek = wortel.querySelector('.verfdoek'); if (doek && ui.scherm === 'campagne') verfTeken(C(), doek); }); }
+    const l = streek[streek.length - 1];
+    if (l && Math.hypot(p.x - l.x, p.y - l.y) < 3) return;
+    streek.push({ x: p.x, y: p.y });
+    if (!wachtend) { wachtend = true; requestAnimationFrame(() => { wachtend = false; const doek = wortel.querySelector('.verfdoek'); if (doek && streek && ui.teken) verfVoorbeeld(C(), doek, streek, ui.teken.fid, ui.teken.modus, ui.teken.maat); }); }
   };
   wortel.addEventListener('pointerdown', (e) => {
     if (!ui.teken || ui.scherm !== 'campagne' || !e.target.closest('.kaartlaag')) return;
-    e.preventDefault(); streek = true; ui.undo = JSON.stringify(C()); kwast(e);
+    e.preventDefault(); streek = []; voegPunt(e);
   });
-  wortel.addEventListener('pointermove', (e) => { if (streek && ui.teken) { e.preventDefault(); kwast(e); } });
-  const stop = () => { if (!streek) return; streek = false; teken(); bewaar(); };
+  wortel.addEventListener('pointermove', (e) => { if (streek && ui.teken) { e.preventDefault(); voegPunt(e); } });
+  const stop = () => {
+    if (!streek) return;
+    const punten = streek; streek = null;
+    if (ui.teken && ui.scherm === 'campagne') { const voor = JSON.stringify(C()); if (verfPasToe(C(), punten, ui.teken.fid, ui.teken.modus, ui.teken.maat)) ui.undo = voor; }
+    teken(); bewaar();
+  };
   window.addEventListener('pointerup', stop); window.addEventListener('pointercancel', stop);
   wortel.addEventListener('change', (e) => {
     const el2 = e.target, c = el2.dataset && el2.dataset.c;

@@ -10,21 +10,21 @@
 /* Layout: stafkaart links, orderboek rechts; op een telefoon onder elkaar. */
 :root {
   --bg: #dfe3d8; --vlak: #f0f2ea; --vel: #fbfaf5; --inkt: #18211d; --stil: #56625a; --lijn: #b4bcab;
-  --accent: #14506b; --accent-inkt: #ffffff; --zee: #b5ccd3; --land: #c9cabd;
+  --accent: #14506b; --accent-inkt: #ffffff; --zee: #b5ccd3; --land: #c9cabd; --kop: #18211d; --kop-inkt: #eef1e8; --kop-lijn: #3b4a43; --schaduw: 0 1px 2px rgba(24, 33, 29, 0.08), 0 10px 28px -14px rgba(24, 33, 29, 0.35);
   --aanval: #a9361f; --verdedig: #2a568f; --ok: #2f6b45; --let: #a35a0c; --let-vlak: #f6e7c8; --ok-vlak: #d5e8d7;
   --f-kop: 'Saira Condensed', 'Arial Narrow', 'Roboto Condensed', sans-serif;
   --f-tekst: 'IBM Plex Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
   --f-mono: 'IBM Plex Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
 }
 @media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) { --bg: #12181a; --vlak: #1b2326; --vel: #222b2e; --inkt: #e3e8e1; --stil: #96a39b; --lijn: #37454a; --accent: #7cc0dc; --accent-inkt: #0d1a20; --zee: #1e3038; --land: #2c3639; --aanval: #ef8d75; --verdedig: #8db4ea; --ok: #86c79a; --let: #e9b565; --let-vlak: #3a2f18; --ok-vlak: #1d3526; color-scheme: dark; }
+  :root:not([data-theme="light"]) { --bg: #12181a; --vlak: #1b2326; --vel: #222b2e; --inkt: #e3e8e1; --stil: #96a39b; --lijn: #37454a; --accent: #7cc0dc; --accent-inkt: #0d1a20; --zee: #1e3038; --land: #2c3639; --kop: #0b1012; --kop-inkt: #e3e8e1; --kop-lijn: #2c383c; --schaduw: 0 1px 2px rgba(0, 0, 0, 0.4), 0 12px 30px -14px rgba(0, 0, 0, 0.8); --aanval: #ef8d75; --verdedig: #8db4ea; --ok: #86c79a; --let: #e9b565; --let-vlak: #3a2f18; --ok-vlak: #1d3526; color-scheme: dark; }
 }
-:root[data-theme="dark"] { --bg: #12181a; --vlak: #1b2326; --vel: #222b2e; --inkt: #e3e8e1; --stil: #96a39b; --lijn: #37454a; --accent: #7cc0dc; --accent-inkt: #0d1a20; --zee: #1e3038; --land: #2c3639; --aanval: #ef8d75; --verdedig: #8db4ea; --ok: #86c79a; --let: #e9b565; --let-vlak: #3a2f18; --ok-vlak: #1d3526; color-scheme: dark; }
+:root[data-theme="dark"] { --bg: #12181a; --vlak: #1b2326; --vel: #222b2e; --inkt: #e3e8e1; --stil: #96a39b; --lijn: #37454a; --accent: #7cc0dc; --accent-inkt: #0d1a20; --zee: #1e3038; --land: #2c3639; --kop: #0b1012; --kop-inkt: #e3e8e1; --kop-lijn: #2c383c; --schaduw: 0 1px 2px rgba(0, 0, 0, 0.4), 0 12px 30px -14px rgba(0, 0, 0, 0.8); --aanval: #ef8d75; --verdedig: #8db4ea; --ok: #86c79a; --let: #e9b565; --let-vlak: #3a2f18; --ok-vlak: #1d3526; color-scheme: dark; }
 
 * { box-sizing: border-box; }
 html, body { margin: 0; }
 body { background: var(--bg); color: var(--inkt); font: 15px/1.5 var(--f-tekst); -webkit-text-size-adjust: 100%; }
-body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--vlak); }
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--kop); }
 h1, h2, h3, h4 { font-family: var(--f-kop); font-weight: 700; line-height: 1.1; margin: 0; text-wrap: balance; letter-spacing: 0.01em; }
 h1 { font-size: 2.1rem; } h2 { font-size: 1.45rem; } h3 { font-size: 1.12rem; } h4 { font-size: 0.82rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--stil); margin-top: 0.7rem; }
 p { margin: 0; } ul, ol { margin: 0; padding: 0; list-style: none; }
@@ -34,16 +34,23 @@ p { margin: 0; } ul, ol { margin: 0; padding: 0; list-style: none; }
 .fout { color: var(--aanval); font-weight: 600; }
 :focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
 
-.kop { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; background: var(--vlak); border-bottom: 1px solid var(--lijn); padding-block: 8px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
-.merk { font: 700 1.35rem/1 var(--f-kop); letter-spacing: 0.16em; background: none; border: 0; color: var(--inkt); padding: 4px 0; cursor: pointer; }
+.kop { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; background: var(--kop); color: var(--kop-inkt); border-bottom: 3px solid var(--accent); padding-block: 10px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+.merk { font: 700 1.5rem/1 var(--f-kop); letter-spacing: 0.2em; background: none; border: 0; color: var(--kop-inkt); padding: 4px 0; cursor: pointer; }
+.kop .chip { background: transparent; border-color: var(--kop-lijn); color: var(--kop-inkt); }
+.kop .chip.let { background: var(--let-vlak); border-color: var(--let); color: var(--let); }
+.kop .knop { background: transparent; border-color: var(--kop-lijn); color: var(--kop-inkt); }
+.kop .knop:hover:not(:disabled) { border-color: var(--kop-inkt); }
+.kopinfo b { font: 700 1.15rem var(--f-kop); letter-spacing: 0.04em; margin-right: 4px; }
 .kopinfo { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; flex: 1; min-width: 0; }
 .kopknoppen { display: flex; gap: 6px; margin-left: auto; }
 main { padding-block: 20px 48px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); display: flex; flex-direction: column; gap: 28px; max-width: 1500px; margin: 0 auto; }
 section { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
 
-.knop { font: 600 0.92rem/1.2 var(--f-tekst); padding: 9px 14px; border-radius: 4px; border: 1px solid var(--lijn); background: var(--vlak); color: var(--inkt); cursor: pointer; }
+.knop { font: 600 0.92rem/1.2 var(--f-tekst); padding: 9px 15px; border-radius: 6px; border: 1px solid var(--lijn); background: var(--vel); color: var(--inkt); cursor: pointer; transition: border-color 0.12s, transform 0.08s; }
+.knop:active:not(:disabled) { transform: translateY(1px); }
 .knop:hover:not(:disabled) { border-color: var(--inkt); }
-.knop.hoofd { background: var(--accent); border-color: var(--accent); color: var(--accent-inkt); }
+.knop.hoofd { background: var(--accent); border-color: var(--accent); color: var(--accent-inkt); box-shadow: 0 2px 0 rgba(0, 0, 0, 0.18); }
+.knop.hoofd:hover:not(:disabled) { filter: brightness(1.1); }
 .knop.gevaar { background: var(--aanval); border-color: var(--aanval); color: var(--accent-inkt); }
 .knop.mini { padding: 4px 9px; font-size: 0.82rem; }
 .knop:disabled { opacity: 0.5; cursor: not-allowed; }
@@ -56,11 +63,16 @@ section { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
 .code { font: 500 0.72rem/1 var(--f-mono); background: var(--inkt); color: var(--bg); padding: 3px 4px; border-radius: 3px; margin-right: 7px; }
 
 .tabs { display: flex; gap: 2px; border-bottom: 2px solid var(--inkt); overflow-x: auto; }
-.tab { font: 600 1rem/1 var(--f-kop); letter-spacing: 0.06em; text-transform: uppercase; padding: 9px 13px; background: none; border: 0; color: var(--stil); cursor: pointer; white-space: nowrap; }
+.tab { font: 600 1rem/1 var(--f-kop); letter-spacing: 0.06em; text-transform: uppercase; padding: 10px 14px; background: none; border: 0; border-radius: 6px 6px 0 0; color: var(--stil); cursor: pointer; white-space: nowrap; }
+.tab:hover { color: var(--inkt); }
 .tab.aan { background: var(--inkt); color: var(--bg); }
 
 /* start */
-.intro { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr); gap: 28px; align-items: start; }
+.intro { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr); gap: 28px; align-items: center; padding: 28px; border-radius: 10px; color: var(--kop-inkt);
+  background: repeating-radial-gradient(circle at 88% 30%, transparent 0 22px, rgba(255, 255, 255, 0.06) 22px 23px), radial-gradient(circle at 88% 30%, #1f5d78, var(--kop) 62%); box-shadow: var(--schaduw); }
+.intro h1 { font-size: 2.7rem; }
+.intro .lus { border-left-color: var(--kop-inkt); }
+.intro .knop.hoofd { background: var(--kop-inkt); border-color: var(--kop-inkt); color: var(--kop); }
 .intro > div { display: flex; flex-direction: column; gap: 14px; }
 .intro p { max-width: 62ch; font-size: 1.02rem; }
 .lus { counter-reset: stap; display: flex; flex-direction: column; gap: 6px; border-left: 3px solid var(--inkt); padding-left: 14px; }
@@ -70,13 +82,14 @@ section { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
 .rij { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--lijn); }
 .rij.smal { padding: 6px 0; }
 .galerij { display: grid; grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); gap: 14px; }
-.scnknop { display: flex; flex-direction: column; width: 100%; height: 100%; text-align: left; font: inherit; color: inherit; background: var(--vlak); border: 1px solid var(--lijn); border-radius: 4px; padding: 0; cursor: pointer; overflow: hidden; }
-.scnknop:hover { border-color: var(--inkt); }
+.scnknop { display: flex; flex-direction: column; width: 100%; height: 100%; text-align: left; font: inherit; color: inherit; background: var(--vlak); border: 1px solid var(--lijn); border-radius: 8px; padding: 0; cursor: pointer; overflow: hidden; box-shadow: var(--schaduw); transition: transform 0.14s, border-color 0.14s; }
+.scnknop:hover { border-color: var(--accent); transform: translateY(-3px); }
 .minikaart { background: var(--zee); border-bottom: 1px solid var(--lijn); height: 190px; flex: none; }
-.minikaart svg { width: 100%; height: 100%; }
+.minikaart { overflow: hidden; }
+.minikaart svg.kaart { width: 100%; height: 100%; }
 .scntekst { padding: 12px 14px 14px; display: flex; flex-direction: column; gap: 6px; }
 .scntekst p { font-size: 0.9rem; }
-textarea, input[type="text"], input[type="number"], select { font: inherit; color: var(--inkt); background: var(--vel); border: 1px solid var(--lijn); border-radius: 4px; padding: 7px 9px; width: 100%; min-width: 0; }
+textarea, input[type="text"], input[type="number"], select { font: inherit; color: var(--inkt); background: var(--vel); border: 1px solid var(--lijn); border-radius: 6px; padding: 7px 9px; width: 100%; min-width: 0; }
 textarea { font-family: var(--f-mono); font-size: 0.8rem; }
 
 /* kaart */
@@ -84,7 +97,7 @@ textarea { font-family: var(--f-mono); font-size: 0.8rem; }
 .kaartvak { gap: 8px; }
 .kaartbalk { display: flex; justify-content: space-between; align-items: center; gap: 10px; min-height: 30px; }
 .instructie { font-weight: 600; color: var(--accent); }
-.kaartrol { overflow: auto; max-height: 76vh; border: 1px solid var(--inkt); background: var(--zee); border-radius: 3px; }
+.kaartrol { overflow: auto; max-height: 76vh; border: 2px solid var(--kop); background: var(--zee); border-radius: 8px; box-shadow: var(--schaduw); }
 .kaartrol > div { min-width: 560px; }
 .kaartrol.past svg.kaart { max-height: 74vh; }
 svg.kaart { display: block; width: 100%; height: auto; font-family: var(--f-kop); }
@@ -108,7 +121,7 @@ svg.kaart.verfmodus .rg > path:first-child { stroke-opacity: 0; }
 svg.kaart.verfmodus .rg.kan > path:first-child { fill-opacity: 0.3; stroke-opacity: 1; }
 svg.kaart.verfmodus .rg.sel > path:first-child, svg.kaart.verfmodus .rg.bron > path:first-child { stroke-opacity: 1; }
 svg.kaart.verfmodus .rg:hover > path:first-child { fill-opacity: 0.12; }
-.tekenbalk { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; justify-content: space-between; border: 2px dashed var(--accent); border-radius: 4px; padding: 8px 10px; }
+.tekenbalk { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; justify-content: space-between; background: var(--vel); border: 2px solid var(--accent); border-radius: 8px; padding: 8px 10px; }
 .knop.gekozen { box-shadow: inset 0 0 0 2px var(--accent); border-color: var(--accent); }
 .bezit { display: flex; flex-wrap: wrap; gap: 4px 14px; font: 500 0.82rem var(--f-mono); }
 .legenda { display: flex; flex-wrap: wrap; gap: 2px 14px; font-size: 0.78rem; }
@@ -119,9 +132,9 @@ svg.kaart.verfmodus .rg:hover > path:first-child { fill-opacity: 0.12; }
 .feiten dd { margin: 0; font-size: 0.92rem; }
 
 /* paneel */
-.paneel { background: var(--vlak); border: 1px solid var(--lijn); border-radius: 4px; padding: 14px; gap: 14px; }
+.paneel { background: var(--vlak); border: 1px solid var(--lijn); border-radius: 10px; padding: 16px; gap: 14px; box-shadow: var(--schaduw); }
 .tabinhoud { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
-.doorgeef { border: 2px dashed var(--accent); border-radius: 4px; padding: 14px; display: flex; flex-direction: column; gap: 10px; align-items: flex-start; }
+.doorgeef { border: 2px dashed var(--accent); border-radius: 8px; background: var(--vel); padding: 14px; display: flex; flex-direction: column; gap: 10px; align-items: flex-start; }
 .planner { display: flex; flex-direction: column; gap: 10px; }
 .ordknoppen { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 6px; }
 .ordknop { display: flex; align-items: center; font: 600 0.88rem var(--f-tekst); text-align: left; padding: 8px 9px; border: 1px solid var(--lijn); border-radius: 4px; background: var(--vel); color: var(--inkt); cursor: pointer; }
@@ -137,7 +150,7 @@ svg.kaart.verfmodus .rg:hover > path:first-child { fill-opacity: 0.12; }
 .blok.uit, .facrij.uit { opacity: 0.55; }
 .lijst { display: flex; flex-direction: column; gap: 6px; font-size: 0.92rem; }
 .gevechten { display: flex; flex-direction: column; gap: 8px; }
-.gev { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 10px; padding: 10px 12px; background: var(--vel); border: 1px solid var(--lijn); border-left: 5px solid var(--stil); border-radius: 3px; }
+.gev { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 10px; padding: 12px 14px; background: var(--vel); border: 1px solid var(--lijn); border-left: 5px solid var(--stil); border-radius: 6px; }
 .gev.open { border-left-color: var(--aanval); }
 .banner { background: var(--inkt); color: var(--bg); padding: 16px; border-radius: 4px; display: flex; flex-direction: column; gap: 6px; }
 .banner .oog { color: inherit; opacity: 0.75; }
@@ -176,7 +189,7 @@ summary { cursor: pointer; font-weight: 600; }
 /* scenarioblad */
 .bladscherm, .losscherm { max-width: 1500px; }
 .losscherm { display: grid; grid-template-columns: minmax(280px, 380px) minmax(0, 1fr); align-items: start; gap: 20px; }
-.vel { background: var(--vel); border: 1px solid var(--inkt); border-radius: 3px; padding: 20px; display: flex; flex-direction: column; gap: 18px; min-width: 0; }
+.vel { background: var(--vel); border: 1px solid var(--lijn); border-radius: 10px; box-shadow: var(--schaduw); padding: 22px; display: flex; flex-direction: column; gap: 18px; min-width: 0; }
 .velkop { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 14px 30px; border-bottom: 3px solid var(--inkt); padding-bottom: 14px; }
 .velkop > div { display: flex; flex-direction: column; gap: 5px; flex: 1 1 300px; }
 .velkop h2 { font-size: 2.3rem; text-transform: uppercase; letter-spacing: 0.03em; }
@@ -193,11 +206,11 @@ summary { cursor: pointer; font-weight: 600; }
 .kant { border-top: 4px solid var(--aanval); padding-top: 8px; display: flex; flex-direction: column; gap: 5px; min-width: 0; }
 .kantV { border-top-color: var(--verdedig); }
 .brief { font-style: italic; }
-.uitslag { background: var(--vlak); border: 1px solid var(--lijn); border-radius: 4px; padding: 16px; gap: 12px; }
+.uitslag { background: var(--vlak); border: 1px solid var(--lijn); border-radius: 10px; box-shadow: var(--schaduw); padding: 18px; gap: 12px; }
 .keuzes { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 6px; }
-.keuze { font: 600 0.9rem var(--f-tekst); padding: 11px 10px; border: 1px solid var(--lijn); border-top: 4px solid var(--stil); border-radius: 3px; background: var(--vel); color: var(--inkt); cursor: pointer; }
+.keuze { font: 700 1.2rem var(--f-kop); letter-spacing: 0.03em; padding: 18px 10px; border: 1px solid var(--lijn); border-top: 4px solid var(--stil); border-radius: 3px; background: var(--vel); color: var(--inkt); cursor: pointer; }
 .keuze.kA { border-top-color: var(--aanval); } .keuze.kV { border-top-color: var(--verdedig); }
-.keuze.aan { box-shadow: inset 0 0 0 2px var(--inkt); }
+.keuze.aan { box-shadow: inset 0 0 0 3px var(--accent); background: var(--ok-vlak); }
 
 @media (max-width: 980px) {
   .camp, .nieuw, .losscherm, .velgrid, .intro { grid-template-columns: minmax(0, 1fr); }
@@ -210,7 +223,7 @@ summary { cursor: pointer; font-weight: 600; }
 @media print {
   :root { --bg: #fff !important; --vlak: #fff !important; --vel: #fff !important; --inkt: #000 !important; --stil: #333 !important; --lijn: #999 !important; --aanval: #a9361f !important; --verdedig: #2a568f !important; --let: #7a4300 !important; --let-vlak: #fff !important; }
   .geen-print { display: none !important; }
-  main { padding: 0; max-width: none; } .vel { border: 0; padding: 0; } body { font-size: 11px; }
+  main { padding: 0; max-width: none; } .vel { border: 0; padding: 0; box-shadow: none; } body { font-size: 11px; }
   .velgrid { grid-template-columns: 1.3fr 1fr; } .velkop h2 { font-size: 22px; }
   @page { size: A4 landscape; margin: 9mm; }
 }
@@ -2743,13 +2756,14 @@ function kaartSvg(s, o = {}) {
 
 // ── ui-verf.js ──
 // Tekenlaag voor de Europakaart: gebied is geen tegel maar een ingekleurd vlak.
-// Elke cel van een fijn raster heeft een eigenaar; grenzen en frontlijnen volgen de celranden
-// en lopen dus grillig mee met wat je tekent. De regio's blijven bestaan voor orders en scenario's:
+// Elke cel van een fijn raster heeft een eigenaar. Bij het tekenen van de kaart wordt dat raster
+// vervormd met vaste ruis, zodat grenzen en frontlijnen grillig lopen als een kustlijn. De regio's blijven bestaan voor orders en scenario's:
 // een regio is van wie het grootste deel ervan heeft ingekleurd.
 
 
 
 const VG = 5; // celgrootte in kaarteenheden
+const VS = 2; // één beeldpunt van de tekenlaag in kaarteenheden
 const verfBasisCache = {};
 let vh = null; // {cid, bron, data, basis, doek, vuil}
 
@@ -2771,7 +2785,17 @@ function verfBasis(state) {
   }
   const totaal = new Uint32Array(info.regios.length + 1);
   for (let j = 0; j < n; j++) totaal[regio[j]]++;
-  return (verfBasisCache[sleutel] = { gw, gh, n, regio, land, totaal, landPad: new Path2D(k.geo.land), w: k.w, h: k.h });
+  // vaste ruis (altijd dezelfde) die de grenzen laat kronkelen: grove bochten plus fijne kartels
+  const pw = Math.ceil(k.w / VS), ph = Math.ceil(k.h / VS), wx = new Int8Array(pw * ph), wy = new Int8Array(pw * ph);
+  const hash = (x, y, z) => { let h = (x * 374761393 + y * 668265263 + z * 2147483647) | 0; h = (h ^ (h >>> 13)) * 1274126177 | 0; return ((h ^ (h >>> 16)) >>> 0) / 4294967295 - 0.5; };
+  const ruis = (x, y, golf, z) => { const fx = x / golf, fy = y / golf, x0 = Math.floor(fx), y0 = Math.floor(fy), tx = fx - x0, ty = fy - y0, sx = tx * tx * (3 - 2 * tx), sy = ty * ty * (3 - 2 * ty);
+    const a = hash(x0, y0, z), b = hash(x0 + 1, y0, z), c2 = hash(x0, y0 + 1, z), d = hash(x0 + 1, y0 + 1, z); return a + (b - a) * sx + (c2 - a + (a - b - c2 + d) * sx) * sy; };
+  for (let y = 0; y < ph; y++) for (let x = 0; x < pw; x++) {
+    const X = x * VS, Y = y * VS, i = y * pw + x;
+    wx[i] = Math.round((ruis(X, Y, 64, 1) * 15 + ruis(X, Y, 22, 2) * 8 + ruis(X, Y, 8, 3) * 3.5) * 8);
+    wy[i] = Math.round((ruis(X, Y, 64, 4) * 15 + ruis(X, Y, 22, 5) * 8 + ruis(X, Y, 8, 6) * 3.5) * 8);
+  }
+  return (verfBasisCache[sleutel] = { gw, gh, n, regio, land, totaal, landPad: new Path2D(k.geo.land), w: k.w, h: k.h, pw, ph, wx, wy, masker });
 }
 const verfCode = (state, fid) => { const i = state.facties.findIndex((f) => f.id === fid); return i < 0 ? 0 : i + 1; };
 const verfFid = (state, code) => (code > 0 && state.facties[code - 1] ? state.facties[code - 1].id : 'neutraal');
@@ -2821,47 +2845,72 @@ function verfSync(state) {
   return eigenaarGewijzigd;
 }
 
-// Kleurt alle cellen binnen `straal` (kaarteenheden) rond (x, y) voor een land.
-function verfKwast(state, x, y, straal, fid) {
+// Past een getekende lijn toe. modus 'lasso': de lijn is een omtrek en wordt gevuld.
+// modus 'kwast': de lijn zelf wordt ingekleurd, `straal` breed. Alleen land binnen het speelveld verandert.
+function verfPasToe(state, punten, fid, modus, straal) {
   verfLaad(state);
-  const { basis, data } = vh, code = verfCode(state, fid), r = straal / VG, cx = x / VG, cy = y / VG;
-  for (let gy = Math.max(0, Math.floor(cy - r)); gy <= Math.min(basis.gh - 1, Math.ceil(cy + r)); gy++) for (let gx = Math.max(0, Math.floor(cx - r)); gx <= Math.min(basis.gw - 1, Math.ceil(cx + r)); gx++) {
-    const j = gy * basis.gw + gx;
-    if (basis.regio[j] && data[j] !== code && Math.hypot(gx + 0.5 - cx, gy + 0.5 - cy) <= r) { data[j] = code; vh.vuil = true; vh.gekwast = true; }
-  }
+  if (punten.length < (modus === 'lasso' ? 3 : 1)) return false;
+  const { basis, data } = vh, code = verfCode(state, fid), c = document.createElement('canvas');
+  c.width = basis.gw; c.height = basis.gh;
+  const ctx = c.getContext('2d'); ctx.setTransform(1 / VG, 0, 0, 1 / VG, 0, 0);
+  ctx.beginPath(); punten.forEach((p, i) => (i ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y)));
+  if (modus === 'lasso') { ctx.closePath(); ctx.fill(); }
+  else { if (punten.length === 1) ctx.lineTo(punten[0].x + 0.1, punten[0].y); ctx.lineWidth = straal * 2; ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.stroke(); }
+  const a = ctx.getImageData(0, 0, basis.gw, basis.gh).data; let iets = false;
+  for (let j = 0; j < basis.n; j++) if (a[j * 4 + 3] > 127 && basis.regio[j] && data[j] !== code) { data[j] = code; iets = true; }
+  if (iets) { vh.vuil = true; vh.gekwast = true; }
+  return iets;
 }
 
 function hexNaarRgb(h) { const v = parseInt(h.replace('#', ''), 16); return [(v >> 16) & 255, (v >> 8) & 255, v & 255]; }
 function verfBouw(state) {
-  const { basis, data } = vh, { gw, gh } = basis;
-  if (!vh.doek) { vh.doek = document.createElement('canvas'); vh.doek.width = basis.w; vh.doek.height = basis.h; vh.klein = document.createElement('canvas'); vh.klein.width = gw; vh.klein.height = gh; }
+  const { basis, data } = vh, { gw, gh, pw, ph, wx, wy } = basis;
+  if (!vh.doek) { vh.doek = document.createElement('canvas'); vh.doek.width = basis.w; vh.doek.height = basis.h; vh.klein = document.createElement('canvas'); vh.klein.width = pw; vh.klein.height = ph; }
   const stijl = getComputedStyle(document.documentElement), landKleur = hexNaarRgb((stijl.getPropertyValue('--land') || '#c9cabd').trim());
   const kleuren = [hexNaarRgb(FACTIES.neutraal.kleur)].concat(state.facties.map((f) => hexNaarRgb(f.kleur)));
   const zijden = [''].concat(state.facties.map((f) => (f.zijde === 'neutraal' ? '' : f.zijde)));
-  const kctx = vh.klein.getContext('2d'), img = kctx.createImageData(gw, gh), px = img.data;
-  for (let j = 0; j < basis.n; j++) {
-    if (!basis.land[j] && !basis.regio[j]) continue;
-    const k = basis.regio[j] ? kleuren[data[j]] || kleuren[0] : landKleur;
-    px[j * 4] = k[0]; px[j * 4 + 1] = k[1]; px[j * 4 + 2] = k[2]; px[j * 4 + 3] = 255;
+  // 1. per beeldpunt: wie is hier de baas? Kijk op de vervormde plek en neem de zwaarste van de vier cellen eromheen.
+  const N = pw * ph, baas = new Uint8Array(N); // 0 zee, 255 land buiten het spel, anders code + 1
+  for (let y = 0; y < ph; y++) for (let x = 0; x < pw; x++) {
+    const i = y * pw + x, fx = (x * VS + 1 + wx[i] / 8) / VG - 0.5, fy = (y * VS + 1 + wy[i] / 8) / VG - 0.5;
+    const x0 = Math.floor(fx), y0 = Math.floor(fy), tx = fx - x0, ty = fy - y0;
+    let c1 = -1, w1 = 0, c2 = -1, w2 = 0, c3 = -1, w3 = 0;
+    for (let k = 0; k < 4; k++) {
+      const gx = x0 + (k & 1), gy = y0 + (k >> 1);
+      if (gx < 0 || gy < 0 || gx >= gw || gy >= gh) continue;
+      const j = gy * gw + gx; if (!basis.regio[j]) continue;
+      const w = ((k & 1) ? tx : 1 - tx) * ((k >> 1) ? ty : 1 - ty), c = data[j];
+      if (c === c1) w1 += w; else if (c === c2) w2 += w; else if (c === c3) w3 += w; else if (c1 < 0) { c1 = c; w1 = w; } else if (c2 < 0) { c2 = c; w2 = w; } else { c3 = c; w3 = w; }
+    }
+    if (c1 >= 0) { let c = c1, w = w1; if (w2 > w) { c = c2; w = w2; } if (w3 > w) c = c3; baas[i] = c + 1; continue; }
+    const j = Math.min(gh - 1, Math.floor(y * VS / VG)) * gw + Math.min(gw - 1, Math.floor(x * VS / VG));
+    baas[i] = basis.regio[j] ? data[j] + 1 : basis.land[j] ? 255 : 0;
+  }
+  // 2. grenzen: dun tussen twee landen, dik waar twee zijden tegenover elkaar staan
+  const lijn = new Uint8Array(N);
+  const merk = (i, a, b) => {
+    if (a === b || !a || !b || a === 255 || b === 255) return;
+    const front = zijden[a - 1] && zijden[b - 1] && zijden[a - 1] !== zijden[b - 1];
+    if (!front) { if (!lijn[i]) lijn[i] = 1; return; }
+    const x = i % pw, y = (i / pw) | 0;
+    for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) { const xx = x + dx, yy = y + dy; if (xx >= 0 && yy >= 0 && xx < pw && yy < ph) lijn[yy * pw + xx] = 2; }
+  };
+  for (let y = 0; y < ph - 1; y++) for (let x = 0; x < pw - 1; x++) { const i = y * pw + x; merk(i, baas[i], baas[i + 1]); merk(i, baas[i], baas[i + pw]); }
+  // 3. inkleuren
+  const kctx = vh.klein.getContext('2d'), img = kctx.createImageData(pw, ph), px = img.data;
+  for (let i = 0; i < N; i++) {
+    const b = baas[i]; if (!b) continue;
+    let k = b === 255 ? landKleur : kleuren[b - 1] || kleuren[0], r = k[0], g = k[1], bl = k[2];
+    if (lijn[i] === 2) { r = 20; g = 24; bl = 28; } else if (lijn[i] === 1) { r = r * 0.42 + 8; g = g * 0.42 + 10; bl = bl * 0.42 + 12; }
+    px[i * 4] = r; px[i * 4 + 1] = g; px[i * 4 + 2] = bl; px[i * 4 + 3] = 255;
   }
   kctx.putImageData(img, 0, 0);
   const ctx = vh.doek.getContext('2d');
   ctx.globalCompositeOperation = 'source-over'; ctx.clearRect(0, 0, basis.w, basis.h);
-  ctx.imageSmoothingEnabled = false; ctx.drawImage(vh.klein, 0, 0, gw * VG, gh * VG);
-  // grenzen: dun tussen twee landen, dik waar twee zijden tegenover elkaar staan
-  const dun = new Path2D(), dik = new Path2D();
-  const rand = (a, b, x1, y1, x2, y2) => { if (a === b) return; const p = zijden[a] && zijden[b] && zijden[a] !== zijden[b] ? dik : dun; p.moveTo(x1, y1); p.lineTo(x2, y2); };
-  for (let y = 0; y < gh; y++) for (let x = 0; x < gw; x++) {
-    const j = y * gw + x; if (!basis.regio[j]) continue;
-    if (x + 1 < gw && basis.regio[j + 1]) rand(data[j], data[j + 1], (x + 1) * VG, y * VG, (x + 1) * VG, (y + 1) * VG);
-    if (y + 1 < gh && basis.regio[j + gw]) rand(data[j], data[j + gw], x * VG, (y + 1) * VG, (x + 1) * VG, (y + 1) * VG);
-  }
-  ctx.lineCap = 'round'; ctx.lineJoin = 'round';
-  ctx.strokeStyle = 'rgba(20,24,28,0.55)'; ctx.lineWidth = 1.6; ctx.stroke(dun);
-  ctx.strokeStyle = '#14181c'; ctx.lineWidth = 5.5; ctx.stroke(dik);
-  // de echte kustlijn snijdt de blokjes netjes af
+  ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high'; ctx.drawImage(vh.klein, 0, 0, pw * VS, ph * VS);
+  // de echte kustlijn snijdt alles netjes af
   ctx.globalCompositeOperation = 'destination-in'; ctx.fill(basis.landPad);
-  ctx.globalCompositeOperation = 'source-over'; ctx.strokeStyle = 'rgba(20,24,28,0.5)'; ctx.lineWidth = 1.2; ctx.stroke(basis.landPad);
+  ctx.globalCompositeOperation = 'source-over'; ctx.strokeStyle = 'rgba(20,24,28,0.55)'; ctx.lineWidth = 1.3; ctx.stroke(basis.landPad);
   vh.vuil = false; vh.thema = stijl.getPropertyValue('--land');
 }
 function verfTeken(state, canvas) {
@@ -2870,6 +2919,21 @@ function verfTeken(state, canvas) {
   const bb = kaartVan(state).bbox, ctx = canvas.getContext('2d');
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   ctx.drawImage(vh.doek, bb.x, bb.y, bb.w, bb.h, 0, 0, canvas.width, canvas.height);
+}
+
+// Toont de lijn die nu getekend wordt, bovenop de kaart.
+function verfVoorbeeld(state, canvas, punten, fid, modus, straal) {
+  verfTeken(state, canvas);
+  if (!punten.length) return;
+  const bb = kaartVan(state).bbox, ctx = canvas.getContext('2d'), f = state.facties.find((x) => x.id === fid), kleur = f ? f.kleur : FACTIES.neutraal.kleur, sch = canvas.width / bb.w;
+  ctx.save(); ctx.scale(sch, sch); ctx.translate(-bb.x, -bb.y);
+  ctx.beginPath(); punten.forEach((p, i) => (i ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y)));
+  ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  if (modus === 'lasso') {
+    ctx.save(); ctx.closePath(); ctx.globalAlpha = 0.45; ctx.fillStyle = kleur; ctx.fill(); ctx.restore();
+    ctx.strokeStyle = '#14181c'; ctx.lineWidth = 7; ctx.stroke(); ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 3; ctx.setLineDash([10, 8]); ctx.stroke();
+  } else { ctx.globalAlpha = 0.6; ctx.strokeStyle = kleur; ctx.lineWidth = straal * 2; ctx.stroke(); }
+  ctx.restore();
 }
 
 // ── ui-blad.js ──
@@ -3115,7 +3179,7 @@ function orderTekst(s, o) {
   return `${ORDERTYPES[o.type].naam}${o.van ? ' vanuit ' + esc(info.opId[o.van].naam) : ''} ${o.type === 'aanval' ? 'op' : '→'} ${esc(info.opId[o.naar].naam)}`;
 }
 function instructie(s) {
-  if (ui.teken) return 'Sleep over de kaart om gebied in te kleuren. De frontlijn loopt mee.';
+  if (ui.teken) return ui.teken.modus === 'lasso' ? 'Trek een lijn rond het veroverde gebied. Laat los en het wordt ingekleurd.' : 'Sleep over de kaart om een strook in te kleuren.';
   const fid = ui.plannend || (ui.auftrag && ui.auftrag.fid);
   if (!fid) return s.fase === 'gevechten' ? 'Rood kruis: open gevecht. Grijs kruis: afgehandeld.' : '';
   if (!ui.orderType) return 'Kies rechts een order en klik dan op de kaart.';
@@ -3250,7 +3314,7 @@ function campagneScherm() {
     : `<div style="width:${Math.round(ui.zoom * 100)}%">${kaartSvg(s, ko)}</div>`;
   const tekenBalk = !verf ? '' : ui.teken
     ? `<div class="tekenbalk"><label class="inlijn">Kleur in voor <select id="tk-land" data-c="tk" data-veld="fid">${s.facties.map((f) => `<option value="${f.id}" ${ui.teken.fid === f.id ? 'selected' : ''}>${esc(f.naam)}</option>`).join('')}<option value="neutraal" ${ui.teken.fid === 'neutraal' ? 'selected' : ''}>Niemandsland</option></select></label>
-        <span class="knoppen">${[['12', 'Fijn'], ['28', 'Middel'], ['60', 'Breed']].map(([m, t]) => `<button type="button" class="knop mini${String(ui.teken.maat) === m ? ' gekozen' : ''}" data-a="tekenMaat" data-m="${m}">${t}</button>`).join('')}${knop('tekenUit', 'Klaar met tekenen', '', 'hoofd mini')}</span></div>`
+        <span class="knoppen">${[['lasso', 'Omlijnen en vullen'], ['kwast', 'Kwast']].map(([m, t]) => `<button type="button" class="knop mini${ui.teken.modus === m ? ' gekozen' : ''}" data-a="tekenModus" data-m="${m}">${t}</button>`).join('')}${ui.teken.modus === 'kwast' ? [['10', 'Fijn'], ['24', 'Middel'], ['50', 'Breed']].map(([m, t]) => `<button type="button" class="knop mini${String(ui.teken.maat) === m ? ' gekozen' : ''}" data-a="tekenMaat" data-m="${m}">${t}</button>`).join('') : ''}${knop('tekenUit', 'Klaar met tekenen', '', 'hoofd mini')}</span></div>`
     : '';
   return `<main class="camp">
   <section class="kaartvak"><div class="kaartbalk"><p class="instructie">${esc(instructie(s))}</p><div class="knoppen">${verf && !ui.teken ? knop('tekenAan', 'Teken gebied', '', 'mini') : ''}${knop('zoom', '−', 'data-d="-1" aria-label="Zoom uit"', 'mini')}${knop('zoom', '+', 'data-d="1" aria-label="Zoom in"', 'mini')}</div></div>
@@ -3393,7 +3457,8 @@ const ACT = {
     const fout = ui.auftrag ? muteer((st) => vervangOrder(st, fid, ui.auftrag.index, o)) : muteer((st) => voegOrderToe(st, fid, o));
     if (fout) ui.melding = fout; else { ui.orderVan = null; if (ui.auftrag) { ui.auftrag = null; ui.orderType = null; } }
   },
-  tekenAan() { const s = C(); ui.teken = { fid: ui.plannend || (s.facties.find((f) => f.speler === 'mens') || s.facties[0]).id, maat: 28 }; },
+  tekenAan() { const s = C(); ui.teken = { fid: ui.plannend || (s.facties.find((f) => f.speler === 'mens') || s.facties[0]).id, modus: 'lasso', maat: 24 }; },
+  tekenModus(d) { ui.teken.modus = d.m; },
   tekenUit() { ui.teken = null; },
   tekenMaat(d) { ui.teken.maat = +d.m; },
   plan(d) { ui.plannend = d.id; ui.tab = 'beurt'; ui.sel = null; ui.undo = null; resetPlan(); },
@@ -3458,19 +3523,26 @@ function startApp(el) {
     if (r !== false) teken();
   });
   // tekenen: slepen over de kaart kleurt cellen in
-  let streek = false, wachtend = false;
-  const kaartPunt = (e) => { const svg = wortel.querySelector('.kaartlaag svg'); if (!svg) return null; const m = svg.getScreenCTM(); if (!m) return null; const p = new DOMPoint(e.clientX, e.clientY).matrixTransform(m.inverse()); return p; };
-  const kwast = (e) => {
+  let streek = null, wachtend = false;
+  const kaartPunt = (e) => { const svg = wortel.querySelector('.kaartlaag svg'); const m = svg && svg.getScreenCTM(); return m ? new DOMPoint(e.clientX, e.clientY).matrixTransform(m.inverse()) : null; };
+  const voegPunt = (e) => {
     const p = kaartPunt(e); if (!p) return;
-    verfKwast(C(), p.x, p.y, ui.teken.maat, ui.teken.fid);
-    if (!wachtend) { wachtend = true; requestAnimationFrame(() => { wachtend = false; const doek = wortel.querySelector('.verfdoek'); if (doek && ui.scherm === 'campagne') verfTeken(C(), doek); }); }
+    const l = streek[streek.length - 1];
+    if (l && Math.hypot(p.x - l.x, p.y - l.y) < 3) return;
+    streek.push({ x: p.x, y: p.y });
+    if (!wachtend) { wachtend = true; requestAnimationFrame(() => { wachtend = false; const doek = wortel.querySelector('.verfdoek'); if (doek && streek && ui.teken) verfVoorbeeld(C(), doek, streek, ui.teken.fid, ui.teken.modus, ui.teken.maat); }); }
   };
   wortel.addEventListener('pointerdown', (e) => {
     if (!ui.teken || ui.scherm !== 'campagne' || !e.target.closest('.kaartlaag')) return;
-    e.preventDefault(); streek = true; ui.undo = JSON.stringify(C()); kwast(e);
+    e.preventDefault(); streek = []; voegPunt(e);
   });
-  wortel.addEventListener('pointermove', (e) => { if (streek && ui.teken) { e.preventDefault(); kwast(e); } });
-  const stop = () => { if (!streek) return; streek = false; teken(); bewaar(); };
+  wortel.addEventListener('pointermove', (e) => { if (streek && ui.teken) { e.preventDefault(); voegPunt(e); } });
+  const stop = () => {
+    if (!streek) return;
+    const punten = streek; streek = null;
+    if (ui.teken && ui.scherm === 'campagne') { const voor = JSON.stringify(C()); if (verfPasToe(C(), punten, ui.teken.fid, ui.teken.modus, ui.teken.maat)) ui.undo = voor; }
+    teken(); bewaar();
+  };
   window.addEventListener('pointerup', stop); window.addEventListener('pointercancel', stop);
   wortel.addEventListener('change', (e) => {
     const el2 = e.target, c = el2.dataset && el2.dataset.c;
