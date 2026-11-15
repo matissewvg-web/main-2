@@ -712,5 +712,9 @@ const html = '<!doctype html><html><head><meta charset=utf8></head><body>' + fs.
     if (pr){ const doel = verplaatsDoelen(c, pr).map(x => divNaam(x)); const v = actProduct(c, ctx, "verplaats", {id: pr.id, naar: "Verhuislijn"}); vp = {doel: doel.includes("Verhuislijn"), ok: v.ok, nu: pr.divisie, fout: actProduct(c, ctx, "verplaats", {id: pr.id, naar: "Bestaat niet"}).ok}; }
     return {weg, stream, was: [w.ok, !w2.ok, zw], terug: [t.ok, terug, streamWeg], vp}; });
   ok(!mr.fout && mr.weg && mr.stream && mr.was[0] && mr.was[1] && mr.was[2] < 50 && mr.terug.every(Boolean) && (!mr.vp || (mr.vp.doel && mr.vp.ok && mr.vp.nu === "Verhuislijn" && !mr.vp.fout)), "marionet: divisie wordt bedrijf met stroman, witwassen eens per maand, terughalen; product verhuizen naar een divisie die het kan maken: " + JSON.stringify(mr));
+  const dr = await p.evaluate(() => { const c = JSON.parse(JSON.stringify(G.game)), ctx = Ctx(); c.cash = 900; c.accounts.operationeel = 900; c.divisions.push({name: "Rangtest", type: c.divisions[0].type, level: 2}); actDivisie(c, ctx, "Rangtest", "marionet");
+    const b = (c.bedrijven || []).find(x => !x.eigenaar); if (b){ b.eigenaar = "player"; b.koppeling = "dochter"; } const W = wereldVM(c); const old = G.game; G.game = c; S.view = "bedrijf"; render(); const dicht = [...document.querySelectorAll("main details.card")].filter(d => /DOCHTERS|MARIONETTEN/.test(d.textContent)).map(d => d.open); G.game = old; render();
+    return {rang: W.rang.filter(x => x.soort === "dochter").map(x => x.koppeling), dicht}; });
+  ok(dr.rang.includes("marionet") && dr.rang.includes("dochter") && dr.dicht.length >= 1 && dr.dicht.every(o => !o), "dochters en marionetten staan in de ranglijst; blokken in Bedrijf standaard dicht: " + JSON.stringify(dr));
   console.log(log.join("\n")); console.log("FOUTEN OP DE PAGINA:", JSON.stringify(errs)); await b.close(); process.exit(log.some(l => l.startsWith("FOUT")) || errs.length ? 1 : 0);
 })();
