@@ -749,5 +749,10 @@ const html = '<!doctype html><html><head><meta charset=utf8></head><body>' + fs.
   const bd = await p.evaluate(() => { const c = JSON.parse(JSON.stringify(G.game)); const d = c.districts.find(x => x.control !== "player" && !reachable(c, "player", x) && (x.neighbors || []).length); if (!d) return {geen: true};
     const nb = c.districts.find(x => x.id === d.neighbors[0]); const voor = reachable(c, "player", d); nb.dom = {...(nb.dom || {}), player: 35}; const na = reachable(c, "player", d); nb.dom.player = 20; const laag = reachable(c, "player", d); return {voor, na, laag}; });
   ok(bd.geen || (!bd.voor && bd.na && !bd.laag), "bereik: 30%+ dominantie in een buurgebied telt, minder niet: " + JSON.stringify(bd));
+  // 11.30 eilanden via 70% zeemacht
+  const ez = await p.evaluate(() => { const c = JSON.parse(JSON.stringify(G.game)); const d = c.districts.find(x => !(x.neighbors || []).length && (x.zee || []).length && x.control !== "player"); if (!d) return {geen: true};
+    c.zeeHeld = {}; c.schepen = 0; c.inzet = {}; const voor = reachable(c, "player", d), z = d.zee[0]; c.schepen = 40; c.inzet = {[z]: 40}; const Z = seaControl(c).find(q => q.id === z), pct = Math.round((Z.sterkte.player || 0) / Z.totaal * 100);
+    return {voor, pct, dominant: Z.dominant, na: reachable(c, "player", d)}; });
+  ok(ez.geen || (!ez.voor && ez.pct >= 70 && ez.dominant !== "player" && ez.na), "eiland: 70% zeemacht geeft meteen bereik, zonder twee maanden overwicht: " + JSON.stringify(ez));
   console.log(log.join("\n")); console.log("FOUTEN OP DE PAGINA:", JSON.stringify(errs)); await b.close(); process.exit(log.some(l => l.startsWith("FOUT")) || errs.length ? 1 : 0);
 })();
