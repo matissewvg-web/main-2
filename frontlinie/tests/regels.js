@@ -165,7 +165,9 @@ test('Europa 1938: echte kaart, historische grenzen, elk land speelbaar', () => 
   const s = nieuw('europa1938');
   const info = kaartVan(s);
   assert(info.regios.length > 380, 'te weinig provincies: ' + info.regios.length);
-  for (const id of ['silezie', 'pommeren', 'oostenrijk', 'oostpruisen', 'danzig', 'dresden', 'linz']) assert.equal(s.regios[id].eigenaar, 'dui', id);
+  for (const id of ['silezie', 'pommeren', 'oostenrijk', 'oostpruisen', 'dresden', 'linz']) assert.equal(s.regios[id].eigenaar, 'dui', id);
+  assert.equal(s.regios.danzig.eigenaar, 'pol');
+  assert.equal(nieuw('europa1941').regios.danzig.eigenaar, 'dui');
   assert.equal(s.regios.bohemen.eigenaar, 'tsj'); assert.equal(s.regios.brno.eigenaar, 'tsj');
   assert.equal(s.regios.lwow.eigenaar, 'pol');
   assert(info.buren.messina.includes('calabrie'), 'de Straat van Messina is een grens');

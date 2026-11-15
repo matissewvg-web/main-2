@@ -922,6 +922,8 @@ const provinciesVan = (lijst) => lijst.flatMap((id) => EUROPA_GEO.regios.filter(
 function europaStart(o) {
   o.bezit = Object.fromEntries(Object.entries(o.bezit).map(([f, lijst]) => [f, provinciesVan(lijst)]));
   if (o.subset) o.subset = provinciesVan(o.subset);
+  // losse provincies die van een ander land zijn dan de rest van hun regio
+  for (const [f, lijst] of Object.entries(o.los || {})) { for (const k of Object.keys(o.bezit)) o.bezit[k] = o.bezit[k].filter((id) => !lijst.includes(id)); o.bezit[f] = o.bezit[f].concat(lijst); }
   const zijdeVan = {};
   for (const [z, lijst] of Object.entries(o.zijden)) for (const f of lijst) zijdeVan[f] = z;
   const facties = Object.keys(o.bezit).map((id) => Object.assign({ id, zijde: zijdeVan[id] || 'neutraal', speler: o.spelers.includes(id) ? 'mens' : 'passief', hoofdstad: FACTIES[id].hoofdstad || null, doctrine: (o.doctrines || {})[id] || FACTIES[id].doctrine, landing: true },
@@ -933,6 +935,7 @@ CAMPAGNES.unshift(
   europaStart({ id: 'europa1938', naam: 'Europa 1938', ondertitel: 'Herfst 1938, na de Anschluss', jaar: 1938, maand: 9, lengte: 'seizoen', maxBeurten: 16,
     tekst: 'De grenzen van München. Duitsland heeft Oostenrijk ingelijfd, Tsjecho-Slowakije staat er nog, de Sovjet-Unie kijkt toe. Wie valt eerst wie aan?',
     spelers: ['dui', 'ita', 'vk', 'fra', 'ussr', 'pol'], zijden: { as: ['dui', 'ita'], geallieerd: ['vk', 'fra', 'pol', 'tsj'], sovjet: ['ussr'] }, doctrines: { ussr: 'massa', vk: 'commandos' },
+    los: { pol: ['danzig'] },
     bezit: Object.assign({ dui: DUITS, ita: [...ITALIAANS, 'tripoli', 'cyrenaica'], vk: [...BRITS, 'egypte', 'palestina', 'irak'], fra: ['parijs', 'normandie', 'noordfrankrijk', 'lotharingen', 'aquitanie', 'lyon', 'provence', 'marokko', 'algerije', 'tunesie', 'levant'],
       ussr: SOVJET38, pol: ['westpolen', 'warschau', 'krakau', 'oostpolen', 'westwitrusland', 'lwow'], tsj: ['bohemen', 'slowakije'], bel: ['belgie'], ned: ['nederland'], den: ['denemarken'], noo: ['zuidnoorwegen', 'noordnoorwegen'], fin: ['finland', 'lapland'], bal: ['estland', 'letland', 'litouwen'],
       hon: ['hongarije'], roe: ['walachije', 'transsylvanie', 'bessarabie'], joe: ['kroatie', 'bosnie', 'servie', 'macedonie'], bul: ['bulgarije'], gri: ['saloniki', 'athene'], alb: ['albanie'] }, NEUTRAAL) }),
