@@ -927,13 +927,16 @@ const STRAAT = {kost: 12, drempel: 70};
 const straatKost = s => r1(STRAAT.kost * (DIFF[s.player.difficulty] || 1));
 /* 11.25: een aanval bij Privélegers kan overal waar een rivaal het district bezit of er minstens 15% dominantie heeft (niet zijn HQ). Lukt hij, dan neem je zijn dominantie daar over: zijn aanwezigheid en vestiging worden de jouwe, en bezit hij het district, dan is het van jou. Buiten je bereik: 50% duurder en −10 kans. */
 const STRAAT_DOM = 15;
-function straatRivaal(s, d){ if (!d || d.control === "player") return null; const own = s.rivals.find(r => r.name === d.control && r.hq !== d.id); if (own) return own; const D = domVan(s, d);
-  return s.rivals.filter(r => r.hq !== d.id && (D[r.name] || 0) >= STRAAT_DOM).sort((a, b) => (D[b.name] || 0) - (D[a.name] || 0))[0] || null; }
+/* 11.28: in oorlog mag je de vijand overal aanvallen waar hij land of minstens 15% dominantie heeft, ook zonder Privélegers */
+function straatRivaal(s, d){ if (!d || d.control === "player") return null; const own = s.rivals.find(r => r.name === d.control && r.hq !== d.id), D = domVan(s, d), privé = spanningVan(s, d.continent) >= STRAAT.drempel;
+  if (own && (privé || own.status === "oorlog")) return own;
+  const L = s.rivals.filter(r => r.hq !== d.id && (D[r.name] || 0) >= STRAAT_DOM && (privé || r.status === "oorlog")).sort((a, b) => (b.status === "oorlog") - (a.status === "oorlog") || (D[b.name] || 0) - (D[a.name] || 0)); return L[0] || null; }
 function straatKans(s, d){ const r = straatRivaal(s, d); if (!r) return 0;
   const buur = (d.neighbors || []).filter(n => (s.patrouille || {})[n] && (s.districts.find(x => x.id === n) || {}).control === "player").length;
   return warChance(s, r, 5 + Math.min(3, buur) * 6 + (spanningVan(s, d.continent) >= 90 ? 5 : 0) - (verWeg(s, d) ? 10 : 0), "straat"); }
 const straatKostVoor = (s, d) => r1(straatKost(s) * (verWeg(s, d) ? 1.5 : 1));
-const straatDoelen = s => s.districts.filter(d => d.control !== "player" && spanningVan(s, d.continent) >= STRAAT.drempel && !!straatRivaal(s, d));
+const straatDoelen = s => s.districts.filter(d => d.control !== "player" && !!straatRivaal(s, d));
+const oorlogDoelen = (s, r) => s.districts.filter(d => d.control !== "player" && straatRivaal(s, d) === r);
 function domOvername(s, d, r){ const D = d.dom || domDoel(s, d), v = D[r.name] || 0; D.player = r1((D.player || 0) + v); delete D[r.name]; d.dom = D;
   const RA = (s.rivAanwezig || {})[r.name]; const ra = RA && RA[d.id] || 0; if (RA) delete RA[d.id]; const A = (s.aanwezig ??= {}); A[d.id] = Math.min(AANWEZIG_MAX, r1((A[d.id] || 0) + ra + 10));
   const V = (s.vestiging || {})[r.name]; const hadV = !!(V && V[d.id]); if (hadV){ delete V[d.id]; zetVestiging(s, "player", d.id); }
@@ -951,7 +954,7 @@ function actCorpo(s, ctx, soort, id){
     if (!patrouilleMag(s, d)) return {ok: false, msg: `In ${d.continent} mag dat pas vanaf ${patrouilleDrempel(s)} corpospanning (nu ${Math.round(spanningVan(s, d.continent))}).`};
     P[id] = ym(s); addLog(s, `Patrouille in ${d.name} gestart`);
     return {ok: true, msg: `Eigen beveiliging patrouilleert in ${d.name}: €${patrouilleKost(s)}M per maand, bendes krijgen minder grip, je macht +2${heeftWet(s, "beveiliging") ? "" : ", heat +0,25 per maand"}.`}; }
-  if (soort === "straat"){ const d = s.districts.find(x => x.id === id); if (!d || !straatDoelen(s).includes(d)) return {ok: false, msg: `Hier kun je niet aanvallen. Een rivaal moet het district bezitten of er minstens ${STRAAT_DOM}% dominantie hebben (niet zijn HQ), op een continent met minstens ${STRAAT.drempel} spanning (Privélegers).`};
+  if (soort === "straat"){ const d = s.districts.find(x => x.id === id); if (!d || !straatDoelen(s).includes(d)) return {ok: false, msg: `Hier kun je niet aanvallen. Een rivaal moet het district bezitten of er minstens ${STRAAT_DOM}% dominantie hebben (niet zijn HQ), en het continent moet in Privélegers zitten (${STRAAT.drempel}+ spanning) of je moet met die rivaal in oorlog zijn.`};
     const r = straatRivaal(s, d), kost = straatKostVoor(s, d); if (s.cash < kost) return {ok: false, msg: `Niet genoeg cash (€${kost}M nodig).`};
     s.cash = r1(s.cash - kost); const kans = straatKans(s, d), roll = rolKans(kans), zone = spanningVan(s, d.continent) >= 90 ? 0.5 : 1;
     addRoll(s, `Aanval op ${d.name} tegen ${r.name}: ${roll.txt} → ${roll.ok ? "GELUKT" : "MISLUKT"}`); let msg;

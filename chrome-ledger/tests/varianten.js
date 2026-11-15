@@ -740,5 +740,10 @@ const html = '<!doctype html><html><head><meta charset=utf8></head><body>' + fs.
     const kaart = [...document.querySelectorAll(".war-banner")].find(x => x.textContent.includes(r.name)); const knoppen = kaart ? [...kaart.querySelectorAll('[data-a="war"]')].map(b => b.dataset.k) : [], vrede = kaart ? !!kaart.querySelector('[data-k="vrede"]') : false;
     r.status = oud[0]; r.statusMaanden = oud[1]; render(); return {kaart: !!kaart, knoppen, vrede}; }).catch(e => ({fout: String(e)}));
   ok(ok27.kaart && ok27.knoppen.includes("hq") && ok27.knoppen.includes("sabotage") && ok27.vrede, "oorlog: acties en vrede staan bovenaan het overzicht: " + JSON.stringify(ok27));
+  // 11.28 in oorlog overal hun gebied aanvallen
+  const wg = await p.evaluate(() => { const c = JSON.parse(JSON.stringify(G.game)); for (const k of CONTINENTS) (c.spanning ??= {})[k.naam] = 40; const r = c.rivals[0], d = c.districts.find(x => x.control === "neutral" && x.id !== r.hq);
+    ((c.rivAanwezig ??= {})[r.name] ??= {})[d.id] = 30; zetVestiging(c, r.name, d.id); d.dom = domDoel(c, d); r.status = "vrede"; const vrede = straatDoelen(c).includes(d); r.status = "oorlog"; const oorlog = straatDoelen(c).includes(d), lijst = oorlogDoelen(c, r).map(x => x.id);
+    return {pct: Math.round(d.dom[r.name] || 0), vrede, oorlog, inLijst: lijst.includes(d.id), hq: lijst.includes(r.hq)}; });
+  ok(wg.pct >= 15 && !wg.vrede && wg.oorlog && wg.inLijst && !wg.hq, "in oorlog: hun gebied aanvallen kan overal, ook zonder Privélegers (HQ via de HQ-aanval): " + JSON.stringify(wg));
   console.log(log.join("\n")); console.log("FOUTEN OP DE PAGINA:", JSON.stringify(errs)); await b.close(); process.exit(log.some(l => l.startsWith("FOUT")) || errs.length ? 1 : 0);
 })();
