@@ -745,5 +745,9 @@ const html = '<!doctype html><html><head><meta charset=utf8></head><body>' + fs.
     ((c.rivAanwezig ??= {})[r.name] ??= {})[d.id] = 30; zetVestiging(c, r.name, d.id); d.dom = domDoel(c, d); r.status = "vrede"; const vrede = straatDoelen(c).includes(d); r.status = "oorlog"; const oorlog = straatDoelen(c).includes(d), lijst = oorlogDoelen(c, r).map(x => x.id);
     return {pct: Math.round(d.dom[r.name] || 0), vrede, oorlog, inLijst: lijst.includes(d.id), hq: lijst.includes(r.hq)}; });
   ok(wg.pct >= 15 && !wg.vrede && wg.oorlog && wg.inLijst && !wg.hq, "in oorlog: hun gebied aanvallen kan overal, ook zonder Privélegers (HQ via de HQ-aanval): " + JSON.stringify(wg));
+  // 11.29 bereik via dominantie in een buurgebied
+  const bd = await p.evaluate(() => { const c = JSON.parse(JSON.stringify(G.game)); const d = c.districts.find(x => x.control !== "player" && !reachable(c, "player", x) && (x.neighbors || []).length); if (!d) return {geen: true};
+    const nb = c.districts.find(x => x.id === d.neighbors[0]); const voor = reachable(c, "player", d); nb.dom = {...(nb.dom || {}), player: 35}; const na = reachable(c, "player", d); nb.dom.player = 20; const laag = reachable(c, "player", d); return {voor, na, laag}; });
+  ok(bd.geen || (!bd.voor && bd.na && !bd.laag), "bereik: 30%+ dominantie in een buurgebied telt, minder niet: " + JSON.stringify(bd));
   console.log(log.join("\n")); console.log("FOUTEN OP DE PAGINA:", JSON.stringify(errs)); await b.close(); process.exit(log.some(l => l.startsWith("FOUT")) || errs.length ? 1 : 0);
 })();

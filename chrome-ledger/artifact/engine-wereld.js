@@ -1,6 +1,6 @@
 /* Chrome Ledger engine, deel engine-wereld.js: wereld: kaart, zee, dominantie, eigen soorten, personeel, rivalen en acties. 7.4: de engine staat in zes bestanden die in deze volgorde laden (kern, wereld, leven, producten, gm, opslag); alles deelt dezelfde globale scope. */
 /* ---------- de stad: elke game een andere kaart ---------- */
-const VERSION = "11.28";
+const VERSION = "11.29";
 const MAP_W = 1000, MAP_H = 680;
 const RIVAL_COLORS = ["#ff9a1f", "#3d7bff", "#c6ff2e", "#f2f2f2", "#9b5cff", "#ffd400", "#ff4d4d"];
 const ARCH = {
@@ -152,9 +152,11 @@ function seaControl(s){
     return {id: z.id, naam: z.naam, bonus: z.bonus, sterkte: str, totaal: tot, dominant: dom, kandidaat: kand, maanden: kand && H && H.o === kand ? H.n : 0, vloten: Object.fromEntries(owners.map(o => [o, fleetIn(s, o, z.id)]).filter(x => x[1]))};
   });
 }
+const BEREIK_DOM = 30;
 function reachable(s, owner, d){
   if (!d) return false; if (d.control === owner || !s.map) return true;
   if (s.districts.some(x => x.control === owner && (d.neighbors || []).includes(x.id))) return true;
+  if (s.districts.some(x => (d.neighbors || []).includes(x.id) && ((x.dom || {})[owner] || 0) >= BEREIK_DOM)) return true; /* 11.29: dominantie in een buurgebied geeft ook bereik */
   const sea = seaControl(s).filter(z => z.dominant === owner).map(z => z.id);
   return (d.zee || []).some(z => sea.includes(z));
 }
@@ -426,7 +428,7 @@ function actWar(s, ctx, name, kind, districtId){
   let target = null;
   if (w.district){ target = s.districts.find(d => d.id === districtId && d.control === r.name && d.id !== r.hq); if (!target) return {ok: false, msg: "Kies een district van hen (niet hun HQ)."};
     if (!reachable(s, "player", target)) return {ok: false, msg: `${target.name} grenst niet aan jouw gebied en ligt niet aan een zee die jij beheerst.`}; }
-  if (kind === "hq"){ const hqd = s.districts.find(d => d.id === r.hq); if (hqd && !reachable(s, "player", hqd)) return {ok: false, msg: "Hun hoofdkantoor ligt buiten bereik. Je gebied moet eraan grenzen, of je moet de zee ervoor beheersen."}; }
+  if (kind === "hq"){ const hqd = s.districts.find(d => d.id === r.hq); if (hqd && !reachable(s, "player", hqd)) return {ok: false, msg: `Hun hoofdkantoor ligt buiten bereik. Je hebt een eigen district ernaast nodig, minstens ${BEREIK_DOM}% dominantie in een buurgebied, of de zee ervoor.`}; }
   if (kind === "hq" && rivalDistricts(s, r).length > 1 && strijdkracht(s, r).militair > strijdkracht(s, "player").militair * 0.8) return {ok: false, msg: "Hun HQ is nog te goed beschermd. Neem eerst hun andere districten in of verzwak hun macht."};
   const kost = r1(w.kost * (DIFF[s.player.difficulty] || 1) * (relV(s, "fixer") >= 50 ? 0.8 : 1));
   if (s.cash < kost) return {ok: false, msg: `Niet genoeg cash (€${kost}M nodig).`};
