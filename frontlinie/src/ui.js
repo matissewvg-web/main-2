@@ -85,7 +85,11 @@ function beginNieuw(id) {
   const sc = campagneVan(id), rs = 'fow';
   ui.nieuw = { scenarioId: id, naam: sc.naam, ruleset: rs, punten: RULESETS[rs].punten, modus: 'simultaan', mist: true, doorlopend: !!sc.europa, lengte: sc.lengte, maxBeurten: sc.maxBeurten, geenDoel: false,
     bezit: losBezitOp(sc), verf: sc.facties[0].id,
-    facties: sc.facties.map((b) => ({ id: b.id, zijde: b.zijde || FACTIES[b.id].zijde, speler: b.speler === 'passief' ? 'passief' : 'mens', doctrine: b.doctrine || FACTIES[b.id].doctrine || doctrinesVoor(b.id, sc.periode)[0].id })) };
+    facties: sc.facties.map((b) => ({ id: b.id, zijde: b.zijde || FACTIES[b.id].zijde, speler: b.speler === 'passief' ? 'passief' : 'mens', wie: -1, doctrine: b.doctrine || FACTIES[b.id].doctrine || doctrinesVoor(b.id, sc.periode)[0].id })) };
+  // standaard: één speler per zijde
+  const n = ui.nieuw, zijden = [...new Set(n.facties.filter((f) => f.speler === 'mens').map((f) => f.zijde))];
+  n.spelers = zijden.map((_, i) => 'Speler ' + (i + 1));
+  for (const f of n.facties) if (f.speler === 'mens') f.wie = zijden.indexOf(f.zijde);
   ui.scherm = 'nieuw';
 }
 function nieuwScherm() {
@@ -97,7 +101,7 @@ function nieuwScherm() {
     const telt = Object.values(n.bezit).filter((e) => e === f.id).length;
     return `<li class="facrij"><div class="fackop"><span>${stip(F.kleur)}<b>${esc(F.naam)}</b></span><span class="stil">${telt} regio's</span></div>
       <div class="facvelden">
-        <label>Wie speelt<select id="sp-${f.id}" data-c="nf" data-i="${i}" data-veld="speler"><option value="mens" ${f.speler === 'mens' ? 'selected' : ''}>Een speler</option><option value="passief" ${f.speler === 'passief' ? 'selected' : ''}>Niemand: verdedigt alleen</option></select></label>
+        <label>Bestuurd door<select id="sp-${f.id}" data-c="nf" data-i="${i}" data-veld="wie" data-num="1"><option value="-1" ${f.wie < 0 ? 'selected' : ''}>Niemand</option>${n.spelers.map((sp, k) => `<option value="${k}" ${f.wie === k ? 'selected' : ''}>${esc(sp)}</option>`).join('')}</select></label>
         ${sc.sandbox ? `<label>Zijde<select id="zij-${f.id}" data-c="nf" data-i="${i}" data-veld="zijde">${Object.entries(ZIJDEN).map(([z, zn]) => `<option value="${z}" ${f.zijde === z ? 'selected' : ''}>${zn}</option>`).join('')}</select></label>` : ''}
         <label>Doctrine<select id="doc-${f.id}" data-c="nf" data-i="${i}" data-veld="doctrine">${docs.map((x) => `<option value="${x.id}" ${x.id === d.id ? 'selected' : ''}>${esc(x.naam)}</option>`).join('')}</select></label></div>
       <p class="doctekst"><b>Kaart:</b> ${esc(d.strat)} <b>Gevecht:</b> ${esc(d.gevecht)} <b>Nadeel:</b> ${esc(d.nadeel)}</p>
@@ -106,14 +110,20 @@ function nieuwScherm() {
   const spelers = n.facties.map((f, i) => [f, i]).filter(([f]) => f.speler === 'mens'), passief = n.facties.map((f, i) => [f, i]).filter(([f]) => f.speler !== 'mens');
   const rsOpt = Object.entries(RULESETS).map(([id, r]) => `<option value="${id}" ${n.ruleset === id ? 'selected' : ''}>${r.naam}</option>`).join('');
   const zijden = new Set(spelers.map(([f]) => f.zijde).filter((z) => z !== 'neutraal'));
-  const fout = spelers.length < 2 ? 'Minstens twee landen hebben een speler nodig.' : zijden.size < 2 ? 'De spelers moeten over minstens twee zijden verdeeld zijn.' : '';
+  const fout = spelers.length < 2 ? 'Geef minstens twee landen een speler.' : zijden.size < 2 ? 'De landen met een speler moeten over minstens twee zijden verdeeld zijn.' : '';
+  const spelerVak = `<ul class="spelers">${n.spelers.map((sp, k) => { const l = n.facties.filter((f) => f.wie === k); return `<li><input type="text" id="spn-${k}" data-c="ns" data-i="${k}" value="${esc(sp)}" aria-label="Naam van speler ${k + 1}"><span class="stil">${l.length ? l.map((f) => stip(FACTIES[f.id].kleur) + esc(FACTIES[f.id].naam)).join(', ') : 'nog geen land'}</span></li>`; }).join('')}</ul>
+    <div class="knoppen">${n.spelers.length < 8 ? knop('spelerPlus', 'Speler erbij', '', 'mini') : ''}${n.spelers.length > 2 ? knop('spelerMin', 'Laatste speler weg', '', 'mini') : ''}</div>`;
   return `<main class="nieuw">
   <section class="kaartvak"><p class="oog">${esc(sc.ondertitel)}</p><h1>${esc(sc.naam)}</h1><p>${esc(sc.tekst)}</p>
     ${sc.doel && !n.geenDoel ? `<p class="doelregel"><b>Doel.</b> ${esc(sc.doel.tekst)} Lukt dat niet, dan wint de andere zijde.</p>` : `<p class="doelregel"><b>Doel.</b> De zijde met de meeste overwinningspunten na ${n.maxBeurten} beurten wint.</p>`}
     <div class="kaartrol past"><div>${kaartSvg(ps, {})}</div></div>
     ${sc.sandbox ? `<label class="inlijn">Klik op een regio om haar te geven aan <select id="n-verf" data-c="n" data-veld="verf">${n.facties.map((f) => `<option value="${f.id}" ${n.verf === f.id ? 'selected' : ''}>${esc(FACTIES[f.id].naam)}</option>`).join('')}</select></label>` : ''}
     ${legenda()}</section>
-  <section class="paneel"><h2>Instellingen</h2>
+  <section class="paneel"><h2>Wie speelt mee?</h2><p class="stil">Geef elke speler een naam en kies hieronder per land wie het bestuurt. Eén speler mag meerdere landen besturen. Landen zonder speler doen niets.</p>
+    ${spelerVak}
+    <h2>Landen met een speler</h2><ul class="facrijen">${spelers.map(([f, i]) => rij(f, i)).join('') || '<li class="stil">Nog geen land gekozen.</li>'}</ul>
+    ${passief.length ? `<details ${spelers.length < 2 ? 'open' : ''}><summary>Landen zonder speler (${passief.length})</summary><p class="stil">Ze geven geen orders en doen niets uit zichzelf. Val je er één aan, dan speelt een tegenstander zijn leger. Een neutraal land dat wordt aangevallen, kiest de andere kant.</p><ul class="facrijen">${passief.map(([f, i]) => rij(f, i)).join('')}</ul></details>` : ''}
+    <h2>Instellingen</h2>
     <div class="veldgrid">
       <label class="breed">Naam van de campagne<input type="text" id="n-naam" data-c="n" data-veld="naam" value="${esc(n.naam)}"></label>
       <label>Systeem<select id="n-rs" data-c="n" data-veld="ruleset">${rsOpt}</select></label>
@@ -125,8 +135,6 @@ function nieuwScherm() {
       <label class="vink breed"><input type="checkbox" id="n-door" data-c="n" data-veld="doorlopend" ${n.doorlopend ? 'checked' : ''}> De periode volgt de kalender: Mid war vanaf 1942, Late war vanaf 1944</label>
       ${sc.sandbox && sc.doel ? `<label class="vink breed"><input type="checkbox" id="n-doel" data-c="n" data-veld="geenDoel" ${n.geenDoel ? 'checked' : ''}> Zonder scenariodoel: speel op overwinningspunten</label>` : ''}
     </div>
-    <h2>Landen met een speler</h2><ul class="facrijen">${spelers.map(([f, i]) => rij(f, i)).join('')}</ul>
-    ${passief.length ? `<details><summary>Landen zonder speler (${passief.length})</summary><p class="stil">Ze geven geen orders. Word je aangevallen, dan speelt een tegenstander van de aanvaller hun leger. Een neutraal land dat wordt aangevallen, kiest de andere kant.</p><ul class="facrijen">${passief.map(([f, i]) => rij(f, i)).join('')}</ul></details>` : ''}
     ${fout ? `<p class="fout">${fout}</p>` : ''}
     <div class="knoppen">${knop('startCampagne', 'Start de campagne', fout ? 'disabled' : '', 'hoofd')}${knop('naarStart', 'Terug')}</div>
   </section></main>`;
@@ -196,10 +204,10 @@ function tabBeurt(s) {
   if (s.fase === 'orders') {
     if (ui.plannend) return orderBouwer(s, ui.plannend);
     const volg = planVolgorde(s), nu = volgendePlanner(s);
-    const rijen = actieveFacties(s).filter((f) => f.speler === 'mens').map((f) => `<li class="rij smal"><span>${facNaam(s, f.id)}</span>${s.klaar[f.id] ? chip('orders klaar', 'ok') : chip('moet nog plannen')}</li>`).join('');
+    const rijen = volg.map((id) => factie(s, id)).map((f) => `<li class="rij smal"><span>${facNaam(s, f.id)}${f.spelerNaam ? ` <span class="stil">${esc(f.spelerNaam)}</span>` : ''}</span>${s.klaar[f.id] ? chip('orders klaar', 'ok') : chip('moet nog plannen')}</li>`).join('');
     return `<h2>Strategische fase</h2><p class="stil">${s.modus === 'simultaan' ? 'Iedereen geeft verborgen orders; ze worden tegelijk onthuld.' : `Om de beurt, op initiatief: ${volg.map((id) => esc(factie(s, id).naam)).join(', ')}. Wie later plant, ziet de aanvallen van wie al klaar is.`}</p>
       <ul class="rijen">${rijen}</ul>
-      ${nu ? `<div class="doorgeef"><p>Geef het toestel aan de speler van <b>${esc(factie(s, nu).naam)}</b>.</p>${knop('plan', `Plan de orders van ${esc(factie(s, nu).naam)}`, `data-id="${nu}"`, 'hoofd')}</div>` : `<div class="doorgeef"><p>Alle orders liggen klaar.</p>${knop('onthul', 'Onthul de orders', '', 'hoofd')}</div>`}`;
+      ${nu ? `<div class="doorgeef"><p>Geef het toestel aan <b>${esc(factie(s, nu).spelerNaam || 'de speler van ' + factie(s, nu).naam)}</b>.</p>${knop('plan', `Plan de orders van ${esc(factie(s, nu).naam)}`, `data-id="${nu}"`, 'hoofd')}</div>` : `<div class="doorgeef"><p>Alle orders liggen klaar.</p>${knop('onthul', 'Onthul de orders', '', 'hoofd')}</div>`}`;
   }
   if (s.fase === 'onthuld') {
     if (ui.auftrag) return orderBouwer(s, ui.auftrag.fid);
@@ -238,7 +246,7 @@ function orderBouwer(s, fid) {
     const n = t === 'aanval' ? orderDoelen(s, fid, 'aanval').length : orderDoelen(s, fid, t).length;
     return `<button type="button" class="ordknop${ui.orderType === t ? ' aan' : ''}" data-a="orderType" data-id="${t}" ${n ? '' : 'disabled'} title="${esc(ORDERTYPES[t].tekst)}"><span class="code">${ORDERCODE[t]}</span>${ORDERTYPES[t].naam}</button>`;
   }).join('');
-  return `<div class="planner"><p class="oog">${ui.auftrag ? 'Auftragstaktik: vervang één order' : 'Geheim: alleen voor deze speler'}</p><h2>${facNaam(s, fid)}</h2>
+  return `<div class="planner"><p class="oog">${ui.auftrag ? 'Auftragstaktik: vervang één order' : `Geheim: alleen voor ${esc(f.spelerNaam || 'deze speler')}`}</p><h2>${facNaam(s, fid)}</h2>
     <p class="stil">${esc(docNamen(f))}</p>
     <p class="tellers">${chip(`Orders ${tel.orders} van ${lim.orders}`, tel.orders >= lim.orders ? 'let' : '')}${chip(`Aanvallen ${tel.aanvallen} van ${lim.aanvallen}`, tel.aanvallen >= lim.aanvallen ? 'let' : '')}</p>
     ${bekend.length ? `<p class="let-tekst"><b>Verkenning meldt:</b> ${bekend.map((a) => `${esc(factie(s, a.fid).naam)} valt ${esc(info.opId[a.naar].naam)} aan`).join('; ')}.</p>` : ''}
@@ -246,7 +254,7 @@ function orderBouwer(s, fid) {
     ${ui.orderType ? `<p class="uitleg">${esc(ORDERTYPES[ui.orderType].tekst)} ${esc(instructie(s))}</p>` : '<p class="uitleg">Kies een order, klik dan op de kaart.</p>'}
     ${ui.melding ? `<p class="fout">${esc(ui.melding)}</p>` : ''}
     <h3>Jouw orders</h3>${eigen.length ? `<ol class="orders">${lijst.map((o, i) => (ui.auftrag && ui.auftrag.index === i ? '' : `<li><span class="code">${ORDERCODE[o.type]}</span>${orderTekst(s, o)}${ui.auftrag ? '' : knop('wisOrder', 'wis', `data-i="${i}"`, 'mini')}</li>`)).join('')}</ol>` : '<p class="stil">Nog geen orders.</p>'}
-    <div class="knoppen">${ui.auftrag ? knop('auftragStop', 'Annuleer') : knop('planKlaar', 'Klaar, verberg mijn orders', '', 'hoofd')}</div></div>`;
+    <div class="knoppen">${ui.auftrag ? knop('auftragStop', 'Annuleer') : knop('planKlaar', 'Klaar met ' + esc(f.naam), '', 'hoofd')}</div></div>`;
 }
 
 function standTabel(s, st) {
@@ -267,7 +275,7 @@ function tabLanden(s) {
     const docs = f.doctrines.map((id, i) => { const d = doctrineVan(id); return `<div class="doc"><b>${esc(d.naam)}</b>${f.magWisselen && i === 0 && vrij.length ? ` <select id="wd-${f.id}" data-c="wisselDoc" data-id="${f.id}" aria-label="Andere doctrine"><option value="">andere kiezen…</option>${vrij.map((x) => `<option value="${x.id}">${esc(x.naam)}</option>`).join('')}</select>` : ''}<p><b>Kaart:</b> ${esc(d.strat)} <b>Gevecht:</b> ${esc(d.gevecht)} <b>Nadeel:</b> ${esc(d.nadeel)}</p></div>`; }).join('');
     const tweede = f.slots >= 2 && f.doctrines.length < 2 && vrij.length ? `<label class="tweede">Tweede doctrine vrijgespeeld<select id="td-${f.id}" data-c="tweedeDoc" data-id="${f.id}"><option value="">kies…</option>${vrij.map((x) => `<option value="${x.id}">${esc(x.naam)}</option>`).join('')}</select></label>` : '';
     const vets = f.veteranen.map((v, i) => `<li><span><b>${esc(v.naam)}</b> · ${v.gevechten} gevecht${v.gevechten === 1 ? '' : 'en'} · <span class="stil">${veteraanBonus(v)}</span></span><span class="knoppen">${knop('vetPlus', '+1 gevecht', `data-id="${f.id}" data-i="${i}"`, 'mini')}${knop('vetWeg', 'wis', `data-id="${f.id}" data-i="${i}"`, 'mini')}</span></li>`).join('');
-    return `<li class="blok${f.verslagen ? ' uit' : ''}"><div class="fackop"><h3>${facNaam(s, f.id)}</h3><span class="chips">${chip(ZIJDEN[f.zijde])}${f.verslagen ? chip('verslagen', 'let') : chip(`${lim.orders} orders, ${lim.aanvallen} aanvallen`)}</span></div>
+    return `<li class="blok${f.verslagen ? ' uit' : ''}"><div class="fackop"><h3>${facNaam(s, f.id)}${f.speler === 'mens' && f.spelerNaam ? ` <span class="stil">${esc(f.spelerNaam)}</span>` : ''}</h3><span class="chips">${chip(ZIJDEN[f.zijde])}${f.verslagen ? chip('verslagen', 'let') : chip(`${lim.orders} orders, ${lim.aanvallen} aanvallen`)}</span></div>
       <label class="inlijn">Wie speelt <select id="sp2-${f.id}" data-c="spelerWissel" data-id="${f.id}"><option value="mens" ${f.speler === 'mens' ? 'selected' : ''}>Een speler</option><option value="passief" ${f.speler !== 'mens' ? 'selected' : ''}>Niemand: verdedigt alleen</option></select></label>
       <p class="doctekst"><b>Leger op tafel:</b> ${esc(f.leger || FACTIES[f.id].leger)}</p>
       ${docs}${tweede}
@@ -416,10 +424,12 @@ const ACT = {
       opslag.campagnes[s.id] = s; bewaar(); ui.melding = '';
     } catch (e) { ui.melding = 'Dit is geen geldige Frontlinie-export. Plak de volledige tekst, van { tot en met }.'; }
   },
+  spelerPlus() { ui.nieuw.spelers.push('Speler ' + (ui.nieuw.spelers.length + 1)); },
+  spelerMin() { const k = ui.nieuw.spelers.length - 1; ui.nieuw.spelers.pop(); for (const f of ui.nieuw.facties) if (f.wie === k) { f.wie = -1; f.speler = 'passief'; } },
   startCampagne() {
     const n = ui.nieuw;
     const s = nieuweCampagne({ scenarioId: n.scenarioId, naam: n.naam.trim() || campagneVan(n.scenarioId).naam, ruleset: n.ruleset, punten: n.punten, modus: n.modus, mist: n.mist, doorlopend: n.doorlopend,
-      lengte: n.lengte, maxBeurten: n.maxBeurten, geenDoel: n.geenDoel, bezit: n.bezit, tafel: opslag.tafel, voorraad: opslag.voorraad, facties: n.facties.map((f) => ({ id: f.id, zijde: f.zijde, speler: f.speler, doctrine: f.doctrine })) });
+      lengte: n.lengte, maxBeurten: n.maxBeurten, geenDoel: n.geenDoel, bezit: n.bezit, tafel: opslag.tafel, voorraad: opslag.voorraad, facties: n.facties.map((f) => ({ id: f.id, zijde: f.zijde, speler: f.speler, spelerNaam: f.wie >= 0 ? (n.spelers[f.wie].trim() || 'Speler ' + (f.wie + 1)) : '', doctrine: f.doctrine })) });
     opslag.campagnes[s.id] = s; bewaar(); ACT.open({ id: s.id });
   },
   tab(d) { ui.tab = d.id; ui.melding = ''; },
@@ -444,7 +454,13 @@ const ACT = {
   plan(d) { ui.plannend = d.id; ui.tab = 'beurt'; ui.sel = null; ui.undo = null; resetPlan(); },
   orderType(d) { ui.orderType = ui.orderType === d.id ? null : d.id; ui.orderVan = null; ui.melding = ''; },
   wisOrder(d) { muteer((s) => verwijderOrder(s, ui.plannend, +d.i)); },
-  planKlaar() { muteer((s) => { s.klaar[ui.plannend] = true; }); ui.plannend = null; ui.sel = null; ui.undo = null; resetPlan(); naarBoven(); },
+  planKlaar() {
+    const s = C(), wie = factie(s, ui.plannend).spelerNaam;
+    muteer((st) => { st.klaar[ui.plannend] = true; });
+    const nu = volgendePlanner(s); // volgende land van dezelfde speler: meteen door, zonder het toestel door te geven
+    ui.plannend = nu && wie && factie(s, nu).spelerNaam === wie ? nu : null;
+    ui.sel = null; ui.undo = null; resetPlan(); naarBoven();
+  },
   onthul() { muteer((s) => onthul(s)); ui.undo = null; },
   auftrag(d) { ui.auftrag = { fid: d.id, index: +d.i }; resetPlan(); },
   auftragStop() { ui.auftrag = null; resetPlan(); },
@@ -474,7 +490,8 @@ const ACT = {
 // formuliervelden: data-c = doel, data-veld = sleutel
 const VELD = {
   n(el, w) { const n = ui.nieuw; n[el.dataset.veld] = w; if (el.dataset.veld === 'ruleset') n.punten = RULESETS[w].punten; },
-  nf(el, w) { ui.nieuw.facties[+el.dataset.i][el.dataset.veld] = w; },
+  nf(el, w) { const f = ui.nieuw.facties[+el.dataset.i]; f[el.dataset.veld] = w; if (el.dataset.veld === 'wie') f.speler = w >= 0 ? 'mens' : 'passief'; },
+  ns(el, w) { ui.nieuw.spelers[+el.dataset.i] = String(w).slice(0, 30); },
   l(el, w) { const l = ui.los; l[el.dataset.veld] = w; if (el.dataset.veld === 'ruleset') l.punten = RULESETS[w].punten; if (['facA', 'periode'].includes(el.dataset.veld) && !doctrinesVoor(l.facA, l.periode).some((x) => x.id === l.docA)) l.docA = ''; if (['facV', 'periode'].includes(el.dataset.veld) && !doctrinesVoor(l.facV, l.periode).some((x) => x.id === l.docV)) l.docV = ''; },
   li(el, w) { ui.los.infra[el.dataset.veld] = w; },
   u(el, w) { ui.uitslag[el.dataset.veld] = w; return false; },
@@ -482,7 +499,7 @@ const VELD = {
   ctv(el, w) { const s = C(); s.voorraad[el.dataset.veld] = Math.max(0, +w || 0); opslag.voorraad = Object.assign({}, s.voorraad); bewaar(); },
   gt(el, w) { opslag.tafel[el.dataset.veld] = el.dataset.veld === 'eenheid' ? w : Math.max(24, +w || 24); bewaar(); },
   gtv(el, w) { opslag.voorraad[el.dataset.veld] = Math.max(0, +w || 0); bewaar(); },
-  spelerWissel(el, w) { muteer((s) => { const f = factie(s, el.dataset.id); f.speler = w; if (s.fase === 'orders') { s.orders[f.id] = []; s.klaar[f.id] = w !== 'mens'; } }); },
+  spelerWissel(el, w) { muteer((s) => { const f = factie(s, el.dataset.id); f.speler = w; if (w === 'mens' && !f.spelerNaam) f.spelerNaam = 'Speler van ' + f.naam; if (s.fase === 'orders') { s.orders[f.id] = []; s.klaar[f.id] = w !== 'mens'; } }); },
   tweedeDoc(el, w) { if (w) muteer((s) => kiesTweedeDoctrine(s, el.dataset.id, w)); },
   wisselDoc(el, w) { if (w) muteer((s) => wisselDoctrine(s, el.dataset.id, 0, w)); },
 };

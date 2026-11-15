@@ -41,10 +41,12 @@ const shots = process.argv.includes('--shots');
   await foto(page, '03-campagne');
   const speelBeurt = async (maxOrders) => {
     // plan voor elke mens: klik alle ordertypes af tot de limiet
-    for (let guard = 0; guard < 6; guard++) {
-      const plan = page.locator('button', { hasText: 'Plan de orders van' });
-      if (!(await plan.count())) break;
-      await plan.first().click();
+    for (let guard = 0; guard < 12; guard++) {
+      if (!(await page.locator('.planner').count())) { // zelfde speler, volgend land: de planner staat al open
+        const plan = page.locator('button', { hasText: 'Plan de orders van' });
+        if (!(await plan.count())) break;
+        await plan.first().click();
+      }
       for (const type of ['Luchtlanding', 'Aanvallen', 'Versterken', 'Verdedigen']) {
         for (let k = 0; k < maxOrders; k++) {
           const b = page.locator('.ordknop', { hasText: type });
@@ -58,7 +60,7 @@ const shots = process.argv.includes('--shots');
         }
       }
       if (guard === 0 && shots) await foto(page, '04-orders');
-      await klik(page, 'Klaar, verberg mijn orders');
+      await klik(page, 'Klaar met');
     }
     await klik(page, 'Onthul de orders');
     if (shots) await foto(page, '05-onthuld');

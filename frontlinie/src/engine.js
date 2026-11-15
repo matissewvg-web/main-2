@@ -110,7 +110,7 @@ export function nieuweCampagne(cfg) {
     const basis = sc.facties.find((f) => f.id === fc.id) || {}, F = FACTIES[fc.id];
     const geldig = doctrinesVoor(fc.id, periode).map((d) => d.id);
     const doc = geldig.includes(fc.doctrine) ? fc.doctrine : (geldig.includes(basis.doctrine) ? basis.doctrine : geldig[0]);
-    return { id: fc.id, naam: F.naam, kort: F.kort, kleur: F.kleur, zijde: fc.zijde || basis.zijde || F.zijde, speler: fc.speler || basis.speler || 'mens', leger: F.leger || '',
+    return { id: fc.id, naam: F.naam, kort: F.kort, kleur: F.kleur, zijde: fc.zijde || basis.zijde || F.zijde, speler: fc.speler || basis.speler || 'mens', spelerNaam: fc.spelerNaam || '', leger: F.leger || '',
       doctrines: [doc], slots: 1, zeges: 0, hoofdstad: basis.hoofdstad || null, bronnen: basis.bronnen ? basis.bronnen.slice() : null,
       para: !!basis.para, gratisPara: basis.gratisPara || 0, landing: !!basis.landing || !!sc.sandbox, beurt1Aanvallen: basis.beurt1Aanvallen || 0, later: !!basis.later,
       extraOrders: 0, bonusVP: 0, tegenaanval: null, herkans: [], geenLanding: 0, voorbereid: {}, vielAan: 0, verloor: 0, verslagen: false, veteranen: [] };
@@ -370,7 +370,10 @@ export function startOrderFase(state) {
 export function planVolgorde(state) {
   const mensen = actieveFacties(state).filter((f) => f.speler === 'mens');
   const rang = (f) => (heeftDoc(f, 'vuurkracht') ? -100 : 0) + state.initiatief.indexOf(f.id);
-  return mensen.sort((a, b) => rang(a) - rang(b)).map((f) => f.id);
+  mensen.sort((a, b) => rang(a) - rang(b));
+  // landen van dezelfde speler na elkaar, zodat het toestel maar één keer per speler rondgaat
+  const spelers = [...new Set(mensen.map((f) => f.spelerNaam || f.id))];
+  return spelers.flatMap((sp) => mensen.filter((f) => (f.spelerNaam || f.id) === sp)).map((f) => f.id);
 }
 export function volgendePlanner(state) { return planVolgorde(state).find((id) => !state.klaar[id]) || null; }
 // Aanvallen van de vijand die deze factie tijdens het plannen al kent.

@@ -137,6 +137,8 @@ label.vink { flex-direction: row; align-items: center; gap: 7px; font-size: 0.9r
 fieldset { border: 1px solid var(--lijn); border-radius: 4px; display: flex; flex-wrap: wrap; gap: 6px 16px; padding: 8px 10px; margin: 0; }
 legend { font: 600 0.74rem var(--f-kop); text-transform: uppercase; letter-spacing: 0.08em; color: var(--stil); padding: 0 4px; }
 .voorraad { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 8px 10px; }
+.spelers { display: flex; flex-direction: column; gap: 8px; }
+.spelers li { display: grid; grid-template-columns: minmax(110px, 180px) minmax(0, 1fr); gap: 10px; align-items: center; }
 .facrijen { display: flex; flex-direction: column; gap: 10px; }
 .facrij { border-top: 2px solid var(--inkt); padding-top: 8px; display: flex; flex-direction: column; gap: 7px; }
 .fackop { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 8px; }
