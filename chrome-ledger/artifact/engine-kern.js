@@ -654,7 +654,8 @@ function tick(s){
   if (s.flags.lage_morale >= 2 && R() < 0.5) status = "COUP IN DE RAAD";
   else if (s.morale < 20) mail(ctx, s, "Anoniem", "De raad vergadert zonder u", "Drie bestuursleden lunchten gisteren samen. U stond niet op de lijst.", "HOOG");
   s.flags.hoge_heat = s.heat > 90 ? (s.flags.hoge_heat || 0) + 1 : 0;
-  if (s.flags.hoge_heat >= 2 && R() < 0.4 * (heeftWet(s, "rechtspraak") ? 0.5 : 1)){ if (razzia(s, ctx)) status = "RAZZIA / VERVOLGING"; } /* 7.2: pas de derde razzia is het einde */
+  if (corpoImmuun(s)){ if (s.flags.hoge_heat >= 2 && !s.flags.immuun_mail){ s.flags.immuun_mail = true; mail(ctx, s, "Juridische Zaken", "Niemand durft ons binnen te vallen", `Heat staat al maanden boven de 90, maar op ${thuisCont(s)} regeren de corporaties (spanning ${Math.round(spanningThuis(s))}). Justitie heeft een dossier en geen moed. Zolang het zo blijft, komt er geen razzia; zakt de spanning onder de ${CORPO_IMMUUN}, dan wel.`, "NORMAAL"); } } /* 11.26: bij Privélegers en Corporate zone thuis geen razzia */
+  else if (s.flags.hoge_heat >= 2 && R() < 0.4 * (heeftWet(s, "rechtspraak") ? 0.5 : 1)){ if (razzia(s, ctx)) status = "RAZZIA / VERVOLGING"; } /* 7.2: pas de derde razzia is het einde */
   else if (s.heat > 75 && !s.flags.dossier){ s.flags.dossier = true; mail(ctx, s, "Juridische Zaken", "Er wordt een dossier opgebouwd", `Een bevriende griffier zegt dat ons dossier dikker wordt. Boven 90 heat, twee maanden lang, volgt een razzia${(s.razzias || 0) ? ` (we hadden er al ${s.razzias}; de derde is het einde)` : ""}. Snelste weg omlaag: een juridisch offensief (Overzicht → Gezondheid), een gunst van de commissaris of sporen laten wissen.`, "KRITIEK"); }
   if (s.heat < 65) delete s.flags.dossier;
   if (s.flags.overgenomen){ delete s.flags.overgenomen; status = "OVERGENOMEN"; }

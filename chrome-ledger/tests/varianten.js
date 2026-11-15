@@ -730,5 +730,10 @@ const html = '<!doctype html><html><head><meta charset=utf8></head><body>' + fs.
     return {rustig, doel, voor, ok: res.ok, msg: res.msg.slice(0, 120), rivNa: d.dom[r.name] || 0, spelerNa: Math.round(d.dom.player || 0), pl0: Math.round(pl0), vest: heeftVestiging(c, "player", d.id) && !heeftVestiging(c, r.name, d.id), ver: verWeg(c, d), kost, basis: straatKost(c)}; });
   await p.evaluate(() => { crypto.getRandomValues = window.__echt25; });
   ok(av.geen || (!av.rustig && av.doel && av.voor >= 15 && av.ok && av.rivNa === 0 && av.spelerNa >= av.pl0 + av.voor - 1 && av.vest && (!av.ver || av.kost > av.basis)), "aanval bij Privélegers: ook ver weg, rivaal met dominantie, zijn aandeel en vestiging worden van jou: " + JSON.stringify(av));
+  // 11.26 geen razzia bij Privélegers of Corporate zone thuis
+  const imz = await p.evaluate(() => { const c = JSON.parse(JSON.stringify(G.game)), ctx = Ctx(); const thuis = thuisCont(c); c.status = "actief"; c.razzias = 0;
+    c.spanning[thuis] = 75; let n = 0; for (let i = 0; i < 6; i++){ c.heat = 100; tick(c); if (c.razzias) n++; } const imm = corpoImmuun(c), r1z = c.razzias;
+    c.spanning[thuis] = 40; c.flags.hoge_heat = 5; c.wetten = {}; for (let i = 0; i < 60 && !c.razzias && c.status === "actief"; i++){ c.heat = 100; c.spanning[thuis] = 40; tick(c); } return {imm, r1z, na: c.razzias}; });
+  ok(imz.imm && imz.r1z === 0 && imz.na >= 1, "thuis Privélegers: geen razzia bij heat 100; bij lage spanning wel: " + JSON.stringify(imz));
   console.log(log.join("\n")); console.log("FOUTEN OP DE PAGINA:", JSON.stringify(errs)); await b.close(); process.exit(log.some(l => l.startsWith("FOUT")) || errs.length ? 1 : 0);
 })();
