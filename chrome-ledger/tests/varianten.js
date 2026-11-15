@@ -720,5 +720,15 @@ const html = '<!doctype html><html><head><meta charset=utf8></head><body>' + fs.
     rij.querySelector('[data-a="prodopen"]').click(); const rij2 = document.querySelector("main .prow.markt"); const open = {tags: !!rij2.querySelector(".ptags"), prijs: !!rij2.querySelector(".prijzen")}; S.prodOpen = {}; render(); return {dicht, open}; });
   await p.waitForTimeout(100);
   ok(cpr.geen || (!cpr.dicht.tags && !cpr.dicht.prijs && /meer/.test(cpr.dicht.knop) && cpr.open.tags && cpr.open.prijs), "productrijen compact, ▸ meer klapt eigenschappen en prijsknoppen uit: " + JSON.stringify(cpr));
+  // 11.25 aanval bij Privélegers: dominantie overnemen, ook ver weg
+  await p.evaluate(() => { window.__echt25 = crypto.getRandomValues; crypto.getRandomValues = a => { a[0] = 5; return a; }; });
+  const av = await p.evaluate(() => { const c = JSON.parse(JSON.stringify(G.game)), ctx = Ctx(); c.cash = 900; c.accounts.operationeel = 900; const r = c.rivals[0];
+    const d = c.districts.find(x => x.control === "neutral" && !verWeg(c, x) === false && x.id !== r.hq) || c.districts.find(x => x.control === "neutral" && x.id !== r.hq); if (!d) return {geen: true};
+    for (const k of CONTINENTS) (c.spanning ??= {})[k.naam] = 40; const rustig = straatDoelen(c).includes(d);
+    c.spanning[d.continent] = 75; ((c.rivAanwezig ??= {})[r.name] ??= {})[d.id] = 30; zetVestiging(c, r.name, d.id); d.dom = domDoel(c, d); const voor = Math.round(d.dom[r.name] || 0), pl0 = d.dom.player || 0;
+    const doel = straatDoelen(c).includes(d), kost = straatKostVoor(c, d), res = actCorpo(c, ctx, "straat", d.id);
+    return {rustig, doel, voor, ok: res.ok, msg: res.msg.slice(0, 120), rivNa: d.dom[r.name] || 0, spelerNa: Math.round(d.dom.player || 0), pl0: Math.round(pl0), vest: heeftVestiging(c, "player", d.id) && !heeftVestiging(c, r.name, d.id), ver: verWeg(c, d), kost, basis: straatKost(c)}; });
+  await p.evaluate(() => { crypto.getRandomValues = window.__echt25; });
+  ok(av.geen || (!av.rustig && av.doel && av.voor >= 15 && av.ok && av.rivNa === 0 && av.spelerNa >= av.pl0 + av.voor - 1 && av.vest && (!av.ver || av.kost > av.basis)), "aanval bij Privélegers: ook ver weg, rivaal met dominantie, zijn aandeel en vestiging worden van jou: " + JSON.stringify(av));
   console.log(log.join("\n")); console.log("FOUTEN OP DE PAGINA:", JSON.stringify(errs)); await b.close(); process.exit(log.some(l => l.startsWith("FOUT")) || errs.length ? 1 : 0);
 })();
