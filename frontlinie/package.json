@@ -1,0 +1,10 @@
+{
+  "name": "frontlinie",
+  "private": true,
+  "type": "module",
+  "description": "WO2-campagnekaart en scenariogenerator voor Flames of War en Battlegroup",
+  "scripts": {
+    "build": "node build.js",
+    "test": "node tests/simulatie.js && node tests/regels.js"
+  }
+}
