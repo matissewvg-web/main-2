@@ -37,14 +37,14 @@ function splitsNaam(naam) {
 // s: {kaart, subset, regios:{id:{eigenaar,...}}, facties:[{id,kleur,zijde,hoofdstad}], doel}
 // o: {selectie, kiesbaar:Set|Array, bron, pijlen:[{van,naar,fid,type}], merktekens:[{regio,code,fid}], gevechten:[{regio,open}], toonFort:(id)=>bool, klein}
 export function kaartSvg(s, o = {}) {
-  const info = kaartInfo(s.kaart, s.subset), geo = info.geo, R = geo ? 60 : KAARTEN[s.kaart].straal, bb = info.bbox;
+  const info = kaartInfo(s.kaart, s.subset), geo = info.geo, R = geo ? 30 : KAARTEN[s.kaart].straal, bb = info.bbox;
   const fac = (id) => s.facties.find((f) => f.id === id);
   const kleur = (id) => (fac(id) || FACTIES[id] || FACTIES.neutraal).kleur;
   const zijde = (id) => (fac(id) ? fac(id).zijde : 'neutraal');
   const kies = new Set(o.kiesbaar || []);
   const hoofdsteden = new Set(s.facties.map((f) => f.hoofdstad).filter(Boolean));
   const doelen = new Set(s.doel ? s.doel.regios : []);
-  const fs = geo ? 21 : R * 0.2 * (KAARTEN[s.kaart].tekst || 1);
+  const fs = geo ? 12.5 : R * 0.2 * (KAARTEN[s.kaart].tekst || 1);
   let cellen = '', front = '', labels = '', boven = '';
 
   for (const r of info.regios) {
@@ -74,7 +74,7 @@ export function kaartSvg(s, o = {}) {
     const zieFort = o.toonFort ? o.toonFort(r.id) : true;
     const fort = rs.fort === undefined ? r.fort : rs.fort;
     const fortTxt = zieFort ? (fort > 0 ? '▲'.repeat(fort) : '') : (o.fortVraag === undefined ? '?' : o.fortVraag);
-    t += `<text x="${r.x}" y="${n1(y0 + regels.length * fs * 1.08 + fs * 0.1)}" font-size="${n1(fs * 0.78)}" class="ri">${r.waarde}${infra && !geo ? ' · ' + infra : ''}${fortTxt ? ' · ' + fortTxt : ''}</text>`;
+    if (!geo || r.waarde >= 3 || fortTxt) t += `<text x="${r.x}" y="${n1(y0 + regels.length * fs * 1.08 + fs * 0.1)}" font-size="${n1(fs * 0.78)}" class="ri">${r.waarde}${infra && !geo ? ' · ' + infra : ''}${fortTxt ? ' · ' + fortTxt : ''}</text>`;
     labels += t;
   }
 
@@ -110,7 +110,7 @@ export function kaartSvg(s, o = {}) {
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${n1(bb.x)} ${n1(bb.y)} ${n1(bb.w)} ${n1(bb.h)}" class="kaart${o.klein ? ' klein' : ''}${o.verf ? ' verfmodus' : ''}" role="img" aria-label="Campagnekaart ${esc(info.naam)}">
 <defs><pattern id="arc" width="${n1(R * 0.16)}" height="${n1(R * 0.16)}" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="${n1(R * 0.06)}" height="${n1(R * 0.16)}" fill="#14181c" fill-opacity="0.38"/></pattern></defs>
 <rect x="${n1(bb.x)}" y="${n1(bb.y)}" width="${n1(bb.w)}" height="${n1(bb.h)}" class="zee"/>${geo && !o.verf ? `<path d="${geo.land}" class="land"/>` : ''}
-<g stroke="#14181c" stroke-opacity="0.5" stroke-width="${n1(geo ? 1.6 : R * 0.022)}" stroke-linejoin="round">${cellen}</g>
-<path d="${front}" fill="none" stroke="#14181c" stroke-width="${n1(geo ? 6 : R * 0.085)}" stroke-linecap="round" stroke-linejoin="round" class="geenklik"/>
+<g stroke="#14181c" stroke-opacity="0.5" stroke-width="${n1(geo ? 1.1 : R * 0.022)}" stroke-linejoin="round">${cellen}</g>
+<path d="${front}" fill="none" stroke="#14181c" stroke-width="${n1(geo ? 5 : R * 0.085)}" stroke-linecap="round" stroke-linejoin="round" class="geenklik"/>
 <g class="geenklik">${labels}</g>${boven}</svg>`;
 }

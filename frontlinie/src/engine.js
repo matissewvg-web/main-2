@@ -220,11 +220,11 @@ export function effectieveFort(state, regioId) {
 export function limieten(state, fid) {
   const f = factie(state, fid), eigen = regiosVan(state, fid), info = kaartVan(state);
   const bevN = eigen.filter((id) => state.regios[id].bev).length;
-  let orders = 3 + (eigen.length >= 10 ? 1 : 0) + f.extraOrders + (heeftDoc(f, 'totaleoorlog') ? 1 : 0);
+  let orders = 3 + Math.min(4, Math.floor(eigen.length / 10)) + f.extraOrders + (heeftDoc(f, 'totaleoorlog') ? 1 : 0);
   if (f.hoofdstad && state.regios[f.hoofdstad].eigenaar !== fid) orders -= 1;
   orders = Math.max(2, orders);
   // de zijde met het campagnedoel is de aanvaller van het scenario en krijgt één aanval extra
-  let aanvallen = Math.min(3, 2 + Math.floor(bevN / 12)) + (state.doel && state.doel.zijde === f.zijde ? 1 : 0);
+  let aanvallen = Math.min(5, 2 + Math.floor(bevN / 12)) + (state.doel && state.doel.zijde === f.zijde ? 1 : 0);
   if (bevN === 0) aanvallen = 1;
   if (['setpiece', 'elastisch', 'methodisch'].some((d) => heeftDoc(f, d))) aanvallen = Math.min(aanvallen, 2);
   if (heeftDoc(f, 'rapido') && eigen.some((id) => info.opId[id].terrein === 'woestijn')) aanvallen += 1;

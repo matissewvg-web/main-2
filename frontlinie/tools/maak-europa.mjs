@@ -4,6 +4,7 @@
 import { createRequire } from 'node:module';
 import { writeFileSync } from 'node:fs';
 import { REGIOTEKST, ZEELINKS, LABELS } from './europa-regios.mjs';
+import { PROVINCIES } from './europa-provincies.mjs';
 const require = createRequire(process.argv[2] ? process.argv[2] + '/' : import.meta.url);
 const { feature } = require('topojson-client');
 const landen = require('world-atlas/countries-50m.json');
@@ -64,6 +65,20 @@ const regios = REGIOTEKST.trim().split('\n').map((l) => {
   const [id, naam, lnd, zaad, terrein, infra, waarde, fort] = l.split('|'); const [fo, linie] = fort.split(':');
   return { id, naam, landen: lnd.split(';'), zaad: zaad ? proj(zaad.split(',').map(Number)) : null, terrein, infra: infra ? infra.split(',') : [], waarde: +waarde, fort: +fo, linie: linie || '', ringen: [] };
 });
+// provincies: elke regio wordt verdeeld rond haar steden; de eerste provincie houdt het id van de regio
+const slak = (t) => t.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/ł/g, 'l').replace(/ø/g, 'o').toLowerCase().replace(/[^a-z0-9]/g, '');
+const VLAG = { s: 'stad', h: 'haven', b: 'brug', t: 'spoor', v: 'vliegveld' }, gezienId = new Set(regios.map((r) => r.id));
+for (const r of regios.slice()) {
+  r.ouder = r.id;
+  for (const stuk of (PROVINCIES[r.id] || '').split(';').map((x) => x.trim()).filter(Boolean)) {
+    if (stuk[0] === '@') { r.zaad = proj(stuk.slice(1).trim().split(/\s+/).map(Number)); continue; }
+    const [links2, terrein] = stuk.split('/').map((x) => x.trim()), d = links2.split(/\s+/), wv = d.pop(), lat = +d.pop(), lon = +d.pop(), naam = d.join(' ');
+    let id = slak(naam); while (gezienId.has(id)) id += '2'; gezienId.add(id);
+    const infra = [...wv.slice(1)].map((c) => VLAG[c]);
+    if (!r.zaad) throw new Error('regio zonder middelpunt: ' + r.id);
+    regios.push({ id, naam, ouder: r.id, landen: r.landen, zaad: proj([lon, lat]), terrein: terrein || r.terrein, infra, waarde: +wv[0], fort: r.linie ? r.fort : 0, linie: r.linie, ringen: [] });
+  }
+}
 for (const r of regios) for (const l of r.landen) if (!perLand[l]) console.warn('land ontbreekt:', l);
 // verdeel: elk land-ring gaat naar de regio's die dat land noemen; met zaadpunten via Voronoi
 const alleLanden = new Set(regios.flatMap((r) => r.landen));
@@ -78,12 +93,12 @@ for (const land of alleLanden) {
     }
   }
 }
-for (const r of regios) if (!r.ringen.length) console.warn('LEEG:', r.id);
+for (let i = regios.length - 1; i >= 0; i--) if (!regios[i].ringen.length) { console.warn('LEEG, vervalt:', regios[i].id); regios.splice(i, 1); }
 
 // labelpunt: opgegeven, anders zaadpunt, anders zwaartepunt van de grootste ring
 for (const r of regios) {
-  if (LABELS[r.id]) [r.x, r.y] = proj(LABELS[r.id]);
-  else if (r.zaad) [r.x, r.y] = r.zaad;
+  if (r.zaad) [r.x, r.y] = r.zaad;
+  else if (LABELS[r.id]) [r.x, r.y] = proj(LABELS[r.id]);
   else { const g = r.ringen.slice().sort((a, b) => opp(b) - opp(a))[0]; let a = 0, cx = 0, cy = 0; for (let i = 0; i < g.length; i++) { const p = g[i], q = g[(i + 1) % g.length], k = p[0] * q[1] - q[0] * p[1]; a += k; cx += (p[0] + q[0]) * k; cy += (p[1] + q[1]) * k; } r.x = cx / (3 * a); r.y = cy / (3 * a); }
   r.x = Math.round(Math.max(30, Math.min(W - 30, r.x))); r.y = Math.round(Math.max(20, Math.min(H - 20, r.y)));
 }
@@ -93,7 +108,7 @@ const STAP = 2.5, NABIJ = 2.2, CEL = 4;
 const dicht = (ring) => { const uit = []; for (let i = 0; i < ring.length; i++) { const p = ring[i], q = ring[(i + 1) % ring.length], n = Math.max(1, Math.ceil(Math.hypot(q[0] - p[0], q[1] - p[1]) / STAP)); for (let k = 0; k < n; k++) uit.push([p[0] + (q[0] - p[0]) * k / n, p[1] + (q[1] - p[1]) * k / n]); } return uit; };
 const rooster = new Map();
 regios.forEach((r, ri) => { r.dicht = r.ringen.map(dicht); for (const ring of r.dicht) for (const p of ring) { const k = Math.floor(p[0] / CEL) + ',' + Math.floor(p[1] / CEL); let l = rooster.get(k); if (!l) rooster.set(k, l = []); l.push([p[0], p[1], ri]); } });
-const buren = {}, grenzen = {};
+const buren = {}, grenzen = {}, kustlengte = {};
 regios.forEach((r) => { buren[r.id] = []; });
 regios.forEach((r, ri) => {
   const lopen = {}; // per buur: lijst van runs
@@ -102,6 +117,7 @@ regios.forEach((r, ri) => {
     for (const p of ring) {
       const cx = Math.floor(p[0] / CEL), cy = Math.floor(p[1] / CEL), raak = new Set();
       if (p[0] > 1 && p[1] > 1 && p[0] < W - 1 && p[1] < H - 1) for (let dx = -1; dx <= 1; dx++) for (let dy = -1; dy <= 1; dy++) for (const q of rooster.get((cx + dx) + ',' + (cy + dy)) || []) if (q[2] !== ri && Math.hypot(q[0] - p[0], q[1] - p[1]) < NABIJ) raak.add(q[2]);
+      if (raak.size === 0 && p[0] > 3 && p[1] > 3 && p[0] < W - 3 && p[1] < H - 3) kustlengte[r.id] = (kustlengte[r.id] || 0) + STAP;
       const nu = {};
       for (const b of raak) { const lijst = lopen[b] || (lopen[b] = []); if (vorige[b]) { vorige[b].push(p); nu[b] = vorige[b]; } else { const run = [p]; lijst.push(run); nu[b] = run; } }
       vorige = nu;
@@ -116,13 +132,15 @@ regios.forEach((r, ri) => {
     if (!grenzen[sleutel]) grenzen[sleutel] = runs.filter((x) => x.length >= 2).map((x) => dp(x, 0.9));
   }
 });
+// wie een flink stuk open rand heeft, ligt aan de kust
+for (const r of regios) { if ((kustlengte[r.id] || 0) > 30 && !r.infra.includes('kust')) r.infra.push('kust'); if (r.infra.includes('haven') && !r.infra.includes('kust')) r.infra.push('kust'); }
 for (const [a, b] of ZEELINKS) { if (!buren[a].includes(b)) buren[a].push(b); if (!buren[b].includes(a)) buren[b].push(a); }
 
 const pad = (ring, sluit) => { let d = '', px = 0, py = 0; ring.forEach((p, i) => { const x = Math.round(p[0]), y = Math.round(p[1]); if (i === 0) d += `M${x} ${y}`; else if (x !== px || y !== py) d += `l${x - px} ${y - py}`; px = x; py = y; }); return d + (sluit ? 'z' : ''); };
 const land = ringenVan({ type: 'MultiPolygon', coordinates: feature(landmassa, landmassa.objects.land).features.flatMap((f) => (f.geometry.type === 'Polygon' ? [f.geometry.coordinates] : f.geometry.coordinates)) }).map((r) => verwerk(r, 30)).filter(Boolean);
 const uit = {
   w: W, h: H, land: land.map((r) => pad(r, true)).join(''),
-  regios: regios.map((r) => ({ id: r.id, naam: r.naam, x: r.x, y: r.y, terrein: r.terrein, infra: r.infra, waarde: r.waarde, fort: r.fort, linie: r.linie, d: r.ringen.map((x) => pad(x, true)).join('') })),
+  regios: regios.map((r) => ({ id: r.id, naam: r.naam, ouder: r.ouder, x: r.x, y: r.y, terrein: r.terrein, infra: r.infra, waarde: r.waarde, fort: r.fort, linie: r.linie, d: r.ringen.map((x) => pad(x, true)).join('') })),
   buren, zeelinks: ZEELINKS,
   grenzen: Object.fromEntries(Object.entries(grenzen).map(([k, runs]) => [k, runs.map((x) => pad(x, false)).join('')])),
 };
@@ -130,4 +148,4 @@ const doel = new URL('../src/europa-geo.js', import.meta.url);
 writeFileSync(doel, `// Gegenereerd door tools/maak-europa.mjs uit Natural Earth (public domain). Niet met de hand bewerken.\nexport const EUROPA_GEO = ${JSON.stringify(uit)};\n`);
 const losse = regios.filter((r) => !buren[r.id].length).map((r) => r.id);
 console.log(`${regios.length} regio's, ${W}×${H}, ${Math.round(JSON.stringify(uit).length / 1024)} kB. Zonder buren: ${losse.join(', ') || 'geen'}`);
-for (const r of regios) console.log(' ', r.id.padEnd(15), buren[r.id].join(' '));
+if (process.argv[3]) for (const r of regios) console.log(' ', r.id.padEnd(15), buren[r.id].join(' '));

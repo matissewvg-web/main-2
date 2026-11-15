@@ -108,7 +108,7 @@ svg.kaart .zeelink { stroke: #14181c; stroke-opacity: 0.5; fill: none; }
 .kaartlaag.tekent { touch-action: none; cursor: crosshair; }
 .kaartlaag.tekent svg.kaart .rg { cursor: crosshair; }
 svg.kaart.verfmodus .zee { fill: none; }
-svg.kaart.verfmodus .rg > path:first-child { stroke-opacity: 0; }
+svg.kaart.verfmodus .rg > path:first-child { stroke-opacity: 0.2; }
 svg.kaart.verfmodus .rg.kan > path:first-child { fill-opacity: 0.3; stroke-opacity: 1; }
 svg.kaart.verfmodus .rg.sel > path:first-child, svg.kaart.verfmodus .rg.bron > path:first-child { stroke-opacity: 1; }
 svg.kaart.verfmodus .rg:hover > path:first-child { fill-opacity: 0.12; }

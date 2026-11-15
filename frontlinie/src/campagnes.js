@@ -1,5 +1,7 @@
 // Facties, periodes en kant-en-klare campagnescenario's.
 
+import { EUROPA_GEO } from './europa-geo.js';
+
 // leger: wat zet je op tafel? Landen zonder eigen Flames of War-leger krijgen een logisch alternatief.
 export const FACTIES = {
   dui: { naam: 'Duitsland', kort: 'DUI', kleur: '#7c8791', zijde: 'as', doctrine: 'blitzkrieg', hoofdstad: 'berlijn', leger: 'Eigen Duitse lijsten in elke periode.' },
@@ -243,7 +245,11 @@ const SOVJET41 = [...SOVJET38, 'estland', 'letland', 'litouwen', 'westwitrusland
 const NEUTRAAL = { spa: ['madrid', 'catalonie', 'andalusie', 'noordspanje'], por: ['portugal'], ier: ['ierland'], zwe: ['zuidzweden', 'noordzweden'], zwi: ['zwitserland'], tur: ['istanbul', 'anatolie', 'oostturkije'] };
 const BRONNEN = { vk: ['londen', 'egypte'], fra: ['parijs', 'algerije'], ita: ['rome', 'tripoli'] };
 // bezit: {land: [regio's]}, zijden: {zijde: [landen]}, spelers: wie orders geeft; de rest verdedigt alleen.
+// Een regio staat voor al haar provincies.
+const provinciesVan = (lijst) => lijst.flatMap((id) => EUROPA_GEO.regios.filter((r) => r.ouder === id).map((r) => r.id));
 function europaStart(o) {
+  o.bezit = Object.fromEntries(Object.entries(o.bezit).map(([f, lijst]) => [f, provinciesVan(lijst)]));
+  if (o.subset) o.subset = provinciesVan(o.subset);
   const zijdeVan = {};
   for (const [z, lijst] of Object.entries(o.zijden)) for (const f of lijst) zijdeVan[f] = z;
   const facties = Object.keys(o.bezit).map((id) => Object.assign({ id, zijde: zijdeVan[id] || 'neutraal', speler: o.spelers.includes(id) ? 'mens' : 'passief', hoofdstad: FACTIES[id].hoofdstad || null, doctrine: (o.doctrines || {})[id] || FACTIES[id].doctrine, landing: true },

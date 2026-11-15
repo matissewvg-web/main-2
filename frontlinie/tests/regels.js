@@ -164,13 +164,15 @@ test('een rivier loopt altijd van rand tot rand', () => {
 test('Europa 1938: echte kaart, historische grenzen, elk land speelbaar', () => {
   const s = nieuw('europa1938');
   const info = kaartVan(s);
-  assert.equal(info.regios.length, 98);
-  for (const id of ['silezie', 'pommeren', 'oostenrijk', 'oostpruisen']) assert.equal(s.regios[id].eigenaar, 'dui', id);
-  assert.equal(s.regios.bohemen.eigenaar, 'tsj');
+  assert(info.regios.length > 380, 'te weinig provincies: ' + info.regios.length);
+  for (const id of ['silezie', 'pommeren', 'oostenrijk', 'oostpruisen', 'danzig', 'dresden', 'linz']) assert.equal(s.regios[id].eigenaar, 'dui', id);
+  assert.equal(s.regios.bohemen.eigenaar, 'tsj'); assert.equal(s.regios.brno.eigenaar, 'tsj');
   assert.equal(s.regios.lwow.eigenaar, 'pol');
-  assert(info.buren.berlijn.includes('pommeren') && info.buren.sicilie.includes('zuiditalie'));
-  assert(!info.buren.londen.includes('noordfrankrijk'), 'het Kanaal is geen landgrens');
-  assert(orderDoelen(s, 'dui', 'landing').includes('londen') === false || true);
+  assert(info.buren.messina.includes('calabrie'), 'de Straat van Messina is een grens');
+  assert(!info.buren.londen.includes('rijsel'), 'het Kanaal is geen landgrens');
+  const grens = info.regios.some((r) => s.regios[r.id].eigenaar === 'dui' && info.buren[r.id].some((n) => s.regios[n].eigenaar === 'pol'));
+  assert(grens, 'Duitsland en Polen grenzen niet aan elkaar');
+  for (const r of info.regios) assert(info.buren[r.id].length > 0 || r.infra.includes('kust'), 'provincie zonder buren en zonder kust: ' + r.id);
   for (const r of info.regios) assert(r.d && r.d.startsWith('M'), 'regio zonder omtrek: ' + r.id);
 });
 
@@ -189,8 +191,10 @@ test('een land zonder speler geeft geen orders, maar verdedigt wel; een neutraal
   const tsj = factie(s, 'tsj'), ned = factie(s, 'ned');
   assert.equal(ned.speler, 'passief'); assert.equal(ned.zijde, 'neutraal');
   assert.equal(s.klaar.ned, true);
-  assert.equal(voegOrderToe(s, 'dui', { type: 'aanval', van: 'rijnland', naar: 'nederland' }), null);
-  assert.equal(voegOrderToe(s, 'dui', { type: 'aanval', van: 'saksen', naar: 'bohemen' }), null);
+  const info = kaartVan(s), grens = (land) => { for (const r of info.regios) if (s.regios[r.id].eigenaar === 'dui') for (const n of info.buren[r.id]) if (s.regios[n].eigenaar === land && !gebruikt.has(r.id)) { gebruikt.add(r.id); return { type: 'aanval', van: r.id, naar: n }; } };
+  const gebruikt = new Set();
+  assert.equal(voegOrderToe(s, 'dui', grens('ned')), null);
+  assert.equal(voegOrderToe(s, 'dui', grens('tsj')), null);
   klaar(s);
   assert.equal(s.gevechten.length, 2);
   assert.equal(factie(s, 'ned').zijde, 'geallieerd');

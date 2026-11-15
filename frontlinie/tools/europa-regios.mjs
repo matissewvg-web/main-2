@@ -102,6 +102,6 @@ palestina|Palestina|Israel;Palestine;Jordan||woestijn|haven,kust|1|0
 irak|Irak|Iraq||woestijn|spoor|2|0
 `;
 // Zeestraten die als gewone grens tellen
-export const ZEELINKS = [['sicilie', 'zuiditalie'], ['denemarken', 'zuidzweden'], ['andalusie', 'marokko'], ['estland', 'finland']];
+export const ZEELINKS = [['messina', 'calabrie'], ['denemarken', 'malmo'], ['gibraltar', 'tanger'], ['estland', 'finland'], ['dover', 'calais']];
 // Regio's waarvan het label niet op het zwaartepunt past: lon, lat
 export const LABELS = { zuidnoorwegen: [8.6, 60.8], noordnoorwegen: [15.5, 67.6], kroatie: [16, 45.6], athene: [22.3, 38.2], londen: [-0.3, 51.9], egypte: [29.5, 30.3], algerije: [3, 35], marokko: [-6, 33.5], tripoli: [14, 31.3], cyrenaica: [22, 31], tunesie: [9.5, 35], irak: [42.5, 34], palestina: [36.2, 31.3], levant: [38, 35], transkaukasie: [45, 41.3], anatolie: [33, 39], oostturkije: [40, 39], istanbul: [28.6, 40.2], portugal: [-8, 39.6], denemarken: [9.3, 56.1], noordzweden: [17.5, 64.6], zuidzweden: [15, 58.8], finland: [25.5, 62], lapland: [26.5, 67.2], karelie: [33.5, 65], vologda: [41, 61.5] };

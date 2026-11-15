@@ -18,7 +18,7 @@ function verfBasis(state) {
   const c = document.createElement('canvas'); c.width = gw; c.height = gh;
   const ctx = c.getContext('2d', { willReadFrequently: true });
   const masker = (d) => { ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, gw, gh); ctx.setTransform(1 / VG, 0, 0, 1 / VG, 0, 0); ctx.fill(new Path2D(d)); return ctx.getImageData(0, 0, gw, gh).data; };
-  const regio = new Uint8Array(n);
+  const regio = new Uint16Array(n);
   info.regios.forEach((r, i) => { const a = masker(r.d); for (let j = 0; j < n; j++) if (a[j * 4 + 3] > 110 && !regio[j]) regio[j] = i + 1; });
   const la = masker(k.geo.land), land = new Uint8Array(n);
   for (let j = 0; j < n; j++) land[j] = la[j * 4 + 3] > 20 ? 1 : 0;
