@@ -162,6 +162,8 @@ async function verhaalBeurt(s){
   } catch(e){ s.flags.volgende_verhaal = n + 2; }
 }
 
+/* 11.19: startkapitaal van een startup: spaargeld van de oprichter, afhankelijk van de achtergrond en een beetje geluk */
+function startupKapitaal(bg){ const b = String(bg || "").toLowerCase(); let k = RI(8, 16); if (/erfgenaam/.test(b)) k += 14; else if (/bankier/.test(b)) k += 8; else if (/militair|hacker/.test(b)) k += 2; return k; }
 function newGame(d){
   const zaad = zaadNorm(d.zaad) || nieuwZaad(); RNG = seeded("wereld:" + zaad);
   try { const r = newGame0(d); r.s.zaad = zaad; return r; } finally { RNG = Math.random; } }
@@ -203,7 +205,9 @@ function newGame0(d){
   s.vestiging = {}; for (const x of s.districts) if (x.control !== "neutral" && x.control !== "player" && !s.rivals.some(r => r.hq === x.id)) zetVestiging(s, x.control, x.id); /* 11.0 */
   const yr = parseInt(d.year, 10); s.date = {year: clamp(isNaN(yr) ? 2004 : yr, 1980, 2100), month: 1};
   [s.cash, s.debt] = ({krap: [80, 0], normaal: [100, 0], ruim: [150, 60]})[d.kapitaal] || [100, 0];
-  const lvl = doctrine.length === 1 ? 2 : 1;
+  const startup = d.start === "startup"; p.start = startup ? "startup" : "gevestigd"; p.idee = String(d.idee || "").trim().slice(0, 160); /* 11.19 */
+  if (startup){ s.cash = startupKapitaal(d.background); s.debt = 0; }
+  const lvl = doctrine.length === 1 && !startup ? 2 : 1;
   s.divisions = doctrine.map((t, i) => { const eigen = String((i === 0 ? d.divisie_naam : i === 1 ? d.divisie_naam2 : "") || "").trim().slice(0, 40); return {name: eigen || t, type: t, level: lvl}; }); /* 6.6: een naam per divisie */
   if (s.divisions.length === 2 && s.divisions[0].name === s.divisions[1].name) s.divisions[1].name += " 2";
   const c = s.culture;
@@ -219,12 +223,13 @@ function newGame0(d){
   const sb = p.startbonus;
   if (sb === "haven"){ s.schepen = 1; s.inzet = {}; const z0 = s.districts.find(x => x.id === home).zee; if (z0 && z0.length) s.inzet[z0[0]] = 1; }
   if (sb === "industrie") s.staff.count += 8;
-  if (sb === "corporate"){ s.cash += 30; s.reputation += 5; }
+  if (sb === "corporate"){ s.cash += startup ? 6 : 30; s.reputation += 5; }
   if (sb === "data") s.invloed = 10;
   if (sb === "nacht"){ s.reputation += 8; shiftFaction(s, "straat", 15); }
   if (sb === "sloppen"){ shiftFaction(s, "straat", 25); s.heat += 5; }
   if (sb === "markt"){ s.accounts.zwart += 10; c.heat_decay += 1; }
-  if (sb === "villa"){ s.accounts.offshore += 25; s.interest_rate = 0.06; }
+  if (sb === "villa"){ s.accounts.offshore += startup ? 5 : 25; s.interest_rate = 0.06; }
+  if (startup){ s.npcs = []; s.staff.count = sb === "industrie" ? 10 : 6; s.reputation = Math.max(10, s.reputation - 10); } /* 11.19: geen directie, een handvol mensen, nog geen naam */
   s.bedrijven = genBedrijven(s); s.gangs = genGangs(s); s.nieuws = []; s.relaties = {}; s.keuzes = []; s.keuzes_klaar = [];
   s.sectoren = null; migrate13(s);
   s.crew = []; s.huurmarkt = []; s.klussen = []; s.tijdperk = 0; s.statusNiveau = statusVan(s);
@@ -237,6 +242,7 @@ function newGame0(d){
   if (d.huisstijl && typeof d.huisstijl === "object") actHuisstijl(s, d.huisstijl); /* 5.17.1: huisstijl uit de setup */
   ceoInit(s, d); for (const r of s.rivals) r.ceoLeeftijd ??= RI(40, 66); /* 5.19 */
   { const I = {}; for (const k of Object.keys(INSTEL)) I[k] = instelNiv(k, d["inst_" + k] || "normaal"); p.instel = I; p.instelScore = instelScore(I); } /* 5.20 */
+  if (startup) pitchInit(s);
   s.setup_done = true; s.accounts.operationeel = s.cash;
   const hn = s.districts.find(x => x.id === home).name;
   mail(ctx, s, "Marta Delcourt (CFO)", "Welkom, CEO",

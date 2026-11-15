@@ -175,7 +175,7 @@ function productTick(s, ctx){
     if (p.status === "ontwikkeling"){
       if (--p.eta > 0) continue;
       const r = lanceerWorp(s, d, p); addRoll(s, `Lancering ${p.naam}: ${r.txt} → ${r.crit ? "HIT" : r.ok ? "GELUKT" : r.neutraal ? "MATIG" : r.blunder ? "TERUGGEROEPEN" : "FLOP"}`);
-      const sc = PRODUCT_SCHAAL[p.schaal || "klein"]; p.status = "markt"; p.sinds = ym(s); p.leeftijd = 0;
+      const sc = PRODUCT_SCHAAL[p.schaal || "klein"]; p.status = "markt"; p.sinds = ym(s); p.leeftijd = 0; gatLancering(s, ctx, p, r); /* 11.20 */
       if (r.crit){ (s.stats ??= {}).hits = (s.stats.hits || 0) + 1; if (r.nat) p.kwaliteit = clamp(p.kwaliteit + 1, 1, 5); p.pop = r.nat ? 85 : RI(72, 82); mail(ctx, s, "Marketing", `${p.naam} is een hit`, `De lancering van ${p.naam} (${r.txt}) overtreft alles. Wachtlijsten, recensies, kopieën op de zwarte markt binnen een week.`, "NORMAAL"); news(s, `${p.naam} van ${s.player.corp_name} is een hit`, `Het nieuwe product van ${divNaam(d)} gaat de deur uit sneller dan het gemaakt wordt.`, "", "markt", true); }
       else if (r.ok){ p.pop = RI(55, 72); mail(ctx, s, "Marketing", `${p.naam} gelanceerd`, `${p.naam} ligt in de winkels (${r.txt}). Goede start, populariteit ${p.pop}.`, "NORMAAL"); }
       else if (r.neutraal){ p.pop = RI(38, 50); mail(ctx, s, "Marketing", `${p.naam}: rustige start`, `${p.naam} ligt in de winkels (${r.txt}). Geen hit, geen flop: populariteit ${p.pop}. Een campagne kan het een duw geven.`, "NORMAAL"); }
@@ -733,7 +733,7 @@ function prodDetail(s, p, omzet){
 }
 /* 11.6: modegolven (dynamische vraag): soms is een soort product een paar maanden ineens populair (zie hypeTick) */
 const hypeF = (s, p) => { const h = s && s.hype; return h && h.over > 0 && h.aard === (p.aard || aardVan(p.type, p.naam)) ? 1 + h.f : 1; };
-const prodGewicht = (p, s) => keurF(p) * kanaalF(p) * p.kwaliteit * effBereik(p, s) / 100 * prijsF(p) * (s ? vraagFactor(s, p.aard || aardVan(p.type, p.naam)) * regioF(s, p) * patentF(s, p) * techF(s, p) : 1) * (p.trait === "goedkoop" ? 1.15 : 1) * extraF(p, "omzet") * hypeF(s, p); /* 5.11: regio's; 6.13: extra's van een editie; 11.6: modegolf */
+const prodGewicht = (p, s) => (s ? imitatieF(s) : 1) * (p.revolutie ? 1.25 : 1) * (p.bestseller && s && ym(s) <= p.bestseller ? BESTSELLER_F : 1) * keurF(p) * kanaalF(p) * p.kwaliteit * effBereik(p, s) / 100 * prijsF(p) * (s ? vraagFactor(s, p.aard || aardVan(p.type, p.naam)) * regioF(s, p) * patentF(s, p) * techF(s, p) : 1) * (p.trait === "goedkoop" ? 1.15 : 1) * extraF(p, "omzet") * hypeF(s, p); /* 5.11: regio's; 6.13: extra's van een editie; 11.6: modegolf */
 const prodSterkte = p => bereik(p) / 100 * (0.5 + p.kwaliteit * 0.15);
 function prodEffecten(p){ const A = PRODUCT_AARD[p.aard || "consument"] || PRODUCT_AARD.consument, f = prodSterkte(p), out = {};
   for (const [k2, v] of Object.entries(p.eigenEff || A.eff)) out[k2] = Math.round(v * f * 10) / 10; const pr = ((PRIJS[p.prijs || "standaard"] || {}).rep || 0) + (prijsF(p) > 1.5 ? -0.25 : 0); if (pr) out.reputation = Math.round(((out.reputation || 0) + pr) * 10) / 10;
@@ -1261,7 +1261,7 @@ function actMaatwerk(s, ctx, zet, arg){ const m = s.maatwerk; if (!m) return {ok
     const p = mkProduct(s, d, naam, clamp(maatwerkKunde(s, m.aard) + MAATWERK_ONTWERP[m.ontwerp].kw, 1, 5), 0); p.status = "ontwikkeling"; p.eta = 1; p.schaal = "groot"; p.focus = "standaard"; p.aard = m.aard; p.pitch = `Gebouwd op maat voor ${m.klant}: ${m.wat}. Nu voor iedereen.`; (s.producten ??= []).push(p); prodLog(p, s, `Uit een speciale opdracht voor ${m.klant}`);
     addLog(s, `${naam} opgenomen in het assortiment (€${kost}M)`); delete s.maatwerk; return {ok: true, msg: `${naam} komt volgende maand op de markt: het ontwerp ligt er al, alleen de lijn moet nog draaien (€${kost}M).`}; }
   return {ok: false, msg: "Dat kan nu niet."}; }
-function aanvraagTick(s, ctx){ s.aanvragen ??= []; s.contracten ??= []; bedrijfAanbodTick(s, ctx); maatwerkTick(s, ctx); /* 11.4 */ verzoekTick(s, ctx); /* 11.18 */
+function aanvraagTick(s, ctx){ s.aanvragen ??= []; s.contracten ??= []; bedrijfAanbodTick(s, ctx); maatwerkTick(s, ctx); /* 11.4 */ verzoekTick(s, ctx); /* 11.18 */ pitchTick(s, ctx); /* 11.19 */
   for (const a of s.aanvragen) a.verloopt -= 1; /* 6.8: meer aanvragen, langer geldig */ const weg = s.aanvragen.filter(a => a.verloopt <= 0); for (const a of weg){ const rv = aanvraagRivalen(s, a.aard); contractHist(s, a, "verlopen", rv.length ? CH(rv).name : null); } if (weg.length) ctx.rep.push(`${weg.length} aanvra${weg.length > 1 ? "gen" : "ag"} verlopen`); s.aanvragen = s.aanvragen.filter(a => a.verloopt > 0);
   const nP = (s.producten || []).filter(p => p.status === "markt").length;
   for (let poging = 0; poging < (s.reputation >= 45 ? 2 : 1); poging++) if (nP && s.aanvragen.length < AANVRAAG_MAX && kansRol() < (poging ? 0.3 : Math.min(0.7, 0.35 + 0.05 * nP))){ /* 8.5: meer aanvragen */ /* 7.0: minder, de tweede pas bij een goede naam */ const a = maakAanvraag(s); if (a){ s.aanvragen.push(a); ctx.rep.push(`Aanvraag: ${a.klant}`); mail(ctx, s, "Verkoop", `Aanvraag van ${a.klant}`, a.tekst + " Inschrijven kan bij Bedrijf → Klanten, binnen drie maanden.", "NORMAAL"); } }
@@ -1505,7 +1505,7 @@ function onderzoekTick(s, ctx){ const O = (s.onderzoek ??= {niveau: {}}); O.nive
   if (s.date.month === 1) for (const r of s.rivals){ const a = SECTOR_AARD[r.sector] || "consument", T = (r.tech ??= {}); if ((T[a] || 0) < TECH_MAX && R() < 0.3){ T[a] = (T[a] || 0) + 1; news(s, `${r.name} meldt een doorbraak`, `${r.name} heeft ${(techNaam(a, T[a]) || "iets nieuws").toLowerCase()} onder de knie. Hun volgende producten worden beter.`, "", "markt", false); } } }
 /* 5.15: realistische financiën en de beurs. Termijnleningen met vaste rente en looptijd (annuïteit), een balans en kasstroom, en zelf naar de beurs: een deel van de aandelen verkopen voor geld, daarna is dat deel niet meer van jou (je bedrijfswaarde voor de winst telt alleen jouw deel). Elk jaar een aandeelhoudersvergadering. */
 const termijnRest = s => r1((s.leningen || []).reduce((a, l) => a + l.rest, 0));
-const publiekDeel = s => ((s.beurs || {}).publiek || 0) / 100;
+const publiekDeel = s => (((s.beurs || {}).publiek || 0) + (typeof investDeel === "function" ? investDeel(s) : 0)) / 100; /* 11.19: investeerders uit de startup tellen mee */
 const voorraadWaarde = s => r1(Object.entries(s.voorraad || {}).reduce((a, [m, v]) => a + (v.mnd || 0) * (v.verbruik || 0) * (v.prijs || 1), 0));
 const termijnRente = (s, n) => Math.round((0.045 + Math.max(0, 50 - s.reputation) / 600 + (s.heat > 40 ? 0.02 : 0) + (n >= 48 ? 0.01 : 0)) * 1000) / 1000;
 function annuiteit(P, rj, n){ const r = rj / 12; return r1(r ? P * r / (1 - Math.pow(1 + r, -n)) : P / n); }
@@ -1790,6 +1790,7 @@ const DEV_FOCUS = {
   goedkoop: {label: "Goedkoop", tekst: "40% goedkoper, maar vaak de eigenschap 'goedkoop gemaakt'.", kost: 0.6},
   innovatief: {label: "Innovatief", tekst: "Hit al bij 11 of 12, maar terugroepactie bij 2 of 3. Vaak slim of gepatenteerd.", crit: 11, blunder: 3},
   veilig: {label: "Veilig", tekst: "Nooit een terugroepactie (wordt een flop), vaak duurzaam. Doel +1.", veilig: true, doel: 1},
+  revolutionair: {label: "Revolutionaire technologie", tekst: "Drie maanden langer en ruim twee keer zo duur, maar kwaliteit +1, +2 op de lanceringsworp, hit al bij 11, nooit een terugroepactie en blijvend 25% meer omzet.", maanden: 3, kost: 2.2, kw: 1, bonus: 2, crit: 11, veilig: true, revolutie: true}, /* 11.20 */
 };
 function devKansen(bonus, doel, focus){
   /* 4.1.2: hit vanaf doel+3, een neutrale band (matige start) tot doel−3, flop pas daaronder: de flopkans komt nooit boven 50% */
@@ -1804,11 +1805,11 @@ function devPlan(s, d, schaal, focus, aard, beta){
   const buitenVak = !divAarden(s, d).includes(a), onder = Math.max(0, (SCHAAL_NIVEAU[schaal] || 1) - d.level); /* 9.0: niet op slot, wel duurder en moeilijker */
   const doel = k.doel + (F.doel || 0) + onder + (buitenVak ? 2 : 0), extraF = (1 + 0.6 * onder) * (buitenVak ? 2.5 : 1);
   return {buitenVak, onder, kost: r1(sc.kost * dif * (F.kost || 1) * (beta ? 1.2 : 1) * extraF), maanden: Math.max(1, sc.maanden + (F.maanden || 0) - (heeftFocus(s, "rd") ? 1 : 0)) + bb, kw: clamp(1 + Math.floor(d.level / 2) + sc.kw + (F.kw || 0) + (techNiveau(s, a) >= 4 ? 1 : 0) - (buitenVak ? 1 : 0), 1, 5), /* 8.7: onderzoek niveau 4; 9.0: buiten je vak −1 */ bonus: k.bonus + bb, doel, beta: !!beta,
-    kansen: devKansen(k.bonus + bb, doel, focus), aard: a, markt: vraagFactor(s, a), vraag: Math.round((((s.vraag || {})[a]) || {idx: 100}).idx),
+    kansen: devKansen(k.bonus + bb + (F.bonus || 0) + (gatOpen(s, a) ? GAT_BONUS : 0), doel, focus), gat: gatOpen(s, a) ? gatOpen(s, a).tekst : null, aard: a, markt: vraagFactor(s, a), vraag: Math.round((((s.vraag || {})[a]) || {idx: 100}).idx),
     concurrenten: s.rivals.reduce((n, r) => n + (r.producten || []).filter(p => p.aard === a).length, 0)};
 }
 function lanceerWorp(s, d, p){
-  const F = DEV_FOCUS[p.focus || "standaard"] || DEV_FOCUS.standaard, k = productKans(s, d, p.schaal || "klein"), doel = p.doelOverride || (k.doel + (F.doel || 0)), bonus = k.bonus + (p.beta ? 1 : 0);
+  const F = DEV_FOCUS[p.focus || "standaard"] || DEV_FOCUS.standaard, k = productKans(s, d, p.schaal || "klein"), doel = p.doelOverride || (k.doel + (F.doel || 0)), bonus = k.bonus + (p.beta ? 1 : 0) + (F.bonus || 0) + (gatOpen(s, p.aard || aardVan(p.type, p.naam)) ? GAT_BONUS : 0); /* 11.20: revolutionair en een gat in de markt */
   const a = d6(), b = d6(), t = a + b, blunder = !F.veilig && t <= (F.blunder || 2), crit = !blunder && (t >= (F.crit || 12) || t + bonus >= doel + 3), ok = crit || (!blunder && t + bonus >= doel), neutraal = !ok && !blunder && t + bonus >= doel - 3;
   return {ok, crit, blunder, neutraal, nat: t >= (F.crit || 12), txt: `${DICE[a - 1]}${DICE[b - 1]}${bonus ? ` +${bonus}` : ""}${p.beta ? " (bètatest)" : ""} = ${t + bonus}, nodig ${doel}+ (hit ${doel + 3}+)${crit ? " · hit" : blunder ? " · blunder" : neutraal ? " · matige start" : ""}`};
 }
@@ -1834,6 +1835,8 @@ function adviezen(s, alles){
   const markt = (s.producten || []).filter(p => p.status === "markt"), dev = (s.producten || []).filter(p => p.status === "ontwikkeling" || p.status === "wachtrij");
   const net = ((s.history || []).slice(-1)[0] || {}).netto;
   { const m = s.maatwerk; if (m && m.fase === "bouw"){ const st = mwStand(m); add(5, `Speciale opdracht in aanbouw: ${m.wat}. Nog ${st.over} ${st.over === 1 ? "maand" : "maanden"} (levering rond ${mwLevering(s, m)}), €${st.maandKost}M per maand, bij levering +€${st.bijLevering}M.`, "contracten"); } if (m && ["nieuw", "ontwerp", "tegenbod", "geleverd"].includes(m.fase)) add(9, m.fase === "nieuw" ? `${m.klant} wil een speciale opdracht: ${m.wat} (±€${m.budget}M). Zoiets komt zelden: antwoord binnen twee maanden.` : m.fase === "ontwerp" ? `${m.klant} wacht op je ontwerp voor ${m.wat}.` : m.fase === "tegenbod" ? `${m.klant} doet een tegenbod: €${m.tegen}M voor ${m.wat}.` : `${m.wat} is geleverd: neem het ontwerp op in je assortiment.`, "contracten"); } /* 11.4 */
+  { const g = gatVoorJou(s); if (g) add(8, `Gat in de markt: ${g.tekst} (${PRODUCT_AARD[g.aard].label.toLowerCase()}). Lanceer als eerste een product van die soort: +${GAT_BONUS} op de lancering en een bestseller (35% meer omzet, anderhalf jaar). Open tot ${g.tot}, tenzij een rivaal sneller is.`, "bedrijf"); } /* 11.20 */
+  if (s.pitch && !(s.investeerders || []).length && maandenGespeeld(s) < 24 && s.cash < 60) add(9, `Je bent een startup met €${Math.round(s.cash)}M. Haal geld op: pitch bij investeerders (Financiën). Familie zegt makkelijk ja maar geeft weinig; durfkapitaal geeft veel, maar wil een groot deel en een groot verhaal.`, "financien"); /* 11.19 */
   { const hp = heatPrognose(s); if (hp.maanden && hp.maanden <= 8) add(hp.maanden <= 3 ? 10 : 8, `Heat stijgt ${hp.delta}/mnd${hp.bron ? ` (vooral: ${hp.bron.toLowerCase()})` : ""}: over ±${hp.maanden} ${hp.maanden === 1 ? "maand" : "maanden"} zit je op 90, en twee maanden boven 90 geeft een razzia${hp.razzias ? ` (je had er al ${hp.razzias} van ${hp.max})` : ""}. Juridisch offensief (Overzicht → Gezondheid), een gunst van de commissaris of sporen wissen.`, "overzicht"); } /* 7.2 */
   for (const d of s.divisions){ const sl = d.slijt ?? 1; if (sl < 0.9 && !divVernieuwt(s, d)) add(sl < 0.6 ? 9 : 6, `${divNaam(d)} raakt achterop: ze verkoopt nog ${Math.round(sl * 100)}% van wat ze kon en het zakt elke maand. Een nieuw product, een editie of een uitbreiding keert het.`, "bedrijf"); } /* 7.0 */
   if (!markt.length && !dev.length && (s.flags.stappen_weg || maandenGespeeld(s) >= 8)) add(10, "Je verkoopt nog niets. Start je eerste product bij Bedrijf → Productlijn: klein kost €5M en is in 2 maanden klaar, en een divisie met producten verdient meer.", "bedrijf");
@@ -1937,7 +1940,7 @@ function actDivisie(s, ctx, naam, wijze){ const I = divVerkoopInfo(s, naam); if 
 /* 11.17: heat verlagen op één plek. Elke optie zegt wat ze kost, wat ze doet en wanneer ze weer kan. Specifiek voor wapenmakers: wapens schenken aan de eigen staat, smokkelroutes sluiten en een compliance-afdeling. */
 const HEAT_WACHT = {schenking: 3, zondebok: 6};
 const schenkKost = s => r1(Math.max(4, 4 + playerValue(s) / 800) * (DIFF[s.player.difficulty] || 1));
-const complianceKost = s => r1(Math.max(1, 1 + playerValue(s) / 2000) * (DIFF[s.player.difficulty] || 1));
+const complianceKost = s => r1(Math.max(1, 1 + playerValue(s) / 1000) * (DIFF[s.player.difficulty] || 1));
 const COMPLIANCE_DECAY = 2.5;
 const heatWacht = (s, id) => { const m = (s.heatActies || {})[id]; return m ? Math.max(0, HEAT_WACHT[id] - (mndNr(ym(s)) - mndNr(m))) : 0; };
 const heeftWapenwaar = s => (s.producten || []).some(p => p.status === "markt" && ["wapen", "beveiliging"].includes(p.aard || aardVan(p.type, p.naam)));
@@ -2015,3 +2018,72 @@ function actContact(s, ctx, naam, wat){ const P = contactPartners(s).find(x => x
   return {ok: false, msg: "Kies bellen of een voorstel."}; }
 function contactOverzicht(s){ return contactPartners(s).map(x => ({naam: x.naam, soort: x.soort, sector: x.sector, rel: x.rel, label: relLabel(x.rel), log: ((s.contact || {})[x.naam] || []).slice(0, 3), gesproken: (s.contactBel || {})[x.naam] === ym(s), wacht: !!(s.contactWacht || {})[x.naam]}))
   .sort((a, b) => (b.log.length ? 1 : 0) - (a.log.length ? 1 : 0) || b.rel - a.rel); }
+/* 11.19: startup. Je begint klein: eigen spaargeld, één divisie op niveau 1, een handvol mensen en geen directie. Geld haal je op door te pitchen bij investeerders: familie, een business angel, een durfkapitaalfonds, de bank of (riskant) een syndicaat. Elke investeerder krijgt een deel van je bedrijf (bij de bank: een lening). */
+const PITCH_STIJL = {voorzichtig: {label: "Voorzichtig", uitleg: "Weinig vragen, veilig verhaal. Meer kans, lagere waardering.", kans: 15, f: 0.85, deel: 0.35},
+  ambitieus: {label: "Ambitieus", uitleg: "Een groot plan met cijfers. Gewone kans.", kans: 0, f: 1, deel: 0.65},
+  revolutionair: {label: "Revolutionair", uitleg: "Dit verandert alles. Minder kans bij voorzichtige geldschieters, maar een veel hogere waardering.", kans: -12, f: 1.45, deel: 1}};
+const INVEST_SOORT = {familie: {label: "Familie en vrienden", min: 2, max: 8, kans: 78, f: 1.15, rev: 0, aandeel: true},
+  angel: {label: "Business angel", min: 6, max: 25, kans: 52, f: 1, rev: 12, aandeel: true},
+  vc: {label: "Durfkapitaal", min: 20, max: 90, kans: 34, f: 0.8, rev: 18, aandeel: true},
+  bank: {label: "Bank", min: 10, max: 40, kans: 40, f: 1, rev: -15, lening: true},
+  syndicaat: {label: "Syndicaat", min: 10, max: 45, kans: 70, f: 1, rev: 5, zwart: true}};
+const INVEST_MAX = 49, PITCH_WACHT = 3;
+const INV_NAMEN = {angel: ["Ruth Okafor", "Bastiaan Kroon", "Mei Lindqvist", "Tariq Haddad", "Lotte Verbeek", "Joaquín Reyes"], vc: ["Vector Seven Capital", "Halcyon Ventures", "Northwind Partners", "Ember Fund", "Quadrant Capital", "Blue Meridian"], familie: ["Je oom Henk en zijn golfvrienden", "Een oude schoolvriendin met een erfenis", "Je ouders en hun spaarrekening"]};
+const investDeel = s => (s.investeerders || []).reduce((a, x) => a + x.pct, 0);
+function genInvesteerder(s, soort){ const bez = new Set((s.pitch || {}).partijen ? s.pitch.partijen.map(x => x.naam) : []), I = INVEST_SOORT[soort];
+  let naam; if (soort === "syndicaat"){ const g = CH(s.gangs || []); naam = g ? g.naam : "Een man zonder naam"; } else if (soort === "bank") naam = `${homeLandNaam(s)} Handelsbank`; else { const L = (INV_NAMEN[soort] || ["Een investeerder"]).filter(x => !bez.has(x)); naam = L.length ? CH(L) : CH(INV_NAMEN[soort]); }
+  return {id: "i" + hex8(), soort, naam, label: I.label, wacht: null}; }
+function pitchInit(s){ s.pitch = {start: ym(s), partijen: []}; for (const k of ["familie", "angel", "vc", "bank"]) s.pitch.partijen.push(genInvesteerder(s, k)); if ((s.gangs || []).length) s.pitch.partijen.push(genInvesteerder(s, "syndicaat")); s.investeerders ??= []; }
+const pitchWaardering = s => r1(Math.max(25, bedrijfWaarde(s)));
+function pitchBonus(s, stijl){ let b = Math.round((s.reputation - 30) / 3); const bg = String(s.player.background || "").toLowerCase(); if (/bankier|erfgenaam/.test(bg)) b += 8; if (/hacker|ingenieur|wetenschap/.test(bg) && stijl === "revolutionair") b += 8;
+  if (String(s.player.idee || "").trim().length >= 12) b += 5; if (typeof gatVoorJou === "function" && gatVoorJou(s)) b += 12; if ((s.producten || []).some(p => p.status === "markt")) b += 6; return b; }
+function pitchInfo(s, x, stijl){ const I = INVEST_SOORT[x.soort], P = PITCH_STIJL[stijl] || PITCH_STIJL.ambitieus, bedrag = r1(I.min + (I.max - I.min) * P.deel), kans = snapKans(Math.round(clamp(I.kans + P.kans + (stijl === "revolutionair" ? I.rev : 0) + pitchBonus(s, stijl), 5, 95)));
+  const W = r1(pitchWaardering(s) * I.f * P.f), pct = I.aandeel ? Math.max(1, Math.round(bedrag / (W + bedrag) * 100)) : 0; return {bedrag, kans, pct, waardering: W, lening: !!I.lening, zwart: !!I.zwart}; }
+function actInvestPitch(s, ctx, id, stijl){ const x = ((s.pitch || {}).partijen || []).find(q => q.id === id); if (!x) return {ok: false, msg: "Die investeerder is er niet meer."};
+  if (!PITCH_STIJL[stijl]) return {ok: false, msg: "Kies hoe je pitcht."}; if (x.wacht && mndNr(ym(s)) - mndNr(x.wacht) < PITCH_WACHT) return {ok: false, msg: `${x.naam} wil je pas over ${PITCH_WACHT - (mndNr(ym(s)) - mndNr(x.wacht))} maand(en) weer zien.`};
+  const P = pitchInfo(s, x, stijl); if (P.pct && investDeel(s) + P.pct > INVEST_MAX) return {ok: false, msg: `Dan heb je minder dan de helft van je eigen bedrijf. Investeerders hebben al ${investDeel(s)}%; meer dan ${INVEST_MAX}% geef je niet weg.`};
+  x.wacht = ym(s); const roll = rolKans(P.kans); addRoll(s, `Pitch bij ${x.naam} (${PITCH_STIJL[stijl].label.toLowerCase()}): ${roll.txt} → ${roll.ok ? "JA" : "NEE"}`); let msg;
+  if (roll.ok) msg = pitchDeal(s, x, P, stijl);
+  else if (roll.marge != null ? roll.marge <= 15 : kansRol() < 0.45){ const P2 = {...P, bedrag: r1(P.bedrag * 0.7), pct: P.pct ? Math.round(P.pct * 1.1) : 0}; const kort = P2.lening ? `€${P2.bedrag}M lenen tegen 14%` : P2.zwart ? `€${P2.bedrag}M zwart, met meer heat` : `€${P2.bedrag}M voor ${P2.pct}%`;
+    addKeuze(s, ctx, {soort: "pitch_" + x.id, van: x.naam, titel: `${x.naam} doet een tegenbod`, tekst: `Je pitch overtuigde ${x.naam} niet helemaal. Ze willen wel instappen, maar voor minder: ${kort}.`, opties: [{label: `Aannemen (${kort})`, uitleg: "Minder geld, maar wel geld.", eff: {pitchdeal: {id: x.id, ...P2, stijl, tegen: true}}}, {label: "Bedanken", uitleg: "Je zoekt verder.", eff: {tekst: "Je bedankt beleefd."}}], standaard: 1});
+    msg = `${x.naam} twijfelt en doet een tegenbod: ${kort}. Het staat bij Besluiten.`; }
+  else msg = `${x.naam} zegt nee${stijl === "revolutionair" ? ": te riskant" : ""}. Over ${PITCH_WACHT} maanden kun je het opnieuw proberen.`;
+  addLog(s, `Pitch ${x.naam}: ${msg}`); return {ok: true, msg}; }
+function pitchDeal(s, x, P, stijl){ const I = INVEST_SOORT[x.soort];
+  if (I.lening){ const rente = P.tegen ? 0.14 : 0.09; s.debt = r1(s.debt + P.bedrag); s.cash = r1(s.cash + P.bedrag); s.accounts.operationeel = s.cash; s.interest_rate = Math.max(s.interest_rate || 0, rente); s.pitch.partijen = s.pitch.partijen.filter(q => q !== x); return `${x.naam} leent je €${P.bedrag}M tegen ${Math.round(rente * 100)}% per jaar.`; }
+  if (I.zwart){ s.accounts.zwart = r1(s.accounts.zwart + P.bedrag); s.heat = clamp(s.heat + (P.tegen ? 12 : 8)); const g = (s.gangs || []).find(q => q.naam === x.naam); if (g) g.relatie = Math.round(g.relatie + 10); (s.lopende_effecten ??= []).push({naam: `Schuld bij ${x.naam}`, maanden: 6, effect: {heat: 1}});
+    s.pitch.partijen = s.pitch.partijen.filter(q => q !== x); return `${x.naam} levert €${P.bedrag}M in contanten, in een sporttas. Zwart geld, heat +${P.tegen ? 12 : 8}, en ze vergeten het niet.`; }
+  s.cash = r1(s.cash + P.bedrag); s.accounts.operationeel = s.cash; (s.investeerders ??= []).push({naam: x.naam, soort: x.soort, pct: P.pct, bedrag: P.bedrag, sinds: ym(s)}); s.pitch.partijen = s.pitch.partijen.filter(q => q !== x);
+  return `${x.naam} stapt in: €${P.bedrag}M voor ${P.pct}% van ${s.player.corp_name}${stijl === "revolutionair" ? ". Ze geloven in het grote verhaal" : ""}.`; }
+function pitchTick(s, ctx){ if (!s.pitch) return; const P = s.pitch.partijen; if (P.length < 5 && kansRol() < 0.12){ const soort = CH(["angel", "angel", "vc", "familie"]); const x = genInvesteerder(s, soort); P.push(x); ctx.rep.push(`Nieuwe investeerder: ${x.naam}`); } }
+const uitkoopPrijs = (s, x) => r1(bedrijfWaarde(s) * x.pct / 100 * 1.15);
+function actUitkopen(s, ctx, naam){ const x = (s.investeerders || []).find(q => q.naam === naam); if (!x) return {ok: false, msg: "Die investeerder is er niet."}; const k = uitkoopPrijs(s, x);
+  if (s.cash < k) return {ok: false, msg: `Uitkopen kost €${k}M (hun ${x.pct}% plus 15%).`}; s.cash = r1(s.cash - k); s.accounts.operationeel = s.cash; s.investeerders = s.investeerders.filter(q => q !== x); const msg = `${x.naam} uitgekocht voor €${k}M. Hun ${x.pct}% is weer van jou.`; addLog(s, msg); return {ok: true, msg}; }
+function pitchOverzicht(s){ if (!s.pitch) return null; return {waardering: pitchWaardering(s), deel: investDeel(s), max: INVEST_MAX, investeerders: (s.investeerders || []).map(x => ({...x, uitkoop: uitkoopPrijs(s, x)})),
+  partijen: s.pitch.partijen.map(x => ({...x, wachtNog: x.wacht ? Math.max(0, PITCH_WACHT - (mndNr(ym(s)) - mndNr(x.wacht))) : 0, stijlen: Object.fromEntries(Object.keys(PITCH_STIJL).map(k => [k, pitchInfo(s, x, k)]))})), stijlen: PITCH_STIJL}; }
+
+/* 11.20: gaten in de markt. Af en toe ontstaat er vraag die niemand bedient. Wie als eerste een goed product van die soort lanceert, krijgt +2 op de lanceringsworp en een bestseller: 35% meer omzet, anderhalf jaar lang. Wacht je te lang, dan vult een rivaal het gat. */
+const ymPlus = (s, n) => { const t = s.date.year * 12 + s.date.month - 1 + n; return `${Math.floor(t / 12)}-${String(t % 12 + 1).padStart(2, "0")}`; };
+const GAT_BONUS = 2, BESTSELLER_F = 1.35, GAT_MAX = 3;
+const GAT_TEKST = {wapen: ["een licht wapen dat iedere politieagent kan betalen", "een betrouwbaar wapen voor kleine legers zonder budget", "niet-dodelijke wapens voor demonstraties"], beveiliging: ["beveiliging voor kleine winkels", "bewaking van datacentra", "veilige transporten voor ziekenhuizen"],
+  medisch: ["betaalbare medicijnen voor ouderen", "snelle tests voor een nieuwe griep", "zorg op afstand voor dorpen"], data: ["data-analyse voor het mkb", "privacy voor gewone mensen", "betrouwbaar nieuws zonder reclame"], logistiek: ["snelle levering op het platteland", "koelvervoer voor medicijnen", "goedkope pakketlockers"],
+  financieel: ["leningen voor kleine ondernemers", "sparen zonder bank", "verzekering voor zzp'ers"], implantaat: ["een betaalbaar oogimplantaat", "implantaten voor ouderen", "een implantaat dat niet afstoot"], orbitaal: ["kleine satellieten voor boeren", "internet vanuit de ruimte voor afgelegen gebieden"],
+  smokkel: ["spullen die over de grens moeten zonder vragen", "medicijnen voor wie ze niet legaal krijgt"], consument: ["iets goedkoops en goeds voor studenten", "een product voor de groeiende groep ouderen", "duurzaam spul dat lang meegaat"]};
+const gatOpen = (s, aard) => (s && s.gaten || []).find(g => g.aard === aard && !g.dicht) || null;
+function gatVoorJou(s){ const mijn = new Set((s.divisions || []).flatMap(d => divAarden(s, d))); return (s.gaten || []).find(g => !g.dicht && mijn.has(g.aard)) || null; }
+function gatTick(s, ctx){ const G0 = (s.gaten ??= []), m = ym(s); for (const g of G0) if (!g.dicht){
+    const conc = s.rivals.reduce((n, r) => n + (r.producten || []).filter(x => x.aard === g.aard).length, 0);
+    if (m > g.tot){ g.dicht = "verdwenen"; ctx.rep.push(`Gat in de markt verdwenen: ${g.tekst}`); }
+    else if (kansRol() < 0.04 + conc * 0.015){ const r = CH(s.rivals.filter(x => (x.producten || []).some(q => q.aard === g.aard)).length ? s.rivals.filter(x => (x.producten || []).some(q => q.aard === g.aard)) : s.rivals); g.dicht = r ? r.name : "een rivaal";
+      news(s, `${g.dicht} vult een gat in de markt`, `${g.dicht} lanceert ${g.tekst}. Klanten staan in de rij.`, null, "markt"); ctx.rep.push(`${g.dicht} vulde het gat: ${g.tekst}`); } }
+  s.gaten = G0.filter(g => !g.dicht || mndNr(m) - mndNr(g.sinds) < 24).slice(-8);
+  if (s.gaten.filter(g => !g.dicht).length < GAT_MAX && kansRol() < 0.14){ const aarden = Object.keys(GAT_TEKST).filter(a => PRODUCT_AARD[a] && !gatOpen(s, a)); if (!aarden.length) return;
+    const mijn = new Set((s.divisions || []).flatMap(d => divAarden(s, d))), voorkeur = aarden.filter(a => mijn.has(a)), a = CH(voorkeur.length && kansRol() < 0.6 ? voorkeur : aarden);
+    const g = {id: "g" + hex8(), aard: a, tekst: CH(GAT_TEKST[a]), sinds: m, tot: ymPlus(s, RI(10, 16)), dicht: null}; s.gaten.push(g);
+    news(s, "Gat in de markt", `Analisten: er is vraag naar ${g.tekst}, en niemand levert het.`, null, "markt"); if (mijn.has(a)) mail(ctx, s, "Marktonderzoek", "Er ligt een gat in de markt", `Er is vraag naar ${g.tekst} (${PRODUCT_AARD[a].label.toLowerCase()}) en niemand levert het. Wie als eerste een goed product lanceert, heeft een bestseller: +${GAT_BONUS} op de lancering en 35% meer omzet, anderhalf jaar lang. Tot ${g.tot}, tenzij een rivaal sneller is.`, "HOOG"); } }
+function gatLancering(s, ctx, p, r){ const a = p.aard || aardVan(p.type, p.naam); if (p.focus === "revolutionair") p.revolutie = true; const g = gatOpen(s, a); if (!g) return;
+  if (r.blunder || (!r.ok && !r.neutraal)) return; g.dicht = "speler"; p.bestseller = ymPlus(s, 18); p.pop = Math.min(95, p.pop + 8);
+  mail(ctx, s, "Marketing", `${p.naam} vult het gat`, `${p.naam} is precies waar de markt om vroeg: ${g.tekst}. Een bestseller: 35% meer omzet tot ${p.bestseller}.`, "HOOG"); news(s, `${p.naam} vult een gat in de markt`, `${s.player.corp_name} lanceert ${p.naam}: ${g.tekst}.`, null, "markt"); }
+
+/* 11.21: groeipijn. Een groot bedrijf heeft managementlagen, juristen en kantoren nodig: boven €500M waarde kost elke €1000M extra €5M per maand. */
+const overheadKost = s => { const v = playerValue(s); return v > 500 ? r1((v - 500) * 0.005) : 0; };

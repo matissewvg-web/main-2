@@ -10,7 +10,7 @@ const html = '<!doctype html><html><head><meta charset=utf8></head><body>' + fs.
   await p.goto("http://wereld.test/"); await p.waitForTimeout(700); await p.mouse.click(5, 5); await p.waitForTimeout(300);
   const ok = (v, t) => log.push((v ? "OK   " : "FOUT ") + t);
   const r = await p.evaluate(async () => {
-    await API["/api/setup"]({...S.setup, corp_name: "Kijker BV", doctrine: ["Logistiek"], home: "BNL"}); const s = G.game, start = s.bedrijven.length, namen0 = new Set(s.bedrijven.map(b => b.naam));
+    await API["/api/setup"]({...S.setup, start: "gevestigd", corp_name: "Kijker BV", doctrine: ["Logistiek"], home: "BNL"}); const s = G.game, start = s.bedrijven.length, namen0 = new Set(s.bedrijven.map(b => b.naam));
     const tel = {}; let minB = 99, maxB = 0; const orig = window.news; window.news = function(s2, kop, ...rest){ const t = kop || ""; const k = /failliet/.test(t) ? "failliet" : /^Nieuwkomer/.test(t) ? "nieuw" : /^Fusie/.test(t) ? "fusie" : / heet voortaan /.test(t) ? "naam" : /naar de beurs/.test(t) ? "beurs" : /^Schandaal/.test(t) ? "schandaal" : null; if (k) tel[k] = (tel[k] || 0) + 1; return orig(s2, kop, ...rest); };
     for (let i = 0; i < 120 && s.status === "actief"; i++){ s.cash = Math.max(s.cash, 300); s.morale = Math.max(s.morale, 60); s.heat = Math.min(s.heat, 30); tick(s); minB = Math.min(minB, s.bedrijven.length); maxB = Math.max(maxB, s.bedrijven.length); }
     window.news = orig;

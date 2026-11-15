@@ -9,7 +9,7 @@ const html = '<!doctype html><html><head><meta charset=utf8><meta name="viewport
   await c.route("http://m.test/**", r => { const u = new URL(r.request().url()).pathname.slice(1); if (!u) return r.fulfill({contentType: "text/html", body: html}); return r.fulfill({path: path.join(DIR, u)}); });
   const ok = (v, t) => log.push((v ? "OK   " : "FOUT ") + t);
   await p.goto("http://m.test/"); await p.waitForTimeout(1200); await p.mouse.click(5, 5); await p.waitForTimeout(400);
-  await p.evaluate(async () => { await API["/api/setup"]({...S.setup, corp_name: "Gsm BV", doctrine: ["Weapon Manufacturing"], home: "BNL"}); for (let i = 0; i < 4; i++) await API["/api/tick"]({force: true}); localSet("gezien_versie", VERSIES[0][0]); S.view = "overzicht"; render(); });
+  await p.evaluate(async () => { await API["/api/setup"]({...S.setup, start: "gevestigd", corp_name: "Gsm BV", doctrine: ["Weapon Manufacturing"], home: "BNL"}); for (let i = 0; i < 4; i++) await API["/api/tick"]({force: true}); localSet("gezien_versie", VERSIES[0][0]); S.view = "overzicht"; render(); });
   await p.waitForTimeout(500);
   // scroll van de pagina blijft staan bij een nieuwe render
   const sc = await p.evaluate(() => { const se = document.scrollingElement; se.scrollTop = 700; const voor = se.scrollTop; render(); return {voor, na: se.scrollTop, hoog: se.scrollHeight > innerHeight + 700}; });

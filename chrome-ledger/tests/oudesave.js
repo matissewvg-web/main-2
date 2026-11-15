@@ -7,7 +7,7 @@ const html = '<!doctype html><html><head><meta charset=utf8></head><body>' + fs.
   p.on("pageerror", e => errs.push(e.message));
   await c.route("http://s.test/**", r => { const u = new URL(r.request().url()).pathname.slice(1); if (!u) return r.fulfill({contentType: "text/html", body: html}); return r.fulfill({path: path.join(DIR, u)}); });
   await p.goto("http://s.test/"); await p.waitForTimeout(800); await p.mouse.click(5, 5); await p.waitForTimeout(300);
-  const res = await p.evaluate(async () => { await API["/api/setup"]({...S.setup, corp_name: "Oud BV", doctrine: ["Biotech"], home: "BNL"}); for (let i = 0; i < 12; i++) await API["/api/tick"]({force: true});
+  const res = await p.evaluate(async () => { await API["/api/setup"]({...S.setup, start: "gevestigd", corp_name: "Oud BV", doctrine: ["Biotech"], home: "BNL"}); for (let i = 0; i < 12; i++) await API["/api/tick"]({force: true});
     const s = G.game; for (const k of ["spanning", "regioVraag", "grondstof", "gsSchok", "voorraad", "onderzoek", "ceo", "wetten", "patrouille", "aanwezig", "rivAanwezig", "aanvragen", "contracten", "exportVergunning", "smokkelroute", "rivaalPatent", "leningen", "beurs", "eigenPlannen", "taken", "divHist", "huisstijl", "autoStandaard", "zaad"]) delete s[k];
     delete s.player.instel; delete s.player.instelScore; for (const d of s.districts){ delete d.dom; delete d.domMnd; delete d.domRiv; } for (const d of s.divisions){ delete d.hoofd; delete d.autoDev; }
     for (const p of s.producten || []){ delete p.matF; delete p.tech; delete p.patent; delete p.markten; delete p.auto; p.hist = (p.hist || []).map(h => ({m: h.m, pop: h.pop, omzet: h.omzet})); }

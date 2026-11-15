@@ -568,6 +568,7 @@ function tick(s){
   { const hl = r1(s.divisions.reduce((a, d) => a + ((d.hoofd || {}).loon || 0), 0)); if (hl){ cost += hl; lines.push(`| Divisiehoofden (${s.divisions.filter(d => d.hoofd).length}) | 0 | ${hl} |`); } } /* 6.1 */
   { const dl = directieLoon(s); if (dl){ cost += dl; lines.push(`| Directie: loon nieuwe assistenten | 0 | ${dl} |`); } } /* 5.8 */
   { const np = patrouilles(s).length, pk = r1(np * patrouilleKost(s)); if (pk){ cost += pk; lines.push(`| Patrouilles op straat (${np}) | 0 | ${pk} |`); if (!heeftWet(s, "beveiliging")) heatAdd += np * 0.25; } } /* 5.5 */
+  { const oh = overheadKost(s); if (oh){ cost += oh; lines.push(`| Overhead van een groot bedrijf (managementlagen, juristen, kantoren) | 0 | ${oh} |`); } } /* 11.21 */
   if (s.compliance){ const ck = complianceKost(s); cost += ck; lines.push(`| Compliance-afdeling | 0 | ${ck} |`); } /* 11.17 */
   if (npcActive(s, "kosten")) cost *= 0.97;
   if (heeftFocus(s, "lean")) cost *= 0.95;
@@ -639,7 +640,7 @@ function tick(s){
   lingeringTick(s, ctx, diff); invoicesTick(s, ctx, diff); marketTick(s, ctx); factionTick(s, ctx);
   npcTick(s, ctx); nomadDemandTick(s, ctx); chaosTick(s, ctx, diff); rumorTick(s, ctx); arcsTick(s, ctx, diff);
   sectorTick(s); regionTick(s, ctx); bedrijfTick(s, ctx); bedrijfLeven(s, ctx); peopleTick(s, ctx, diff);
-  specialTick(s, ctx); crisisTick(s, ctx); hypeTick(s, ctx); productTick(s, ctx); slijtTick(s, ctx); { const pe = productEffectTick(s); if (pe.heat) gz.hDelen.push(["Producten", r1(pe.heat)]); if (pe.morale) gz.mDelen.push(["Producten", r1(pe.morale)]); } productEventTick(s, ctx); tijdlijnTick(s, ctx); spanningTick(s, ctx); spanningHistTick(s); corpoTick(s, ctx); domTick(s, ctx); assistentTick(s, ctx); aanvraagTick(s, ctx); capVulAlles(s, ctx); regioTick(s); grondstofTick(s, ctx); patentTick(s, ctx); onderzoekTick(s, ctx); beursTick(s, ctx); eigenPlanTick(s, ctx); ceoTick(s, ctx); hoofdTick(s, ctx); vraagTick(s); rivalProductTick(s); wereldInvloedProducten(s); eraTick(s, ctx); if (s.date.month === 12) jaarTick(s, ctx); marktTick(s); klusTick(s);
+  specialTick(s, ctx); crisisTick(s, ctx); hypeTick(s, ctx); gatTick(s, ctx); /* 11.20 */ productTick(s, ctx); slijtTick(s, ctx); { const pe = productEffectTick(s); if (pe.heat) gz.hDelen.push(["Producten", r1(pe.heat)]); if (pe.morale) gz.mDelen.push(["Producten", r1(pe.morale)]); } productEventTick(s, ctx); tijdlijnTick(s, ctx); spanningTick(s, ctx); spanningHistTick(s); corpoTick(s, ctx); domTick(s, ctx); assistentTick(s, ctx); aanvraagTick(s, ctx); capVulAlles(s, ctx); regioTick(s); grondstofTick(s, ctx); patentTick(s, ctx); onderzoekTick(s, ctx); beursTick(s, ctx); eigenPlanTick(s, ctx); ceoTick(s, ctx); hoofdTick(s, ctx); vraagTick(s); rivalProductTick(s); wereldInvloedProducten(s); eraTick(s, ctx); if (s.date.month === 12) jaarTick(s, ctx); marktTick(s); klusTick(s);
   s.accounts.operationeel = s.cash; s.hidden_truth = s.hidden_truth.slice(-30);
 
   let status = "actief";

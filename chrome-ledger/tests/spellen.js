@@ -9,9 +9,9 @@ const html = '<!doctype html><html><head><meta charset=utf8></head><body>' + fs.
   await c.route("http://spel.test/**", r => { const u = new URL(r.request().url()).pathname.slice(1); if (!u) return r.fulfill({contentType: "text/html", body: html}); const f = path.join(DIR, u); return fs.existsSync(f) ? r.fulfill({path: f}) : r.fulfill({status: 404, body: ""}); });
   await p.goto("http://spel.test/"); await p.waitForTimeout(700); await p.mouse.click(5, 5); await p.waitForTimeout(500);
   const ok = (v, t) => log.push((v ? "OK   " : "FOUT ") + t);
-  await p.evaluate(async () => { await API["/api/setup"]({...S.setup, corp_name: "Alfa Holding"}); await API["/api/tick"]({force: true}); await API["/api/tick"]({force: true}); });
+  await p.evaluate(async () => { await API["/api/setup"]({...S.setup, start: "gevestigd", corp_name: "Alfa Holding"}); await API["/api/tick"]({force: true}); await API["/api/tick"]({force: true}); });
   const alfa = await p.evaluate(() => ({gid: G.gid, datum: ym(G.game)}));
-  await p.evaluate(async () => { await API["/api/nieuw"](); await API["/api/setup"]({...S.setup, corp_name: "Beta Corp", home: "JPN"}); await API["/api/tick"]({force: true}); });
+  await p.evaluate(async () => { await API["/api/nieuw"](); await API["/api/setup"]({...S.setup, start: "gevestigd", corp_name: "Beta Corp", home: "JPN"}); await API["/api/tick"]({force: true}); });
   const beta = await p.evaluate(() => ({gid: G.gid, naam: G.game.player.corp_name}));
   ok(beta.gid !== alfa.gid && beta.naam === "Beta Corp", `nieuw spel heeft eigen id (${beta.naam})`);
   await p.evaluate(() => { G.slots = null; S.view = "logboek"; render(); }); await p.waitForTimeout(400);

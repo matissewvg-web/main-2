@@ -9,7 +9,7 @@ const html = '<!doctype html><html><head><meta charset=utf8></head><body>' + fs.
   await c.route("http://plan.test/**", r => { const u = new URL(r.request().url()).pathname.slice(1); if (!u) return r.fulfill({contentType: "text/html", body: html}); const f = path.join(DIR, u); return fs.existsSync(f) ? r.fulfill({path: f}) : r.fulfill({status: 404, body: ""}); });
   await p.goto("http://plan.test/"); await p.waitForTimeout(700); await p.mouse.click(5, 5); await p.waitForTimeout(400);
   const ok = (v, t) => log.push((v ? "OK   " : "FOUT ") + t);
-  await p.evaluate(async () => { await API["/api/setup"]({...S.setup, corp_name: "Doelwit NV", doctrine: ["Biotech"], home: "BNL", kapitaal: "ruim"}); G.game.cash = 500; G.game.maanden = 20; G.game.rivals[0].relatie = -60; });
+  await p.evaluate(async () => { await API["/api/setup"]({...S.setup, start: "gevestigd", corp_name: "Doelwit NV", doctrine: ["Biotech"], home: "BNL", kapitaal: "ruim"}); G.game.cash = 500; G.game.maanden = 20; G.game.rivals[0].relatie = -60; });
   // 1. een plan start en blijft onzichtbaar tot het ontdekt is
   const st = await p.evaluate(() => { const s = G.game; for (let i = 0; i < 50 && !(s.plannen || []).length; i++) planStart(s, Ctx(), 10); const x = s.plannen[0]; return x && {soort: x.soort, wie: x.wie, stappen: x.stappen.length, ontdekt: x.ontdekt, vm: vm().plannen.length}; });
   ok(st && st.stappen === 3 && !st.ontdekt && st.vm === 0, "plan start, onzichtbaar zolang niet ontdekt: " + JSON.stringify(st));

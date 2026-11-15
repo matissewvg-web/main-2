@@ -9,7 +9,7 @@ const html = '<!doctype html><html><head><meta charset=utf8></head><body>' + fs.
   p.on("pageerror", e => errs.push(e.message)); p.on("dialog", d => d.accept());
   await c.route("http://diep.test/**", r => { const u = new URL(r.request().url()).pathname.slice(1); if (!u) return r.fulfill({contentType: "text/html", body: html}); return r.fulfill({path: path.join(DIR, u)}); });
   await p.goto("http://diep.test/"); await p.waitForTimeout(800); await p.mouse.click(5, 5); await p.waitForTimeout(300);
-  const start = await p.evaluate(async () => { await API["/api/setup"]({...S.setup, corp_name: "IJzerwerk NV", eigen: {naam: "Weapon manufacturing", profiel: "gebalanceerd"}, home: "BNL", difficulty: "Realistisch"}); const s = G.game; return {cash: s.cash, div: s.divisions.map(d => `${divNaam(d)} (${d.type} L${d.level})`), aard: aardVan(s.divisions[0].type, "")}; });
+  const start = await p.evaluate(async () => { await API["/api/setup"]({...S.setup, start: "gevestigd", corp_name: "IJzerwerk NV", eigen: {naam: "Weapon manufacturing", profiel: "gebalanceerd"}, home: "BNL", difficulty: "Realistisch"}); const s = G.game; return {cash: s.cash, div: s.divisions.map(d => `${divNaam(d)} (${d.type} L${d.level})`), aard: aardVan(s.divisions[0].type, "")}; });
   log.push("START " + JSON.stringify(start));
   const shot = async (naam, view, extra) => { if (!out) return; await p.evaluate(([v, e]) => { S.view = v; S.mailBody = null; if (e) Object.assign(S, e); render(); window.scrollTo(0, 0); }, [view, extra || null]); await p.waitForTimeout(200); await p.screenshot({path: `${out}/${naam}.png`, fullPage: true}); };
   for (let m = 1; m <= 36; m++){

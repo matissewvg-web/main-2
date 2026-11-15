@@ -8,7 +8,7 @@ const html = '<!doctype html><html><head><meta charset=utf8></head><body>' + fs.
   await p.goto("http://mens.test/"); await p.waitForTimeout(800);
   const res = await p.evaluate(async (runs) => { const tot = {};
     for (let g = 0; g < runs; g++){
-    await API["/api/setup"]({...S.setup, corp_name: "Diag " + g, doctrine: [["Cyberware"],["Biotech"],["Logistiek"]][g%3], home: "BNL"}); const s = G.game;
+    await API["/api/setup"]({...S.setup, start: "gevestigd", corp_name: "Diag " + g, doctrine: [["Cyberware"],["Biotech"],["Logistiek"]][g%3], home: "BNL"}); const s = G.game;
     let rep = s.reputation; Object.defineProperty(s, "reputation", {get(){ return rep; }, set(v){ const d = v - rep; if (Math.abs(d) > 1e-9){ const st = (new Error().stack || "").split("\n").slice(2, 4).map(l => (l.match(/at (\S+)/) || [])[1]).join("<"); tot[st] = (tot[st] || 0) + d; } rep = v; }, configurable: true, enumerable: true});
     for (let m = 1; m <= 24; m++){ for (const k of [...(s.keuzes || [])]){ const r0 = rep; await API["/api/keuze"]({id: k.id, i: k.standaard || 0}); if (rep !== r0) tot["keuze:" + k.soort.replace(/_.*/, "")] = (tot["keuze:" + k.soort.replace(/_.*/, "")] || 0) + rep - r0; }
       for (const d of s.divisions){ const ps = s.producten.filter(x => x.divisie === divNaam(d)); if (!ps.some(x => x.status === "ontwikkeling" || x.status === "wachtrij") && ps.length < maxProducten(d) && s.cash > 40) actProduct(s, Ctx(), "ontwikkel", {divisie: divNaam(d), schaal: "klein", focus: "veilig"}); }

@@ -9,7 +9,7 @@ const html = '<!doctype html><html><head><meta charset=utf8></head><body>' + fs.
   await c.route("http://var.test/**", r => { const u = new URL(r.request().url()).pathname.slice(1); if (!u) return r.fulfill({contentType: "text/html", body: html}); const f = path.join(DIR, u); return fs.existsSync(f) ? r.fulfill({path: f}) : r.fulfill({status: 404, body: ""}); });
   await p.goto("http://var.test/"); await p.waitForTimeout(700); await p.mouse.click(5, 5); await p.waitForTimeout(400);
   const ok = (v, t) => log.push((v ? "OK   " : "FOUT ") + t);
-  await p.evaluate(async () => { await API["/api/setup"]({...S.setup, corp_name: "Variant BV", doctrine: ["Biotech"], home: "BNL", kapitaal: "ruim"}); G.game.cash = 500; window._autoK = (G.game.autoStandaard || {}).keuring; G.game.autoStandaard = {}; });
+  await p.evaluate(async () => { await API["/api/setup"]({...S.setup, start: "gevestigd", corp_name: "Variant BV", doctrine: ["Biotech"], home: "BNL", kapitaal: "ruim"}); G.game.cash = 500; window._autoK = (G.game.autoStandaard || {}).keuring; G.game.autoStandaard = {}; });
   ok(await p.evaluate(() => window._autoK === true), "nieuw spel: autopilot-keuring staat standaard aan"); /* 5.4.1: auto-keuring hier uit, zodat de keuringstests de handmatige weg testen */
   // 1. bètatest in het plan
   const bp = await p.evaluate(() => { const s = G.game, d = s.divisions[0], a = devPlan(s, d, "klein", "standaard", "medisch", false), b = devPlan(s, d, "klein", "standaard", "medisch", true); return {a, b}; });
@@ -154,7 +154,7 @@ const html = '<!doctype html><html><head><meta charset=utf8></head><body>' + fs.
   ok(dm.geenBuur ? dm.thuisPct >= 40 : (dm.thuisPct >= 40 && dm.a1 && dm.betaald > 0 && !dm.nee && dm.van === "player" && dm.maanden <= 7 && dm.melding.length === 1 && dm.cont1 > dm.cont0 && dm.kaal <= 12 && dm.maxCamp <= 40 && dm.geenKoop) && dmUI,
     "gebied als dominantie (11.0: een vestiging is een basis, campagnes versterken, kopen kan niet): aandelen per district, neutraal district valt je toe na twee maanden boven 55%, continent telt aandelen, kaart toont dominantie: " + JSON.stringify(dm));
   // 5.7 elk spel een nieuwe wereld
-  const wz = await p.evaluate(() => { const set = {...S.setup, corp_name: "Zaad BV", doctrine: ["Biotech"], home: "BNL"}, sig = s => JSON.stringify([s.rivals.map(r => [r.name, r.ceo, r.karakter, r.hq]), s.bedrijven.map(b => [b.naam, b.land])]);
+  const wz = await p.evaluate(() => { const set = {...S.setup, start: "gevestigd", corp_name: "Zaad BV", doctrine: ["Biotech"], home: "BNL"}, sig = s => JSON.stringify([s.rivals.map(r => [r.name, r.ceo, r.karakter, r.hq]), s.bedrijven.map(b => [b.naam, b.land])]);
     const a = newGame({...set, zaad: "neon-77"}).s, b = newGame({...set, zaad: "NEON77"}).s, c = newGame({...set, zaad: "ANDERS1"}).s, d = newGame(set).s, e = newGame(set).s;
     const namen = a.rivals.map(r => r.name), kar = a.rivals.every(r => RIVAAL_KARAKTER[r.karakter]);
     return {zaad: a.zaad, gelijk: sig(a) === sig(b), anders: sig(a) !== sig(c), auto: d.zaad && d.zaad.length === 6 && d.zaad !== e.zaad, autoAnders: sig(d) !== sig(e), uniek: new Set(namen).size === namen.length, kar, namen, randomNa: Math.random !== RNG ? "fout" : "ok"}; });
@@ -204,7 +204,7 @@ const html = '<!doctype html><html><head><meta charset=utf8></head><body>' + fs.
     pm.prijsF = 1; c.regioVraag["Afrika"][pm.aard || aardVan(pm.type, pm.naam)] = 0.3; const voor = regioF(c, pm), r1 = actRegio(c, pm.id, "Afrika"), na = regioF(c, pm), mk = (pm.markten || []).length;
     for (const k of regioNamen()) if (k !== "Europa" && regioMarkten(pm).includes(k)) actRegio(c, pm.id, k); const laatste = actRegio(c, pm.id, "Europa").ok, nu = regioMarkten(pm);
     for (const k of regioNamen()) if (!regioMarkten(pm).includes(k)) actRegio(c, pm.id, k); const terug = pm.markten == null;
-    const n = newGame({...S.setup, corp_name: "Regio BV", doctrine: ["Biotech"], home: "BNL", zaad: "REGIO1"}).s, varieert = new Set(Object.values(n.regioVraag).map(v => v.medisch)).size > 1;
+    const n = newGame({...S.setup, start: "gevestigd", corp_name: "Regio BV", doctrine: ["Biotech"], home: "BNL", zaad: "REGIO1"}).s, varieert = new Set(Object.values(n.regioVraag).map(v => v.medisch)).size > 1;
     return {een, f1: Math.round(f1 * 1000) / 1000, f15: Math.round(f15 * 100) / 100, naRijk, afr, voor: Math.round(voor * 1000) / 1000, na: Math.round(na * 1000) / 1000, r1: r1.ok, mk, laatste, nu, terug, varieert}; });
   const rgUI = await p.evaluate(() => { const pm = G.game.producten.find(x => x.status === "markt"); if (!pm) return true; S.view = "bedrijf"; S.prodSheet = pm.id; (S.prodTab ??= {})[pm.id] = "markt"; render(); return /REGIO'S/.test(document.querySelector("main").textContent); });
   ok(rg.geen || (rg.een && Math.abs(rg.f1 - 1) < 0.03 && rg.f15 > 0.9 && rg.f15 < 1.1 && rg.naRijk > 1 && rg.afr < 1 && rg.r1 && rg.mk === 6 && rg.na > rg.voor && !rg.laatste && rg.nu.length === 1 && rg.terug && rg.varieert), "regionale markten: elk werelddeel een eigen profiel maar wereldwijd gemiddeld ×1, rijk/arm per prijs, slechte regio laten vallen loont door focus, minstens één markt, nieuw spel varieert per continent: " + JSON.stringify(rg) + " ui " + rgUI);
@@ -277,7 +277,7 @@ const html = '<!doctype html><html><head><meta charset=utf8></head><body>' + fs.
   ok(ep.kans >= 25 && ep.a && ep.betaald === ep.kost && !ep.dubbel && ep.klaar && (ep.aandeel == null || ep.aandeel === 0.24) && ep.relDaling >= 15 && !ep.geenBende && ep2.weg && ep2.heat >= 12 && ep2.rel >= 10 && ep2.rep && epUI,
     "eigen plannen: drie stappen met worpen, eerste stap vooraf betaald, één tegelijk, gelukte prijsoorlog kost hen 20% aandeel, mislukte stap = ontdekt (heat, relatie), kaart bij Rivalen: " + JSON.stringify([ep, ep2]));
   // 5.17.1 huisstijl bij het oprichten
-  const hs1 = await p.evaluate(() => { const set = {...S.setup, corp_name: "Stijl BV", doctrine: ["Biotech"], home: "BNL", huisstijl: {kleur: "#123456", accent: "nee", thema: "bloed", logo: {soort: "gen", symbool: "◆", vorm: "cirkel"}}};
+  const hs1 = await p.evaluate(() => { const set = {...S.setup, start: "gevestigd", corp_name: "Stijl BV", doctrine: ["Biotech"], home: "BNL", huisstijl: {kleur: "#123456", accent: "nee", thema: "bloed", logo: {soort: "gen", symbool: "◆", vorm: "cirkel"}}};
     const n = newGame(set).s, kaart = setupHuisstijl({corp_name: "Stijl BV", huisstijl: set.huisstijl});
     return {h: n.huisstijl, kaart: /Hoofdkleur/.test(kaart) && /THEMA/.test(kaart) && /LOGO/.test(kaart)}; });
   ok(hs1.h && hs1.h.kleur === "#123456" && !hs1.h.accent && hs1.h.thema === "bloed" && hs1.h.logo.vorm === "cirkel" && hs1.kaart, "huisstijl bij het oprichten: kleuren, thema en logo uit de setup komen in het spel (ongeldige kleur genegeerd): " + JSON.stringify(hs1));
@@ -309,7 +309,7 @@ const html = '<!doctype html><html><head><meta charset=utf8></head><body>' + fs.
   ok(ce.naam0 === "Mira Kade" && ce.l0 >= 34 && ce.v && ce.st1 === 50 && !ce.nogeens && ce.zonder.naam !== "Mira Kade" && ce.zonder.gen === 2 && ce.zonder.morale >= 12 && ce.opv && / jr\.$/.test(ce.dyn.naam) && ce.dyn.gen === 3 && ce.dyn.leeftijd <= 34 && ce.golf && ce.band === 10 && ce.relUp === 4 && ce.nieuweCeo && ce.advOk && ceUI,
     "CEO als persoon: naam uit de setup, vakantie tegen stress, overlijden zonder opvolger = buitenstaander, met kind = dynastie, golfen met rivaal-CEO's, oude rivaal-CEO's worden vervangen: " + JSON.stringify(ce));
   // 5.20 eigen moeilijkheid
-  const im = await p.evaluate(() => { const n = newGame({...S.setup, corp_name: "Moeilijk BV", doctrine: ["Biotech"], home: "BNL", inst_winst: "hoog", inst_chaos: "laag"}).s;
+  const im = await p.evaluate(() => { const n = newGame({...S.setup, start: "gevestigd", corp_name: "Moeilijk BV", doctrine: ["Biotech"], home: "BNL", inst_winst: "hoog", inst_chaos: "laag"}).s;
     const ww = winWaarde(n), basis = winWaardeVoor(n.player.lengte), sc0 = n.player.instelScore, m0 = score(n).mult;
     const a = actInstel(n, "heat", "hoog"), sc1 = instelScore(n.player.instel), b = actInstel(n, "heat", "laag"), scMin = n.player.instelScore, fout = actInstel(n, "heat", "extreem").ok;
     const oud = JSON.parse(JSON.stringify(G.game)); delete oud.player.instel; delete oud.player.instelScore;
@@ -358,7 +358,7 @@ const html = '<!doctype html><html><head><meta charset=utf8></head><body>' + fs.
   // 6.6 zwart, gelijk accent en twee divisienamen
   const zw66 = await p.evaluate(() => { const K = stijlKleuren({kleur: "#000000", accent: "#000000", thema: "chroom"}), k = K.k.rgb, a = K.a.rgb, pan = hexRgb(THEMAS.chroom.panel3);
     const grijs = stijlKleuren({kleur: "#333333", thema: "neon"}).k.rgb, rood = stijlKleuren({kleur: "#5a0010", thema: "bloed"}).k.rgb, gelijk = stijlKleuren({kleur: "#ff0000", accent: "#ff1010"}), anders = stijlKleuren({kleur: "#ff0000", accent: "#0040ff"});
-    const n = newGame({...S.setup, corp_name: "Twee BV", doctrine: ["Logistiek", "Biotech"], home: "BNL", divisie_naam: "Havenlijn", divisie_naam2: "Genlab"}).s, n2 = newGame({...S.setup, corp_name: "Dubbel BV", doctrine: ["Logistiek", "Biotech"], home: "BNL", divisie_naam: "Kern", divisie_naam2: "Kern"}).s;
+    const n = newGame({...S.setup, start: "gevestigd", corp_name: "Twee BV", doctrine: ["Logistiek", "Biotech"], home: "BNL", divisie_naam: "Havenlijn", divisie_naam2: "Genlab"}).s, n2 = newGame({...S.setup, start: "gevestigd", corp_name: "Dubbel BV", doctrine: ["Logistiek", "Biotech"], home: "BNL", divisie_naam: "Kern", divisie_naam2: "Kern"}).s;
     return {neutraal: k[0] === k[1] && k[1] === k[2], licht: k[0] > 200, accentAnders: Math.hypot(k[0] - a[0], k[1] - a[1], k[2] - a[2]) >= 110, verschoven: !!K.a.verschoven, ck: Math.round(contrast(k, pan) * 10) / 10, ca: Math.round(contrast(a, pan) * 10) / 10,
       grijsNeutraal: grijs[0] === grijs[1] && grijs[1] === grijs[2], roodBlijftRood: rood[0] > rood[1] + 60 && rood[0] > rood[2] + 40, gelijkVerschoven: !!gelijk.a.verschoven, andersNiet: !anders.a.verschoven, namen: n.divisions.map(d => d.name), dubbel: n2.divisions.map(d => d.name)}; });
   ok(zw66.neutraal && zw66.licht && zw66.accentAnders && zw66.verschoven && zw66.ck >= 4.5 && zw66.ca >= 4.5 && zw66.grijsNeutraal && zw66.roodBlijftRood && zw66.gelijkVerschoven && zw66.andersNiet && zw66.namen.join() === "Havenlijn,Genlab" && zw66.dubbel.join() === "Kern,Kern 2",
@@ -683,5 +683,24 @@ const html = '<!doctype html><html><head><meta charset=utf8></head><body>' + fs.
   ok(vz.geen || ((!vz.bel || (vz.bel[0] && vz.bel[1] && vz.bel[2] >= 2)) && (!vz.leen || (vz.leen[0] > 0 && vz.leen[1])) && (!vz.stream === false || vz.inkoop === undefined) && (vz.inkoop === undefined || (vz.stream && vz.log >= 2))), "verzoeken van bedrijven en rivalen, bellen eens per maand, contactlog: " + JSON.stringify(vz));
   const trz = await p.evaluate(() => { const c = JSON.parse(JSON.stringify(G.game)); c.heat = 90; return {groot: transferRisico(c, "zwart", "offshore", 600), klein: transferRisico(c, "zwart", "offshore", 20), wit: transferRisico(c, "operationeel", "offshore", 600)}; });
   ok(trz.groot.heat === 12 && trz.klein.heat < 5 && trz.groot.kans <= 45 && trz.wit.kans <= 30, "gemelde overboeking: hoogstens +12 heat, kans begrensd: " + JSON.stringify(trz));
+  // 11.19 startup en pitchen
+  const su = await p.evaluate(async () => { const r = newGame({start: "startup", doctrine: ["Biotech"], home: "BNL", corp_name: "Proefstart", background: "Erfgenaam", difficulty: "Realistisch", idee: "Goedkope tests voor een nieuwe griep"}); const s = r.s, ctx = Ctx();
+    const start = {cash: s.cash, npcs: s.npcs.length, staff: s.staff.count, lvl: s.divisions[0].level, partijen: s.pitch.partijen.length};
+    const fam = s.pitch.partijen.find(x => x.soort === "familie"), I = pitchInfo(s, fam, "voorzichtig"), v0 = playerValue(s); let tries = 0, res;
+    do { fam.wacht = null; res = actInvestPitch(s, ctx, fam.id, "voorzichtig"); tries++; } while (!(s.investeerders || []).length && tries < 30 && s.pitch.partijen.includes(fam));
+    const inv = s.investeerders[0], pd = publiekDeel(s), uk = inv ? uitkoopPrijs(s, inv) : 0; s.cash += 500; const uit = inv ? actUitkopen(s, ctx, inv.naam) : {ok: false};
+    const vc = s.pitch.partijen.find(x => x.soort === "vc"), rv = pitchInfo(s, vc, "revolutionair"), vz = pitchInfo(s, vc, "voorzichtig");
+    return {start, I, inv: !!inv, pd, uit: uit.ok, na: (s.investeerders || []).length, rv: [rv.bedrag, rv.pct, rv.kans], vz: [vz.bedrag, vz.pct, vz.kans]}; });
+  ok(su.start.cash >= 20 && su.start.cash <= 36 && su.start.npcs === 0 && su.start.staff <= 10 && su.start.lvl === 1 && su.start.partijen >= 4 && su.inv && su.pd > 0 && su.uit && su.na === 0 && su.rv[0] > su.vz[0] && su.rv[2] < su.vz[2] + 20, "startup: klein begin zonder directie, pitchen geeft geld voor een deel, uitkopen, revolutionair = meer geld: " + JSON.stringify(su));
+  // 11.20 gaten in de markt en revolutionaire technologie
+  const gt = await p.evaluate(() => { const c = JSON.parse(JSON.stringify(G.game)), ctx = Ctx(); const d = c.divisions[0], a = divAarden(c, d)[0]; c.gaten = [{id: "gx", aard: a, tekst: "proefgat", sinds: ym(c), tot: ymPlus(c, 12), dicht: null}];
+    const p0 = devPlan(c, d, "klein", "standaard", a), c0 = JSON.parse(JSON.stringify(c)); c0.gaten = []; const p1 = devPlan(c0, d, "klein", "standaard", a), pr = devPlan(c0, d, "klein", "revolutionair", a), ps = devPlan(c0, d, "klein", "standaard", a);
+    const q = mkProduct(c, d, "Gatvuller", 3, 0); q.aard = a; q.status = "markt"; q.focus = "revolutionair"; c.producten.push(q); gatLancering(c, ctx, q, {ok: true});
+    const w0 = prodGewicht({...q, bestseller: null, revolutie: false}, c), w1 = prodGewicht(q, c);
+    return {gat: p0.gat, hitMet: p0.kansen.hit, hitZonder: p1.kansen.hit, rev: [pr.maanden, ps.maanden, pr.kost, ps.kost, pr.kw, ps.kw, pr.kansen.hit, ps.kansen.hit, pr.kansen.terug], dicht: c.gaten[0].dicht, best: q.bestseller, f: Math.round(w1 / w0 * 100) / 100}; });
+  ok(gt.gat && gt.hitMet > gt.hitZonder && gt.rev[0] > gt.rev[1] && gt.rev[2] > gt.rev[3] && gt.rev[4] >= gt.rev[5] && gt.rev[6] > gt.rev[7] && gt.rev[8] === 0 && gt.dicht === "speler" && gt.best && gt.f >= 1.6, "gat in de markt: meer kans en een bestseller; revolutionair langer, duurder, beter: " + JSON.stringify(gt));
+  // 11.21 groeipijn en kopgroepdruk
+  const kd = await p.evaluate(() => { const c = JSON.parse(JSON.stringify(G.game)); const klein = overheadKost(c); c.cash += 5000; c.accounts.operationeel = c.cash; c._kdM = null; const groot = overheadKost(c), plek = plekNu(c), f = imitatieF(c), k = kopDruk(c); return {klein, groot, plek, f, k}; });
+  ok(kd.groot > kd.klein && kd.groot >= 20 && (kd.plek > 2 || (kd.f < 1 && kd.k > 1)), "groot bedrijf: overhead en rivalen die je kopiëren als je bovenaan staat: " + JSON.stringify(kd));
   console.log(log.join("\n")); console.log("FOUTEN OP DE PAGINA:", JSON.stringify(errs)); await b.close(); process.exit(log.some(l => l.startsWith("FOUT")) || errs.length ? 1 : 0);
 })();

@@ -7,7 +7,7 @@ const html = '<!doctype html><html><head><meta charset=utf8></head><body>' + fs.
   p.on("pageerror", e => errs.push(e.message)); p.on("dialog", d => d.accept());
   await c.route("http://mens.test/**", r => { const u = new URL(r.request().url()).pathname.slice(1); if (!u) return r.fulfill({contentType: "text/html", body: html}); return r.fulfill({path: path.join(DIR, u)}); });
   await p.goto("http://mens.test/"); await p.waitForTimeout(800); await p.mouse.click(5, 5); await p.waitForTimeout(400);
-  await p.evaluate(async () => { await API["/api/setup"]({...S.setup, corp_name: "Mens BV", doctrine: ["Cyberware"], home: "BNL"}); S.view = "bedrijf"; render(); });
+  await p.evaluate(async () => { await API["/api/setup"]({...S.setup, start: "gevestigd", corp_name: "Mens BV", doctrine: ["Cyberware"], home: "BNL"}); S.view = "bedrijf"; render(); });
   await p.click('.starter [data-v=product]'); await p.waitForTimeout(200);
   const log = [];
   for (let m = 1; m <= 24; m++){

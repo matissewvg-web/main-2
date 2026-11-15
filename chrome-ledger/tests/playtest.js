@@ -9,7 +9,7 @@ const html = '<!doctype html><html><head><meta charset=utf8></head><body>' + fs.
   await c.route("http://playtest.test/**", r => { const u = new URL(r.request().url()).pathname.slice(1); if (!u) return r.fulfill({contentType: "text/html", body: html}); const f = path.join(DIR, u); return fs.existsSync(f) ? r.fulfill({path: f}) : r.fulfill({status: 404, body: ""}); });
   await p.goto("http://playtest.test/"); await p.waitForTimeout(700); await p.mouse.click(5, 5); await p.waitForTimeout(500);
   const ok = (v, t) => log.push((v ? "OK   " : "FOUT ") + t);
-  await p.evaluate(async () => { await API["/api/setup"]({...S.setup, corp_name: "Abo Corp", doctrine: ["Biotech"], home: "BNL", kapitaal: "ruim"}); G.game.cash = 2000; S.view = "bedrijf"; render(); });
+  await p.evaluate(async () => { await API["/api/setup"]({...S.setup, start: "gevestigd", corp_name: "Abo Corp", doctrine: ["Biotech"], home: "BNL", kapitaal: "ruim"}); G.game.cash = 2000; S.view = "bedrijf"; render(); });
   await p.waitForTimeout(300);
   // eerste stappen
   await p.evaluate(() => { S.view = "overzicht"; render(); });

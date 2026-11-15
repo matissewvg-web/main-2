@@ -932,7 +932,7 @@ bedrijf(){
   const eff = Math.round((p.count >= st.nodig ? 1 : 0.45 + 0.55 * p.count / st.nodig) * 100);
   const eigen = st.soorten.filter(x => x.eigen);
   return `<h1>Bedrijf</h1>
-  ${huisstijlCard(st)}${focusCard(st)}${onderzoekCard()}${dochtersCard(st)}
+  ${huisstijlCard(st)}${gatenCard()}${focusCard(st)}${onderzoekCard()}${dochtersCard(st)}
   ${(() => { const h = klantenCard() + contactCard() + exportCard() + toeleveringCard(); return h ? `<h2>Handel</h2>${h}` : ""; })()}
   <h2>Divisies</h2><div class="grid g3">${st.divisies.map(d => `<div class="card">
       <div class="spread"><h3>${esc(d.naam)}</h3><span class="tag cyan">L${d.level}</span></div>
@@ -997,7 +997,7 @@ bedrijf(){
 financien(){
   const st = S.state;
   const accts = ["operationeel","zwart","offshore"];
-  return `<h1>Financiën</h1>
+  return `<h1>Financiën</h1>${pitchCard()}
   <div class="grid g3">
     <div class="card"><div class="kpi">OPERATIONEEL</div><div class="big">${eur(st.cash)}</div><div class="dim" style="font-size:13px">volgens de CFO</div></div>
     <div class="card"><div class="kpi">ZWART</div><div class="big">${eur(st.zwart)}</div></div>
@@ -1155,6 +1155,9 @@ function setupBonus(homeD){
     <p class="dim" style="font-size:13px;margin:6px 0 0">Elk soort land geeft een ander voordeel: havens, financiële centra, datavalleien, sloppen. Klik verschillende landen aan om ze te vergelijken.</p>` : "";
 }
 const VERSIES = [
+  ["11.21", "De top is zwaarder", ["Groeipijn: boven €500M waarde betaal je elke maand overhead (managementlagen, juristen, kantoren): €5M per €1000M extra.", "Kopgroepdruk: sta je tweede op de ranglijst, dan groeien rivalen 25% sneller en verkopen jouw producten 6% minder, omdat ze je kopiëren. Sta je eerste, dan 40% en 12%. Je wordt gemiddeld een jaar later #1 en wint een jaar later."]],
+  ["11.20", "Gaten in de markt en revolutionaire technologie", ["Af en toe ontstaat er vraag die niemand bedient (Bedrijf → Gaten in de markt, en een mail). Wie als eerste een product van die soort lanceert, krijgt +2 op de lancering en een bestseller: 35% meer omzet, anderhalf jaar lang. Wacht je te lang, dan vult een rivaal het gat.", "Nieuwe aanpak bij ontwikkelen: revolutionaire technologie. Drie maanden langer en ruim twee keer zo duur, maar kwaliteit +1, +2 op de lancering, hit al bij 11, nooit een terugroepactie en blijvend 25% meer omzet."]],
+  ["11.19", "Begin als startup", ["Nieuw spel: kies Startup (standaard) of Gevestigd bedrijf. Een startup begint met het spaargeld van de oprichter (±€8-30M, afhankelijk van je achtergrond), een handvol mensen, één divisie op niveau 1 en geen directie: een CFO, verkoopchef of hoofd R&D neem je zelf aan.", "Geld ophalen doe je door te pitchen (Financiën): familie, een business angel, durfkapitaal, de bank of een syndicaat. Kies voorzichtig, ambitieus of revolutionair. Ja = geld voor een deel van je bedrijf, twijfel = een tegenbod, nee = drie maanden wachten. Een idee, een product op de markt, een gat in de markt en een goede naam helpen.", "Investeerders bezitten samen hooguit 49%. Voor de overwinning telt alleen jouw deel; later kun je ze uitkopen (hun deel plus 15%)."]],
   ["11.18", "Andere bedrijven nemen contact op", ["Rivalen en bedrijven op de kaart komen nu zelf met verzoeken: ze willen je product inkopen, een licentie op je ontwerp, een lening (rivalen die krap zitten), een grote bestelling of een investeerder (10% met korting). Elk verzoek staat bij Besluiten met de keuze tekenen, hoger inzetten of afslaan.", "Bedrijf → Handel → Contact met bedrijven: bel een rivaal of bedrijf (relatie +3, en ze komen vaker met iets) of stel zelf voor dat ze bij jou inkopen. Het antwoord komt de maand erna. Per bedrijf zie je wat er eerder besproken is.", "Heat: een gemelde overboeking gaf +6 heat plus 1 per €20M, zonder maximum (€276M was +20 in één keer). Nu hoogstens +12, een kleinere kans op controle (vooral tussen operationeel en offshore), en vóór je overboekt zie je de kans en de heat.", "Embargo's gelden alleen nog voor bedrijven. Een staat of leger mag je ook onder embargo legaal leveren (met een exportvergunning): geen smokkelroute, geen zwart geld, geen heat. Lopende contracten met overheden die via smokkel liepen, zijn nu wit."]],
   ["11.17", "Heat verlagen, ontwikkeling stopzetten", ["Overzicht → Gezondheid heeft nu een blok ‘Heat verlagen’ met alle opties op één plek: wat het kost, wat het doet en wanneer het weer kan. Nieuw voor wapenmakers: wapens schenken aan je eigen staat (heat −10, politie +6), smokkelroutes sluiten (de grootste bron van heat bij wapencontracten) en een compliance-afdeling (heat −2,5 per maand zolang je betaalt). Voor iedereen: een zondebok aanwijzen (heat −15, kost morale).", "Het blok zegt ook waar je heat vandaan komt en hoeveel zwart geld je kwijt bent bij een razzia.", "Een product in ontwikkeling kun je nu stopzetten (een kwart van het geld komt terug), en een nieuwe versie stoppen kan ook."]],
   ["11.16", "Capaciteit groeit nu echt mee", ["De autopilot zag een deel van je contracten niet: contracten zonder vast product kregen pas later in de maand een product toegewezen, nadat de autopilot al had gerekend. Nu verdeelt hij eerst de contracten en rekent dan, en aan het eind van de maand rekent hij nog eens (voor contracten die je die maand won). Win je een raamcontract, dan breidt hij meteen uit.", "Geen kasbuffer meer: zolang je een uitbreiding kunt betalen, gebeurt ze. Geen maximum. Na één maand dekt elke lijn met autopilot al je contracten plus de volle vraag van de markt."]],
@@ -1664,7 +1667,7 @@ function productSection(st){
       <button class="btn sm primary" data-a="prodnew" data-div="${esc(d.naam)}">${d.bezig ? "In de wachtrij" : "Ontwikkelen"}</button></div>
       ${d.dev.plan.buitenVak || d.dev.plan.onder ? `<div style="font-size:13px;color:var(--amber);margin:2px 0">${d.dev.plan.buitenVak ? "Buiten het vak van deze divisie: ×2,5 kosten, −1 kwaliteit en moeilijker. " : ""}${d.dev.plan.onder ? `Deze schaal vraagt eigenlijk niveau ${d.level + d.dev.plan.onder}: ×${(1 + 0.6 * d.dev.plan.onder).toFixed(1).replace(".", ",")} kosten en moeilijker.` : ""}</div>` : ""}
       <div class="devplan"><span>${(G.game.gratisDev || 0) > 0 ? `<b style="color:var(--green)">gratis</b> (nog ${G.game.gratisDev})` : `€${d.dev.plan.kost}M`} · ${d.dev.plan.maanden} mnd · kwaliteit ${d.dev.plan.kw}</span><span class="mono">2d6${d.dev.plan.bonus ? "+" + d.dev.plan.bonus : ""} ≥ ${d.dev.plan.doel}</span>
-        <span class="kans"><b style="color:var(--green)">hit ${d.dev.plan.kansen.hit}%</b> · gewoon ${d.dev.plan.kansen.gewoon}% · matig ${d.dev.plan.kansen.neutraal}% · <span style="color:var(--amber)">flop ${d.dev.plan.kansen.flop}%</span> · <span style="color:var(--red)">terugroep ${d.dev.plan.kansen.terug}%</span></span>
+        ${d.dev.plan.gat ? `<span class="tag ok" style="display:inline-block;margin:0 0 4px">gat in de markt: ${esc(d.dev.plan.gat)} · +${GAT_BONUS} op de lancering, bestseller</span><br>` : ""}<span class="kans"><b style="color:var(--green)">hit ${d.dev.plan.kansen.hit}%</b> · gewoon ${d.dev.plan.kansen.gewoon}% · matig ${d.dev.plan.kansen.neutraal}% · <span style="color:var(--amber)">flop ${d.dev.plan.kansen.flop}%</span> · <span style="color:var(--red)">terugroep ${d.dev.plan.kansen.terug}%</span></span>
         <span>markt ${esc((PRODUCT_AARD[d.dev.plan.aard] || {}).label || "")}: vraag ${d.dev.plan.vraag}, ×${d.dev.plan.markt.toFixed(2)} · ${d.dev.plan.concurrenten} concurrerende product(en)</span>
         <span class="dim">${esc((DEV_FOCUS[d.dev.sel.focus] || {}).tekst || "")}</span>${nadrukTekst(d.dev.sel.aard, d.dev.sel.nadruk)}${d.dev.sel.delen && d.dev.sel.delen !== "standaard" ? `<span class="dim" style="display:block">Onderdelen ${DEEL_KWAL[d.dev.sel.delen].label.toLowerCase()}: kostprijs ${d.dev.sel.delen === "goedkoop" ? "−24%" : "+28%"} (tegenover standaard), alle drie eigenschappen ${d.dev.sel.delen === "goedkoop" ? "−1" : "+1"}. Later per onderdeel aan te passen bij Details → Onderdelen.</span>` : ""}</div></details></div>`}</div>`).join("")}</div>`;
 }
@@ -1940,6 +1943,24 @@ function divWegHtml(naam){ const s = G.game; if (!s || s.divisions.length <= 1) 
   return `<details style="margin-top:8px"><summary class="dim" style="font-size:13px;cursor:pointer">Verkopen of opheffen</summary><div class="row" style="gap:6px;flex-wrap:wrap;margin-top:6px"><button class="btn sm" data-a="divweg" data-w="verkopen" data-div="${esc(naam)}">Verkopen aan ${esc(I.koper)} · +${eur(I.waarde)}</button><button class="btn sm danger" data-a="divweg" data-w="opheffen" data-div="${esc(naam)}">Opheffen · ontslag ${eur(I.afvloei)}</button></div>
     <div class="dim" style="font-size:12.5px;margin-top:4px">${I.prods.length} product${I.prods.length === 1 ? "" : "en"} en ${I.mensen} mensen gaan weg${I.contr.length ? `; ${I.contr.length} contract${I.contr.length === 1 ? "" : "en"} op die producten ${I.contr.length === 1 ? "gaat" : "gaan"} bij verkopen mee naar de koper, bij opheffen breek je ${I.contr.length === 1 ? "het" : "ze"} af (boete en een boze klant)` : ""}. ${I.rivaal ? `Let op: ${esc(I.rivaal.name)} wordt er sterker van.` : ""}</div></details>`; }
 /* 6.11: Bedrijf toont nog een korte samenvatting; alles staat in het scherm Contracten */
+/* 11.20: gaten in de markt */
+function gatenCard(){ const s = G.game, L = (s.gaten || []).filter(g => !g.dicht), D = (s.gaten || []).filter(g => g.dicht).slice(-3).reverse(); if (!L.length && !D.length) return "";
+  const mijn = new Set((s.divisions || []).flatMap(d => divAarden(s, d)));
+  return `<div class="card"><div class="spread"><h3>Gaten in de markt</h3><span class="dim">${L.length} open</span></div>
+    <p class="muted" style="font-size:13px;margin:4px 0 8px">Vraag die niemand bedient. Lanceer als eerste een product van die soort: +${GAT_BONUS} op de lancering en een bestseller (35% meer omzet, anderhalf jaar). Rivalen zoeken ook.</p>
+    <ul class="ylist">${L.map(g => `<li><b>${esc(g.tekst)}</b> · ${esc(PRODUCT_AARD[g.aard].label)} · open tot ${esc(g.tot)}${mijn.has(g.aard) ? ' <span class="tag ok">kun jij maken</span>' : ' <span class="tag">niet jouw vak</span>'}</li>`).join("")}
+    ${D.map(g => `<li class="dim">${esc(g.tekst)}: ${g.dicht === "speler" ? "gevuld door jou" : g.dicht === "verdwenen" ? "verdwenen" : "gevuld door " + esc(g.dicht)}</li>`).join("")}</ul></div>`; }
+/* 11.19: pitchen bij investeerders */
+function pitchCard(){ const s = G.game, P = pitchOverzicht(s); if (!P) return "";
+  const stijl = S.pitchStijl || "ambitieus";
+  return `<div class="card" style="margin-bottom:14px"><div class="spread"><h3>Geld ophalen: pitchen</h3><span class="dim">waardering ±${eur(P.waardering)} · investeerders ${P.deel}% van max ${P.max}%</span></div>
+    <p class="muted" style="font-size:13px;margin:4px 0 8px">Je vertelt je verhaal, zij beslissen. Ja: geld voor een deel van je bedrijf (je waarde voor de overwinning telt alleen jouw deel). Twijfel: een tegenbod bij Besluiten. Nee: drie maanden wachten. Een idee, een product op de markt, een gat in de markt en een goede naam helpen.</p>
+    <div class="chips" style="margin:0 0 8px">${Object.entries(P.stijlen).map(([k, x]) => `<button class="chip ${stijl === k ? "on" : ""}" data-a="pitchstijl" data-k="${k}" title="${esc(x.uitleg)}">${esc(x.label)}</button>`).join("")}</div>
+    <p class="dim" style="font-size:12.5px;margin:0 0 8px">${esc(P.stijlen[stijl].uitleg)}</p>
+    <div class="plist">${P.partijen.map(x => { const I = x.stijlen[stijl]; return `<div class="prow"><div style="min-width:0"><b>${esc(x.naam)}</b> <span class="tag">${esc(x.label)}</span>
+      <div class="dim" style="font-size:13px">${I.lening ? `lening €${I.bedrag}M` : I.zwart ? `€${I.bedrag}M zwart, heat +8, ze vergeten het niet` : `€${I.bedrag}M voor ${I.pct}%`} · kans ${I.kans}%</div></div>
+      <button class="btn sm" data-a="pitch" data-id="${x.id}" ${x.wachtNog ? "disabled" : ""}>${x.wachtNog ? `over ${x.wachtNog} mnd` : "Pitchen"}</button></div>`; }).join("") || '<p class="dim">Geen investeerders meer in de buurt. Nieuwe melden zich vanzelf.</p>'}</div>
+    ${P.investeerders.length ? `<h3 style="margin-top:12px">Wie bezit een deel</h3><div class="plist">${P.investeerders.map(x => `<div class="prow"><div><b>${esc(x.naam)}</b> <span class="dim">${x.pct}% · €${x.bedrag}M in ${esc(x.sinds)}</span></div><button class="btn sm" data-a="uitkopen" data-n="${esc(x.naam)}" ${S.state.cash >= x.uitkoop ? "" : "disabled"}>Uitkopen · ${eur(x.uitkoop)}</button></div>`).join("")}</div>` : ""}</div>`; }
 /* 11.18: contact met andere bedrijven: bellen, iets voorstellen, en wat er eerder gezegd is */
 function contactCard(){ const s = G.game; if (!(s.producten || []).some(p => p.status === "markt")) return ""; const L = contactOverzicht(s); if (!L.length) return "";
   const n = S.contactAlles ? L.length : 6, kl = v => v >= 10 ? "var(--green)" : v <= -10 ? "var(--red)" : "var(--muted)";
@@ -2469,7 +2490,7 @@ function setupView(){
   const st = S.state;
   if (!S.setup){ try { const sv = JSON.parse(localGet("setup") || "null"); if (sv && typeof sv === "object") S.setup = sv; } catch(e){} }
   const T = S.setup = Object.assign({corp_name:"", motto:"", background:"Ex-havenarbeider", doctrine:["Logistiek"], difficulty:"Realistisch", year:2004,
-    kapitaal:"normaal", home:"BNL", hq_stad:"", zaad:"", inst_events:"normaal", inst_chaos:"normaal", inst_spanning:"normaal", inst_heat:"normaal", inst_winst:"normaal", lengte:"normaal", ontslag:"normaal", bonus:"geen", ethiek:"normaal", slogan:"", divisie_naam:"", namen:{}, eigen_naam:"", eigen_omschrijving:"", eigen_profiel:"gebalanceerd"}, S.setup || {});
+    kapitaal:"normaal", start:"startup", idee:"", home:"BNL", hq_stad:"", zaad:"", inst_events:"normaal", inst_chaos:"normaal", inst_spanning:"normaal", inst_heat:"normaal", inst_winst:"normaal", lengte:"normaal", ontslag:"normaal", bonus:"geen", ethiek:"normaal", slogan:"", divisie_naam:"", namen:{}, eigen_naam:"", eigen_omschrijving:"", eigen_profiel:"gebalanceerd"}, S.setup || {});
   const types = (st.divisie_types||["Biotech","Cyberware","Logistiek","Media & Data","Private Security","Financieel","Smokkel","Weapon Manufacturing"]);
   const chips = (key, opts, multi) => `<div class="chips">${opts.map(([v,l]) => `<button class="chip ${(multi?T[key].includes(v):T[key]===v)?"on":""}" data-chip="${key}" data-v="${esc(v)}" data-multi="${multi?1:""}">${esc(l)}</button>`).join("")}</div>`;
   const city = genWorld();
@@ -2477,7 +2498,7 @@ function setupView(){
   const homeD = city.districts.find(x => x.id === T.home), B = START_BONUS[homeD.arch];
   const step = clamp(S.sstep || 0, 0, 3), szoom = S.szoom || (window.innerWidth < 700 ? 2.4 : 1.6);
   const steps = [["Land kiezen", T.home], ["Het bedrijf", T.corp_name.trim()], ["Koers en cultuur", T.difficulty], ["Registreren", ""]];
-  const cash0 = ({krap: 80, normaal: 100, ruim: 150})[T.kapitaal] + (homeD.arch === "corporate" ? 30 : 0);
+  const startup = T.start === "startup", cash0 = startup ? null : ({krap: 80, normaal: 100, ruim: 150})[T.kapitaal] + (homeD.arch === "corporate" ? 30 : 0); /* 11.19 */
   const prev = {kind: "wereld", w: city.map.w, h: city.map.h, city: city.map.city, frame: city.map.frame, continents: city.map.continents, dom: [], mode: S.setupmode || "politiek",
     zones: city.map.zones.map(z => ({...z, kleur: null, dominant: null, shares: []})),
     cells: city.districts.map(x => { const gd = GANG_DEFS.map(g => ({g, v: g.gebied[x.id] || 0})).sort((a, b) => b.v - a.v)[0];
@@ -2522,7 +2543,10 @@ function setupView(){
       <div style="margin-top:8px">${chips("eigen_profiel", Object.entries(PRESETS).map(([k2,v]) => [k2, v.label]))}</div></div>`;
   else if (step === 2) body = `<h1>Fase 0 · Koers en cultuur</h1>
     <div class="grid g2"><div class="card"><h3>Moeilijkheid</h3>${chips("difficulty", [["Casual","Casual"],["Realistisch","Realistisch"],["Genadeloos","Genadeloos"]])}
-        <h3 style="margin-top:14px">Startkapitaal</h3>${chips("kapitaal", [["krap","Krap · €80M"],["normaal","Normaal · €100M"],["ruim","Ruim · €150M, €60M schuld"]])}
+        <h3 style="margin-top:14px">Hoe begin je?</h3>${chips("start", [["startup","Startup · klein, zelf geld ophalen"],["gevestigd","Gevestigd bedrijf · geld en directie"]])}
+        ${startup ? `<p class="dim" style="font-size:13px;margin:6px 0 0">Je begint met je eigen spaargeld (±€8-30M, afhankelijk van je achtergrond), een handvol mensen, één divisie op niveau 1 en geen directie. Geld haal je op door te pitchen bij investeerders (Financiën): familie, een business angel, durfkapitaal, de bank of een syndicaat. Wie instapt, krijgt een deel van je bedrijf.</p>
+        <label class="f" style="margin-top:10px">Je idee in één zin (helpt bij het pitchen)<input type="text" data-f="idee" value="${esc(T.idee || "")}" placeholder="Bijv. Goedkope drones die havens bewaken"></label>`
+        : `<h3 style="margin-top:14px">Startkapitaal</h3>${chips("kapitaal", [["krap","Krap · €80M"],["normaal","Normaal · €100M"],["ruim","Ruim · €150M, €60M schuld"]])}`}
         <label class="f" style="margin-top:14px;max-width:140px">Startjaar<input type="number" data-f="year" value="${esc(T.year)}"></label>
         <h3 style="margin-top:14px">Speellengte</h3>${chips("lengte", Object.entries(SPEL_LENGTE).map(([k2, v]) => [k2, v.label]))}
         <p class="dim" style="font-size:13px;margin:6px 0 0">Winnen: €${winWaardeVoor(S.setup && S.setup.lengte || "normaal")}M bedrijfswaarde, ${HEG_PCT}% op ${HEG_N} continenten, of ${RIVAAL_DOEL} van de oorspronkelijke rivalen uitschakelen. Haal je dat niet, dan telt aan het eind je score.</p></div>
@@ -2539,11 +2563,15 @@ function setupView(){
     body = `<h1>Fase 0 · Registreren</h1>
     <div class="grid g2"><div class="card"><h3>Jouw keuzes</h3><dl class="kv">
       ${row("Naam", T.corp_name.trim() ? esc(T.corp_name) : '<span style="color:var(--amber)">nog geen naam</span>', 1)}${row("Land", esc(homeD.name) + (T.hq_stad ? ` (${esc(T.hq_stad)})` : ""), 0)}
-      ${row("Doctrine", esc(doc.join(" + ")), 1)}${row("Moeilijkheid", esc(T.difficulty), 2)}${row("Speellengte", esc((SPEL_LENGTE[T.lengte] || SPEL_LENGTE.normaal).label), 2)}${row("Kapitaal", esc(T.kapitaal), 2)}${row("Cultuur", esc(`ontslag ${T.ontslag}, bonus ${T.bonus}, ethiek ${T.ethiek.replace("_", " ")}`), 2)}</dl></div>
+      ${row("Doctrine", esc(doc.join(" + ")), 1)}${row("Moeilijkheid", esc(T.difficulty), 2)}${row("Speellengte", esc((SPEL_LENGTE[T.lengte] || SPEL_LENGTE.normaal).label), 2)}${row("Start", startup ? "startup" : "gevestigd, kapitaal " + esc(T.kapitaal), 2)}${row("Cultuur", esc(`ontslag ${T.ontslag}, bonus ${T.bonus}, ethiek ${T.ethiek.replace("_", " ")}`), 2)}</dl></div>
       <div class="card"><h3>Je begint met</h3><ul class="ylist" style="font-size:15px">
-        <li>${eur(cash0)} in kas${T.kapitaal === "ruim" ? " en €60M schuld" : ""}.</li>
+        ${startup ? `<li>Je eigen spaargeld (±€8-30M) en een idee${T.idee ? `: <i>${esc(T.idee)}</i>` : ""}.</li>
+        <li>${doc.length === 1 ? `Eén divisie ${esc(doc[0])} op niveau 1` : `Twee divisies op niveau 1: ${esc(doc.join(" en "))}`}.</li>
+        <li>${homeD.arch === "industrie" ? 10 : 6} mensen en nog geen directie: een CFO, verkoopchef of hoofd R&D neem je later aan (Mensen).</li>
+        <li>Vijf investeerders die naar je pitch willen luisteren (Financiën).</li>`
+        : `<li>${eur(cash0)} in kas${T.kapitaal === "ruim" ? " en €60M schuld" : ""}.</li>
         <li>${doc.length === 1 ? `Eén divisie ${esc(doc[0])} op niveau 2` : `Twee divisies op niveau 1: ${esc(doc.join(" en "))}`}.</li>
-        <li>${20 + (homeD.arch === "industrie" ? 8 : 0)} mensen en een directie van drie: CFO, Head of Security en PR.</li>
+        <li>${20 + (homeD.arch === "industrie" ? 8 : 0)} mensen en een directie van drie: CFO, Head of Security en PR.</li>`}
         ${B ? `<li><b style="color:var(--cyan)">${esc(B.naam)}</b>: ${esc(B.uitleg)}</li>` : ""}
         <li>Vijf rivalen die allemaal groter beginnen dan jij: één in jouw sector, één op jouw continent. Daarnaast 25 bedrijven om mee te handelen en elf syndicaten.</li></ul>
         <button class="btn primary next" style="margin-top:14px;width:100%" data-a="setup">REGISTREER BEDRIJF ▸</button></div></div>`;
@@ -2551,7 +2579,7 @@ function setupView(){
   return `<div class="app setupapp">
     <header class="top"><div class="brand"><button class="menuknop" data-a="menu" aria-label="Hoofdmenu" title="Hoofdmenu">☰</button><span class="neon">CHROME</span><b>//</b>LEDGER<small>OPRICHTING · VERSIE ${VERSION}</small></div>
       <div class="date">FASE 0 · STAP ${step + 1}/4</div>
-      <div class="stats">${stat("Land", esc(homeD.kort || homeD.name))}${stat("Voordeel", esc(B ? B.naam : "-"), null, "var(--cyan)")}${stat("Kapitaal", eur(cash0))}${stat("Naam", esc(T.corp_name.trim() || "—"))}</div>
+      <div class="stats">${stat("Land", esc(homeD.kort || homeD.name))}${stat("Voordeel", esc(B ? B.naam : "-"), null, "var(--cyan)")}${stat("Kapitaal", startup ? "startup" : eur(cash0))}${stat("Naam", esc(T.corp_name.trim() || "—"))}</div>
       <button class="btn primary next" data-a="${step < 3 ? "snext" : "setup"}">${step < 3 ? "VERDER" : "REGISTREER"} ▸</button></header>
     <nav>${steps.map(([l, done], i) => `<button class="${i === step ? "on" : ""}" data-a="sstep" data-i="${i}"><span><span class="ix">0${i + 1}</span>${l}</span>${done && i < 3 && i !== step ? '<span class="badge ok">✓</span>' : ""}</button>`).join("")}
       <div class="sys">TOETSEN 1-4 · ← →<br>ENTER = VERDER</div></nav>
@@ -2655,6 +2683,9 @@ document.addEventListener("click", async e => {
     case "tick": return doTick(false);
     case "offensief": return act("/api/offensief", {});
     case "contact": return act("/api/contact", {naam: t.dataset.n, wat: t.dataset.w});
+    case "pitchstijl": S.pitchStijl = t.dataset.k; render(); return;
+    case "pitch": return act("/api/pitch", {id: t.dataset.id, stijl: S.pitchStijl || "ambitieus"});
+    case "uitkopen": { const n = t.dataset.n; if (!await ask(`${n} uitkopen?`, "Je betaalt hun deel tegen de huidige waarde plus 15%.", "Uitkopen")) return; return act("/api/uitkopen", {naam: n}); }
     case "contactalles": S.contactAlles = !S.contactAlles; render(); return;
     case "heatactie": { const id = t.dataset.id; if (id === "zondebok" && !await ask("Een zondebok aanwijzen?", "Een directeur neemt de schuld en vertrekt. Heat −15, maar morale −8 en reputatie −3.", "Aanwijzen", true)) return; if (id === "smokkeldicht" && !await ask("Smokkelroutes sluiten?", "Heat zakt meteen, maar nieuwe contracten in landen met een embargo kun je niet meer aannemen. Een nieuwe route kost weer geld.", "Sluiten", true)) return; return act("/api/heat", {id}); }
     case "opnieuwladen": location.reload(); return;

@@ -26,7 +26,7 @@ const MOCK = () => {
   const ok = (v, t) => log.push((v ? "OK   " : "FOUT ") + t);
   await p.goto("http://online.test/"); await p.waitForTimeout(1200); await p.mouse.click(5, 5); await p.waitForTimeout(500);
   ok(await p.evaluate(() => G.mode) === "db", "online modus actief");
-  await p.evaluate(async () => { await API["/api/setup"]({...S.setup, corp_name: "Wolk BV", doctrine: ["Biotech"], home: "BNL"}); for (let i = 0; i < 6; i++) await API["/api/tick"]({force: true}); });
+  await p.evaluate(async () => { await API["/api/setup"]({...S.setup, start: "gevestigd", corp_name: "Wolk BV", doctrine: ["Biotech"], home: "BNL"}); for (let i = 0; i < 6; i++) await API["/api/tick"]({force: true}); });
   await p.waitForTimeout(800);
   const doc = await p.evaluate(() => { const st = JSON.parse(localStorage.getItem("__mockdb")), d = st["games/" + G.gid]; return {kb: Math.round(JSON.stringify(d).length / 1024), gedeeld: !!(d.s.map && d.s.map.gedeeld), backups: Object.keys(st).filter(k => k.startsWith("games/" + G.gid + "/backups/")).length}; });
   ok(doc.kb < 70 && doc.gedeeld, `online save is compact (${doc.kb} KB, kaart gedeeld)`);
@@ -45,7 +45,7 @@ const MOCK = () => {
   ok(na.naam === "Wolk BV" && na.frame && na.chat && na.mails > 3, "na herladen: spel, kaart, mail en chat terug: " + JSON.stringify(na));
   const bk = await p.evaluate(async () => { const L = await Store.backups(); return L.length && {n: L.length, kaart: !!L[0].s.map.frame}; });
   ok(bk && bk.kaart, "online back-ups laden met kaart: " + JSON.stringify(bk));
-  const sl = await p.evaluate(async () => { const g0 = G.gid; const r = await API["/api/nieuw"](); await new Promise(r => setTimeout(r, 400)); await API["/api/setup"]({...S.setup, corp_name: "Tweede BV", doctrine: ["Logistiek"], home: "BNL"}); await new Promise(r => setTimeout(r, 400));
+  const sl = await p.evaluate(async () => { const g0 = G.gid; const r = await API["/api/nieuw"](); await new Promise(r => setTimeout(r, 400)); await API["/api/setup"]({...S.setup, start: "gevestigd", corp_name: "Tweede BV", doctrine: ["Logistiek"], home: "BNL"}); await new Promise(r => setTimeout(r, 400));
     const L = await Store.slots(); await Store.switchSlot(g0); await new Promise(r => setTimeout(r, 800)); return {ok: r.ok, n: L.length, terug: G.game && G.game.player.corp_name}; });
   ok(sl.ok && sl.n >= 2 && sl.terug === "Wolk BV", "online spellen wisselen: " + JSON.stringify(sl));
   /* 10.5: een browserstand die verder is dan online wordt aangeboden, en online zetten maakt een apart spel (niets overschreven) */

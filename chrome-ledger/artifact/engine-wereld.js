@@ -1,6 +1,6 @@
 /* Chrome Ledger engine, deel engine-wereld.js: wereld: kaart, zee, dominantie, eigen soorten, personeel, rivalen en acties. 7.4: de engine staat in zes bestanden die in deze volgorde laden (kern, wereld, leven, producten, gm, opslag); alles deelt dezelfde globale scope. */
 /* ---------- de stad: elke game een andere kaart ---------- */
-const VERSION = "11.18";
+const VERSION = "11.21";
 const MAP_W = 1000, MAP_H = 680;
 const RIVAL_COLORS = ["#ff9a1f", "#3d7bff", "#c6ff2e", "#f2f2f2", "#9b5cff", "#ffd400", "#ff4d4d"];
 const ARCH = {
@@ -618,7 +618,7 @@ function rivalAI(s, ctx, diff){
     inc -= r.defensie * 2 + (r.schepen || 0) * 1.2 + (r.status === "oorlog" ? 3 : 0) + r.staff / 8;
     inc += dominanceIncome(s, r.name).geld + rivalProductInkomen(r);
     for (const v of r.verdragen){ inc += v.bedrag; }
-    r.cash = r1(r.cash + inc * U(0.8, 1.2) * (RIVAAL_MULT[s.player.difficulty] || 1));
+    r.cash = r1(r.cash + inc * U(0.8, 1.2) * (RIVAAL_MULT[s.player.difficulty] || 1) * (inc > 0 ? kopDruk(s) : 1)); /* 11.21: wie bovenaan staat, wordt achtervolgd */
     // verdragen
     for (const v of r.verdragen){ s.cash = r1(s.cash + v.bedrag); relShift(r, 1); v.maanden -= 1; }
     if (r.verdragen.some(v => v.maanden <= 0)){ mail(ctx, s, r.ceo, "Verdrag afgelopen", "Ons handelsverdrag is verlopen. Als u wilt verlengen, weet u me te vinden."); }
@@ -691,6 +691,10 @@ const newDivCost = s => r1(30 * (DIFF[s.player.difficulty] || 1));
 function transferRisico(s, van, naar, amount){ amount = Math.max(0, +amount || 0); const zw = [van, naar].includes("zwart");
   let risk = Math.min(zw ? 0.45 : 0.3, (zw ? 0.06 : 0.03) + Math.min(0.25, amount / 1500) + s.heat / 400); if (faction(s, "politie") > 30) risk *= 0.6;
   return {kans: snapKans(Math.round(risk * 100)), heat: r1(Math.min(12, 4 + amount / 50))}; }
+/* 11.21: de top is zwaarder. Sta je in de top 2 van de ranglijst, dan groeien rivalen 25% sneller en verkopen jouw producten 6% minder (ze kopiëren je); sta je op 1, dan 40% en 12%. */
+const imitatieF = s => { if (!s || !s.rivals) return 1; kopDruk(s); return s._kp === 1 ? 0.88 : s._kp === 2 ? 0.94 : 1; };
+function plekNu(s){ const v = playerValue(s); return 1 + s.rivals.filter(r => rivalValue(s, r) > v).length; }
+function kopDruk(s){ if (s._kdM !== ym(s)){ s._kdM = ym(s); const p = plekNu(s); s._kd = p === 1 ? 1.4 : p === 2 ? 1.25 : 1; s._kp = p; } return s._kd || 1; }
 function actTransfer(s, ctx, van, naar, amount){
   const A = ["operationeel", "zwart", "offshore"]; amount = +amount;
   if (!A.includes(van) || !A.includes(naar) || van === naar || !(amount > 0)) return {ok: false, msg: "Kies twee verschillende rekeningen en een bedrag."};

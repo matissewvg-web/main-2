@@ -133,6 +133,7 @@ Audit (11 nov, 22u), gemeten en niet geschat:
 | 3j | 11.15-11.16 ✓ | (wensen 14 nov) Capaciteit oneindig: autopilot ziet alle contracten, rekent twee keer per maand en direct na een gewonnen contract; divisies verkopen of opheffen | 1 |
 | 3k | 11.17 ✓ | (wensen 14 nov) Heat verlagen op één plek met opties voor wapenmakers; ontwikkeling stopzetten | 1 |
 | 3l | 11.18 ✓ | (wensen 14 nov) Verzoeken en contact met andere bedrijven; overboekingen minder heet; embargo alleen voor bedrijven | 1 |
+| 3m | 11.19-11.21 ✓ | (wensen 15 nov) Startup met pitchen; gaten in de markt en revolutionaire technologie; trager naar #1 | 1 |
 | 4 | 12.1 | Speltest door de speler op de gsm: wat valt nog op? Alleen fouten en gemak oplossen | 1 |
 | 5 | 12.2 | Eindcontrole: alle tests (ook mobiel.js), botruns op 3 moeilijkheden zonder paginafouten, oude saves (2002, 2009) laden, export/import, opslaan/laden online en in de browser | 1 |
 | 6 | 12.3 | Release 12.0: versienotities samenvatten (wat het spel is, in één blok), README ‘hoe speel je’, VERSION 12.0 | 1 |

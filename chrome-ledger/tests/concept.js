@@ -16,7 +16,7 @@ const NEP = {naam: "Trauma Team Platinum", soort: "abonnement", pitch: "Een abon
   await c.route("http://concept.test/**", r => { const u = new URL(r.request().url()).pathname.slice(1); if (!u) return r.fulfill({contentType: "text/html", body: html}); const f = path.join(DIR, u); return fs.existsSync(f) ? r.fulfill({path: f}) : r.fulfill({status: 404, body: ""}); });
   await p.goto("http://concept.test/"); await p.waitForTimeout(700); await p.mouse.click(5, 5); await p.waitForTimeout(500);
   const ok = (v, t) => log.push((v ? "OK   " : "FOUT ") + t);
-  await p.evaluate(async nep => { await API["/api/setup"]({...S.setup, corp_name: "Trauma Team", doctrine: ["Biotech"], home: "BNL", kapitaal: "ruim"}); G.sample = {json: async () => JSON.parse(JSON.stringify(nep))}; G.sampleOff = false; S.view = "bedrijf"; render(); }, NEP);
+  await p.evaluate(async nep => { await API["/api/setup"]({...S.setup, start: "gevestigd", corp_name: "Trauma Team", doctrine: ["Biotech"], home: "BNL", kapitaal: "ruim"}); G.sample = {json: async () => JSON.parse(JSON.stringify(nep))}; G.sampleOff = false; S.view = "bedrijf"; render(); }, NEP);
   await p.waitForTimeout(300);
   ok(await p.$('[data-a=concept]') !== null, "knop 'De GM werkt het uit' zichtbaar");
   await p.fill('textarea[id^="pc_"]', "Trauma Team abonnement: gewapende ambulances"); await p.click('[data-a=concept]'); await p.waitForTimeout(500);

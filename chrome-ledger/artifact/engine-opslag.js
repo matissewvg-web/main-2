@@ -583,6 +583,8 @@ const API = {
   async "/api/taak"(d){ const s = G.game, ctx = Ctx(); const r = d.rol ? actAannemen(s, ctx, d.rol) : actTaak(s, ctx, d.k, !!d.aan); if (r.ok) await persist(ctx); return {ok: r.ok, bericht: r.msg}; },
   async "/api/pitch"(d){ const s = G.game, ctx = Ctx(); const r = actPitch(s, ctx, d.id); if (r.ok) await persist(ctx); return {ok: r.ok, bericht: r.msg}; },
   async "/api/editie"(d){ const s = G.game, ctx = Ctx(); const r = actEditie(s, ctx, d.id, (G.edities || {})[d.id]); if (r.ok){ delete G.edities[d.id]; await persist(ctx); } return {ok: r.ok, bericht: r.msg}; },
+  async "/api/pitch"(b){ const s = G.game, ctx = Ctx(); const r = actInvestPitch(s, ctx, (b || {}).id, (b || {}).stijl); if (r.ok) await persist(ctx); return {ok: r.ok, bericht: r.msg}; },
+  async "/api/uitkopen"(b){ const s = G.game, ctx = Ctx(); const r = actUitkopen(s, ctx, (b || {}).naam); if (r.ok) await persist(ctx); return {ok: r.ok, bericht: r.msg}; },
   async "/api/contact"(b){ const s = G.game, ctx = Ctx(); const r = actContact(s, ctx, (b || {}).naam, (b || {}).wat); if (r.ok) await persist(ctx); return {ok: r.ok, bericht: r.msg}; },
   async "/api/heat"(b){ const s = G.game, ctx = Ctx(); const r = actHeat(s, ctx, (b || {}).id); if (r.ok) await persist(ctx); return {ok: r.ok, bericht: r.msg}; },
   async "/api/offensief"(){ const s = G.game, ctx = Ctx(); const r = actOffensief(s, ctx); if (r.ok) await persist(ctx); return {ok: r.ok, bericht: r.msg}; },

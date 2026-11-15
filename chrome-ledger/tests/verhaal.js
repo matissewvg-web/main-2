@@ -10,7 +10,7 @@ const html = '<!doctype html><html><head><meta charset=utf8></head><body>' + fs.
   await p.goto("http://verhaal.test/"); await p.waitForTimeout(700); await p.mouse.click(5, 5); await p.waitForTimeout(500);
   const ok = (v, t) => log.push((v ? "OK   " : "FOUT ") + t);
   await p.evaluate(async () => {
-    await API["/api/setup"]({...S.setup, corp_name: "Trauma Team", doctrine: ["Biotech"], home: "BNL", kapitaal: "ruim"}); G.game.cash = 300;
+    await API["/api/setup"]({...S.setup, start: "gevestigd", corp_name: "Trauma Team", doctrine: ["Biotech"], home: "BNL", kapitaal: "ruim"}); G.game.cash = 300;
     window.__prompts = [];
     G.sample = {json: async prompt => { window.__prompts.push(prompt);
       if (/nieuwe divisie of bedrijfstak/.test(prompt)) return {naam: "Luchtwacht", soort: "Luchtambulance", nieuw: true, cijfers: {rev: 30, cost: 1, heat: 9, vol: 2}, omschrijving: "Gepantserde vtol's boven de stad. Wie belt, wordt opgehaald. Wie niet betaalt, wordt gezien.",

@@ -9,7 +9,7 @@ const html = '<!doctype html><html><head><meta charset=utf8></head><body>' + fs.
   await c.route("http://opslag.test/**", r => { const u = new URL(r.request().url()).pathname.slice(1); if (!u) return r.fulfill({contentType: "text/html", body: html}); const f = path.join(DIR, u); return fs.existsSync(f) ? r.fulfill({path: f}) : r.fulfill({status: 404, body: ""}); });
   await p.goto("http://opslag.test/"); await p.waitForTimeout(700); await p.mouse.click(5, 5); await p.waitForTimeout(400);
   const ok = (v, t) => log.push((v ? "OK   " : "FOUT ") + t);
-  await p.evaluate(async () => { await API["/api/setup"]({...S.setup, corp_name: "Opslag BV", doctrine: ["Logistiek"], home: "BNL"}); for (let i = 0; i < 3; i++) await API["/api/tick"]({force: true}); });
+  await p.evaluate(async () => { await API["/api/setup"]({...S.setup, start: "gevestigd", corp_name: "Opslag BV", doctrine: ["Logistiek"], home: "BNL"}); for (let i = 0; i < 3; i++) await API["/api/tick"]({force: true}); });
   const maat = await p.evaluate(() => ({kb: Math.round(localStorage.getItem("cl_spel_v2").length / 1024), kaart: JSON.parse(localStorage.getItem("cl_spel_v2")).game.map}));
   ok(maat.kb < 60 && maat.kaart.gedeeld, `save is klein (${maat.kb} KB) en de kaart wordt gedeeld`);
   await p.reload(); await p.waitForTimeout(900);
@@ -29,7 +29,7 @@ const html = '<!doctype html><html><head><meta charset=utf8></head><body>' + fs.
   const ex = await p.evaluate(async () => { const txt = JSON.stringify({chromeLedger: VERSION, t: Date.now(), game: pak(G.game)}); const g = migrate(JSON.parse(txt).game); return {kb: Math.round(txt.length / 1024), kaart: !!g.map.frame, naam: g.player.corp_name}; });
   ok(ex.kb < 80 && ex.kaart && ex.naam === "Opslag BV", "export is klein en importeert met kaart: " + JSON.stringify(ex));
   // maximaal 6 spellen
-  const sl = await p.evaluate(async () => { const res = []; for (let i = 0; i < 7; i++){ const r = await API["/api/nieuw"](); res.push(r.ok); if (r.ok) await API["/api/setup"]({...S.setup, corp_name: "Slot " + i, doctrine: ["Biotech"], home: "BNL"}); } return {res, n: (await Store.slots()).length, laatste: (await API["/api/nieuw"]()).bericht}; });
+  const sl = await p.evaluate(async () => { const res = []; for (let i = 0; i < 7; i++){ const r = await API["/api/nieuw"](); res.push(r.ok); if (r.ok) await API["/api/setup"]({...S.setup, start: "gevestigd", corp_name: "Slot " + i, doctrine: ["Biotech"], home: "BNL"}); } return {res, n: (await Store.slots()).length, laatste: (await API["/api/nieuw"]()).bericht}; });
   ok(sl.n === 6 && sl.res.filter(x => !x).length >= 1 && /al 6 spellen/.test(sl.laatste), "maximaal 6 spellen: " + JSON.stringify(sl));
   console.log(log.join("\n")); console.log("FOUTEN OP DE PAGINA:", JSON.stringify(errs)); await b.close();
   if (log.some(l => l.startsWith("FOUT")) || errs.length) process.exit(1);
