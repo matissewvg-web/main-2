@@ -99,6 +99,17 @@ svg.kaart .rn { text-anchor: middle; font-weight: 700; fill: #14181c; stroke: rg
 svg.kaart .ri { text-anchor: middle; font-family: var(--f-mono); font-weight: 500; fill: #14181c; stroke: rgba(255, 255, 255, 0.6); stroke-width: 0.2em; paint-order: stroke; }
 svg.kaart .zeelink { stroke: #14181c; stroke-opacity: 0.5; fill: none; }
 .geenklik { pointer-events: none; }
+.kaartlaag { position: relative; margin: 0 auto; background: var(--zee); }
+.kaartlaag canvas, .kaartlaag svg.kaart { position: absolute; inset: 0; width: 100%; height: 100%; max-height: none; }
+.kaartlaag.tekent { touch-action: none; cursor: crosshair; }
+.kaartlaag.tekent svg.kaart .rg { cursor: crosshair; }
+svg.kaart.verfmodus .zee { fill: none; }
+svg.kaart.verfmodus .rg > path:first-child { stroke-opacity: 0; }
+svg.kaart.verfmodus .rg.kan > path:first-child { fill-opacity: 0.3; stroke-opacity: 1; }
+svg.kaart.verfmodus .rg.sel > path:first-child, svg.kaart.verfmodus .rg.bron > path:first-child { stroke-opacity: 1; }
+svg.kaart.verfmodus .rg:hover > path:first-child { fill-opacity: 0.12; }
+.tekenbalk { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; justify-content: space-between; border: 2px dashed var(--accent); border-radius: 4px; padding: 8px 10px; }
+.knop.gekozen { box-shadow: inset 0 0 0 2px var(--accent); border-color: var(--accent); }
 .bezit { display: flex; flex-wrap: wrap; gap: 4px 14px; font: 500 0.82rem var(--f-mono); }
 .legenda { display: flex; flex-wrap: wrap; gap: 2px 14px; font-size: 0.78rem; }
 .regiokaart { border-left: 3px solid var(--inkt); padding: 4px 0 4px 12px; display: flex; flex-direction: column; gap: 8px; }
@@ -2666,7 +2677,7 @@ function kaartSvg(s, o = {}) {
     const rs = s.regios[r.id], poly = geo ? [] : info.cellen[r.id];
     const d = geo ? r.d : poly.map((p, i) => (i ? 'L' : 'M') + n1(p.x) + ' ' + n1(p.y)).join('') + 'Z';
     const kl = ['rg', kies.has(r.id) ? 'kan' : '', o.selectie === r.id ? 'sel' : '', o.bron === r.id ? 'bron' : '', kies.size && !kies.has(r.id) && o.bron !== r.id ? 'dof' : ''].filter(Boolean).join(' ');
-    cellen += `<g class="${kl}"${o.klein ? '' : ` data-a="regio" data-id="${r.id}"`}><path d="${d}" fill="${rs.gesloten ? '#6d6f6a' : kleur(rs.eigenaar)}"/>`;
+    cellen += `<g class="${kl}"${o.klein ? '' : ` data-a="regio" data-id="${r.id}"`}><path d="${d}" ${o.verf ? 'fill="#ffffff" fill-opacity="0"' : `fill="${rs.gesloten ? '#6d6f6a' : kleur(rs.eigenaar)}"`}/>`;
     if (rs.bev === false) cellen += `<path d="${d}" fill="url(#arc)" class="geenklik"/>`;
     if (rs.omstreden > 0) cellen += `<path d="${d}" fill="none" stroke="#e8792b" stroke-width="${n1(R * 0.07)}" stroke-dasharray="${n1(R * 0.12)} ${n1(R * 0.1)}" class="geenklik"/>`;
     cellen += '</g>';
@@ -2693,7 +2704,7 @@ function kaartSvg(s, o = {}) {
     labels += t;
   }
 
-  if (geo) for (const [sleutel, pad] of Object.entries(geo.grenzen)) {
+  if (geo && !o.verf) for (const [sleutel, pad] of Object.entries(geo.grenzen)) {
     const [a, b] = sleutel.split('|');
     if (!s.regios[a] || !s.regios[b] || !info.opId[a] || !info.opId[b]) continue;
     const z1 = zijde(s.regios[a].eigenaar), z2 = zijde(s.regios[b].eigenaar);
@@ -2722,12 +2733,143 @@ function kaartSvg(s, o = {}) {
       boven += `<g class="geenklik"><rect x="${n1(x)}" y="${n1(y)}" width="${n1(bw)}" height="${n1(bh)}" rx="${n1(bh * 0.25)}" fill="#14181c" stroke="${kleur(m.fid)}" stroke-width="${n1(R * 0.035)}"/><text x="${n1(x + bw / 2)}" y="${n1(y + bh * 0.76)}" font-size="${n1(bh * 0.72)}" text-anchor="middle" fill="#fff" font-weight="700">${m.code}</text></g>`;
     });
   }
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${n1(bb.x)} ${n1(bb.y)} ${n1(bb.w)} ${n1(bb.h)}" class="kaart${o.klein ? ' klein' : ''}" role="img" aria-label="Campagnekaart ${esc(info.naam)}">
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${n1(bb.x)} ${n1(bb.y)} ${n1(bb.w)} ${n1(bb.h)}" class="kaart${o.klein ? ' klein' : ''}${o.verf ? ' verfmodus' : ''}" role="img" aria-label="Campagnekaart ${esc(info.naam)}">
 <defs><pattern id="arc" width="${n1(R * 0.16)}" height="${n1(R * 0.16)}" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="${n1(R * 0.06)}" height="${n1(R * 0.16)}" fill="#14181c" fill-opacity="0.38"/></pattern></defs>
-<rect x="${n1(bb.x)}" y="${n1(bb.y)}" width="${n1(bb.w)}" height="${n1(bb.h)}" class="zee"/>${geo ? `<path d="${geo.land}" class="land"/>` : ''}
+<rect x="${n1(bb.x)}" y="${n1(bb.y)}" width="${n1(bb.w)}" height="${n1(bb.h)}" class="zee"/>${geo && !o.verf ? `<path d="${geo.land}" class="land"/>` : ''}
 <g stroke="#14181c" stroke-opacity="0.5" stroke-width="${n1(geo ? 1.6 : R * 0.022)}" stroke-linejoin="round">${cellen}</g>
 <path d="${front}" fill="none" stroke="#14181c" stroke-width="${n1(geo ? 6 : R * 0.085)}" stroke-linecap="round" stroke-linejoin="round" class="geenklik"/>
 <g class="geenklik">${labels}</g>${boven}</svg>`;
+}
+
+// ── ui-verf.js ──
+// Tekenlaag voor de Europakaart: gebied is geen tegel maar een ingekleurd vlak.
+// Elke cel van een fijn raster heeft een eigenaar; grenzen en frontlijnen volgen de celranden
+// en lopen dus grillig mee met wat je tekent. De regio's blijven bestaan voor orders en scenario's:
+// een regio is van wie het grootste deel ervan heeft ingekleurd.
+
+
+
+const VG = 5; // celgrootte in kaarteenheden
+const verfBasisCache = {};
+let vh = null; // {cid, bron, data, basis, doek, vuil}
+
+function verfBasis(state) {
+  const info = kaartVan(state), k = KAARTEN[state.kaart], sleutel = state.kaart + '|' + (state.subset || []).join(',');
+  if (verfBasisCache[sleutel]) return verfBasisCache[sleutel];
+  const gw = Math.ceil(k.w / VG), gh = Math.ceil(k.h / VG), n = gw * gh;
+  const c = document.createElement('canvas'); c.width = gw; c.height = gh;
+  const ctx = c.getContext('2d', { willReadFrequently: true });
+  const masker = (d) => { ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, gw, gh); ctx.setTransform(1 / VG, 0, 0, 1 / VG, 0, 0); ctx.fill(new Path2D(d)); return ctx.getImageData(0, 0, gw, gh).data; };
+  const regio = new Uint8Array(n);
+  info.regios.forEach((r, i) => { const a = masker(r.d); for (let j = 0; j < n; j++) if (a[j * 4 + 3] > 110 && !regio[j]) regio[j] = i + 1; });
+  const la = masker(k.geo.land), land = new Uint8Array(n);
+  for (let j = 0; j < n; j++) land[j] = la[j * 4 + 3] > 20 ? 1 : 0;
+  // kustcellen die net buiten een regio vallen, horen bij de regio ernaast
+  for (let ronde = 0; ronde < 3; ronde++) {
+    const kopie = regio.slice();
+    for (let y = 1; y < gh - 1; y++) for (let x = 1; x < gw - 1; x++) { const j = y * gw + x; if (regio[j] || !land[j]) continue; regio[j] = kopie[j - 1] || kopie[j + 1] || kopie[j - gw] || kopie[j + gw]; }
+  }
+  const totaal = new Uint32Array(info.regios.length + 1);
+  for (let j = 0; j < n; j++) totaal[regio[j]]++;
+  return (verfBasisCache[sleutel] = { gw, gh, n, regio, land, totaal, landPad: new Path2D(k.geo.land), w: k.w, h: k.h });
+}
+const verfCode = (state, fid) => { const i = state.facties.findIndex((f) => f.id === fid); return i < 0 ? 0 : i + 1; };
+const verfFid = (state, code) => (code > 0 && state.facties[code - 1] ? state.facties[code - 1].id : 'neutraal');
+function verfCodeer(data) {
+  const uit = []; let vorige = data[0], tel = 1;
+  for (let j = 1; j < data.length; j++) { if (data[j] === vorige) tel++; else { uit.push(vorige.toString(36) + '.' + tel.toString(36)); vorige = data[j]; tel = 1; } }
+  uit.push(vorige.toString(36) + '.' + tel.toString(36));
+  return uit.join(',');
+}
+function verfLaad(state) {
+  if (vh && vh.cid === state.id && vh.bron === (state.verf || '')) return;
+  const basis = verfBasis(state), info = kaartVan(state), data = new Uint8Array(basis.n);
+  if (state.verf) {
+    let j = 0;
+    for (const stuk of state.verf.split(',')) { const [o, t] = stuk.split('.'); const code = parseInt(o, 36), tel = parseInt(t, 36); data.fill(code, j, j + tel); j += tel; }
+  } else {
+    const codes = info.regios.map((r) => verfCode(state, state.regios[r.id].eigenaar));
+    for (let j = 0; j < basis.n; j++) if (basis.regio[j]) data[j] = codes[basis.regio[j] - 1];
+  }
+  vh = { cid: state.id, bron: state.verf || '', data, basis, doek: vh && vh.doek ? vh.doek : null, vuil: true };
+}
+
+// Houdt tekening en regels gelijk. Geeft true als de state is aangepast (dan opslaan).
+function verfSync(state) {
+  verfLaad(state);
+  const { basis, data } = vh, info = kaartVan(state), nC = state.facties.length + 1, nR = info.regios.length;
+  let nieuw = !state.verf, eigenaarGewijzigd = false, dataGewijzigd = false;
+  if (!state.verfEig) { state.verfEig = {}; for (const r of info.regios) state.verfEig[r.id] = state.regios[r.id].eigenaar; }
+  const tel = new Uint32Array((nR + 1) * nC);
+  for (let j = 0; j < basis.n; j++) if (basis.regio[j]) tel[basis.regio[j] * nC + data[j]]++;
+  const vullen = {};
+  info.regios.forEach((r, i) => {
+    const rs = state.regios[r.id], eng = verfCode(state, rs.eigenaar);
+    let maj = 0, top = -1;
+    for (let c = 0; c < nC; c++) if (tel[(i + 1) * nC + c] > top) { top = tel[(i + 1) * nC + c]; maj = c; }
+    if (rs.eigenaar !== state.verfEig[r.id]) { // de regels hebben de regio van eigenaar gewisseld: kleur haar helemaal in
+      if (tel[(i + 1) * nC + eng] !== basis.totaal[i + 1]) vullen[i + 1] = eng;
+      state.verfEig[r.id] = rs.eigenaar;
+    } else if (maj !== eng && basis.totaal[i + 1] > 0) { // er is getekend: de regio volgt de meerderheid
+      rs.eigenaar = verfFid(state, maj); rs.gehoudenSinds = state.beurt; rs.afgesnedenSinds = 0;
+      state.verfEig[r.id] = rs.eigenaar; eigenaarGewijzigd = true;
+    }
+  });
+  if (Object.keys(vullen).length) { for (let j = 0; j < basis.n; j++) if (vullen[basis.regio[j]] !== undefined) data[j] = vullen[basis.regio[j]]; dataGewijzigd = true; }
+  if (eigenaarGewijzigd) herberekenBevoorrading(state);
+  if (nieuw || dataGewijzigd || vh.gekwast) { state.verf = verfCodeer(data); vh.bron = state.verf; vh.vuil = true; vh.gekwast = false; return true; }
+  return eigenaarGewijzigd;
+}
+
+// Kleurt alle cellen binnen `straal` (kaarteenheden) rond (x, y) voor een land.
+function verfKwast(state, x, y, straal, fid) {
+  verfLaad(state);
+  const { basis, data } = vh, code = verfCode(state, fid), r = straal / VG, cx = x / VG, cy = y / VG;
+  for (let gy = Math.max(0, Math.floor(cy - r)); gy <= Math.min(basis.gh - 1, Math.ceil(cy + r)); gy++) for (let gx = Math.max(0, Math.floor(cx - r)); gx <= Math.min(basis.gw - 1, Math.ceil(cx + r)); gx++) {
+    const j = gy * basis.gw + gx;
+    if (basis.regio[j] && data[j] !== code && Math.hypot(gx + 0.5 - cx, gy + 0.5 - cy) <= r) { data[j] = code; vh.vuil = true; vh.gekwast = true; }
+  }
+}
+
+function hexNaarRgb(h) { const v = parseInt(h.replace('#', ''), 16); return [(v >> 16) & 255, (v >> 8) & 255, v & 255]; }
+function verfBouw(state) {
+  const { basis, data } = vh, { gw, gh } = basis;
+  if (!vh.doek) { vh.doek = document.createElement('canvas'); vh.doek.width = basis.w; vh.doek.height = basis.h; vh.klein = document.createElement('canvas'); vh.klein.width = gw; vh.klein.height = gh; }
+  const stijl = getComputedStyle(document.documentElement), landKleur = hexNaarRgb((stijl.getPropertyValue('--land') || '#c9cabd').trim());
+  const kleuren = [hexNaarRgb(FACTIES.neutraal.kleur)].concat(state.facties.map((f) => hexNaarRgb(f.kleur)));
+  const zijden = [''].concat(state.facties.map((f) => (f.zijde === 'neutraal' ? '' : f.zijde)));
+  const kctx = vh.klein.getContext('2d'), img = kctx.createImageData(gw, gh), px = img.data;
+  for (let j = 0; j < basis.n; j++) {
+    if (!basis.land[j] && !basis.regio[j]) continue;
+    const k = basis.regio[j] ? kleuren[data[j]] || kleuren[0] : landKleur;
+    px[j * 4] = k[0]; px[j * 4 + 1] = k[1]; px[j * 4 + 2] = k[2]; px[j * 4 + 3] = 255;
+  }
+  kctx.putImageData(img, 0, 0);
+  const ctx = vh.doek.getContext('2d');
+  ctx.globalCompositeOperation = 'source-over'; ctx.clearRect(0, 0, basis.w, basis.h);
+  ctx.imageSmoothingEnabled = false; ctx.drawImage(vh.klein, 0, 0, gw * VG, gh * VG);
+  // grenzen: dun tussen twee landen, dik waar twee zijden tegenover elkaar staan
+  const dun = new Path2D(), dik = new Path2D();
+  const rand = (a, b, x1, y1, x2, y2) => { if (a === b) return; const p = zijden[a] && zijden[b] && zijden[a] !== zijden[b] ? dik : dun; p.moveTo(x1, y1); p.lineTo(x2, y2); };
+  for (let y = 0; y < gh; y++) for (let x = 0; x < gw; x++) {
+    const j = y * gw + x; if (!basis.regio[j]) continue;
+    if (x + 1 < gw && basis.regio[j + 1]) rand(data[j], data[j + 1], (x + 1) * VG, y * VG, (x + 1) * VG, (y + 1) * VG);
+    if (y + 1 < gh && basis.regio[j + gw]) rand(data[j], data[j + gw], x * VG, (y + 1) * VG, (x + 1) * VG, (y + 1) * VG);
+  }
+  ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  ctx.strokeStyle = 'rgba(20,24,28,0.55)'; ctx.lineWidth = 1.6; ctx.stroke(dun);
+  ctx.strokeStyle = '#14181c'; ctx.lineWidth = 5.5; ctx.stroke(dik);
+  // de echte kustlijn snijdt de blokjes netjes af
+  ctx.globalCompositeOperation = 'destination-in'; ctx.fill(basis.landPad);
+  ctx.globalCompositeOperation = 'source-over'; ctx.strokeStyle = 'rgba(20,24,28,0.5)'; ctx.lineWidth = 1.2; ctx.stroke(basis.landPad);
+  vh.vuil = false; vh.thema = stijl.getPropertyValue('--land');
+}
+function verfTeken(state, canvas) {
+  verfLaad(state);
+  if (vh.vuil || !vh.doek || vh.thema !== getComputedStyle(document.documentElement).getPropertyValue('--land')) verfBouw(state);
+  const bb = kaartVan(state).bbox, ctx = canvas.getContext('2d');
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.drawImage(vh.doek, bb.x, bb.y, bb.w, bb.h, 0, 0, canvas.width, canvas.height);
 }
 
 // ── ui-blad.js ──
@@ -2793,6 +2935,7 @@ function scenarioBlad(scn, tm, meta) {
 
 
 
+
 const SLEUTEL = 'frontlinie.v1';
 const INGEBED = (() => { try { return window.self !== window.top; } catch (e) { return true; } })();
 const opslag = { campagnes: {}, voorraad: Object.assign({}, STANDAARD_VOORRAAD), tafel: Object.assign({}, STANDAARD_TAFEL) };
@@ -2800,7 +2943,7 @@ let opslagWerkt = true;
 function laad() { try { const t = localStorage.getItem(SLEUTEL); if (t) Object.assign(opslag, JSON.parse(t)); } catch (e) { opslagWerkt = false; } }
 function bewaar() { try { localStorage.setItem(SLEUTEL, JSON.stringify(opslag)); } catch (e) { opslagWerkt = false; } }
 
-const ui = { scherm: 'start', cid: null, tab: 'beurt', sel: null, plannend: null, orderType: null, orderVan: null, auftrag: null, gevecht: null, zoom: 1, melding: '', bevestig: null, undo: null, nieuw: null, los: null, uitslag: null, exportTekst: '', galerij: 'europa' };
+const ui = { scherm: 'start', cid: null, tab: 'beurt', sel: null, plannend: null, orderType: null, orderVan: null, auftrag: null, gevecht: null, zoom: 1, melding: '', bevestig: null, undo: null, nieuw: null, los: null, uitslag: null, exportTekst: '', galerij: 'europa', teken: null };
 const C = () => opslag.campagnes[ui.cid];
 let wortel = null;
 
@@ -2972,6 +3115,7 @@ function orderTekst(s, o) {
   return `${ORDERTYPES[o.type].naam}${o.van ? ' vanuit ' + esc(info.opId[o.van].naam) : ''} ${o.type === 'aanval' ? 'op' : '→'} ${esc(info.opId[o.naar].naam)}`;
 }
 function instructie(s) {
+  if (ui.teken) return 'Sleep over de kaart om gebied in te kleuren. De frontlijn loopt mee.';
   const fid = ui.plannend || (ui.auftrag && ui.auftrag.fid);
   if (!fid) return s.fase === 'gevechten' ? 'Rood kruis: open gevecht. Grijs kruis: afgehandeld.' : '';
   if (!ui.orderType) return 'Kies rechts een order en klik dan op de kaart.';
@@ -3096,10 +3240,22 @@ function campagneScherm() {
   if (ui.gevecht) return gevechtScherm(s);
   const tabs = [['beurt', 'Beurt'], ['stand', 'Stand'], ['landen', 'Landen'], ['log', 'Log'], ['tafel', 'Tafel'], ['regels', 'Regels']];
   const inhoud = { beurt: tabBeurt, stand: tabStand, landen: tabLanden, log: tabLog, tafel: tabTafel, regels: tabRegels }[ui.tab](s);
-  const bezit = s.facties.filter((f) => !f.verslagen).map((f) => `<span>${stip(f.kleur)}${esc(f.kort)} ${regiosVan(s, f.id).length}</span>`).join('');
+  const info = kaartVan(s), verf = !!info.geo, bb = info.bbox;
+  if (verf && verfSync(s)) bewaar();
+  const bezit = s.facties.filter((f) => !f.verslagen && regiosVan(s, f.id).length).map((f) => `<span>${stip(f.kleur)}${esc(f.kort)} ${regiosVan(s, f.id).length}</span>`).join('');
+  const ko = kaartOpties(s); ko.verf = verf;
+  if (ui.teken) { ko.kiesbaar = null; ko.bron = null; }
+  const kaartHtml = verf
+    ? `<div class="kaartlaag${ui.teken ? ' tekent' : ''}" style="aspect-ratio:${bb.w}/${bb.h};width:${ui.zoom === 1 ? `min(100%, calc(74vh * ${(bb.w / bb.h).toFixed(4)}))` : Math.round(ui.zoom * 100) + '%'}"><canvas class="verfdoek" width="${Math.round(bb.w)}" height="${Math.round(bb.h)}"></canvas>${kaartSvg(s, ko)}</div>`
+    : `<div style="width:${Math.round(ui.zoom * 100)}%">${kaartSvg(s, ko)}</div>`;
+  const tekenBalk = !verf ? '' : ui.teken
+    ? `<div class="tekenbalk"><label class="inlijn">Kleur in voor <select id="tk-land" data-c="tk" data-veld="fid">${s.facties.map((f) => `<option value="${f.id}" ${ui.teken.fid === f.id ? 'selected' : ''}>${esc(f.naam)}</option>`).join('')}<option value="neutraal" ${ui.teken.fid === 'neutraal' ? 'selected' : ''}>Niemandsland</option></select></label>
+        <span class="knoppen">${[['12', 'Fijn'], ['28', 'Middel'], ['60', 'Breed']].map(([m, t]) => `<button type="button" class="knop mini${String(ui.teken.maat) === m ? ' gekozen' : ''}" data-a="tekenMaat" data-m="${m}">${t}</button>`).join('')}${knop('tekenUit', 'Klaar met tekenen', '', 'hoofd mini')}</span></div>`
+    : '';
   return `<main class="camp">
-  <section class="kaartvak"><div class="kaartbalk"><p class="instructie">${esc(instructie(s))}</p><div class="knoppen">${knop('zoom', '−', 'data-d="-1" aria-label="Zoom uit"', 'mini')}${knop('zoom', '+', 'data-d="1" aria-label="Zoom in"', 'mini')}</div></div>
-    <div class="kaartrol${ui.zoom === 1 ? ' past' : ''}"><div style="width:${Math.round(ui.zoom * 100)}%">${kaartSvg(s, kaartOpties(s))}</div></div>
+  <section class="kaartvak"><div class="kaartbalk"><p class="instructie">${esc(instructie(s))}</p><div class="knoppen">${verf && !ui.teken ? knop('tekenAan', 'Teken gebied', '', 'mini') : ''}${knop('zoom', '−', 'data-d="-1" aria-label="Zoom uit"', 'mini')}${knop('zoom', '+', 'data-d="1" aria-label="Zoom in"', 'mini')}</div></div>
+    ${tekenBalk}
+    <div class="kaartrol${ui.zoom === 1 ? ' past' : ''}">${kaartHtml}</div>
     <p class="bezit">${bezit}</p>${regioKaart(s)}${legenda()}</section>
   <section class="paneel"><div class="tabs" role="tablist">${tabs.map(([id, n]) => `<button type="button" role="tab" aria-selected="${ui.tab === id}" class="tab${ui.tab === id ? ' aan' : ''}" data-a="tab" data-id="${id}">${n}</button>`).join('')}</div><div class="tabinhoud">${inhoud}</div></section>
 </main>`;
@@ -3172,6 +3328,8 @@ function teken() {
   const y = window.scrollY;
   const scherm = { start: startScherm, nieuw: nieuwScherm, campagne: campagneScherm, los: losScherm }[ui.scherm]();
   wortel.innerHTML = kop() + scherm;
+  const doek = wortel.querySelector('.verfdoek');
+  if (doek && ui.scherm === 'campagne') verfTeken(C(), doek);
   window.scrollTo(0, y);
 }
 function naarBoven() { window.scrollTo(0, 0); }
@@ -3187,7 +3345,7 @@ function huidigeSvg() { const el = wortel.querySelector('.tafel svg'); return el
 function resetPlan() { ui.orderType = null; ui.orderVan = null; ui.melding = ''; }
 
 const ACT = {
-  naarStart() { ui.scherm = 'start'; ui.gevecht = null; ui.plannend = null; ui.auftrag = null; ui.undo = null; ui.melding = ''; ui.exportTekst = ''; resetPlan(); naarBoven(); },
+  naarStart() { ui.teken = null; ui.scherm = 'start'; ui.gevecht = null; ui.plannend = null; ui.auftrag = null; ui.undo = null; ui.melding = ''; ui.exportTekst = ''; resetPlan(); naarBoven(); },
   galerij(d) { ui.galerij = d.id; },
   kies(d) { beginNieuw(d.id); naarBoven(); },
   naarLos() { beginLos(); naarBoven(); },
@@ -3220,7 +3378,7 @@ const ACT = {
   zoom(d) { ui.zoom = Math.max(1, Math.min(3.5, ui.zoom + 0.5 * +d.d)); },
   regio(d) {
     if (ui.scherm === 'nieuw') { const n = ui.nieuw; if (campagneVan(n.scenarioId).sandbox) n.bezit[d.id] = n.verf; return; }
-    if (ui.scherm !== 'campagne') return;
+    if (ui.scherm !== 'campagne' || ui.teken) return;
     const s = C(), fid = ui.plannend || (ui.auftrag && ui.auftrag.fid);
     ui.sel = d.id; ui.melding = '';
     if (!fid || !ui.orderType) return;
@@ -3235,6 +3393,9 @@ const ACT = {
     const fout = ui.auftrag ? muteer((st) => vervangOrder(st, fid, ui.auftrag.index, o)) : muteer((st) => voegOrderToe(st, fid, o));
     if (fout) ui.melding = fout; else { ui.orderVan = null; if (ui.auftrag) { ui.auftrag = null; ui.orderType = null; } }
   },
+  tekenAan() { const s = C(); ui.teken = { fid: ui.plannend || (s.facties.find((f) => f.speler === 'mens') || s.facties[0]).id, maat: 28 }; },
+  tekenUit() { ui.teken = null; },
+  tekenMaat(d) { ui.teken.maat = +d.m; },
   plan(d) { ui.plannend = d.id; ui.tab = 'beurt'; ui.sel = null; ui.undo = null; resetPlan(); },
   orderType(d) { ui.orderType = ui.orderType === d.id ? null : d.id; ui.orderVan = null; ui.melding = ''; },
   wisOrder(d) { muteer((s) => verwijderOrder(s, ui.plannend, +d.i)); },
@@ -3278,7 +3439,7 @@ const VELD = {
   ns(el, w) { ui.nieuw.spelers[+el.dataset.i] = String(w).slice(0, 30); },
   l(el, w) { const l = ui.los; l[el.dataset.veld] = w; if (el.dataset.veld === 'ruleset') l.punten = RULESETS[w].punten; if (['facA', 'periode'].includes(el.dataset.veld) && !doctrinesVoor(l.facA, l.periode).some((x) => x.id === l.docA)) l.docA = ''; if (['facV', 'periode'].includes(el.dataset.veld) && !doctrinesVoor(l.facV, l.periode).some((x) => x.id === l.docV)) l.docV = ''; },
   li(el, w) { ui.los.infra[el.dataset.veld] = w; },
-  u(el, w) { ui.uitslag[el.dataset.veld] = w; return false; },
+  tk(el, w) { ui.teken[el.dataset.veld] = w; },
   ct(el, w) { const s = C(); s.tafel[el.dataset.veld] = el.dataset.veld === 'eenheid' ? w : Math.max(24, +w || 24); opslag.tafel = Object.assign({}, s.tafel); bewaar(); },
   ctv(el, w) { const s = C(); s.voorraad[el.dataset.veld] = Math.max(0, +w || 0); opslag.voorraad = Object.assign({}, s.voorraad); bewaar(); },
   gt(el, w) { opslag.tafel[el.dataset.veld] = el.dataset.veld === 'eenheid' ? w : Math.max(24, +w || 24); bewaar(); },
@@ -3296,6 +3457,21 @@ function startApp(el) {
     const r = ACT[k.dataset.a] && ACT[k.dataset.a](k.dataset, k, e);
     if (r !== false) teken();
   });
+  // tekenen: slepen over de kaart kleurt cellen in
+  let streek = false, wachtend = false;
+  const kaartPunt = (e) => { const svg = wortel.querySelector('.kaartlaag svg'); if (!svg) return null; const m = svg.getScreenCTM(); if (!m) return null; const p = new DOMPoint(e.clientX, e.clientY).matrixTransform(m.inverse()); return p; };
+  const kwast = (e) => {
+    const p = kaartPunt(e); if (!p) return;
+    verfKwast(C(), p.x, p.y, ui.teken.maat, ui.teken.fid);
+    if (!wachtend) { wachtend = true; requestAnimationFrame(() => { wachtend = false; const doek = wortel.querySelector('.verfdoek'); if (doek && ui.scherm === 'campagne') verfTeken(C(), doek); }); }
+  };
+  wortel.addEventListener('pointerdown', (e) => {
+    if (!ui.teken || ui.scherm !== 'campagne' || !e.target.closest('.kaartlaag')) return;
+    e.preventDefault(); streek = true; ui.undo = JSON.stringify(C()); kwast(e);
+  });
+  wortel.addEventListener('pointermove', (e) => { if (streek && ui.teken) { e.preventDefault(); kwast(e); } });
+  const stop = () => { if (!streek) return; streek = false; teken(); bewaar(); };
+  window.addEventListener('pointerup', stop); window.addEventListener('pointercancel', stop);
   wortel.addEventListener('change', (e) => {
     const el2 = e.target, c = el2.dataset && el2.dataset.c;
     if (!c || !VELD[c]) return;

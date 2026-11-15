@@ -91,6 +91,24 @@ const shots = process.argv.includes('--shots');
   await foto(page, '12-europa-nieuw', true);
   await klik(page, 'Start de campagne');
   await foto(page, '13-europa-campagne');
+  // tekenen: sleep Duits gebied Frankrijk in en controleer dat de regio volgt
+  await klik(page, 'Teken gebied');
+  const vak = await page.locator('.kaartlaag').boundingBox();
+  const telFra = async () => page.evaluate(() => { const o = JSON.parse(localStorage.getItem('frontlinie.v1')); const c = Object.values(o.campagnes).find((x) => x.scenarioId === 'europa1938'); return [c.regios.lotharingen.eigenaar, c.regios.parijs.eigenaar, (c.verf || '').length]; });
+  const voor = await telFra();
+  const pt = async (id) => page.evaluate((rid) => { const el = document.querySelector('.kaartlaag svg [data-id="' + rid + '"]'); const b = el.getBoundingClientRect(); return [b.x + b.width / 2, b.y + b.height / 2]; }, id);
+  await klik(page, 'Breed');
+  const [x1, y1] = await pt('rijnland'), [x2, y2] = await pt('lotharingen'), [x3, y3] = await pt('parijs');
+  await page.mouse.move(x1, y1); await page.mouse.down();
+  for (let i = 0; i <= 30; i++) await page.mouse.move(x1 + (x2 - x1) * i / 30, y1 + (y2 - y1) * i / 30);
+  for (const [dx, dy] of [[-18, -18], [18, -18], [-18, 18], [18, 18], [0, 0], [-30, 0], [30, 0], [0, 30], [0, -30]]) await page.mouse.move(x2 + dx, y2 + dy, { steps: 4 });
+  for (let i = 0; i <= 20; i++) await page.mouse.move(x2 + (x3 - x2) * i / 40, y2 + (y3 - y2) * i / 40);
+  await page.mouse.up();
+  await foto(page, '15-getekend');
+  const na = await telFra();
+  if (voor[0] !== 'fra' || na[0] !== 'dui') fouten.push('tekenen: Lotharingen volgt de tekening niet: ' + JSON.stringify([voor, na]));
+  if (na[1] !== 'fra') fouten.push('tekenen: Parijs is onterecht van eigenaar gewisseld');
+  await klik(page, 'Klaar met tekenen');
   await speelBeurt(2);
   await foto(page, '14-europa-na-beurt');
   // herladen: campagne staat er nog

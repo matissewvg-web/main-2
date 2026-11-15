@@ -51,7 +51,7 @@ export function kaartSvg(s, o = {}) {
     const rs = s.regios[r.id], poly = geo ? [] : info.cellen[r.id];
     const d = geo ? r.d : poly.map((p, i) => (i ? 'L' : 'M') + n1(p.x) + ' ' + n1(p.y)).join('') + 'Z';
     const kl = ['rg', kies.has(r.id) ? 'kan' : '', o.selectie === r.id ? 'sel' : '', o.bron === r.id ? 'bron' : '', kies.size && !kies.has(r.id) && o.bron !== r.id ? 'dof' : ''].filter(Boolean).join(' ');
-    cellen += `<g class="${kl}"${o.klein ? '' : ` data-a="regio" data-id="${r.id}"`}><path d="${d}" fill="${rs.gesloten ? '#6d6f6a' : kleur(rs.eigenaar)}"/>`;
+    cellen += `<g class="${kl}"${o.klein ? '' : ` data-a="regio" data-id="${r.id}"`}><path d="${d}" ${o.verf ? 'fill="#ffffff" fill-opacity="0"' : `fill="${rs.gesloten ? '#6d6f6a' : kleur(rs.eigenaar)}"`}/>`;
     if (rs.bev === false) cellen += `<path d="${d}" fill="url(#arc)" class="geenklik"/>`;
     if (rs.omstreden > 0) cellen += `<path d="${d}" fill="none" stroke="#e8792b" stroke-width="${n1(R * 0.07)}" stroke-dasharray="${n1(R * 0.12)} ${n1(R * 0.1)}" class="geenklik"/>`;
     cellen += '</g>';
@@ -78,7 +78,7 @@ export function kaartSvg(s, o = {}) {
     labels += t;
   }
 
-  if (geo) for (const [sleutel, pad] of Object.entries(geo.grenzen)) {
+  if (geo && !o.verf) for (const [sleutel, pad] of Object.entries(geo.grenzen)) {
     const [a, b] = sleutel.split('|');
     if (!s.regios[a] || !s.regios[b] || !info.opId[a] || !info.opId[b]) continue;
     const z1 = zijde(s.regios[a].eigenaar), z2 = zijde(s.regios[b].eigenaar);
@@ -107,9 +107,9 @@ export function kaartSvg(s, o = {}) {
       boven += `<g class="geenklik"><rect x="${n1(x)}" y="${n1(y)}" width="${n1(bw)}" height="${n1(bh)}" rx="${n1(bh * 0.25)}" fill="#14181c" stroke="${kleur(m.fid)}" stroke-width="${n1(R * 0.035)}"/><text x="${n1(x + bw / 2)}" y="${n1(y + bh * 0.76)}" font-size="${n1(bh * 0.72)}" text-anchor="middle" fill="#fff" font-weight="700">${m.code}</text></g>`;
     });
   }
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${n1(bb.x)} ${n1(bb.y)} ${n1(bb.w)} ${n1(bb.h)}" class="kaart${o.klein ? ' klein' : ''}" role="img" aria-label="Campagnekaart ${esc(info.naam)}">
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${n1(bb.x)} ${n1(bb.y)} ${n1(bb.w)} ${n1(bb.h)}" class="kaart${o.klein ? ' klein' : ''}${o.verf ? ' verfmodus' : ''}" role="img" aria-label="Campagnekaart ${esc(info.naam)}">
 <defs><pattern id="arc" width="${n1(R * 0.16)}" height="${n1(R * 0.16)}" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="${n1(R * 0.06)}" height="${n1(R * 0.16)}" fill="#14181c" fill-opacity="0.38"/></pattern></defs>
-<rect x="${n1(bb.x)}" y="${n1(bb.y)}" width="${n1(bb.w)}" height="${n1(bb.h)}" class="zee"/>${geo ? `<path d="${geo.land}" class="land"/>` : ''}
+<rect x="${n1(bb.x)}" y="${n1(bb.y)}" width="${n1(bb.w)}" height="${n1(bb.h)}" class="zee"/>${geo && !o.verf ? `<path d="${geo.land}" class="land"/>` : ''}
 <g stroke="#14181c" stroke-opacity="0.5" stroke-width="${n1(geo ? 1.6 : R * 0.022)}" stroke-linejoin="round">${cellen}</g>
 <path d="${front}" fill="none" stroke="#14181c" stroke-width="${n1(geo ? 6 : R * 0.085)}" stroke-linecap="round" stroke-linejoin="round" class="geenklik"/>
 <g class="geenklik">${labels}</g>${boven}</svg>`;

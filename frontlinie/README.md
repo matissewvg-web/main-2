@@ -13,6 +13,7 @@ Open **`frontlinie.html`** in een browser. Dat is alles: één bestand, geen ins
 ## Wat erin zit
 
 - **Kaart van Europa** met echte grenzen en kustlijnen, 98 regio's, drie startdata: **1938**, **1941** en **1945** (plus de what-if Seelöwe). De periode volgt de kalender: Early war tot 1941, Mid war 1942–43, Late war vanaf 1944.
+- **Gebied tekenen.** Op de Europakaart is gebied geen tegel maar een ingekleurd vlak. Met *Teken gebied* sleep je veroverd terrein in voor een land; grenzen en frontlijn lopen grillig mee met wat je tekent. Een regio is van wie het grootste deel ervan heeft ingekleurd.
 - **Alle landen.** Elk land heeft een eigen logische doctrine. Landen zonder eigen Flames of War-leger krijgen een logisch leger om op tafel te zetten (Nederland speelt een Franse of Britse infanterielijst, Zweden een Duitse lijst met Panzer 38(t), enzovoort).
 - **Landen met en zonder speler.** Een land zonder speler geeft geen orders en verdedigt alleen; een tegenstander van de aanvaller speelt dan zijn leger. Een neutraal land dat wordt aangevallen, kiest de andere kant.
 - **13 operaties** op een eigen kaart: Fall Weiss, Fall Gelb, Compass, Barbarossa, Fall Blau, El Alamein, Koersk, Sicilië, Overlord, Bagration, Market Garden, Ardennen, Val van het Rijk.
@@ -42,6 +43,7 @@ src/doctrines.js      doctrines per land en periode
 src/engine.js         campagneregels: orders, conflicten, bevoorrading, uitslag
 src/scenario.js       scenariogenerator
 src/tafel.js          tafelmapgenerator en SVG
+src/ui-verf.js        tekenlaag: ingekleurd gebied en grillige frontlijnen
 src/ui*.js, stijl.css interface
 tools/                maakt de Europakaart uit Natural Earth
 tests/                regeltests, volledige campagnes, browsertest

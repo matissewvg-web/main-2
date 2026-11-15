@@ -8,6 +8,7 @@ import { genereerTafel, tafelSvg, STUKKEN, STANDAARD_VOORRAAD, STANDAARD_TAFEL }
 import { kaartInfo, kaartVan, nieuweCampagne, losBezitOp, datumVan, grondVan, GRONDNAAM, LENGTES, factie, zijdeVan, regiosVan, heeftDoc, limieten, beschikbareOrders, orderDoelen, telling, voegOrderToe, verwijderOrder, ORDERTYPES, voorspel, zietVersterking, effectieveFort, actieveFacties, klimaatVan, planVolgorde, volgendePlanner, bekendeAanvallen, onthul, vervangOrder, startGevechten, tafelVan, voerUitslagIn, bonusDoelen, bonusAanval, herrolTerrein, kiesTweedeDoctrine, wisselDoctrine, stand, kanBeurtEindigen, eindeBeurt, veteraanBonus } from './engine.js';
 import { kaartSvg, esc, ORDERCODE } from './ui-kaart.js';
 import { scenarioBlad } from './ui-blad.js';
+import { verfSync, verfTeken, verfKwast } from './ui-verf.js';
 
 const SLEUTEL = 'frontlinie.v1';
 const INGEBED = (() => { try { return window.self !== window.top; } catch (e) { return true; } })();
@@ -16,7 +17,7 @@ let opslagWerkt = true;
 function laad() { try { const t = localStorage.getItem(SLEUTEL); if (t) Object.assign(opslag, JSON.parse(t)); } catch (e) { opslagWerkt = false; } }
 function bewaar() { try { localStorage.setItem(SLEUTEL, JSON.stringify(opslag)); } catch (e) { opslagWerkt = false; } }
 
-const ui = { scherm: 'start', cid: null, tab: 'beurt', sel: null, plannend: null, orderType: null, orderVan: null, auftrag: null, gevecht: null, zoom: 1, melding: '', bevestig: null, undo: null, nieuw: null, los: null, uitslag: null, exportTekst: '', galerij: 'europa' };
+const ui = { scherm: 'start', cid: null, tab: 'beurt', sel: null, plannend: null, orderType: null, orderVan: null, auftrag: null, gevecht: null, zoom: 1, melding: '', bevestig: null, undo: null, nieuw: null, los: null, uitslag: null, exportTekst: '', galerij: 'europa', teken: null };
 const C = () => opslag.campagnes[ui.cid];
 let wortel = null;
 
@@ -188,6 +189,7 @@ function orderTekst(s, o) {
   return `${ORDERTYPES[o.type].naam}${o.van ? ' vanuit ' + esc(info.opId[o.van].naam) : ''} ${o.type === 'aanval' ? 'op' : '→'} ${esc(info.opId[o.naar].naam)}`;
 }
 function instructie(s) {
+  if (ui.teken) return 'Sleep over de kaart om gebied in te kleuren. De frontlijn loopt mee.';
   const fid = ui.plannend || (ui.auftrag && ui.auftrag.fid);
   if (!fid) return s.fase === 'gevechten' ? 'Rood kruis: open gevecht. Grijs kruis: afgehandeld.' : '';
   if (!ui.orderType) return 'Kies rechts een order en klik dan op de kaart.';
@@ -312,10 +314,22 @@ function campagneScherm() {
   if (ui.gevecht) return gevechtScherm(s);
   const tabs = [['beurt', 'Beurt'], ['stand', 'Stand'], ['landen', 'Landen'], ['log', 'Log'], ['tafel', 'Tafel'], ['regels', 'Regels']];
   const inhoud = { beurt: tabBeurt, stand: tabStand, landen: tabLanden, log: tabLog, tafel: tabTafel, regels: tabRegels }[ui.tab](s);
-  const bezit = s.facties.filter((f) => !f.verslagen).map((f) => `<span>${stip(f.kleur)}${esc(f.kort)} ${regiosVan(s, f.id).length}</span>`).join('');
+  const info = kaartVan(s), verf = !!info.geo, bb = info.bbox;
+  if (verf && verfSync(s)) bewaar();
+  const bezit = s.facties.filter((f) => !f.verslagen && regiosVan(s, f.id).length).map((f) => `<span>${stip(f.kleur)}${esc(f.kort)} ${regiosVan(s, f.id).length}</span>`).join('');
+  const ko = kaartOpties(s); ko.verf = verf;
+  if (ui.teken) { ko.kiesbaar = null; ko.bron = null; }
+  const kaartHtml = verf
+    ? `<div class="kaartlaag${ui.teken ? ' tekent' : ''}" style="aspect-ratio:${bb.w}/${bb.h};width:${ui.zoom === 1 ? `min(100%, calc(74vh * ${(bb.w / bb.h).toFixed(4)}))` : Math.round(ui.zoom * 100) + '%'}"><canvas class="verfdoek" width="${Math.round(bb.w)}" height="${Math.round(bb.h)}"></canvas>${kaartSvg(s, ko)}</div>`
+    : `<div style="width:${Math.round(ui.zoom * 100)}%">${kaartSvg(s, ko)}</div>`;
+  const tekenBalk = !verf ? '' : ui.teken
+    ? `<div class="tekenbalk"><label class="inlijn">Kleur in voor <select id="tk-land" data-c="tk" data-veld="fid">${s.facties.map((f) => `<option value="${f.id}" ${ui.teken.fid === f.id ? 'selected' : ''}>${esc(f.naam)}</option>`).join('')}<option value="neutraal" ${ui.teken.fid === 'neutraal' ? 'selected' : ''}>Niemandsland</option></select></label>
+        <span class="knoppen">${[['12', 'Fijn'], ['28', 'Middel'], ['60', 'Breed']].map(([m, t]) => `<button type="button" class="knop mini${String(ui.teken.maat) === m ? ' gekozen' : ''}" data-a="tekenMaat" data-m="${m}">${t}</button>`).join('')}${knop('tekenUit', 'Klaar met tekenen', '', 'hoofd mini')}</span></div>`
+    : '';
   return `<main class="camp">
-  <section class="kaartvak"><div class="kaartbalk"><p class="instructie">${esc(instructie(s))}</p><div class="knoppen">${knop('zoom', '−', 'data-d="-1" aria-label="Zoom uit"', 'mini')}${knop('zoom', '+', 'data-d="1" aria-label="Zoom in"', 'mini')}</div></div>
-    <div class="kaartrol${ui.zoom === 1 ? ' past' : ''}"><div style="width:${Math.round(ui.zoom * 100)}%">${kaartSvg(s, kaartOpties(s))}</div></div>
+  <section class="kaartvak"><div class="kaartbalk"><p class="instructie">${esc(instructie(s))}</p><div class="knoppen">${verf && !ui.teken ? knop('tekenAan', 'Teken gebied', '', 'mini') : ''}${knop('zoom', '−', 'data-d="-1" aria-label="Zoom uit"', 'mini')}${knop('zoom', '+', 'data-d="1" aria-label="Zoom in"', 'mini')}</div></div>
+    ${tekenBalk}
+    <div class="kaartrol${ui.zoom === 1 ? ' past' : ''}">${kaartHtml}</div>
     <p class="bezit">${bezit}</p>${regioKaart(s)}${legenda()}</section>
   <section class="paneel"><div class="tabs" role="tablist">${tabs.map(([id, n]) => `<button type="button" role="tab" aria-selected="${ui.tab === id}" class="tab${ui.tab === id ? ' aan' : ''}" data-a="tab" data-id="${id}">${n}</button>`).join('')}</div><div class="tabinhoud">${inhoud}</div></section>
 </main>`;
@@ -388,6 +402,8 @@ function teken() {
   const y = window.scrollY;
   const scherm = { start: startScherm, nieuw: nieuwScherm, campagne: campagneScherm, los: losScherm }[ui.scherm]();
   wortel.innerHTML = kop() + scherm;
+  const doek = wortel.querySelector('.verfdoek');
+  if (doek && ui.scherm === 'campagne') verfTeken(C(), doek);
   window.scrollTo(0, y);
 }
 function naarBoven() { window.scrollTo(0, 0); }
@@ -403,7 +419,7 @@ function huidigeSvg() { const el = wortel.querySelector('.tafel svg'); return el
 function resetPlan() { ui.orderType = null; ui.orderVan = null; ui.melding = ''; }
 
 const ACT = {
-  naarStart() { ui.scherm = 'start'; ui.gevecht = null; ui.plannend = null; ui.auftrag = null; ui.undo = null; ui.melding = ''; ui.exportTekst = ''; resetPlan(); naarBoven(); },
+  naarStart() { ui.teken = null; ui.scherm = 'start'; ui.gevecht = null; ui.plannend = null; ui.auftrag = null; ui.undo = null; ui.melding = ''; ui.exportTekst = ''; resetPlan(); naarBoven(); },
   galerij(d) { ui.galerij = d.id; },
   kies(d) { beginNieuw(d.id); naarBoven(); },
   naarLos() { beginLos(); naarBoven(); },
@@ -436,7 +452,7 @@ const ACT = {
   zoom(d) { ui.zoom = Math.max(1, Math.min(3.5, ui.zoom + 0.5 * +d.d)); },
   regio(d) {
     if (ui.scherm === 'nieuw') { const n = ui.nieuw; if (campagneVan(n.scenarioId).sandbox) n.bezit[d.id] = n.verf; return; }
-    if (ui.scherm !== 'campagne') return;
+    if (ui.scherm !== 'campagne' || ui.teken) return;
     const s = C(), fid = ui.plannend || (ui.auftrag && ui.auftrag.fid);
     ui.sel = d.id; ui.melding = '';
     if (!fid || !ui.orderType) return;
@@ -451,6 +467,9 @@ const ACT = {
     const fout = ui.auftrag ? muteer((st) => vervangOrder(st, fid, ui.auftrag.index, o)) : muteer((st) => voegOrderToe(st, fid, o));
     if (fout) ui.melding = fout; else { ui.orderVan = null; if (ui.auftrag) { ui.auftrag = null; ui.orderType = null; } }
   },
+  tekenAan() { const s = C(); ui.teken = { fid: ui.plannend || (s.facties.find((f) => f.speler === 'mens') || s.facties[0]).id, maat: 28 }; },
+  tekenUit() { ui.teken = null; },
+  tekenMaat(d) { ui.teken.maat = +d.m; },
   plan(d) { ui.plannend = d.id; ui.tab = 'beurt'; ui.sel = null; ui.undo = null; resetPlan(); },
   orderType(d) { ui.orderType = ui.orderType === d.id ? null : d.id; ui.orderVan = null; ui.melding = ''; },
   wisOrder(d) { muteer((s) => verwijderOrder(s, ui.plannend, +d.i)); },
@@ -494,7 +513,7 @@ const VELD = {
   ns(el, w) { ui.nieuw.spelers[+el.dataset.i] = String(w).slice(0, 30); },
   l(el, w) { const l = ui.los; l[el.dataset.veld] = w; if (el.dataset.veld === 'ruleset') l.punten = RULESETS[w].punten; if (['facA', 'periode'].includes(el.dataset.veld) && !doctrinesVoor(l.facA, l.periode).some((x) => x.id === l.docA)) l.docA = ''; if (['facV', 'periode'].includes(el.dataset.veld) && !doctrinesVoor(l.facV, l.periode).some((x) => x.id === l.docV)) l.docV = ''; },
   li(el, w) { ui.los.infra[el.dataset.veld] = w; },
-  u(el, w) { ui.uitslag[el.dataset.veld] = w; return false; },
+  tk(el, w) { ui.teken[el.dataset.veld] = w; },
   ct(el, w) { const s = C(); s.tafel[el.dataset.veld] = el.dataset.veld === 'eenheid' ? w : Math.max(24, +w || 24); opslag.tafel = Object.assign({}, s.tafel); bewaar(); },
   ctv(el, w) { const s = C(); s.voorraad[el.dataset.veld] = Math.max(0, +w || 0); opslag.voorraad = Object.assign({}, s.voorraad); bewaar(); },
   gt(el, w) { opslag.tafel[el.dataset.veld] = el.dataset.veld === 'eenheid' ? w : Math.max(24, +w || 24); bewaar(); },
@@ -512,6 +531,21 @@ export function startApp(el) {
     const r = ACT[k.dataset.a] && ACT[k.dataset.a](k.dataset, k, e);
     if (r !== false) teken();
   });
+  // tekenen: slepen over de kaart kleurt cellen in
+  let streek = false, wachtend = false;
+  const kaartPunt = (e) => { const svg = wortel.querySelector('.kaartlaag svg'); if (!svg) return null; const m = svg.getScreenCTM(); if (!m) return null; const p = new DOMPoint(e.clientX, e.clientY).matrixTransform(m.inverse()); return p; };
+  const kwast = (e) => {
+    const p = kaartPunt(e); if (!p) return;
+    verfKwast(C(), p.x, p.y, ui.teken.maat, ui.teken.fid);
+    if (!wachtend) { wachtend = true; requestAnimationFrame(() => { wachtend = false; const doek = wortel.querySelector('.verfdoek'); if (doek && ui.scherm === 'campagne') verfTeken(C(), doek); }); }
+  };
+  wortel.addEventListener('pointerdown', (e) => {
+    if (!ui.teken || ui.scherm !== 'campagne' || !e.target.closest('.kaartlaag')) return;
+    e.preventDefault(); streek = true; ui.undo = JSON.stringify(C()); kwast(e);
+  });
+  wortel.addEventListener('pointermove', (e) => { if (streek && ui.teken) { e.preventDefault(); kwast(e); } });
+  const stop = () => { if (!streek) return; streek = false; teken(); bewaar(); };
+  window.addEventListener('pointerup', stop); window.addEventListener('pointercancel', stop);
   wortel.addEventListener('change', (e) => {
     const el2 = e.target, c = el2.dataset && el2.dataset.c;
     if (!c || !VELD[c]) return;

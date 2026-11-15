@@ -5,7 +5,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const hier = dirname(fileURLToPath(import.meta.url));
-const volgorde = ['rng', 'geo', 'europa-geo', 'kaarten', 'campagnes', 'doctrines', 'scenario', 'tafel', 'engine', 'ui-kaart', 'ui-blad', 'ui'];
+const volgorde = ['rng', 'geo', 'europa-geo', 'kaarten', 'campagnes', 'doctrines', 'scenario', 'tafel', 'engine', 'ui-kaart', 'ui-verf', 'ui-blad', 'ui'];
 const namen = new Map();
 let js = '';
 for (const m of volgorde) {
