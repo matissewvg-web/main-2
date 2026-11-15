@@ -735,5 +735,10 @@ const html = '<!doctype html><html><head><meta charset=utf8></head><body>' + fs.
     c.spanning[thuis] = 75; let n = 0; for (let i = 0; i < 6; i++){ c.heat = 100; tick(c); if (c.razzias) n++; } const imm = corpoImmuun(c), r1z = c.razzias;
     c.spanning[thuis] = 40; c.flags.hoge_heat = 5; c.wetten = {}; for (let i = 0; i < 60 && !c.razzias && c.status === "actief"; i++){ c.heat = 100; c.spanning[thuis] = 40; tick(c); } return {imm, r1z, na: c.razzias}; });
   ok(imz.imm && imz.r1z === 0 && imz.na >= 1, "thuis Privélegers: geen razzia bij heat 100; bij lage spanning wel: " + JSON.stringify(imz));
+  // 11.27 oorlogskaart op het overzicht
+  const ok27 = await p.evaluate(async () => { const g = G.game, r = g.rivals[0], oud = [r.status, r.statusMaanden]; r.status = "oorlog"; r.statusMaanden = 1; S.view = "overzicht"; render();
+    const kaart = [...document.querySelectorAll(".war-banner")].find(x => x.textContent.includes(r.name)); const knoppen = kaart ? [...kaart.querySelectorAll('[data-a="war"]')].map(b => b.dataset.k) : [], vrede = kaart ? !!kaart.querySelector('[data-k="vrede"]') : false;
+    r.status = oud[0]; r.statusMaanden = oud[1]; render(); return {kaart: !!kaart, knoppen, vrede}; }).catch(e => ({fout: String(e)}));
+  ok(ok27.kaart && ok27.knoppen.includes("hq") && ok27.knoppen.includes("sabotage") && ok27.vrede, "oorlog: acties en vrede staan bovenaan het overzicht: " + JSON.stringify(ok27));
   console.log(log.join("\n")); console.log("FOUTEN OP DE PAGINA:", JSON.stringify(errs)); await b.close(); process.exit(log.some(l => l.startsWith("FOUT")) || errs.length ? 1 : 0);
 })();

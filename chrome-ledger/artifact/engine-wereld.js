@@ -1,6 +1,6 @@
 /* Chrome Ledger engine, deel engine-wereld.js: wereld: kaart, zee, dominantie, eigen soorten, personeel, rivalen en acties. 7.4: de engine staat in zes bestanden die in deze volgorde laden (kern, wereld, leven, producten, gm, opslag); alles deelt dezelfde globale scope. */
 /* ---------- de stad: elke game een andere kaart ---------- */
-const VERSION = "11.26";
+const VERSION = "11.27";
 const MAP_W = 1000, MAP_H = 680;
 const RIVAL_COLORS = ["#ff9a1f", "#3d7bff", "#c6ff2e", "#f2f2f2", "#9b5cff", "#ffd400", "#ff4d4d"];
 const ARCH = {
@@ -575,7 +575,7 @@ function offerDecide(s, ctx, id, yes){
   let msg;
   if (!yes){
     if (o.type === "ultimatum"){ r.status = "oorlog"; r.statusMaanden = 0; r.moeheid = 0; relShift(r, -30);
-      mail(ctx, s, r.ceo, "Dan niet", "U had de keuze. Vanaf nu is het oorlog.", "KRITIEK"); msg = `Ultimatum van ${r.name} geweigerd. Het is oorlog.`; }
+      mail(ctx, s, r.ceo, "Dan niet", "U had de keuze. Vanaf nu is het oorlog.", "KRITIEK"); msg = `Ultimatum van ${r.name} geweigerd. Het is oorlog. Terugslaan of vrede voorstellen: bovenaan het Overzicht.`; }
     else { relShift(r, -3); msg = `Aanbod van ${r.name} afgewezen.`; }
     addLog(s, msg); return {ok: true, msg};
   }

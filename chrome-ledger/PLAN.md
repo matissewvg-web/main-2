@@ -136,6 +136,7 @@ Audit (11 nov, 22u), gemeten en niet geschat:
 | 3m | 11.19-11.21 ✓ | (wensen 15 nov) Startup met pitchen; gaten in de markt en revolutionaire technologie; trager naar #1 | 1 |
 | 3n | 11.22 ✓ | (wensen 15 nov) Divisies als marionet afsplitsen; producten naar een andere divisie verhuizen | 1 |
 | 3o | 11.23-11.25 ✓ | (wensen 15 nov) Dochters en marionetten samen en in de ranglijst; compacte productrijen; aanvallen bij Privélegers nemen dominantie over | 1 |
+| 3p | 11.26-11.27 ✓ | (wensen 15 nov) Geen razzia bij corpomacht thuis; oorlogsacties op het overzicht | 1 |
 | 4 | 12.1 | Speltest door de speler op de gsm: wat valt nog op? Alleen fouten en gemak oplossen | 1 |
 | 5 | 12.2 | Eindcontrole: alle tests (ook mobiel.js), botruns op 3 moeilijkheden zonder paginafouten, oude saves (2002, 2009) laden, export/import, opslaan/laden online en in de browser | 1 |
 | 6 | 12.3 | Release 12.0: versienotities samenvatten (wat het spel is, in één blok), README ‘hoe speel je’, VERSION 12.0 | 1 |
