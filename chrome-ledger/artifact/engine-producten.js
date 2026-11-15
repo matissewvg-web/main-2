@@ -144,6 +144,9 @@ function actProduct(s, ctx, soort, a){
       msg = `Productielijn van ${p.naam} ingekrompen: capaciteit nu ${prodCap(s, p)} (vraag ${Math.round(vraagNa(p))}).${terug ? ` De €${terug}M van de uitbreiding komt terug.` : ""} Vaste kosten van de lijn nu ${capVast(s, p) >= 0 ? `€${capVast(s, p)}M` : `€${-capVast(s, p)}M bespaard`} per maand.`; }
     else if (soort === "capaciteit"){ if (p.status !== "markt") return {ok: false, msg: "Het staat niet op de markt."}; if (prodCap(s, p) >= capMax(s, p)) return {ok: false, msg: `${p.naam} zit aan het maximum (${capMax(s, p)}) voor een divisie op niveau ${((capDiv(s, p) || {}).level) || 1}. Breid de divisie uit voor +15, of laat een ander product meer leveren.`}; const k = capKost(s, p); if (!pay(k)) return {ok: false, msg: `Productie uitbreiden kost €${k}M.`}; p.capExtra = (p.capExtra || 0) + 15; msg = `Productielijn van ${p.naam} uitgebreid: capaciteit nu ${prodCap(s, p)} (vraag ${Math.round(vraagNa(p))}). Vaste kosten van de lijn nu €${capVast(s, p)}M per maand.`; }
     else if (soort === "loyaliteit"){ if (!isAbo(p)) return {ok: false, msg: "Alleen voor abonnementen."}; p.loyaal = !p.loyaal; msg = p.loyaal ? `Loyaliteitsprogramma voor ${p.naam}: €${loyKost(p)}M per maand, opzeggers −1,2 procentpunt.` : `Loyaliteitsprogramma van ${p.naam} gestopt.`; }
+    else if (soort === "verplaats"){ /* 11.22: een product naar een andere divisie die dat soort product kan maken */ const doelen = verplaatsDoelen(s, p), d = doelen.find(x => divNaam(x) === a.naar); if (!d) return {ok: false, msg: doelen.length ? "Die divisie kan dit product niet maken of zit vol." : "Geen andere divisie kan dit product maken."};
+      const kost = verplaatsKost(s); if (!pay(kost)) return {ok: false, msg: `Verhuizen kost €${kost}M (machines, mensen, papierwerk).`}; const van = p.divisie; p.divisie = divNaam(d); prodLog(p, s, `Verhuisd van ${van} naar ${p.divisie}`);
+      msg = `${p.naam} verhuist van ${van} naar ${p.divisie} (€${kost}M). Capaciteit, contracten en klanten gaan mee; de omzet telt nu bij ${p.divisie}.`; addLog(s, msg); }
     else if (soort === "staken"){ /* 11.17: ontwikkeling of een nieuwe versie stopzetten. Een kwart van wat je betaalde komt terug (de rest is al uitgegeven) */
       if (p.status === "ontwikkeling" || p.status === "wachtrij"){ const terug = p.status === "ontwikkeling" ? r1((p.devKost || 0) * 0.25) : (p.betaald ? r1((p.devKost || 0) * 0.25) : 0); s.producten = s.producten.filter(x => x !== p); if (terug){ s.cash = r1(s.cash + terug); s.accounts.operationeel = s.cash; }
         msg = `Ontwikkeling van ${p.naam} stopgezet.${terug ? ` €${terug}M komt terug (een kwart van wat het kostte).` : p.status === "ontwikkeling" ? " Het geld is al uitgegeven." : ""} De divisie is vrij voor iets nieuws.`; }
@@ -1261,7 +1264,7 @@ function actMaatwerk(s, ctx, zet, arg){ const m = s.maatwerk; if (!m) return {ok
     const p = mkProduct(s, d, naam, clamp(maatwerkKunde(s, m.aard) + MAATWERK_ONTWERP[m.ontwerp].kw, 1, 5), 0); p.status = "ontwikkeling"; p.eta = 1; p.schaal = "groot"; p.focus = "standaard"; p.aard = m.aard; p.pitch = `Gebouwd op maat voor ${m.klant}: ${m.wat}. Nu voor iedereen.`; (s.producten ??= []).push(p); prodLog(p, s, `Uit een speciale opdracht voor ${m.klant}`);
     addLog(s, `${naam} opgenomen in het assortiment (€${kost}M)`); delete s.maatwerk; return {ok: true, msg: `${naam} komt volgende maand op de markt: het ontwerp ligt er al, alleen de lijn moet nog draaien (€${kost}M).`}; }
   return {ok: false, msg: "Dat kan nu niet."}; }
-function aanvraagTick(s, ctx){ s.aanvragen ??= []; s.contracten ??= []; bedrijfAanbodTick(s, ctx); maatwerkTick(s, ctx); /* 11.4 */ verzoekTick(s, ctx); /* 11.18 */ pitchTick(s, ctx); /* 11.19 */
+function aanvraagTick(s, ctx){ s.aanvragen ??= []; s.contracten ??= []; bedrijfAanbodTick(s, ctx); maatwerkTick(s, ctx); /* 11.4 */ verzoekTick(s, ctx); /* 11.18 */ pitchTick(s, ctx); /* 11.19 */ marionetTick(s, ctx); /* 11.22 */
   for (const a of s.aanvragen) a.verloopt -= 1; /* 6.8: meer aanvragen, langer geldig */ const weg = s.aanvragen.filter(a => a.verloopt <= 0); for (const a of weg){ const rv = aanvraagRivalen(s, a.aard); contractHist(s, a, "verlopen", rv.length ? CH(rv).name : null); } if (weg.length) ctx.rep.push(`${weg.length} aanvra${weg.length > 1 ? "gen" : "ag"} verlopen`); s.aanvragen = s.aanvragen.filter(a => a.verloopt > 0);
   const nP = (s.producten || []).filter(p => p.status === "markt").length;
   for (let poging = 0; poging < (s.reputation >= 45 ? 2 : 1); poging++) if (nP && s.aanvragen.length < AANVRAAG_MAX && kansRol() < (poging ? 0.3 : Math.min(0.7, 0.35 + 0.05 * nP))){ /* 8.5: meer aanvragen */ /* 7.0: minder, de tweede pas bij een goede naam */ const a = maakAanvraag(s); if (a){ s.aanvragen.push(a); ctx.rep.push(`Aanvraag: ${a.klant}`); mail(ctx, s, "Verkoop", `Aanvraag van ${a.klant}`, a.tekst + " Inschrijven kan bij Bedrijf → Klanten, binnen drie maanden.", "NORMAAL"); } }
@@ -1921,7 +1924,7 @@ function divVerkoopInfo(s, naam){ const d = s.divisions.find(x => divNaam(x) ===
   const riv = s.rivals.filter(r => r.sector === d.type || (SECTOR_VERWANT[r.sector] || []).includes(d.type)).sort((a, b) => b.cash - a.cash)[0], bed = (s.bedrijven || []).filter(b => !b.eigenaar && b.sector === d.type).sort((a, b) => b.waarde - a.waarde)[0];
   const waarde = r1((omzet * 10 + d.level * 15 * dif) * (riv ? 1 : bed ? 0.9 : 0.7)), koper = riv && riv.cash >= waarde ? riv.name : bed ? bed.naam : "investeerders";
   const prods = (s.producten || []).filter(p => p.divisie === naam), ids = new Set(prods.map(p => p.id)), contr = (s.contracten || []).filter(c => c.over > 0 && (ids.has(c.product) || ids.has(c.lev)));
-  return {d, naam, waarde, koper, rivaal: koper === (riv || {}).name ? riv : null, prods, contr, afvloei: r1(d.level * 4 * dif), mensen: d.level * 4}; }
+  return {d, naam, waarde, omzet: r1(omzet), koper, rivaal: koper === (riv || {}).name ? riv : null, prods, contr, afvloei: r1(d.level * 4 * dif), mensen: d.level * 4}; }
 function actDivisie(s, ctx, naam, wijze){ const I = divVerkoopInfo(s, naam); if (!I) return {ok: false, msg: "Onbekende divisie."}; if (s.divisions.length <= 1) return {ok: false, msg: "Je laatste divisie kun je niet weghalen: zonder divisie heb je geen bedrijf."};
   if (s.projects.some(p => p.division === naam)) return {ok: false, msg: "Er loopt nog een uitbreiding van deze divisie. Wacht tot die klaar is."};
   const ids = new Set(I.prods.map(p => p.id)); let msg;
@@ -1934,7 +1937,14 @@ function actDivisie(s, ctx, naam, wijze){ const I = divVerkoopInfo(s, naam); if 
   else if (wijze === "opheffen"){ if (s.cash < I.afvloei) return {ok: false, msg: `De ontslagvergoeding is €${I.afvloei}M.`}; s.cash = r1(s.cash - I.afvloei); s.accounts.operationeel = s.cash; s.morale = clamp(s.morale - 5);
     let boete = 0; for (const c of I.contr){ boete += c.perMaand; c.over = 0; klantZet(s, c.klant, -10, "contract afgebroken: divisie opgeheven"); } boete = r1(boete); s.cash = r1(s.cash - boete);
     msg = `${naam} opgeheven. Ontslagvergoeding €${I.afvloei}M${boete ? `, boete voor ${I.contr.length} afgebroken contract${I.contr.length === 1 ? "" : "en"} €${boete}M` : ""}. Morale −5.`; }
-  else return {ok: false, msg: "Kies verkopen of opheffen."};
+  else if (wijze === "marionet"){ const M = (s.bedrijven || []).filter(b => b.eigenaar === "player" && b.koppeling === "marionet" && !b.weg); if (M.length >= MARIONET_MAX) return {ok: false, msg: `Je hebt al ${MARIONET_MAX} marionetten. Meer stromannen valt op.`};
+    const kost = r1(5 * (DIFF[s.player.difficulty] || 1)); if (s.cash < kost) return {ok: false, msg: `Een stroman, notaris en brievenbus kosten €${kost}M.`}; s.cash = r1(s.cash - kost); s.accounts.operationeel = s.cash;
+    const bedrag = r1(Math.max(0.5, I.omzet * 0.3)), stroman = genCeoNaam(new Set(s.rivals.map(r => r.ceo))), b = {id: "m" + hex8(), naam, sector: I.d.type, land: s.player.home_district, waarde: I.waarde, groei: 0, relatie: 100, aandeel: 100, eigenaar: "player", koppeling: "marionet", ceo: stroman, marionet: {sinds: ym(s), level: I.d.level, bedrag, type: I.d.type}};
+    (s.bedrijven ??= []).push(b); (s.streams ??= []).push({naam: "Marionet " + naam, bedrag, sinds: ym(s)});
+    for (const c of I.contr){ const rest = c.over; if (rest > 0){ s.streams.push({naam: `Contract ${c.klant} via ${naam}`, bedrag: r1(c.perMaand * (c.marge ?? AANVRAAG_MARGE)), sinds: ym(s), maanden: rest}); c.over = 0; } }
+    msg = `${naam} gaat verder als zelfstandig bedrijf met ${stroman} als directeur op papier. In het echt luistert het naar jou: €${bedrag}M per maand, en de heat van die divisie staat niet meer op jouw naam.${I.contr.length ? ` De ${I.contr.length} lopende contract${I.contr.length === 1 ? "" : "en"} lopen via ${naam} door.` : ""} Kosten: €${kost}M.`;
+    news(s, `${naam} verzelfstandigd`, `${s.player.corp_name} stoot ${naam} af. Nieuwe directeur: ${stroman}. Over de nieuwe eigenaars zwijgt de notaris.`, "", "markt"); }
+  else return {ok: false, msg: "Kies verkopen, opheffen of afsplitsen."};
   s.producten = (s.producten || []).filter(p => !ids.has(p.id)); s.divisions = s.divisions.filter(x => x !== I.d); if (s.divomzet) delete s.divomzet[naam];
   s.staff.count = Math.max(staffNeed(s), s.staff.count - I.mensen); s.contracten = (s.contracten || []).filter(c => c.over > 0); addLog(s, msg); return {ok: true, msg}; }
 /* 11.17: heat verlagen op één plek. Elke optie zegt wat ze kost, wat ze doet en wanneer ze weer kan. Specifiek voor wapenmakers: wapens schenken aan de eigen staat, smokkelroutes sluiten en een compliance-afdeling. */
@@ -2087,3 +2097,27 @@ function gatLancering(s, ctx, p, r){ const a = p.aard || aardVan(p.type, p.naam)
 
 /* 11.21: groeipijn. Een groot bedrijf heeft managementlagen, juristen en kantoren nodig: boven €500M waarde kost elke €1000M extra €5M per maand. */
 const overheadKost = s => { const v = playerValue(s); return v > 500 ? r1((v - 500) * 0.005) : 0; };
+
+/* 11.22: marionetten. Een divisie afsplitsen als zelfstandig bedrijf met een stroman als directeur. Het levert elke maand een vast bedrag op, de heat van die divisie staat niet meer op jouw naam en telt niet mee voor overhead en kopgroepdruk, en je kunt er zwart geld door witwassen. Maar elke maand kan iemand de draadjes zien. */
+const MARIONET_MAX = 3;
+const marionetten = s => (s.bedrijven || []).filter(b => b.eigenaar === "player" && b.koppeling === "marionet" && !b.weg);
+const ontmaskerKans = (s, b) => r1(Math.min(0.25, 0.012 + s.heat / 100 * 0.02 + (b.marionet.was === ym(s) ? 0.04 : 0) + marionetten(s).length * 0.004) * 100) / 100;
+const wasMax = (s, b) => r1(Math.max(5, b.marionet.bedrag * 6));
+function marionetTick(s, ctx){ for (const b of marionetten(s)){ const M = b.marionet; if (M.ontmaskerd) continue;
+  if (kansRol() < ontmaskerKans(s, b)){ M.ontmaskerd = ym(s); s.reputation = clamp(s.reputation - 8); s.heat = clamp(s.heat + 8); const st = (s.streams || []).find(x => x.naam === "Marionet " + b.naam); if (st) st.bedrag = r1(st.bedrag * 0.6);
+    mail(ctx, s, "Journalist", `Wie zit er echt achter ${b.naam}?`, `Een reportage volgt het geld van ${b.naam} naar ${s.player.corp_name}. ${b.ceo} blijkt een stroman. Reputatie −8, heat +8, en klanten van ${b.naam} haken af: de opbrengst zakt 40%.`, "KRITIEK");
+    news(s, `${b.naam} is een marionet van ${s.player.corp_name}`, `Uit papieren blijkt dat ${s.player.corp_name} nog altijd aan de touwtjes trekt.`, "", "wereld", true); ctx.rep.push(`${b.naam} ontmaskerd als marionet`); } } }
+function actMarionet(s, ctx, id, wat, bedrag){ const b = marionetten(s).find(x => x.id === id); if (!b) return {ok: false, msg: "Die marionet bestaat niet meer."}; const M = b.marionet; let msg;
+  const stopStream = () => { s.streams = (s.streams || []).filter(x => x.naam !== "Marionet " + b.naam); };
+  if (wat === "terug"){ if (s.divisions.some(d => divNaam(d) === b.naam)) return {ok: false, msg: "Je hebt al een divisie met die naam."}; stopStream(); b.weg = true; b.eigenaar = null; s.divisions.push({name: b.naam, type: M.type, level: M.level}); s.staff.count += M.level * 4;
+    msg = `${b.naam} komt terug onder je eigen naam, op niveau ${M.level}. De heat van die divisie telt weer voor jou, en je moet er opnieuw producten voor maken.`; }
+  else if (wat === "verkopen"){ const g = r1(b.waarde * 0.9); stopStream(); s.cash = r1(s.cash + g); s.accounts.operationeel = s.cash; b.weg = true; b.eigenaar = null; b.koppeling = null; msg = `${b.naam} verkocht voor €${g}M. ${b.ceo} mag nu echt de baas spelen.`; }
+  else if (wat === "witwassen"){ const max = wasMax(s, b), x = r1(Math.min(+bedrag || max, max, s.accounts.zwart || 0)); if (M.was === ym(s)) return {ok: false, msg: `Via ${b.naam} is deze maand al gewassen.`}; if (x <= 0) return {ok: false, msg: "Je hebt geen zwart geld."};
+    const fee = r1(x * 0.08); s.accounts.zwart = r1(s.accounts.zwart - x); s.cash = r1(s.cash + x - fee); s.accounts.operationeel = s.cash; s.heat = clamp(s.heat + 1); M.was = ym(s);
+    msg = `€${x}M zwart geld via facturen van ${b.naam} wit gemaakt (8% kosten, €${fee}M). Geen bankcontrole, heat +1. Deze maand is de kans dat iemand het ziet wel groter.`; }
+  else return {ok: false, msg: "Onbekende actie."};
+  addLog(s, msg); return {ok: true, msg}; }
+function marionetOverzicht(s){ return marionetten(s).map(b => ({id: b.id, naam: b.naam, ceo: b.ceo, sector: b.sector, level: b.marionet.level, bedrag: ((s.streams || []).find(x => x.naam === "Marionet " + b.naam) || {}).bedrag || 0, waarde: Math.round(b.waarde), verkoop: r1(b.waarde * 0.9), ontmaskerd: b.marionet.ontmaskerd || null, kans: Math.round(ontmaskerKans(s, b) * 100), wasMax: wasMax(s, b), gewassen: b.marionet.was === ym(s), sinds: b.marionet.sinds})); }
+
+const verplaatsKost = s => r1(3 * (DIFF[s.player.difficulty] || 1));
+function verplaatsDoelen(s, p){ const a = p.aard || aardVan(p.type, p.naam); return (s.divisions || []).filter(d => divNaam(d) !== p.divisie && divAarden(s, d).includes(a) && (s.producten || []).filter(x => x.divisie === divNaam(d) && x.status !== "teruggeroepen").length < maxProducten(d)); }

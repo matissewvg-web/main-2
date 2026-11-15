@@ -702,5 +702,15 @@ const html = '<!doctype html><html><head><meta charset=utf8></head><body>' + fs.
   // 11.21 groeipijn en kopgroepdruk
   const kd = await p.evaluate(() => { const c = JSON.parse(JSON.stringify(G.game)); const klein = overheadKost(c); c.cash += 5000; c.accounts.operationeel = c.cash; c._kdM = null; const groot = overheadKost(c), plek = plekNu(c), f = imitatieF(c), k = kopDruk(c); return {klein, groot, plek, f, k}; });
   ok(kd.groot > kd.klein && kd.groot >= 20 && (kd.plek > 2 || (kd.f < 1 && kd.k > 1)), "groot bedrijf: overhead en rivalen die je kopiëren als je bovenaan staat: " + JSON.stringify(kd));
+  // 11.22 marionetten en producten verhuizen
+  const mr = await p.evaluate(() => { const c = JSON.parse(JSON.stringify(G.game)), ctx = Ctx(); c.cash = 900; c.accounts.operationeel = 900; c.accounts.zwart = 50;
+    if (c.divisions.length < 2) c.divisions.push({name: "Tweede Lab", type: c.divisions[0].type, level: 2}); const d = c.divisions[c.divisions.length - 1], naam = divNaam(d), n0 = c.divisions.length;
+    const r = actDivisie(c, ctx, naam, "marionet"), m = marionetten(c)[0]; if (!r.ok || !m) return {fout: r.msg};
+    const stream = (c.streams || []).some(x => x.naam === "Marionet " + naam), weg = c.divisions.length === n0 - 1, w = actMarionet(c, ctx, m.id, "witwassen"), w2 = actMarionet(c, ctx, m.id, "witwassen"), zw = c.accounts.zwart;
+    const t = actMarionet(c, ctx, m.id, "terug"), terug = c.divisions.some(x => divNaam(x) === naam), streamWeg = !(c.streams || []).some(x => x.naam === "Marionet " + naam);
+    const d1 = c.divisions[0], dn = {name: "Verhuislijn", type: d1.type, level: 3}; c.divisions.push(dn); const pr = (c.producten || []).find(x => x.status === "markt" && x.divisie === divNaam(d1)); let vp = null;
+    if (pr){ const doel = verplaatsDoelen(c, pr).map(x => divNaam(x)); const v = actProduct(c, ctx, "verplaats", {id: pr.id, naar: "Verhuislijn"}); vp = {doel: doel.includes("Verhuislijn"), ok: v.ok, nu: pr.divisie, fout: actProduct(c, ctx, "verplaats", {id: pr.id, naar: "Bestaat niet"}).ok}; }
+    return {weg, stream, was: [w.ok, !w2.ok, zw], terug: [t.ok, terug, streamWeg], vp}; });
+  ok(!mr.fout && mr.weg && mr.stream && mr.was[0] && mr.was[1] && mr.was[2] < 50 && mr.terug.every(Boolean) && (!mr.vp || (mr.vp.doel && mr.vp.ok && mr.vp.nu === "Verhuislijn" && !mr.vp.fout)), "marionet: divisie wordt bedrijf met stroman, witwassen eens per maand, terughalen; product verhuizen naar een divisie die het kan maken: " + JSON.stringify(mr));
   console.log(log.join("\n")); console.log("FOUTEN OP DE PAGINA:", JSON.stringify(errs)); await b.close(); process.exit(log.some(l => l.startsWith("FOUT")) || errs.length ? 1 : 0);
 })();
